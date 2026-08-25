@@ -5,6 +5,8 @@ import "@milkdown/crepe/theme/common/style.css";
 import "@milkdown/crepe/theme/frame.css";
 import { useEffect, useRef } from "react";
 
+import { editorSessionKey } from "@/lib/editor/lifecycle";
+
 export type UploadedAsset = {
   id: string;
   filename: string;
@@ -18,6 +20,7 @@ type MarkdownEditorProps = {
   onMarkdownChange: (markdown: string) => void;
   onAssetUploaded?: (asset: UploadedAsset) => void;
   compact?: boolean;
+  resetRevision?: number;
 };
 
 async function uploadImage(file: File, onAssetUploaded?: (asset: UploadedAsset) => void) {
@@ -31,8 +34,9 @@ async function uploadImage(file: File, onAssetUploaded?: (asset: UploadedAsset) 
   return asset.url;
 }
 
-export function MarkdownEditor({ initialMarkdown, onMarkdownChange, onAssetUploaded, compact = false }: MarkdownEditorProps) {
+function MarkdownEditorSession({ initialMarkdown, onMarkdownChange, onAssetUploaded, compact = false }: MarkdownEditorProps) {
   const rootRef = useRef<HTMLDivElement>(null);
+  const initialMarkdownRef = useRef(initialMarkdown);
   const onChangeRef = useRef(onMarkdownChange);
   const uploadRef = useRef(onAssetUploaded);
 
@@ -44,7 +48,7 @@ export function MarkdownEditor({ initialMarkdown, onMarkdownChange, onAssetUploa
     let disposed = false;
     const crepe = new Crepe({
       root: rootRef.current,
-      defaultValue: initialMarkdown,
+      defaultValue: initialMarkdownRef.current,
       features: {
         [CrepeFeature.AI]: false,
         [CrepeFeature.Latex]: false,
@@ -76,7 +80,19 @@ export function MarkdownEditor({ initialMarkdown, onMarkdownChange, onAssetUploa
       disposed = true;
       window.setTimeout(() => void crepe.destroy(), 0);
     };
-  }, [compact, initialMarkdown]);
+  }, [compact]);
 
   return <div ref={rootRef} className={compact ? "markdown-editor markdown-editor--compact" : "markdown-editor"} />;
+}
+
+export function MarkdownEditor(props: MarkdownEditorProps) {
+  const compact = props.compact ?? false;
+  const resetRevision = props.resetRevision ?? 0;
+  const sessionKey = editorSessionKey({
+    compact,
+    resetRevision,
+    markdown: props.initialMarkdown,
+  });
+
+  return <MarkdownEditorSession key={sessionKey} {...props} compact={compact} />;
 }

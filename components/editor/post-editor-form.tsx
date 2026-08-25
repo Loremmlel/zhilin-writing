@@ -27,6 +27,7 @@ export function PostEditorForm({ userId, draftId, action, initial, submitLabel =
   const [tags, setTags] = useState(initial?.tags.join("，") ?? "");
   const [assets, setAssets] = useState<UploadedAsset[]>([]);
   const [assetIds, setAssetIds] = useState(initial?.assetIds ?? []);
+  const [editorResetRevision, setEditorResetRevision] = useState(0);
   const [draftStatus, setDraftStatus] = useState<"loading" | "saving" | "saved" | "failed">("loading");
   const [hydrated, setHydrated] = useState(false);
   const editorKey = `${draftId}:${hydrated ? "ready" : "initial"}`;
@@ -94,7 +95,7 @@ export function PostEditorForm({ userId, draftId, action, initial, submitLabel =
       <label className="field-label" htmlFor="post-title">标题</label>
       <input id="post-title" className="title-input" name="title" value={title} onChange={(event) => setTitle(event.target.value)} maxLength={120} placeholder="给这篇文字起一个标题" required />
       <label className="field-label">正文</label>
-      <MarkdownEditor key={editorKey} initialMarkdown={markdown} onMarkdownChange={setMarkdown} onAssetUploaded={(asset) => {
+      <MarkdownEditor key={editorKey} initialMarkdown={markdown} resetRevision={editorResetRevision} onMarkdownChange={setMarkdown} onAssetUploaded={(asset) => {
         setAssets((current) => [...current, asset]);
         setAssetIds((current) => [...new Set([...current, asset.id])]);
       }} />
@@ -116,7 +117,10 @@ export function PostEditorForm({ userId, draftId, action, initial, submitLabel =
       {assets.length > 0 && <div className="asset-list">
         {assets.map((asset) => <div key={asset.id} className="asset-row">
           <span>{asset.filename}</span>
-          <button type="button" className="text-button" onClick={() => setMarkdown((current) => `${current.trimEnd()}\n\n${asset.markdown}\n`)}>插入正文</button>
+          <button type="button" className="text-button" onClick={() => {
+            setMarkdown((current) => `${current.trimEnd()}\n\n${asset.markdown}\n`);
+            setEditorResetRevision((current) => current + 1);
+          }}>插入正文</button>
         </div>)}
       </div>}
       {state.error && <p className="form-error" role="alert">{state.error}</p>}
