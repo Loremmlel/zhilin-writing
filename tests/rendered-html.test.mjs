@@ -1,0 +1,25 @@
+import assert from "node:assert/strict";
+import { readFile, readdir } from "node:fs/promises";
+import test from "node:test";
+
+async function builtServerSource() {
+  const root = new URL("../dist/server/", import.meta.url);
+  const files = await readdir(root, { recursive: true });
+  const chunks = await Promise.all(
+    files.filter((file) => file.endsWith(".js")).map((file) => readFile(new URL(file, root), "utf8")),
+  );
+  return chunks.join("\n");
+}
+
+test("production artifact contains private-community metadata and denial copy", async () => {
+  const source = await builtServerSource();
+  assert.match(source, /知临中学/);
+  assert.match(source, /只对管理员邀请的少数成员开放/);
+  assert.doesNotMatch(source, /codex-preview/);
+});
+
+test("production artifact contains the dispatcher-owned ChatGPT sign-in path", async () => {
+  const source = await builtServerSource();
+  assert.match(source, /\/signin-with-chatgpt/);
+  assert.match(source, /oai-authenticated-user-email/);
+});
