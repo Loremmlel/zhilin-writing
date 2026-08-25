@@ -40,6 +40,19 @@ test("a content save advances once, edits now, and never bumps activity", () => 
   });
 });
 
+test("an explicit conflict overwrite creates a revision even when content now matches", () => {
+  assert.deepEqual(planContentSave(current, {
+    title: current.title,
+    markdown: current.markdown,
+    assetRefs: current.assetRefs,
+  }, new Date(4000), { forceRevision: true }), {
+    kind: "new-revision",
+    revisionNumber: 4,
+    editedAt: new Date(4000),
+    lastActivityAt: new Date(2000),
+  });
+});
+
 test("restore copies the historical snapshot into a new revision without activity", () => {
   const source = {
     id: "revision-1",

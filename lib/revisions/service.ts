@@ -1,5 +1,5 @@
 import type { BatchItem } from "drizzle-orm/batch";
-import { and, asc, desc, eq, inArray, isNull } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 
 import { getDb } from "@/db";
 import {
@@ -14,6 +14,7 @@ import {
 } from "@/db/schema";
 import { markdownToPlainText } from "@/lib/markdown/render";
 import type { AssetSnapshotRef } from "./policy";
+import { planRestore } from "./save-plan";
 
 export type RevisionSnapshot = {
   revision: typeof postRevisions.$inferSelect;
@@ -123,27 +124,44 @@ export async function restorePostRevision(postId: string, sourceRevisionId: stri
 
   const now = new Date();
   const revisionId = crypto.randomUUID();
+  const restorePlan = planRestore({
+    revisionId: current.revision.id,
+    revisionNumber: current.revision.revisionNumber,
+    title: current.revision.title,
+    markdown: current.revision.markdown,
+    assetRefs: current.assetRefs,
+    editedAt: post.editedAt,
+    lastActivityAt: post.lastActivityAt,
+  }, {
+    id: source.revision.id,
+    title: source.revision.title,
+    markdown: source.revision.markdown,
+    assetRefs: source.assetRefs,
+  }, now);
   const operations: BatchItem<"sqlite">[] = [
+    db.update(posts).set({
+      title: sql<string>`CASE WHEN ${posts.currentRevisionId} = ${current.revision.id} THEN ${posts.title} ELSE NULL END`,
+    }).where(eq(posts.id, postId)),
     db.insert(postRevisions).values({
       id: revisionId,
       postId,
-      revisionNumber: current.revision.revisionNumber + 1,
-      title: source.revision.title,
-      markdown: source.revision.markdown,
+      revisionNumber: restorePlan.revisionNumber,
+      title: restorePlan.title,
+      markdown: restorePlan.markdown,
       createdAt: now,
       createdByUserId: administratorId,
-      restoreSourceRevisionId: source.revision.id,
+      restoreSourceRevisionId: restorePlan.restoreSourceRevisionId,
     }),
     db.update(posts).set({
-      title: source.revision.title,
-      markdown: source.revision.markdown,
-      searchText: markdownToPlainText(source.revision.markdown),
+      title: restorePlan.title,
+      markdown: restorePlan.markdown,
+      searchText: markdownToPlainText(restorePlan.markdown),
       currentRevisionId: revisionId,
-      editedAt: now,
+      editedAt: restorePlan.editedAt,
     }).where(and(eq(posts.id, postId), eq(posts.currentRevisionId, current.revision.id))),
     db.delete(postAssetRefs).where(eq(postAssetRefs.postId, postId)),
-    ...source.assetRefs.map((ref) => db.insert(postAssetRefs).values({ postId, ...ref })),
-    ...source.assetRefs.map((ref) => db.insert(revisionAssetRefs).values({ revisionId, ...ref })),
+    ...restorePlan.assetRefs.map((ref) => db.insert(postAssetRefs).values({ postId, ...ref })),
+    ...restorePlan.assetRefs.map((ref) => db.insert(revisionAssetRefs).values({ revisionId, ...ref })),
   ];
 
   try {

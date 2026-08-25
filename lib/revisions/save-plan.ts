@@ -12,8 +12,13 @@ type CurrentRevisionState = {
 
 type NextContent = Pick<CurrentRevisionState, "title" | "markdown" | "assetRefs">;
 
-export function planContentSave(current: CurrentRevisionState, next: NextContent, now: Date) {
-  if (!classifyPostChange(current, next).contentChanged) {
+export function planContentSave(
+  current: CurrentRevisionState,
+  next: NextContent,
+  now: Date,
+  options: { forceRevision?: boolean } = {},
+) {
+  if (!options.forceRevision && !classifyPostChange(current, next).contentChanged) {
     return {
       kind: "metadata-only" as const,
       currentRevisionId: current.revisionId,

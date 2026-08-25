@@ -1,5 +1,5 @@
 import type { BatchItem } from "drizzle-orm/batch";
-import { and, eq, inArray, isNull } from "drizzle-orm";
+import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 
 import { getDb } from "@/db";
 import { activityEvents, assets, notifications, postAssetRefs, postRevisions, posts, postTags, replies, revisionAssetRefs, tags } from "@/db/schema";
@@ -7,8 +7,10 @@ import { findReply, findReplyBySubmissionKey, getPost } from "@/db/queries";
 import { activityEventId, notificationId, resolveReplyRecipient, validateSubmissionKey } from "@/lib/activity/policy";
 import { canEditPost, normalizeReplyTarget, validatePostInput, validateReplyMarkdown } from "@/lib/domain/rules";
 import { markdownToPlainText } from "@/lib/markdown/render";
-import { buildAssetSnapshot, classifyPostChange, resolveSaveBase, type AssetSnapshotRef } from "@/lib/revisions/policy";
+import { buildAssetSnapshot, resolveSaveBase, type AssetSnapshotRef } from "@/lib/revisions/policy";
+import { planContentSave } from "@/lib/revisions/save-plan";
 import { EditConflictError, getConflictSnapshot, getCurrentAssetRefs } from "@/lib/revisions/service";
+import { commitPostSave, planPostTags } from "./save-transaction";
 
 type SavePostInput = {
   title: string;
@@ -19,18 +21,18 @@ type SavePostInput = {
   overwriteBaseRevisionId?: string;
 };
 
-async function replacePostTags(postId: string, names: string[]) {
+async function buildPostTagOperations(postId: string, names: string[], now: Date): Promise<BatchItem<"sqlite">[]> {
   const db = getDb();
-  await db.delete(postTags).where(eq(postTags.postId, postId));
-  for (const name of names) {
-    const normalizedName = name.toLocaleLowerCase("zh-CN");
-    let tag = (await db.select().from(tags).where(eq(tags.normalizedName, normalizedName)).limit(1))[0];
-    if (!tag) {
-      tag = { id: crypto.randomUUID(), name, normalizedName, createdAt: new Date() };
-      await db.insert(tags).values(tag);
-    }
-    await db.insert(postTags).values({ postId, tagId: tag.id });
-  }
+  const normalizedNames = names.map((name) => name.toLocaleLowerCase("zh-CN"));
+  const existing = normalizedNames.length === 0
+    ? []
+    : await db.select().from(tags).where(inArray(tags.normalizedName, normalizedNames));
+  const plan = planPostTags(names, existing, now);
+  return [
+    ...plan.newTags.map((tag) => db.insert(tags).values(tag).onConflictDoNothing()),
+    db.delete(postTags).where(eq(postTags.postId, postId)),
+    ...plan.bindings.map(({ tagId }) => db.insert(postTags).values({ postId, tagId })),
+  ];
 }
 
 function asBatch(items: BatchItem<"sqlite">[]) {
@@ -55,7 +57,8 @@ export async function createPost(authorId: string, input: SavePostInput) {
   const assetRefs = buildAssetSnapshot(clean.markdown, input.attachmentIds ?? []);
   await validateSnapshotAssets(authorId, assetRefs);
   const db = getDb();
-  const operations: BatchItem<"sqlite">[] = [
+  const tagOperations = await buildPostTagOperations(id, clean.tags, now);
+  const contentOperations: BatchItem<"sqlite">[] = [
     db.insert(posts).values({
       id,
       authorId,
@@ -79,14 +82,6 @@ export async function createPost(authorId: string, input: SavePostInput) {
       createdByUserId: authorId,
       restoreSourceRevisionId: null,
     }),
-    ...assetRefs.map((ref) => db.insert(postAssetRefs).values({ postId: id, ...ref })),
-    ...assetRefs.map((ref) => db.insert(revisionAssetRefs).values({ revisionId, ...ref })),
-    ...assetRefs.map((ref) => db.update(assets).set({
-      postId: id,
-      status: "permanent",
-      boundAt: now,
-      expiresAt: null,
-    }).where(and(eq(assets.id, ref.assetId), eq(assets.ownerId, authorId)))),
     db.insert(activityEvents).values({
       id: activityEventId("POST_CREATED", id),
       actorUserId: authorId,
@@ -100,8 +95,21 @@ export async function createPost(authorId: string, input: SavePostInput) {
       invalidatedAt: null,
     }),
   ];
-  await db.batch(asBatch(operations));
-  await replacePostTags(id, clean.tags);
+  const assetOperations: BatchItem<"sqlite">[] = [
+    ...assetRefs.map((ref) => db.insert(postAssetRefs).values({ postId: id, ...ref })),
+    ...assetRefs.map((ref) => db.insert(revisionAssetRefs).values({ revisionId, ...ref })),
+    ...assetRefs.map((ref) => db.update(assets).set({
+      postId: id,
+      status: "permanent",
+      boundAt: now,
+      expiresAt: null,
+    }).where(and(eq(assets.id, ref.assetId), eq(assets.ownerId, authorId)))),
+  ];
+  await commitPostSave((items) => db.batch(asBatch(items)), {
+    content: contentOperations,
+    assets: assetOperations,
+    tags: tagOperations,
+  });
   return id;
 }
 
@@ -122,28 +130,49 @@ export async function updatePost(postId: string, currentUserId: string, input: S
     Promise.resolve(buildAssetSnapshot(clean.markdown, input.attachmentIds ?? [])),
   ]);
   await validateSnapshotAssets(currentUserId, nextAssetRefs);
-  const contentChanged = classifyPostChange({
+  const now = new Date();
+  const savePlan = planContentSave({
+    revisionId: currentRevision.id,
+    revisionNumber: currentRevision.revisionNumber,
     title: existing.post.title,
     markdown: existing.post.markdown,
     assetRefs: currentAssetRefs,
+    editedAt: existing.post.editedAt,
+    lastActivityAt: existing.post.lastActivityAt,
   }, {
     title: clean.title,
     markdown: clean.markdown,
     assetRefs: nextAssetRefs,
-  }).contentChanged;
+  }, now, { forceRevision: Boolean(input.overwriteBaseRevisionId) });
+  const tagOperations = await buildPostTagOperations(postId, clean.tags, now);
+  const revisionGuard = db.update(posts).set({
+    title: sql<string>`CASE WHEN ${posts.currentRevisionId} = ${base.acceptedBaseRevisionId} THEN ${posts.title} ELSE NULL END`,
+  }).where(eq(posts.id, postId));
 
-  if (!contentChanged) {
-    await replacePostTags(postId, clean.tags);
+  if (savePlan.kind === "metadata-only") {
+    try {
+      await commitPostSave((items) => db.batch(asBatch(items)), {
+        guard: revisionGuard,
+        content: [],
+        assets: [],
+        tags: tagOperations,
+      });
+    } catch (error) {
+      const latest = (await db.select({ currentRevisionId: posts.currentRevisionId }).from(posts).where(eq(posts.id, postId)).limit(1))[0];
+      if (latest?.currentRevisionId && latest.currentRevisionId !== base.acceptedBaseRevisionId) {
+        throw new EditConflictError(await getConflictSnapshot(postId, latest.currentRevisionId));
+      }
+      throw error;
+    }
     return { postId, currentRevisionId: currentRevision.id, revisionCreated: false };
   }
 
-  const now = new Date();
   const revisionId = crypto.randomUUID();
-  const operations: BatchItem<"sqlite">[] = [
+  const contentOperations: BatchItem<"sqlite">[] = [
     db.insert(postRevisions).values({
       id: revisionId,
       postId,
-      revisionNumber: currentRevision.revisionNumber + 1,
+      revisionNumber: savePlan.revisionNumber,
       title: clean.title,
       markdown: clean.markdown,
       createdAt: now,
@@ -157,6 +186,8 @@ export async function updatePost(postId: string, currentUserId: string, input: S
       currentRevisionId: revisionId,
       editedAt: now,
     }).where(and(eq(posts.id, postId), eq(posts.currentRevisionId, base.acceptedBaseRevisionId))),
+  ];
+  const assetOperations: BatchItem<"sqlite">[] = [
     db.delete(postAssetRefs).where(eq(postAssetRefs.postId, postId)),
     ...nextAssetRefs.map((ref) => db.insert(postAssetRefs).values({ postId, ...ref })),
     ...nextAssetRefs.map((ref) => db.insert(revisionAssetRefs).values({ revisionId, ...ref })),
@@ -169,7 +200,12 @@ export async function updatePost(postId: string, currentUserId: string, input: S
   ];
 
   try {
-    await db.batch(asBatch(operations));
+    await commitPostSave((items) => db.batch(asBatch(items)), {
+      guard: revisionGuard,
+      content: contentOperations,
+      assets: assetOperations,
+      tags: tagOperations,
+    });
   } catch (error) {
     const latest = (await db.select({ currentRevisionId: posts.currentRevisionId }).from(posts).where(eq(posts.id, postId)).limit(1))[0];
     if (latest?.currentRevisionId && latest.currentRevisionId !== base.acceptedBaseRevisionId) {
@@ -177,7 +213,6 @@ export async function updatePost(postId: string, currentUserId: string, input: S
     }
     throw error;
   }
-  await replacePostTags(postId, clean.tags);
   return { postId, currentRevisionId: revisionId, revisionCreated: true };
 }
 
