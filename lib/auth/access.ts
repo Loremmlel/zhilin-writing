@@ -1,17 +1,19 @@
 import { redirect } from "next/navigation";
+import { env } from "cloudflare:workers";
 
 import { requireChatGPTUser } from "@/app/chatgpt-auth";
-import { addAllowedUser, allowlistCount, findAllowedUser, findUserByEmail } from "@/db/queries";
-import { normalizeEmail } from "@/lib/domain/rules";
+import { ensureConfiguredAdministrator, findAllowedUser, findUserByEmail } from "@/db/queries";
+import { resolveAllowedIdentity } from "@/lib/auth/authorize";
 
 export async function requireSiteAccess(returnTo: string) {
   const identity = await requireChatGPTUser(returnTo);
-  const emailKey = normalizeEmail(identity.email);
-  let allowed = await findAllowedUser(emailKey);
-
-  if (!allowed && (await allowlistCount()) === 0) {
-    allowed = await addAllowedUser(emailKey, true);
-  }
+  const { emailKey, allowed } = await resolveAllowedIdentity(
+    identity.email,
+    typeof env.BOOTSTRAP_ADMIN_EMAIL === "string"
+      ? env.BOOTSTRAP_ADMIN_EMAIL
+      : null,
+    { findAllowedUser, ensureConfiguredAdministrator },
+  );
 
   if (!allowed) redirect("/access-denied");
 

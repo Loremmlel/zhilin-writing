@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, inArray, isNull, like, or } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, isNull, like, ne, or } from "drizzle-orm";
 
 import { getDb } from "./index";
 import { allowedUsers, assets, postTags, posts, replies, tags, users } from "./schema";
@@ -26,6 +26,36 @@ export async function addAllowedUser(email: string, isAdmin: boolean, addedByUse
   };
   await getDb().insert(allowedUsers).values(record);
   return record;
+}
+
+export async function ensureConfiguredAdministrator(email: string) {
+  const db = getDb();
+  const administrator = {
+    id: crypto.randomUUID(),
+    email,
+    isAdmin: true,
+    addedAt: new Date(),
+    addedByUserId: null,
+  };
+
+  await db.batch([
+    db
+      .insert(allowedUsers)
+      .values(administrator)
+      .onConflictDoUpdate({
+        target: allowedUsers.email,
+        set: { isAdmin: true },
+      }),
+    db
+      .delete(allowedUsers)
+      .where(and(ne(allowedUsers.email, email), isNull(allowedUsers.addedByUserId))),
+    db
+      .update(allowedUsers)
+      .set({ isAdmin: false })
+      .where(ne(allowedUsers.email, email)),
+  ]);
+
+  return findAllowedUser(email);
 }
 
 export async function removeAllowedUser(id: string) {
