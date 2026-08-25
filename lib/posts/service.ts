@@ -1,17 +1,22 @@
-import { and, eq } from "drizzle-orm";
+import type { BatchItem } from "drizzle-orm/batch";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 
 import { getDb } from "@/db";
-import { activityEvents, assets, notifications, posts, postTags, replies, tags } from "@/db/schema";
+import { activityEvents, assets, notifications, postAssetRefs, postRevisions, posts, postTags, replies, revisionAssetRefs, tags } from "@/db/schema";
 import { findReply, findReplyBySubmissionKey, getPost } from "@/db/queries";
 import { activityEventId, notificationId, resolveReplyRecipient, validateSubmissionKey } from "@/lib/activity/policy";
 import { canEditPost, normalizeReplyTarget, validatePostInput, validateReplyMarkdown } from "@/lib/domain/rules";
 import { markdownToPlainText } from "@/lib/markdown/render";
+import { buildAssetSnapshot, classifyPostChange, resolveSaveBase, type AssetSnapshotRef } from "@/lib/revisions/policy";
+import { EditConflictError, getConflictSnapshot, getCurrentAssetRefs } from "@/lib/revisions/service";
 
 type SavePostInput = {
   title: string;
   markdown: string;
   tags: string[];
-  assetIds?: string[];
+  attachmentIds?: string[];
+  baseRevisionId?: string;
+  overwriteBaseRevisionId?: string;
 };
 
 async function replacePostTags(postId: string, names: string[]) {
@@ -28,11 +33,17 @@ async function replacePostTags(postId: string, names: string[]) {
   }
 }
 
-async function bindAssets(postId: string, authorId: string, assetIds: string[] = []) {
-  if (assetIds.length === 0) return;
-  const now = new Date();
-  for (const id of assetIds) {
-    await getDb().update(assets).set({ postId, status: "permanent", boundAt: now, expiresAt: null }).where(and(eq(assets.id, id), eq(assets.ownerId, authorId)));
+function asBatch(items: BatchItem<"sqlite">[]) {
+  if (items.length === 0) throw new Error("保存事务不能为空");
+  return items as [BatchItem<"sqlite">, ...BatchItem<"sqlite">[]];
+}
+
+async function validateSnapshotAssets(authorId: string, refs: AssetSnapshotRef[]) {
+  const ids = [...new Set(refs.map((ref) => ref.assetId))];
+  if (ids.length === 0) return;
+  const rows = await getDb().select().from(assets).where(and(inArray(assets.id, ids), isNull(assets.deletedAt)));
+  if (rows.length !== ids.length || rows.some((asset) => asset.ownerId !== authorId)) {
+    throw new Error("帖子引用了无权使用或不存在的资源");
   }
 }
 
@@ -40,20 +51,42 @@ export async function createPost(authorId: string, input: SavePostInput) {
   const clean = validatePostInput(input);
   const now = new Date();
   const id = crypto.randomUUID();
+  const revisionId = crypto.randomUUID();
+  const assetRefs = buildAssetSnapshot(clean.markdown, input.attachmentIds ?? []);
+  await validateSnapshotAssets(authorId, assetRefs);
   const db = getDb();
-  await db.batch([
+  const operations: BatchItem<"sqlite">[] = [
     db.insert(posts).values({
       id,
       authorId,
       title: clean.title,
       markdown: clean.markdown,
       searchText: markdownToPlainText(clean.markdown),
+      currentRevisionId: revisionId,
       publishedAt: now,
       editedAt: null,
       lastActivityAt: now,
       deletedAt: null,
       hiddenAt: null,
     }),
+    db.insert(postRevisions).values({
+      id: revisionId,
+      postId: id,
+      revisionNumber: 1,
+      title: clean.title,
+      markdown: clean.markdown,
+      createdAt: now,
+      createdByUserId: authorId,
+      restoreSourceRevisionId: null,
+    }),
+    ...assetRefs.map((ref) => db.insert(postAssetRefs).values({ postId: id, ...ref })),
+    ...assetRefs.map((ref) => db.insert(revisionAssetRefs).values({ revisionId, ...ref })),
+    ...assetRefs.map((ref) => db.update(assets).set({
+      postId: id,
+      status: "permanent",
+      boundAt: now,
+      expiresAt: null,
+    }).where(and(eq(assets.id, ref.assetId), eq(assets.ownerId, authorId)))),
     db.insert(activityEvents).values({
       id: activityEventId("POST_CREATED", id),
       actorUserId: authorId,
@@ -66,9 +99,9 @@ export async function createPost(authorId: string, input: SavePostInput) {
       createdAt: now,
       invalidatedAt: null,
     }),
-  ]);
+  ];
+  await db.batch(asBatch(operations));
   await replacePostTags(id, clean.tags);
-  await bindAssets(id, authorId, input.assetIds);
   return id;
 }
 
@@ -76,15 +109,76 @@ export async function updatePost(postId: string, currentUserId: string, input: S
   const existing = await getPost(postId);
   if (!existing) throw new Error("帖子不存在");
   if (!canEditPost(existing.post.authorId, currentUserId)) throw new Error("你不能编辑这篇帖子");
+  if (!existing.post.currentRevisionId) throw new Error("帖子当前版本不存在");
+  if (!input.baseRevisionId) throw new Error("缺少编辑基础版本，请刷新后重试");
+  const base = resolveSaveBase(existing.post.currentRevisionId, input.baseRevisionId, input.overwriteBaseRevisionId);
+  if (!base.ok) throw new EditConflictError(await getConflictSnapshot(postId, base.currentRevisionId));
   const clean = validatePostInput(input);
-  await getDb().update(posts).set({
+  const db = getDb();
+  const currentRevision = (await db.select().from(postRevisions).where(eq(postRevisions.id, existing.post.currentRevisionId)).limit(1))[0];
+  if (!currentRevision) throw new Error("帖子当前版本不存在");
+  const [currentAssetRefs, nextAssetRefs] = await Promise.all([
+    getCurrentAssetRefs(postId),
+    Promise.resolve(buildAssetSnapshot(clean.markdown, input.attachmentIds ?? [])),
+  ]);
+  await validateSnapshotAssets(currentUserId, nextAssetRefs);
+  const contentChanged = classifyPostChange({
+    title: existing.post.title,
+    markdown: existing.post.markdown,
+    assetRefs: currentAssetRefs,
+  }, {
     title: clean.title,
     markdown: clean.markdown,
-    searchText: markdownToPlainText(clean.markdown),
-    editedAt: new Date(),
-  }).where(eq(posts.id, postId));
+    assetRefs: nextAssetRefs,
+  }).contentChanged;
+
+  if (!contentChanged) {
+    await replacePostTags(postId, clean.tags);
+    return { postId, currentRevisionId: currentRevision.id, revisionCreated: false };
+  }
+
+  const now = new Date();
+  const revisionId = crypto.randomUUID();
+  const operations: BatchItem<"sqlite">[] = [
+    db.insert(postRevisions).values({
+      id: revisionId,
+      postId,
+      revisionNumber: currentRevision.revisionNumber + 1,
+      title: clean.title,
+      markdown: clean.markdown,
+      createdAt: now,
+      createdByUserId: currentUserId,
+      restoreSourceRevisionId: null,
+    }),
+    db.update(posts).set({
+      title: clean.title,
+      markdown: clean.markdown,
+      searchText: markdownToPlainText(clean.markdown),
+      currentRevisionId: revisionId,
+      editedAt: now,
+    }).where(and(eq(posts.id, postId), eq(posts.currentRevisionId, base.acceptedBaseRevisionId))),
+    db.delete(postAssetRefs).where(eq(postAssetRefs.postId, postId)),
+    ...nextAssetRefs.map((ref) => db.insert(postAssetRefs).values({ postId, ...ref })),
+    ...nextAssetRefs.map((ref) => db.insert(revisionAssetRefs).values({ revisionId, ...ref })),
+    ...nextAssetRefs.map((ref) => db.update(assets).set({
+      postId,
+      status: "permanent",
+      boundAt: now,
+      expiresAt: null,
+    }).where(and(eq(assets.id, ref.assetId), eq(assets.ownerId, currentUserId)))),
+  ];
+
+  try {
+    await db.batch(asBatch(operations));
+  } catch (error) {
+    const latest = (await db.select({ currentRevisionId: posts.currentRevisionId }).from(posts).where(eq(posts.id, postId)).limit(1))[0];
+    if (latest?.currentRevisionId && latest.currentRevisionId !== base.acceptedBaseRevisionId) {
+      throw new EditConflictError(await getConflictSnapshot(postId, latest.currentRevisionId));
+    }
+    throw error;
+  }
   await replacePostTags(postId, clean.tags);
-  await bindAssets(postId, currentUserId, input.assetIds);
+  return { postId, currentRevisionId: revisionId, revisionCreated: true };
 }
 
 export async function createReply(input: { postId: string; authorId: string; markdown: string; submissionKey: string; targetReplyId?: string }) {

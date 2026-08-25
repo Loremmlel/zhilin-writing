@@ -25,7 +25,7 @@ export function ReplyForm({ action, initialSubmissionKey, label = "写回复", c
     return () => window.clearTimeout(timer);
   }, [router, state.replyId]);
   return (
-    <form action={formAction} className={compact ? "reply-form reply-form--nested" : "reply-form"}>
+    <form action={formAction} className={compact ? "reply-form reply-form--nested" : "reply-form"} noValidate>
       <input type="hidden" name="markdown" value={markdown} />
       <input type="hidden" name="submissionKey" value={submissionKey} />
       <MarkdownEditor key={editorKey} initialMarkdown="" onMarkdownChange={setMarkdown} compact />

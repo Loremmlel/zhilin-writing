@@ -6,12 +6,13 @@ import type { PostActionState } from "@/components/editor/post-editor-form";
 import type { ReplyActionState } from "@/components/reply-form";
 import { requireMember } from "@/lib/auth/access";
 import { createReply, softDeleteReply, updatePost } from "@/lib/posts/service";
+import { EditConflictError } from "@/lib/revisions/service";
 
 function parseTags(value: FormDataEntryValue | null): string[] {
   return String(value ?? "").split(/[，,]/).map((tag) => tag.trim()).filter(Boolean);
 }
 
-function parseAssetIds(value: FormDataEntryValue | null): string[] {
+function parseAttachmentIds(value: FormDataEntryValue | null): string[] {
   try {
     const parsed = JSON.parse(String(value ?? "[]"));
     return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === "string") : [];
@@ -21,15 +22,20 @@ function parseAssetIds(value: FormDataEntryValue | null): string[] {
 export async function updatePostAction(postId: string, _state: PostActionState, formData: FormData): Promise<PostActionState> {
   try {
     const { member } = await requireMember(`/posts/${postId}/edit`);
-    await updatePost(postId, member.id, {
+    const result = await updatePost(postId, member.id, {
       title: String(formData.get("title") ?? ""),
       markdown: String(formData.get("markdown") ?? ""),
       tags: parseTags(formData.get("tags")),
-      assetIds: parseAssetIds(formData.get("assetIds")),
+      attachmentIds: parseAttachmentIds(formData.get("attachmentIds")),
+      baseRevisionId: String(formData.get("baseRevisionId") ?? ""),
+      overwriteBaseRevisionId: String(formData.get("overwriteBaseRevisionId") ?? "") || undefined,
     });
     revalidatePath(`/posts/${postId}`);
-    return { postId };
+    return { postId, currentRevisionId: result.currentRevisionId };
   } catch (error) {
+    if (error instanceof EditConflictError) {
+      return { error: error.message, conflict: error.current };
+    }
     return { error: error instanceof Error ? error.message : "保存失败" };
   }
 }

@@ -40,3 +40,11 @@ test("production artifact contains the V2 activity and notification surfaces", a
   assert.match(source, /该回复已经被删除/);
   assert.match(styles, /reply-highlight/);
 });
+
+test("production artifact contains administrator revision preview and restore surfaces", async () => {
+  const source = await builtServerSource();
+  assert.match(source, /Post revisions/);
+  assert.match(source, /历史版本预览/);
+  assert.match(source, /恢复此版本/);
+  assert.match(source, /当前版本/);
+});

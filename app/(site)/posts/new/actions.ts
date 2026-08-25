@@ -10,7 +10,7 @@ function parseTags(value: FormDataEntryValue | null): string[] {
   return String(value ?? "").split(/[，,]/).map((tag) => tag.trim()).filter(Boolean);
 }
 
-function parseAssetIds(value: FormDataEntryValue | null): string[] {
+function parseAttachmentIds(value: FormDataEntryValue | null): string[] {
   try {
     const parsed = JSON.parse(String(value ?? "[]"));
     return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === "string") : [];
@@ -24,7 +24,7 @@ export async function createPostAction(_state: PostActionState, formData: FormDa
       title: String(formData.get("title") ?? ""),
       markdown: String(formData.get("markdown") ?? ""),
       tags: parseTags(formData.get("tags")),
-      assetIds: parseAssetIds(formData.get("assetIds")),
+      attachmentIds: parseAttachmentIds(formData.get("attachmentIds")),
     });
     revalidatePath("/");
     return { postId };

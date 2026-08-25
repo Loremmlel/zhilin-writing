@@ -4,7 +4,15 @@ export type LocalDraft = {
   title: string;
   markdown: string;
   tags: string;
-  assetIds: string[];
+  attachmentIds: string[];
+  attachments?: Array<{
+    id: string;
+    filename: string;
+    kind: "image" | "attachment";
+    url: string;
+    markdown: string;
+  }>;
+  baseRevisionId: string | null;
   updatedAt: number;
 };
 

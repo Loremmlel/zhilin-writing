@@ -36,7 +36,7 @@ function ReplyItem({ item, nested, currentUserId, replyActionFor, deleteActionFo
           <summary>回复</summary>
           <ReplyForm action={replyActionFor(item.reply.id)} initialSubmissionKey={crypto.randomUUID()} label={`回复 ${item.author.displayName}`} compact />
         </details>
-        {item.reply.authorId === currentUserId && <form action={deleteActionFor(item.reply.id)} className="delete-reply-form">
+        {item.reply.authorId === currentUserId && <form action={deleteActionFor(item.reply.id)} className="delete-reply-form" noValidate>
           <button className="text-button text-button--danger" type="submit">删除这条回复</button>
         </form>}
       </div>

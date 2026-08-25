@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { PostEditorForm } from "@/components/editor/post-editor-form";
 import { getPost } from "@/db/queries";
 import { requireMember } from "@/lib/auth/access";
+import { assetMarkdown } from "@/lib/domain/rules";
 import { updatePostAction } from "../actions";
 
 export default async function EditPostPage({ params }: { params: Promise<{ id: string }> }) {
@@ -17,7 +18,19 @@ export default async function EditPostPage({ params }: { params: Promise<{ id: s
         userId={member.id}
         draftId={id}
         action={updatePostAction.bind(null, id)}
-        initial={{ title: item.post.title, markdown: item.post.markdown, tags: item.tags.map((tag) => tag.name), assetIds: item.attachments.map((asset) => asset.id) }}
+        initial={{
+          title: item.post.title,
+          markdown: item.post.markdown,
+          tags: item.tags.map((tag) => tag.name),
+          baseRevisionId: item.post.currentRevisionId,
+          attachments: item.attachments.map((asset) => ({
+            id: asset.id,
+            filename: asset.filename,
+            kind: "attachment" as const,
+            url: `/api/assets/${asset.id}`,
+            markdown: assetMarkdown({ kind: "attachment", filename: asset.filename, url: `/api/assets/${asset.id}` }),
+          })),
+        }}
         submitLabel="保存修改"
         cancelHref={`/posts/${id}`}
       />

@@ -1,7 +1,7 @@
 import { and, asc, count, desc, eq, inArray, isNull, like, ne, or } from "drizzle-orm";
 
 import { getDb } from "./index";
-import { activityEvents, allowedUsers, assets, notifications, postTags, posts, replies, tags, users } from "./schema";
+import { activityEvents, allowedUsers, assets, notifications, postAssetRefs, postTags, posts, replies, tags, users } from "./schema";
 
 export type PostSort = "latest" | "active";
 
@@ -149,7 +149,16 @@ export async function getPost(id: string) {
   return {
     ...row,
     tags: await getTagsForPost(id),
-    attachments: await getDb().select().from(assets).where(and(eq(assets.postId, id), eq(assets.kind, "attachment"), isNull(assets.deletedAt))),
+    attachments: await getDb()
+      .select({ asset: assets })
+      .from(postAssetRefs)
+      .innerJoin(assets, eq(postAssetRefs.assetId, assets.id))
+      .where(and(
+        eq(postAssetRefs.postId, id),
+        eq(postAssetRefs.usage, "attachment"),
+        isNull(assets.deletedAt),
+      ))
+      .then((rows) => rows.map((row) => row.asset)),
   };
 }
 

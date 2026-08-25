@@ -1,8 +1,7 @@
 import Link from "next/link";
 
 import type { SiteUser } from "@/db/schema";
-import { chatGPTSignOutPath } from "@/app/chatgpt-auth";
-import { Avatar } from "./avatar";
+import { AccountMenu } from "./account-menu";
 
 export function SiteHeader({ member, isAdmin, unreadCount }: { member: SiteUser; isAdmin: boolean; unreadCount: number }) {
   return (
@@ -16,7 +15,7 @@ export function SiteHeader({ member, isAdmin, unreadCount }: { member: SiteUser;
           <span className="brand-name">知临中学</span>
           <span className="brand-subtitle">私人 Markdown 写作社区</span>
         </Link>
-        <form action="/search" className="header-search" role="search">
+        <form action="/search" className="header-search" role="search" noValidate>
           <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m16.5 16.5 4 4"/></svg>
           <input name="q" aria-label="搜索帖子" placeholder="搜索帖子标题或正文" />
         </form>
@@ -26,16 +25,7 @@ export function SiteHeader({ member, isAdmin, unreadCount }: { member: SiteUser;
             {unreadCount > 0 && <span>{unreadCount > 99 ? "99+" : unreadCount}</span>}
           </Link>
           <Link href="/posts/new" className="button button--primary button--write">写帖子</Link>
-          <details className="account-menu">
-            <summary><Avatar name={member.displayName} assetId={member.avatarAssetId} size="small" /><span>{member.displayName}</span></summary>
-            <div className="account-popover">
-              <Link href={`/users/${member.id}`}>我的主页</Link>
-              <Link href="/settings/profile">编辑资料</Link>
-              <Link href="/tags">全部标签</Link>
-              {isAdmin && <Link href="/admin">管理邀请</Link>}
-              <a href={chatGPTSignOutPath("/")}>退出登录</a>
-            </div>
-          </details>
+          <AccountMenu member={member} isAdmin={isAdmin} />
         </nav>
       </div>
     </header>

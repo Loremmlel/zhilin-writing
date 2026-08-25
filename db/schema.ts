@@ -37,6 +37,7 @@ export const posts = sqliteTable(
     title: text("title").notNull(),
     markdown: text("markdown").notNull(),
     searchText: text("search_text").notNull().default(""),
+    currentRevisionId: text("current_revision_id"),
     publishedAt: integer("published_at", { mode: "timestamp_ms" }).notNull(),
     editedAt: integer("edited_at", { mode: "timestamp_ms" }),
     lastActivityAt: integer("last_activity_at", { mode: "timestamp_ms" }).notNull(),
@@ -158,9 +159,56 @@ export const assets = sqliteTable(
   ],
 );
 
+export const postRevisions = sqliteTable(
+  "post_revisions",
+  {
+    id: text("id").primaryKey(),
+    postId: text("post_id").notNull().references(() => posts.id),
+    revisionNumber: integer("revision_number").notNull(),
+    title: text("title").notNull(),
+    markdown: text("markdown").notNull(),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+    createdByUserId: text("created_by_user_id").notNull().references(() => users.id),
+    restoreSourceRevisionId: text("restore_source_revision_id"),
+  },
+  (table) => [
+    uniqueIndex("post_revisions_post_number_unique").on(table.postId, table.revisionNumber),
+    index("post_revisions_post_created_idx").on(table.postId, table.createdAt),
+  ],
+);
+
+export const postAssetRefs = sqliteTable(
+  "post_asset_refs",
+  {
+    postId: text("post_id").notNull().references(() => posts.id),
+    assetId: text("asset_id").notNull().references(() => assets.id),
+    usage: text("usage", { enum: ["inline", "attachment"] }).notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.postId, table.assetId, table.usage] }),
+    index("post_asset_refs_asset_idx").on(table.assetId),
+  ],
+);
+
+export const revisionAssetRefs = sqliteTable(
+  "revision_asset_refs",
+  {
+    revisionId: text("revision_id").notNull().references(() => postRevisions.id),
+    assetId: text("asset_id").notNull().references(() => assets.id),
+    usage: text("usage", { enum: ["inline", "attachment"] }).notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.revisionId, table.assetId, table.usage] }),
+    index("revision_asset_refs_asset_idx").on(table.assetId),
+  ],
+);
+
 export type SiteUser = typeof users.$inferSelect;
 export type PostRecord = typeof posts.$inferSelect;
 export type ReplyRecord = typeof replies.$inferSelect;
 export type ActivityEventRecord = typeof activityEvents.$inferSelect;
 export type NotificationRecord = typeof notifications.$inferSelect;
 export type AssetRecord = typeof assets.$inferSelect;
+export type PostRevisionRecord = typeof postRevisions.$inferSelect;
+export type PostAssetRefRecord = typeof postAssetRefs.$inferSelect;
+export type RevisionAssetRefRecord = typeof revisionAssetRefs.$inferSelect;
