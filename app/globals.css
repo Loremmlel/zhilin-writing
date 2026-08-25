@@ -35,6 +35,10 @@ button, summary, input[type="file"] { cursor: pointer; }
 .header-search svg { width: 18px; fill: none; stroke: var(--muted); stroke-width: 1.7; }
 .header-search input { width: 100%; border: 0; outline: 0; background: transparent; color: var(--ink); }
 .header-actions { justify-self: end; display: flex; align-items: center; gap: 18px; }
+.notification-link { min-width: 38px; height: 38px; padding: 0 9px; border: 1px solid var(--line); border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; gap: 5px; color: var(--muted); background: rgba(255, 255, 255, .55); }
+.notification-link:hover { border-color: #b6c7b8; color: var(--green-dark); }
+.notification-link svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.notification-link span { min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; display: inline-grid; place-items: center; background: var(--green); color: white; font-size: 10px; font-weight: 750; }
 .account-menu { position: relative; }
 .account-menu summary { list-style: none; display: flex; align-items: center; gap: 8px; font-size: 14px; }
 .account-menu summary::-webkit-details-marker { display: none; }
@@ -182,6 +186,38 @@ button, summary, input[type="file"] { cursor: pointer; }
 .profile-header { display: grid; grid-template-columns: auto 1fr; gap: 24px; padding: 10px 4px 34px; margin-bottom: 28px; border-bottom: 1px solid var(--line); }
 .profile-header h1 { margin: 6px 0 8px; font: 700 34px Georgia, "Noto Serif SC", serif; }
 .profile-header p { margin: 0 0 12px; max-width: 620px; color: #555d55; line-height: 1.75; }
+.profile-tabs { margin-top: -12px; }
+.activity-list { display: grid; padding-left: 9px; }
+.activity-item { position: relative; min-height: 92px; padding: 8px 0 25px 31px; border-left: 1px solid var(--line-strong); }
+.activity-item:last-child { border-left-color: transparent; }
+.activity-dot { position: absolute; left: -6px; top: 13px; width: 11px; height: 11px; border: 3px solid var(--paper); border-radius: 50%; background: var(--green); box-shadow: 0 0 0 1px #91ad96; }
+.activity-content { padding: 16px 18px; border: 1px solid var(--line); border-radius: 11px; background: rgba(255, 254, 250, .78); }
+.activity-content p { margin: 0; line-height: 1.65; }
+.activity-content a { color: var(--green-dark); font-weight: 650; }
+.activity-content blockquote, .notification-content blockquote { margin: 9px 0 0; color: #5f655e; font-size: 13px; line-height: 1.65; }
+.activity-content time { display: block; margin-top: 9px; color: var(--muted); font-size: 12px; }
+
+.notification-header { display: flex; align-items: end; justify-content: space-between; gap: 24px; }
+.notification-header h1 { margin-top: 8px; }
+.notification-list { overflow: hidden; border: 1px solid var(--line); border-radius: 13px; background: var(--paper-strong); }
+.notification-item { position: relative; padding: 19px 21px; display: grid; grid-template-columns: auto 1fr auto; gap: 13px; border-bottom: 1px solid var(--line); transition: background .2s; }
+.notification-item:last-child { border-bottom: 0; }
+.notification-item:hover { background: var(--green-pale); }
+.notification-item--unread { background: #f4f8f2; }
+.notification-content { min-width: 0; }
+.notification-content p { margin: 1px 0 0; line-height: 1.6; }
+.notification-meta { display: flex; gap: 13px; margin-top: 9px; color: var(--muted); font-size: 12px; }
+.unread-dot { width: 8px; height: 8px; margin-top: 8px; border-radius: 50%; background: var(--green); }
+.content-notice { margin-bottom: 16px; padding: 12px 15px; border: 1px solid #cfddcf; border-radius: 9px; background: var(--green-pale); color: var(--green-dark); font-size: 13px; }
+.unavailable-card { margin-top: 40px; padding: 42px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper-strong); box-shadow: var(--shadow); }
+.unavailable-card h1 { margin: 9px 0 12px; font: 700 31px Georgia, "Noto Serif SC", serif; }
+.unavailable-card p { margin: 0; color: var(--muted); line-height: 1.8; }
+
+.reply:target { scroll-margin-top: 112px; animation: reply-highlight 2.5s ease-out; }
+@keyframes reply-highlight {
+  0%, 22% { background: #e7f2e5; box-shadow: inset 4px 0 0 var(--green); }
+  100% { background: transparent; box-shadow: inset 4px 0 0 transparent; }
+}
 .settings-form { display: grid; gap: 21px; }
 .avatar-setting { padding-bottom: 22px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 22px; }
 .avatar-setting input { max-width: 100%; font-size: 13px; }
@@ -230,6 +266,8 @@ button, summary, input[type="file"] { cursor: pointer; }
   .reply { padding: 16px 14px; }
   .reply--nested { margin-left: 22px; }
   .profile-header { grid-template-columns: 1fr; }
+  .notification-header { align-items: flex-start; flex-direction: column; }
+  .notification-item { padding: 16px 14px; }
   .site-footer { align-items: flex-start; flex-direction: column; }
   .search-page-form, .inline-form { flex-direction: column; }
   .quiet-card { padding: 30px 23px; }

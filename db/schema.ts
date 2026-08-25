@@ -58,6 +58,7 @@ export const replies = sqliteTable(
     authorId: text("author_id").notNull().references(() => users.id),
     rootReplyId: text("root_reply_id"),
     replyToUserId: text("reply_to_user_id").references(() => users.id),
+    submissionKey: text("submission_key"),
     markdown: text("markdown").notNull(),
     publishedAt: integer("published_at", { mode: "timestamp_ms" }).notNull(),
     deletedAt: integer("deleted_at", { mode: "timestamp_ms" }),
@@ -66,6 +67,49 @@ export const replies = sqliteTable(
   (table) => [
     index("replies_post_id_idx").on(table.postId),
     index("replies_root_reply_id_idx").on(table.rootReplyId),
+    uniqueIndex("replies_author_submission_unique").on(table.authorId, table.submissionKey),
+  ],
+);
+
+export const activityEvents = sqliteTable(
+  "activity_events",
+  {
+    id: text("id").primaryKey(),
+    actorUserId: text("actor_user_id").notNull().references(() => users.id),
+    eventType: text("event_type", { enum: ["POST_CREATED", "POST_REPLY_CREATED"] }).notNull(),
+    postId: text("post_id").notNull().references(() => posts.id),
+    replyId: text("reply_id").references(() => replies.id),
+    rootReplyId: text("root_reply_id"),
+    replyToUserId: text("reply_to_user_id").references(() => users.id),
+    metadataJson: text("metadata_json"),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+    invalidatedAt: integer("invalidated_at", { mode: "timestamp_ms" }),
+  },
+  (table) => [
+    index("activity_events_actor_created_idx").on(table.actorUserId, table.createdAt),
+    index("activity_events_post_created_idx").on(table.postId, table.createdAt),
+    index("activity_events_type_created_idx").on(table.eventType, table.createdAt),
+  ],
+);
+
+export const notifications = sqliteTable(
+  "notifications",
+  {
+    id: text("id").primaryKey(),
+    recipientUserId: text("recipient_user_id").notNull().references(() => users.id),
+    actorUserId: text("actor_user_id").notNull().references(() => users.id),
+    eventId: text("event_id").notNull().references(() => activityEvents.id),
+    notificationType: text("notification_type", { enum: ["POST_REPLY_RECEIVED"] }).notNull(),
+    postId: text("post_id").notNull().references(() => posts.id),
+    replyId: text("reply_id").references(() => replies.id),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+    readAt: integer("read_at", { mode: "timestamp_ms" }),
+  },
+  (table) => [
+    index("notifications_recipient_created_idx").on(table.recipientUserId, table.createdAt),
+    index("notifications_recipient_read_created_idx").on(table.recipientUserId, table.readAt, table.createdAt),
+    index("notifications_event_id_idx").on(table.eventId),
+    uniqueIndex("notifications_event_recipient_type_unique").on(table.eventId, table.recipientUserId, table.notificationType),
   ],
 );
 
@@ -117,4 +161,6 @@ export const assets = sqliteTable(
 export type SiteUser = typeof users.$inferSelect;
 export type PostRecord = typeof posts.$inferSelect;
 export type ReplyRecord = typeof replies.$inferSelect;
+export type ActivityEventRecord = typeof activityEvents.$inferSelect;
+export type NotificationRecord = typeof notifications.$inferSelect;
 export type AssetRecord = typeof assets.$inferSelect;

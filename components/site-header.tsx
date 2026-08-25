@@ -4,7 +4,7 @@ import type { SiteUser } from "@/db/schema";
 import { chatGPTSignOutPath } from "@/app/chatgpt-auth";
 import { Avatar } from "./avatar";
 
-export function SiteHeader({ member, isAdmin }: { member: SiteUser; isAdmin: boolean }) {
+export function SiteHeader({ member, isAdmin, unreadCount }: { member: SiteUser; isAdmin: boolean; unreadCount: number }) {
   return (
     <header className="site-header">
       <div className="header-inner">
@@ -21,6 +21,10 @@ export function SiteHeader({ member, isAdmin }: { member: SiteUser; isAdmin: boo
           <input name="q" aria-label="搜索帖子" placeholder="搜索帖子标题或正文" />
         </form>
         <nav className="header-actions" aria-label="主导航">
+          <Link href="/notifications" className="notification-link" aria-label={unreadCount > 0 ? `通知，${unreadCount} 条未读` : "通知"}>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" /></svg>
+            {unreadCount > 0 && <span>{unreadCount > 99 ? "99+" : unreadCount}</span>}
+          </Link>
           <Link href="/posts/new" className="button button--primary button--write">写帖子</Link>
           <details className="account-menu">
             <summary><Avatar name={member.displayName} assetId={member.avatarAssetId} size="small" /><span>{member.displayName}</span></summary>

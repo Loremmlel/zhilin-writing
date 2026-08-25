@@ -34,7 +34,7 @@ function ReplyItem({ item, nested, currentUserId, replyActionFor, deleteActionFo
         <div className="markdown-body markdown-body--reply" dangerouslySetInnerHTML={{ __html: item.html }} />
         <details className="inline-reply">
           <summary>回复</summary>
-          <ReplyForm action={replyActionFor(item.reply.id)} label={`回复 ${item.author.displayName}`} compact />
+          <ReplyForm action={replyActionFor(item.reply.id)} initialSubmissionKey={crypto.randomUUID()} label={`回复 ${item.author.displayName}`} compact />
         </details>
         {item.reply.authorId === currentUserId && <form action={deleteActionFor(item.reply.id)} className="delete-reply-form">
           <button className="text-button text-button--danger" type="submit">删除这条回复</button>

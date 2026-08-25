@@ -10,8 +10,8 @@ import { formatDateTime } from "@/lib/format";
 import { renderMarkdown } from "@/lib/markdown/render";
 import { createReplyAction, deleteReplyAction } from "./actions";
 
-export default async function PostPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+export default async function PostPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ notice?: string }> }) {
+  const [{ id }, query] = await Promise.all([params, searchParams]);
   const [{ member }, item, rawReplies] = await Promise.all([requireMember(`/posts/${id}`), getPost(id), listReplies(id)]);
   if (!item) notFound();
   const [postHtml, replyViews] = await Promise.all([
@@ -39,9 +39,10 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
         </section>}
       </article>
       <section className="replies-section" id="replies">
+        {query.notice === "reply-deleted" && <div className="content-notice" role="status">该回复已经被删除。</div>}
         <div className="section-heading"><h2>回复</h2><span>{replyViews.length} 条</span></div>
         {replyViews.length > 0 ? <ReplyList items={replyViews} currentUserId={member.id} replyActionFor={(targetId) => createReplyAction.bind(null, id, targetId)} deleteActionFor={(replyId) => deleteReplyAction.bind(null, id, replyId)} /> : <p className="empty-copy">还没有回复。可以从一句认真读过的话开始。</p>}
-        <div className="new-reply-block"><h3>写一条回复</h3><ReplyForm action={topReplyAction} /></div>
+        <div className="new-reply-block"><h3>写一条回复</h3><ReplyForm action={topReplyAction} initialSubmissionKey={crypto.randomUUID()} /></div>
       </section>
     </div>
   );

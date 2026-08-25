@@ -11,6 +11,15 @@ async function builtServerSource() {
   return chunks.join("\n");
 }
 
+async function builtCssSource() {
+  const root = new URL("../dist/client/assets/", import.meta.url);
+  const files = await readdir(root);
+  const chunks = await Promise.all(
+    files.filter((file) => file.endsWith(".css")).map((file) => readFile(new URL(file, root), "utf8")),
+  );
+  return chunks.join("\n");
+}
+
 test("production artifact contains private-community metadata and denial copy", async () => {
   const source = await builtServerSource();
   assert.match(source, /知临中学/);
@@ -22,4 +31,12 @@ test("production artifact contains the dispatcher-owned ChatGPT sign-in path", a
   const source = await builtServerSource();
   assert.match(source, /\/signin-with-chatgpt/);
   assert.match(source, /oai-authenticated-user-email/);
+});
+
+test("production artifact contains the V2 activity and notification surfaces", async () => {
+  const [source, styles] = await Promise.all([builtServerSource(), builtCssSource()]);
+  assert.match(source, /Activity/);
+  assert.match(source, /全部标记已读/);
+  assert.match(source, /该回复已经被删除/);
+  assert.match(styles, /reply-highlight/);
 });

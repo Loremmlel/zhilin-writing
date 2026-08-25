@@ -37,10 +37,16 @@ export async function updatePostAction(postId: string, _state: PostActionState, 
 export async function createReplyAction(postId: string, targetReplyId: string | null, _state: ReplyActionState, formData: FormData): Promise<ReplyActionState> {
   try {
     const { member } = await requireMember(`/posts/${postId}`);
-    await createReply({ postId, authorId: member.id, markdown: String(formData.get("markdown") ?? ""), targetReplyId: targetReplyId ?? undefined });
+    const replyId = await createReply({
+      postId,
+      authorId: member.id,
+      markdown: String(formData.get("markdown") ?? ""),
+      submissionKey: String(formData.get("submissionKey") ?? ""),
+      targetReplyId: targetReplyId ?? undefined,
+    });
     revalidatePath(`/posts/${postId}`);
     revalidatePath("/");
-    return { ok: true };
+    return { replyId };
   } catch (error) {
     return { error: error instanceof Error ? error.message : "回复失败" };
   }

@@ -1,7 +1,7 @@
 import { and, asc, count, desc, eq, inArray, isNull, like, ne, or } from "drizzle-orm";
 
 import { getDb } from "./index";
-import { allowedUsers, assets, postTags, posts, replies, tags, users } from "./schema";
+import { activityEvents, allowedUsers, assets, notifications, postTags, posts, replies, tags, users } from "./schema";
 
 export type PostSort = "latest" | "active";
 
@@ -183,6 +183,91 @@ export async function listReplies(postId: string) {
 
 export async function findReply(id: string) {
   return (await getDb().select().from(replies).where(eq(replies.id, id)).limit(1))[0] ?? null;
+}
+
+export async function findReplyBySubmissionKey(authorId: string, submissionKey: string) {
+  return (await getDb().select().from(replies).where(and(eq(replies.authorId, authorId), eq(replies.submissionKey, submissionKey))).limit(1))[0] ?? null;
+}
+
+export async function listUserActivity(actorUserId: string, limit = 50) {
+  const rows = await getDb()
+    .select({ event: activityEvents, actor: users, post: posts, reply: replies })
+    .from(activityEvents)
+    .innerJoin(users, eq(activityEvents.actorUserId, users.id))
+    .leftJoin(posts, eq(activityEvents.postId, posts.id))
+    .leftJoin(replies, eq(activityEvents.replyId, replies.id))
+    .where(and(eq(activityEvents.actorUserId, actorUserId), isNull(activityEvents.invalidatedAt)))
+    .orderBy(desc(activityEvents.createdAt))
+    .limit(limit);
+
+  return Promise.all(rows.map(async (row) => ({
+    ...row,
+    replyTo: row.event.replyToUserId ? await findUserById(row.event.replyToUserId) : null,
+    postAvailable: Boolean(row.post && !row.post.deletedAt && !row.post.hiddenAt),
+    replyAvailable: Boolean(row.reply && !row.reply.deletedAt && !row.reply.hiddenAt),
+  })));
+}
+
+export async function countUnreadNotifications(recipientUserId: string): Promise<number> {
+  const [row] = await getDb()
+    .select({ value: count() })
+    .from(notifications)
+    .where(and(eq(notifications.recipientUserId, recipientUserId), isNull(notifications.readAt)));
+  return row?.value ?? 0;
+}
+
+export async function listNotifications(recipientUserId: string, options: { unreadOnly?: boolean; limit?: number } = {}) {
+  const conditions = [eq(notifications.recipientUserId, recipientUserId)];
+  if (options.unreadOnly) conditions.push(isNull(notifications.readAt));
+  const rows = await getDb()
+    .select({ notification: notifications, event: activityEvents, actor: users, post: posts, reply: replies })
+    .from(notifications)
+    .innerJoin(activityEvents, eq(notifications.eventId, activityEvents.id))
+    .innerJoin(users, eq(notifications.actorUserId, users.id))
+    .leftJoin(posts, eq(notifications.postId, posts.id))
+    .leftJoin(replies, eq(notifications.replyId, replies.id))
+    .where(and(...conditions))
+    .orderBy(desc(notifications.createdAt))
+    .limit(options.limit ?? 60);
+
+  return rows.map((row) => ({
+    ...row,
+    postAvailable: Boolean(row.post && !row.post.deletedAt && !row.post.hiddenAt),
+    replyAvailable: Boolean(row.reply && !row.reply.deletedAt && !row.reply.hiddenAt),
+  }));
+}
+
+export async function findOwnedNotification(id: string, recipientUserId: string) {
+  const row = (await getDb()
+    .select({ notification: notifications, event: activityEvents, actor: users, post: posts, reply: replies })
+    .from(notifications)
+    .innerJoin(activityEvents, eq(notifications.eventId, activityEvents.id))
+    .innerJoin(users, eq(notifications.actorUserId, users.id))
+    .leftJoin(posts, eq(notifications.postId, posts.id))
+    .leftJoin(replies, eq(notifications.replyId, replies.id))
+    .where(and(eq(notifications.id, id), eq(notifications.recipientUserId, recipientUserId)))
+    .limit(1))[0];
+  if (!row) return null;
+  return {
+    ...row,
+    postAvailable: Boolean(row.post && !row.post.deletedAt && !row.post.hiddenAt),
+    replyAvailable: Boolean(row.reply && !row.reply.deletedAt && !row.reply.hiddenAt),
+  };
+}
+
+export async function markNotificationRead(id: string, recipientUserId: string) {
+  await getDb().update(notifications).set({ readAt: new Date() }).where(and(
+    eq(notifications.id, id),
+    eq(notifications.recipientUserId, recipientUserId),
+    isNull(notifications.readAt),
+  ));
+}
+
+export async function markAllNotificationsRead(recipientUserId: string) {
+  await getDb().update(notifications).set({ readAt: new Date() }).where(and(
+    eq(notifications.recipientUserId, recipientUserId),
+    isNull(notifications.readAt),
+  ));
 }
 
 export async function listTags() {
