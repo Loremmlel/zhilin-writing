@@ -8,21 +8,24 @@ import { markdownToPlainText } from "@/lib/markdown/render";
 type ActivityItem = Awaited<ReturnType<typeof listUserActivity>>[number];
 
 function ActivityCopy({ item }: { item: ActivityItem }) {
-  if (!item.postAvailable || !item.post) {
+  if (!item.post || !item.postReachable) {
     return <p><strong>{item.actor.displayName}</strong> 的一条公开内容现已不可用</p>;
   }
   if (item.event.eventType === "POST_CREATED") {
-    return <p><strong>{item.actor.displayName}</strong> 发布了 <Link href={`/posts/${item.post.id}`}>《{item.post.title}》</Link></p>;
+    return item.postAvailable
+      ? <p><strong>{item.actor.displayName}</strong> 发布了 <Link href={`/posts/${item.post.id}`}>《{item.post.title}》</Link></p>
+      : <p><strong>{item.actor.displayName}</strong> <Link href={`/posts/${item.post.id}`}>发布了一条现已不可用的内容</Link></p>;
   }
   if (!item.replyAvailable || !item.reply) {
-    return <p><strong>{item.actor.displayName}</strong> <Link href={`/posts/${item.post.id}#replies`}>回复了一条现已删除的内容</Link></p>;
+    return <p><strong>{item.actor.displayName}</strong> <Link href={`/posts/${item.post.id}#replies`}>回复了一条现已删除或隐藏的内容</Link></p>;
   }
+  const target = <Link href={`/posts/${item.post.id}#reply-${item.reply.id}`}>{item.postAvailable ? `《${item.post.title}》` : "一条正文已撤下的讨论"}</Link>;
   return <>
     <p>
       <strong>{item.actor.displayName}</strong>{" "}
       {item.replyTo
-        ? <>回复了 <strong>{item.replyTo.displayName}</strong> 在 <Link href={`/posts/${item.post.id}#reply-${item.reply.id}`}>《{item.post.title}》</Link> 中的回复</>
-        : <>回复了 <Link href={`/posts/${item.post.id}#reply-${item.reply.id}`}>《{item.post.title}》</Link></>}
+        ? <>回复了 <strong>{item.replyTo.displayName}</strong> 在 {target} 中的回复</>
+        : <>回复了 {target}</>}
     </p>
     <blockquote>{truncateActivityPreview(markdownToPlainText(item.reply.markdown))}</blockquote>
   </>;

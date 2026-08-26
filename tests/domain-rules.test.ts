@@ -53,11 +53,11 @@ test("reply Markdown is required and bounded", () => {
 test("nested targets remain at the root visual level", () => {
   assert.deepEqual(
     normalizeReplyTarget({ id: "top", rootReplyId: null, authorId: "user-a" }),
-    { rootReplyId: "top", replyToUserId: "user-a" },
+    { rootReplyId: "top", replyToReplyId: "top", replyToUserId: "user-a" },
   );
   assert.deepEqual(
     normalizeReplyTarget({ id: "nested", rootReplyId: "top", authorId: "user-b" }),
-    { rootReplyId: "top", replyToUserId: "user-b" },
+    { rootReplyId: "top", replyToReplyId: "nested", replyToUserId: "user-b" },
   );
 });
 

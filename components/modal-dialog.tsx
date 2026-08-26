@@ -11,7 +11,7 @@ type ModalDialogProps = {
   alert?: boolean;
 };
 
-const focusableSelector = "button:not([disabled]), a[href], input:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex='-1'])";
+const focusableSelector = "button:not([disabled]), a[href], input:not([disabled]):not([type='hidden']), textarea:not([disabled]), [tabindex]:not([tabindex='-1'])";
 
 export function ModalDialog({ open, title, description, onClose, children, alert = false }: ModalDialogProps) {
   const rootRef = useRef<HTMLDivElement>(null);

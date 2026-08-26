@@ -12,6 +12,8 @@ colors:
   green-dark: "#356145"
   green-soft: "#EDF4EE"
   danger: "#A44D47"
+  warning: "#8B6A2C"
+  warning-soft: "#F6F0DF"
 typography:
   display:
     fontFamily: "Georgia, Noto Serif SC, serif"
@@ -57,7 +59,7 @@ components:
 
 ## Colors
 
-`paper`/`paper-strong` 提供两层暖白表面，`ink` 与 `muted` 建立正文和辅助信息层级。`green` 是品牌、焦点和当前选择，`green-soft` 仅用于轻提示与选中背景。`danger` 只用于放弃草稿、覆盖版本、恢复确认等高后果动作。强制色模式退回系统颜色。
+`paper`/`paper-strong` 提供两层暖白表面，`ink` 与 `muted` 建立正文和辅助信息层级。`green` 是品牌、焦点和当前选择，`green-soft` 仅用于轻提示与选中背景。`warning`/`warning-soft` 标记作者已撤回的内容，`danger` 标记管理员隐藏与高后果确认；状态同时使用文字而不单靠颜色。强制色模式退回系统颜色。
 
 ## Typography
 
@@ -83,11 +85,11 @@ components:
 
 ### Buttons and actions
 
-主操作为实心绿色，次操作为暖白描边，危险确认为实心暗红。危险操作与安全主操作分开，弹窗默认首先聚焦取消或保留选项。
+主操作为实心绿色，次操作为暖白描边，危险确认为实心暗红。作者删除与管理员隐藏都使用共享确认弹窗，明确说明其他成员讨论是否保留。危险操作与安全主操作分开，弹窗默认首先聚焦取消或保留选项。
 
 ### Navigation and data display
 
-顶部导航保持紧凑；帖子与动态用列表卡片；revision 用带版本号、创建者、时间和状态徽标的纵向时间线。历史正文使用与当前帖子一致的 Markdown 渲染器。
+顶部导航保持紧凑；帖子与动态用列表卡片；revision 用带版本号、创建者、时间和状态徽标的纵向时间线。内容管理用小型筛选列表和可组合状态胶囊表达 Normal、User Deleted、Admin Hidden；同时状态并列显示。历史正文使用与当前帖子一致的 Markdown 渲染器。
 
 ### Forms and overlays
 

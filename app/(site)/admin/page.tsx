@@ -1,21 +1,121 @@
 import Link from "next/link";
 
-import { listAllowedUsers, listPosts, listUsers } from "@/db/queries";
+import { ContentLifecycleControl } from "@/components/admin/content-lifecycle-control";
+import {
+  listAdminAuditLog,
+  listAdminPosts,
+  listAdminReplies,
+  listAllowedUsers,
+  listUsers,
+  type AdminContentStatus,
+} from "@/db/queries";
 import { requireAdministrator } from "@/lib/auth/access";
 import { formatDateTime } from "@/lib/format";
-import { addAllowlistAction, removeAllowlistAction } from "./actions";
+import {
+  addAllowlistAction,
+  moderatePostAction,
+  moderateReplyAction,
+  removeAllowlistAction,
+} from "./actions";
 
-export default async function AdminPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
-  const [, allowed, users, posts, { error }] = await Promise.all([requireAdministrator("/admin"), listAllowedUsers(), listUsers(), listPosts({ limit: 100 }), searchParams]);
+const statusLabels: Record<AdminContentStatus, string> = {
+  normal: "正常",
+  deleted: "用户已删除",
+  hidden: "管理员已隐藏",
+};
+
+const auditLabels: Record<string, string> = {
+  POST_HIDDEN: "隐藏帖子",
+  POST_UNHIDDEN: "取消隐藏帖子",
+  POST_RESTORED: "恢复已删除帖子",
+  REPLY_HIDDEN: "隐藏回复",
+  REPLY_UNHIDDEN: "取消隐藏回复",
+  REPLY_RESTORED: "恢复已删除回复",
+  REVISION_RESTORED: "恢复帖子历史版本",
+};
+
+export default async function AdminPage({ searchParams }: {
+  searchParams: Promise<{ error?: string; type?: string; status?: string }>;
+}) {
+  const [, query] = await Promise.all([requireAdministrator("/admin"), searchParams]);
+  const contentType = query.type === "replies" ? "replies" : "posts";
+  const status: AdminContentStatus = query.status === "deleted" || query.status === "hidden" ? query.status : "normal";
+  const [allowed, users, content, audit] = await Promise.all([
+    listAllowedUsers(),
+    listUsers(),
+    contentType === "posts" ? listAdminPosts(status) : listAdminReplies(status),
+    listAdminAuditLog(),
+  ]);
+  const contentHref = (nextType: "posts" | "replies", nextStatus: AdminContentStatus) => `/admin?type=${nextType}&status=${nextStatus}`;
+
   return (
     <div className="page-column admin-page">
-      <header className="page-header"><span className="eyebrow">管理员</span><h1>管理后台</h1><p>管理受邀成员，并在需要时检查或恢复帖子历史版本。</p></header>
-      <section className="admin-section"><div className="section-heading"><h2>Post revisions</h2><span>{posts.length} 篇帖子</span></div>
-        <div className="admin-list">{posts.map(({ post, author }) => <Link className="admin-row admin-row--link" href={`/admin/revisions/${post.id}`} key={post.id}><div><strong>{post.title}</strong><span>{author.displayName} · {formatDateTime(post.publishedAt)}</span></div><span className="text-link">查看历史</span></Link>)}</div>
+      <header className="page-header"><span className="eyebrow">管理员</span><h1>管理后台</h1><p>检查内容状态、恢复误删内容，并管理受邀成员。所有原文查看与状态操作都经过服务端管理员校验。</p></header>
+
+      <section className="admin-section">
+        <div className="section-heading"><h2>内容管理</h2><span>{content.length} 条</span></div>
+        <nav className="list-tabs" aria-label="内容类型">
+          <Link href={contentHref("posts", status)} className={contentType === "posts" ? "is-active" : ""}>Posts</Link>
+          <Link href={contentHref("replies", status)} className={contentType === "replies" ? "is-active" : ""}>Replies</Link>
+        </nav>
+        <nav className="list-tabs list-tabs--secondary" aria-label="内容状态">
+          {(Object.keys(statusLabels) as AdminContentStatus[]).map((value) => <Link key={value} href={contentHref(contentType, value)} className={status === value ? "is-active" : ""}>{statusLabels[value]}</Link>)}
+        </nav>
+
+        <div className="admin-list admin-content-list">
+          {contentType === "posts" && (content as Awaited<ReturnType<typeof listAdminPosts>>).map(({ post, author }) => <article className="admin-row admin-content-row" key={post.id}>
+            <div className="admin-content-main">
+              <div className="status-line">
+                {!post.deletedAt && !post.hiddenAt && <span className="status-pill status-pill--normal">正常</span>}
+                {post.deletedAt && <span className="status-pill status-pill--deleted">用户已删除</span>}
+                {post.hiddenAt && <span className="status-pill status-pill--hidden">管理员已隐藏</span>}
+              </div>
+              <strong>{post.title}</strong>
+              <span>{author.displayName} · {formatDateTime(post.publishedAt)}</span>
+              {post.hiddenReason && <span>隐藏原因：{post.hiddenReason}</span>}
+            </div>
+            <div className="admin-row-actions">
+              <Link className="text-link" href={`/posts/${post.id}`}>对应帖子</Link>
+              <Link className="text-link" href={`/admin/revisions/${post.id}`}>Post revisions</Link>
+              {post.deletedAt && <ContentLifecycleControl key={`post-${post.id}-restore-${post.deletedAt.getTime()}`} action={moderatePostAction.bind(null, post.id, "restore")} operation="restore" targetLabel="帖子" />}
+              {post.hiddenAt
+                ? <ContentLifecycleControl key={`post-${post.id}-unhide-${post.hiddenAt.getTime()}`} action={moderatePostAction.bind(null, post.id, "unhide")} operation="unhide" targetLabel="帖子" />
+                : <ContentLifecycleControl key={`post-${post.id}-hide`} action={moderatePostAction.bind(null, post.id, "hide")} operation="hide" targetLabel="帖子" />}
+            </div>
+          </article>)}
+
+          {contentType === "replies" && (content as Awaited<ReturnType<typeof listAdminReplies>>).map(({ reply, author, post }) => <article className="admin-row admin-content-row" key={reply.id}>
+            <div className="admin-content-main">
+              <div className="status-line">
+                {!reply.deletedAt && !reply.hiddenAt && <span className="status-pill status-pill--normal">正常</span>}
+                {reply.deletedAt && <span className="status-pill status-pill--deleted">用户已删除</span>}
+                {reply.hiddenAt && <span className="status-pill status-pill--hidden">管理员已隐藏</span>}
+              </div>
+              <strong>{author.displayName} 回复《{post.title}》</strong>
+              <span>{formatDateTime(reply.publishedAt)}</span>
+              {reply.hiddenReason && <span>隐藏原因：{reply.hiddenReason}</span>}
+              <details className="admin-content-preview"><summary>查看原始 Markdown</summary><pre>{reply.markdown}</pre></details>
+            </div>
+            <div className="admin-row-actions">
+              <Link className="text-link" href={`/posts/${reply.postId}#reply-${reply.id}`}>对应帖子</Link>
+              {reply.deletedAt && <ContentLifecycleControl key={`reply-${reply.id}-restore-${reply.deletedAt.getTime()}`} action={moderateReplyAction.bind(null, reply.id, "restore")} operation="restore" targetLabel="回复" />}
+              {reply.hiddenAt
+                ? <ContentLifecycleControl key={`reply-${reply.id}-unhide-${reply.hiddenAt.getTime()}`} action={moderateReplyAction.bind(null, reply.id, "unhide")} operation="unhide" targetLabel="回复" />
+                : <ContentLifecycleControl key={`reply-${reply.id}-hide`} action={moderateReplyAction.bind(null, reply.id, "hide")} operation="hide" targetLabel="回复" />}
+            </div>
+          </article>)}
+          {content.length === 0 && <p className="empty-copy">此筛选下没有内容。</p>}
+        </div>
       </section>
+
+      <section className="admin-section">
+        <div className="section-heading"><h2>管理员操作记录</h2><span>{audit.length} 条</span></div>
+        <div className="admin-list">{audit.map(({ audit: entry, administrator }) => <div className="admin-row" key={entry.id}><div><strong>{auditLabels[entry.actionType] ?? entry.actionType}</strong><span>{administrator.displayName} · {entry.targetType} · {formatDateTime(entry.createdAt)}</span></div><code>{entry.targetId}</code></div>)}</div>
+      </section>
+
       <section className="admin-section"><div className="section-heading"><h2>邀请邮箱</h2><span>{allowed.length} 个</span></div>
         <form action={addAllowlistAction} className="inline-form" noValidate><input className="text-input" type="email" name="email" placeholder="friend@example.com" /><button className="button button--primary">加入白名单</button></form>
-        {error && <p className="form-error">{error}</p>}
+        {query.error && <p className="form-error">{query.error}</p>}
         <div className="admin-list">{allowed.map((entry) => <div className="admin-row" key={entry.id}><div><strong>{entry.email}</strong><span>{entry.isAdmin ? "唯一管理员" : `添加于 ${formatDateTime(entry.addedAt)}`}</span></div>{!entry.isAdmin && <form action={removeAllowlistAction} noValidate><input type="hidden" name="id" value={entry.id} /><button className="text-button text-button--danger">移除</button></form>}</div>)}</div>
       </section>
       <section className="admin-section"><div className="section-heading"><h2>已注册成员</h2><span>{users.length} 位</span></div><div className="admin-list">{users.map((user) => <div className="admin-row" key={user.id}><div><strong>{user.displayName}</strong><span>{formatDateTime(user.joinedAt)} 加入</span></div></div>)}</div></section>

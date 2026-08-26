@@ -17,8 +17,9 @@
 | V1 产品、权限与数据基础 | `docs/superpowers/specs/2026-08-25-private-markdown-community-design.md` | Product/design spec | 2026-08-25 |
 | V2 Activity 与通知 | `docs/superpowers/specs/2026-08-25-activity-notifications-v2-design.md` | Product/design spec | 2026-08-25 |
 | V3 revision、冲突与恢复 | `docs/superpowers/specs/2026-08-25-post-revisions-v3-design.md` | Product/design spec | 2026-08-25 |
+| V4 内容生命周期与资源回收 | `docs/superpowers/specs/2026-08-26-content-lifecycle-v4-design.md` | Product/design spec | 2026-08-26 |
 | 服务器权限边界 | `lib/auth/access.ts` | Verified domain invariant | 2026-08-25 |
-| 保存与恢复状态机 | `lib/posts/service.ts`, `lib/revisions/service.ts` | Verified API/domain contract | 2026-08-25 |
+| 保存、删除、隐藏与恢复状态机 | `lib/posts/service.ts`, `lib/lifecycle/service.ts`, `lib/revisions/service.ts` | Verified API/domain contract | 2026-08-26 |
 
 ## Visual contract
 
@@ -40,6 +41,9 @@
 | CRUD | post/revision services | `lib/posts/service.ts`, `lib/revisions/service.ts` | create / edit / restore | unit + migration + build |
 | Upload | Markdown editor and attachment upload | `/api/assets`, `lib/assets/storage.ts` | inline image / attachment | service + build |
 | Account popover | `AccountMenu` | `components/account-menu.tsx` | member / administrator links | dismissal unit test |
+| Lifecycle | lifecycle policy/service | `lib/lifecycle/*` | normal / user deleted / admin hidden | unit + migration + build |
+| Moderation | administrator content management | `app/(site)/admin`, `components/admin/content-lifecycle-control.tsx` | posts / replies / audit | server permission + build |
+| Asset access and GC | reference-aware asset services | `lib/assets/access-service.ts`, `lib/assets/gc.ts` | active / historical / temporary / orphan | unit + service review |
 
 ## Component behavior
 
@@ -56,6 +60,7 @@
 - Admin revision list: per-post bounded timeline; community size is intentionally only a few users/posts, so V3 does not add pagination.
 - Exploratory lists: existing latest/recent-active routes and fixed limits remain canonical.
 - URL state: selected revision lives in `?revision=`; search query remains `?q=`.
+- Admin content filters live in `?type=posts|replies&status=normal|deleted|hidden`; deleted and hidden filters may each include an item when both flags are present.
 - Empty/no-results/error/loading: stable card or inline notice; no skeletons.
 - Back/scroll restoration: browser history and URL-selected revision.
 
@@ -68,6 +73,10 @@
 | Use online | conflict choice + confirm | local state replacement | editor | conflict clears | confirmation can cancel | editor | V3 spec |
 | Overwrite | conflict choice + confirm | disabled submit | post page | new revision | refreshed conflict if race repeats | post heading | V3 spec |
 | Restore | 恢复此版本 + confirm | form pending | new revision preview | status notice | history remains unchanged | page heading | V3 spec |
+| Delete post | 删除帖子 + confirm | disabled confirm | same URL with controlled placeholder | body removed; surviving discussion retained | retry is a no-op | refreshed article | V4 spec |
+| Delete reply | 删除这条回复 + confirm | disabled confirm | same discussion | reply disappears or becomes a placeholder | retry is a no-op | refreshed thread | V4 spec |
+| Hide/unhide | administrator action + confirm | disabled confirm | current admin filter | status badges and audit update | retry is a no-op | refreshed row | V4 spec |
+| Restore deleted | administrator action + confirm | disabled confirm | current admin filter | current content becomes active unless still hidden | retry is a no-op | refreshed row | V4 spec |
 | Upload | file input | local pending | editor | attachment row/inline image | inline upload error | file input/editor | V1 spec |
 | Account menu | avatar button | n/a | selected route | menu closes | outside/Escape close | trigger restored on Escape | V3 addendum |
 
@@ -82,7 +91,7 @@
 ## Overlays and feedback
 
 - Dialog primitive: `ModalDialog` with modal semantics, focus cycle, Escape, backdrop dismissal, and trigger-focus restoration.
-- Destructive confirmation: discard draft, overwrite latest, and restore historical content each require an app-owned confirmation.
+- Destructive confirmation: discard draft, overwrite latest, restore historical content, author delete, and administrator hide each require an app-owned confirmation with explicit discussion-retention copy.
 - Alert/banner: local draft recovery and conflict blocking are persistent until resolved.
 - Unsaved changes: device-local IndexedDB autosave; server post changes only after explicit save.
 - Layer contract: header 400 < popover 450 < backdrop 500 < dialog 600.
@@ -90,12 +99,14 @@
 ## Async and resilience
 
 - Mutation default: pessimistic UI with disabled duplicate submit.
-- Idempotency: replies use submission keys; revision uniqueness `(post_id, revision_number)` turns competing saves into an atomic conflict.
+- Idempotency: replies use submission keys; lifecycle retries are no-ops; audit transitions use dedupe keys; revision restore uses a per-confirmation operation ID in addition to revision uniqueness.
 - Auto-save/draft recovery: 700ms IndexedDB debounce, explicit continue/discard prompt for published posts.
 - Offline behavior: drafts may continue locally; server writes require connection.
 - Version conflict: exact base revision check; no automatic merge; online/manual/explicit overwrite choices.
 - Stale-request handling: component effects use live flags/cleanup; file upload errors remain local.
 - Mutation failure: editor state and draft remain intact.
+- Lifecycle mutations never use operation time as `last_activity_at`; reply removal/hide recalculates from remaining public reply publication times.
+- Asset deletion is never performed in content handlers. A bounded GC service rechecks current-post, revision, avatar, and temporary-expiry references immediately before deleting an R2 object.
 
 ## Validation
 
@@ -108,6 +119,8 @@
 
 - Revision list, preview, and restore are absent from ordinary UI and protected by `requireAdministrator()` on every page/action.
 - No revision API is exposed to ordinary users.
+- Deleted/hidden Markdown and historical-only assets are returned only through administrator-checked paths; public detail queries return placeholders with nullable content fields.
+- Ordinary server actions enforce ownership for delete. Hide, unhide, restore, raw lifecycle lists, and audit history require `requireAdministrator()`.
 - Clipboard copy is not part of V3.
 
 ## Verification

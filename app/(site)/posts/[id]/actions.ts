@@ -4,8 +4,10 @@ import { revalidatePath } from "next/cache";
 
 import type { PostActionState } from "@/components/editor/post-editor-form";
 import type { ReplyActionState } from "@/components/reply-form";
+import type { LifecycleActionState } from "@/components/lifecycle/delete-content-control";
 import { requireMember } from "@/lib/auth/access";
-import { createReply, softDeleteReply, updatePost } from "@/lib/posts/service";
+import { deletePostByAuthor, deleteReplyByAuthor } from "@/lib/lifecycle/service";
+import { createReply, updatePost } from "@/lib/posts/service";
 import { EditConflictError } from "@/lib/revisions/service";
 
 function parseTags(value: FormDataEntryValue | null): string[] {
@@ -58,8 +60,26 @@ export async function createReplyAction(postId: string, targetReplyId: string | 
   }
 }
 
-export async function deleteReplyAction(postId: string, replyId: string) {
-  const { member } = await requireMember(`/posts/${postId}`);
-  await softDeleteReply(replyId, member.id);
-  revalidatePath(`/posts/${postId}`);
+export async function deletePostAction(postId: string, _state: LifecycleActionState): Promise<LifecycleActionState> {
+  void _state;
+  try {
+    const { member } = await requireMember(`/posts/${postId}`);
+    await deletePostByAuthor(postId, member.id);
+    revalidatePath("/", "layout");
+    return { success: true };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "删除帖子失败" };
+  }
+}
+
+export async function deleteReplyAction(postId: string, replyId: string, _state: LifecycleActionState): Promise<LifecycleActionState> {
+  void _state;
+  try {
+    const { member } = await requireMember(`/posts/${postId}`);
+    await deleteReplyByAuthor(replyId, member.id);
+    revalidatePath("/", "layout");
+    return { success: true };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "删除回复失败" };
+  }
 }

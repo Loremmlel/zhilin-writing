@@ -42,7 +42,10 @@ export const posts = sqliteTable(
     editedAt: integer("edited_at", { mode: "timestamp_ms" }),
     lastActivityAt: integer("last_activity_at", { mode: "timestamp_ms" }).notNull(),
     deletedAt: integer("deleted_at", { mode: "timestamp_ms" }),
+    deletedByUserId: text("deleted_by_user_id").references(() => users.id),
     hiddenAt: integer("hidden_at", { mode: "timestamp_ms" }),
+    hiddenByUserId: text("hidden_by_user_id").references(() => users.id),
+    hiddenReason: text("hidden_reason"),
   },
   (table) => [
     index("posts_published_at_idx").on(table.publishedAt),
@@ -58,17 +61,49 @@ export const replies = sqliteTable(
     postId: text("post_id").notNull().references(() => posts.id),
     authorId: text("author_id").notNull().references(() => users.id),
     rootReplyId: text("root_reply_id"),
+    replyToReplyId: text("reply_to_reply_id"),
     replyToUserId: text("reply_to_user_id").references(() => users.id),
     submissionKey: text("submission_key"),
     markdown: text("markdown").notNull(),
     publishedAt: integer("published_at", { mode: "timestamp_ms" }).notNull(),
     deletedAt: integer("deleted_at", { mode: "timestamp_ms" }),
+    deletedByUserId: text("deleted_by_user_id").references(() => users.id),
     hiddenAt: integer("hidden_at", { mode: "timestamp_ms" }),
+    hiddenByUserId: text("hidden_by_user_id").references(() => users.id),
+    hiddenReason: text("hidden_reason"),
   },
   (table) => [
     index("replies_post_id_idx").on(table.postId),
     index("replies_root_reply_id_idx").on(table.rootReplyId),
+    index("replies_reply_to_reply_id_idx").on(table.replyToReplyId),
     uniqueIndex("replies_author_submission_unique").on(table.authorId, table.submissionKey),
+  ],
+);
+
+export const adminAuditLog = sqliteTable(
+  "admin_audit_log",
+  {
+    id: text("id").primaryKey(),
+    adminUserId: text("admin_user_id").notNull().references(() => users.id),
+    actionType: text("action_type", { enum: [
+      "POST_HIDDEN",
+      "POST_UNHIDDEN",
+      "POST_RESTORED",
+      "REPLY_HIDDEN",
+      "REPLY_UNHIDDEN",
+      "REPLY_RESTORED",
+      "REVISION_RESTORED",
+    ] }).notNull(),
+    targetType: text("target_type", { enum: ["POST", "REPLY"] }).notNull(),
+    targetId: text("target_id").notNull(),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+    metadataJson: text("metadata_json"),
+    dedupeKey: text("dedupe_key").notNull(),
+  },
+  (table) => [
+    uniqueIndex("admin_audit_log_dedupe_key_unique").on(table.dedupeKey),
+    index("admin_audit_log_created_at_idx").on(table.createdAt),
+    index("admin_audit_log_target_idx").on(table.targetType, table.targetId),
   ],
 );
 
@@ -212,3 +247,4 @@ export type AssetRecord = typeof assets.$inferSelect;
 export type PostRevisionRecord = typeof postRevisions.$inferSelect;
 export type PostAssetRefRecord = typeof postAssetRefs.$inferSelect;
 export type RevisionAssetRefRecord = typeof revisionAssetRefs.$inferSelect;
+export type AdminAuditRecord = typeof adminAuditLog.$inferSelect;

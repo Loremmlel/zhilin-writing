@@ -18,13 +18,13 @@ export function NotificationList({ items }: { items: NotificationItem[] }) {
         <div className="notification-content">
           <p>
             <strong>{item.actor.displayName}</strong>{" "}
-            {!item.postAvailable || !item.post
+            {!item.post || !item.postReachable
               ? "有一条关联内容已不可用"
               : !item.replyAvailable || !item.reply
-                ? "回复了你，但该回复已经被删除"
+                ? `回复了你，但该回复已经被${item.replyState === "hidden" ? "管理员隐藏" : "删除"}`
                 : item.event.replyToUserId
-                  ? <>回复了你在《{item.post.title}》中的回复</>
-                  : <>回复了你的帖子《{item.post.title}》</>}
+                  ? item.postAvailable ? <>回复了你在《{item.post.title}》中的回复</> : <>回复了你在一条正文已撤下的讨论中的回复</>
+                  : item.postAvailable ? <>回复了你的帖子《{item.post.title}》</> : <>回复了你的一条正文已撤下的讨论</>}
           </p>
           {item.replyAvailable && item.reply && <blockquote>{truncateActivityPreview(markdownToPlainText(item.reply.markdown), 90)}</blockquote>}
           <div className="notification-meta"><time>{formatDateTime(item.notification.createdAt)}</time><span>{isUnread ? "未读" : "已读"}</span></div>

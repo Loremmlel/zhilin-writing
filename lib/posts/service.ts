@@ -70,7 +70,10 @@ export async function createPost(authorId: string, input: SavePostInput) {
       editedAt: null,
       lastActivityAt: now,
       deletedAt: null,
+      deletedByUserId: null,
       hiddenAt: null,
+      hiddenByUserId: null,
+      hiddenReason: null,
     }),
     db.insert(postRevisions).values({
       id: revisionId,
@@ -225,12 +228,14 @@ export async function createReply(input: { postId: string; authorId: string; mar
   const post = await getPost(input.postId);
   if (!post) throw new Error("帖子不存在");
   let rootReplyId: string | null = null;
+  let replyToReplyId: string | null = null;
   let replyToUserId: string | null = null;
   if (input.targetReplyId) {
     const target = await findReply(input.targetReplyId);
     if (!target || target.postId !== input.postId || target.deletedAt || target.hiddenAt) throw new Error("回复对象不存在");
     const normalized = normalizeReplyTarget({ id: target.id, rootReplyId: target.rootReplyId, authorId: target.authorId });
     rootReplyId = normalized.rootReplyId;
+    replyToReplyId = normalized.replyToReplyId;
     replyToUserId = normalized.replyToUserId;
   }
   const now = new Date();
@@ -243,8 +248,10 @@ export async function createReply(input: { postId: string; authorId: string; mar
   });
   const db = getDb();
   const replyInsert = db.insert(replies).values({
-    id, postId: input.postId, authorId: input.authorId, rootReplyId, replyToUserId,
-    submissionKey, markdown, publishedAt: now, deletedAt: null, hiddenAt: null,
+    id, postId: input.postId, authorId: input.authorId, rootReplyId, replyToReplyId, replyToUserId,
+    submissionKey, markdown, publishedAt: now,
+    deletedAt: null, deletedByUserId: null,
+    hiddenAt: null, hiddenByUserId: null, hiddenReason: null,
   });
   const activityUpdate = db.update(posts).set({ lastActivityAt: now }).where(eq(posts.id, input.postId));
   const eventInsert = db.insert(activityEvents).values({
@@ -287,8 +294,4 @@ export async function createReply(input: { postId: string; authorId: string; mar
     throw error;
   }
   return id;
-}
-
-export async function softDeleteReply(replyId: string, currentUserId: string) {
-  await getDb().update(replies).set({ deletedAt: new Date() }).where(and(eq(replies.id, replyId), eq(replies.authorId, currentUserId)));
 }

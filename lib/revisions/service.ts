@@ -4,6 +4,7 @@ import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import {
   assets,
+  adminAuditLog,
   postAssetRefs,
   postRevisions,
   postTags,
@@ -108,13 +109,16 @@ function asBatch(items: BatchItem<"sqlite">[]) {
   return items as [BatchItem<"sqlite">, ...BatchItem<"sqlite">[]];
 }
 
-export async function restorePostRevision(postId: string, sourceRevisionId: string, administratorId: string) {
+export async function restorePostRevision(postId: string, sourceRevisionId: string, administratorId: string, operationId: string) {
   const db = getDb();
-  const post = (await db.select().from(posts).where(and(
-    eq(posts.id, postId),
-    isNull(posts.deletedAt),
-    isNull(posts.hiddenAt),
-  )).limit(1))[0];
+  const dedupeKey = `REVISION_RESTORED:POST:${postId}:${sourceRevisionId}:${operationId}`;
+  const existingAudit = (await db.select().from(adminAuditLog).where(eq(adminAuditLog.dedupeKey, dedupeKey)).limit(1))[0];
+  if (existingAudit?.metadataJson) {
+    const metadata = JSON.parse(existingAudit.metadataJson) as { newRevisionId?: string };
+    if (metadata.newRevisionId) return metadata.newRevisionId;
+  }
+
+  const post = (await db.select().from(posts).where(eq(posts.id, postId)).limit(1))[0];
   if (!post?.currentRevisionId) throw new Error("帖子当前版本不存在");
   const [current, source] = await Promise.all([
     getRevisionSnapshot(postId, post.currentRevisionId),
@@ -158,15 +162,32 @@ export async function restorePostRevision(postId: string, sourceRevisionId: stri
       searchText: markdownToPlainText(restorePlan.markdown),
       currentRevisionId: revisionId,
       editedAt: restorePlan.editedAt,
+      deletedAt: null,
+      deletedByUserId: null,
     }).where(and(eq(posts.id, postId), eq(posts.currentRevisionId, current.revision.id))),
     db.delete(postAssetRefs).where(eq(postAssetRefs.postId, postId)),
     ...restorePlan.assetRefs.map((ref) => db.insert(postAssetRefs).values({ postId, ...ref })),
     ...restorePlan.assetRefs.map((ref) => db.insert(revisionAssetRefs).values({ revisionId, ...ref })),
+    db.insert(adminAuditLog).values({
+      id: crypto.randomUUID(),
+      adminUserId: administratorId,
+      actionType: "REVISION_RESTORED",
+      targetType: "POST",
+      targetId: postId,
+      createdAt: now,
+      metadataJson: JSON.stringify({ sourceRevisionId, newRevisionId: revisionId }),
+      dedupeKey,
+    }),
   ];
 
   try {
     await db.batch(asBatch(operations));
   } catch (error) {
+    const completedAudit = (await db.select().from(adminAuditLog).where(eq(adminAuditLog.dedupeKey, dedupeKey)).limit(1))[0];
+    if (completedAudit?.metadataJson) {
+      const metadata = JSON.parse(completedAudit.metadataJson) as { newRevisionId?: string };
+      if (metadata.newRevisionId) return metadata.newRevisionId;
+    }
     const latest = (await db.select({ currentRevisionId: posts.currentRevisionId }).from(posts).where(eq(posts.id, postId)).limit(1))[0];
     if (latest?.currentRevisionId !== current.revision.id) throw new Error("帖子已更新，请刷新历史记录后重试");
     throw error;

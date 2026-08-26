@@ -1,12 +1,22 @@
 import { Avatar } from "@/components/avatar";
+import { DeleteContentControl, type LifecycleFormAction } from "@/components/lifecycle/delete-content-control";
 import type { ReplyRecord, SiteUser } from "@/db/schema";
 import { formatDateTime } from "@/lib/format";
+import { deleteReplyConfirmation } from "@/lib/lifecycle/policy";
 import { ReplyForm, type ReplyFormAction } from "@/components/reply-form";
 
 export type ReplyView = {
   reply: ReplyRecord;
   author: SiteUser;
   replyTo: SiteUser | null;
+  replyToUnavailable: boolean;
+  lifecycle: {
+    state: "normal" | "deleted" | "hidden";
+    contentVisible: boolean;
+    placeholder: string | null;
+    visibleDependentCount: number;
+    visibleOtherAuthorDependentCount: number;
+  };
   html: string;
 };
 
@@ -14,7 +24,7 @@ type ReplyListProps = {
   items: ReplyView[];
   currentUserId: string;
   replyActionFor: (targetId: string) => ReplyFormAction;
-  deleteActionFor: (replyId: string) => (formData: FormData) => Promise<void>;
+  deleteActionFor: (replyId: string) => LifecycleFormAction;
 };
 
 function ReplyItem({ item, nested, currentUserId, replyActionFor, deleteActionFor }: {
@@ -28,17 +38,24 @@ function ReplyItem({ item, nested, currentUserId, replyActionFor, deleteActionFo
       <div className="reply-body">
         <div className="reply-meta">
           <strong>{item.author.displayName}</strong>
-          {item.replyTo && <span>回复 {item.replyTo.displayName}</span>}
+          {item.replyTo && <span>{item.replyToUnavailable ? "回复了一条已删除或隐藏的回复" : `回复 ${item.replyTo.displayName}`}</span>}
           <time>{formatDateTime(item.reply.publishedAt)}</time>
         </div>
-        <div className="markdown-body markdown-body--reply" dangerouslySetInnerHTML={{ __html: item.html }} />
-        <details className="inline-reply">
+        {item.lifecycle.contentVisible
+          ? <div className="markdown-body markdown-body--reply" dangerouslySetInnerHTML={{ __html: item.html }} />
+          : <p className="deleted-placeholder">{item.lifecycle.placeholder}</p>}
+        {item.lifecycle.contentVisible && <details className="inline-reply">
           <summary>回复</summary>
           <ReplyForm action={replyActionFor(item.reply.id)} initialSubmissionKey={crypto.randomUUID()} label={`回复 ${item.author.displayName}`} compact />
-        </details>
-        {item.reply.authorId === currentUserId && <form action={deleteActionFor(item.reply.id)} className="delete-reply-form" noValidate>
-          <button className="text-button text-button--danger" type="submit">删除这条回复</button>
-        </form>}
+        </details>}
+        {item.lifecycle.contentVisible && item.reply.authorId === currentUserId && <div className="delete-reply-form">
+          <DeleteContentControl
+            action={deleteActionFor(item.reply.id)}
+            label="删除这条回复"
+            title="删除这条回复？"
+            description={deleteReplyConfirmation(item.lifecycle.visibleOtherAuthorDependentCount > 0)}
+          />
+        </div>}
       </div>
     </article>
   );

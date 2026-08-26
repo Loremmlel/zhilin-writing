@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { RestoreRevisionForm } from "@/components/admin/restore-revision-form";
-import { getPost } from "@/db/queries";
+import { getPostForAdministration } from "@/db/queries";
 import { requireAdministrator } from "@/lib/auth/access";
 import { formatDateTime } from "@/lib/format";
 import { renderMarkdown } from "@/lib/markdown/render";
@@ -20,9 +20,9 @@ export default async function PostRevisionsPage({
 }) {
   const { postId } = await params;
   const query = await searchParams;
-  const [, post, revisions] = await Promise.all([
-    requireAdministrator(`/admin/revisions/${postId}`),
-    getPost(postId),
+  await requireAdministrator(`/admin/revisions/${postId}`);
+  const [post, revisions] = await Promise.all([
+    getPostForAdministration(postId),
     listPostRevisions(postId),
   ]);
   if (!post) notFound();
@@ -70,6 +70,7 @@ export default async function PostRevisionsPage({
             <div><span className="version-label">历史版本预览 · v{selected.revision.revisionNumber}</span><h2>{selected.revision.title}</h2></div>
             {!selectedIsCurrent && <RestoreRevisionForm
               revisionNumber={selected.revision.revisionNumber}
+              restoresDeletedPost={Boolean(post.post.deletedAt)}
               action={restoreRevisionAction.bind(null, postId, selected.revision.id)}
             />}
             {selectedIsCurrent && <span className="current-revision-pill">当前版本</span>}

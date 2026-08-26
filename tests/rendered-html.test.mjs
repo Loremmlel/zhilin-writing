@@ -48,3 +48,14 @@ test("production artifact contains administrator revision preview and restore su
   assert.match(source, /恢复此版本/);
   assert.match(source, /当前版本/);
 });
+
+test("production artifact contains V4 lifecycle placeholders, confirmations, and moderation", async () => {
+  const [source, styles] = await Promise.all([builtServerSource(), builtCssSource()]);
+  assert.match(source, /该帖子已被作者删除/);
+  assert.match(source, /该回复已被管理员隐藏/);
+  assert.match(source, /其他用户已经发布的回复仍会保留/);
+  assert.match(source, /管理员操作记录/);
+  assert.match(source, /恢复作者删除/);
+  assert.match(styles, /status-pill--deleted/);
+  assert.match(styles, /deleted-placeholder/);
+});

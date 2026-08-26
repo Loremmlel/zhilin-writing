@@ -58,10 +58,12 @@ export function validateReplyMarkdown(value: string): string {
 
 export function normalizeReplyTarget(target: ReplyTarget): {
   rootReplyId: string;
+  replyToReplyId: string;
   replyToUserId: string;
 } {
   return {
     rootReplyId: target.rootReplyId ?? target.id,
+    replyToReplyId: target.id,
     replyToUserId: target.authorId,
   };
 }

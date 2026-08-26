@@ -11,11 +11,12 @@ export default async function OpenNotificationPage({ params }: { params: Promise
   if (!item) notFound();
   await markNotificationRead(id, member.id);
 
-  if (!item.postAvailable || !item.post) {
+  if (!item.postReachable || !item.post) {
     return <div className="page-column"><div className="unavailable-card"><span className="eyebrow">历史通知</span><h1>该内容已不可用。</h1><p>通知记录仍然保留，但关联的帖子已经删除、隐藏或不再可访问。</p></div></div>;
   }
   if (item.notification.replyId && item.replyAvailable) {
     redirect(replyTargetHref(item.post.id, item.notification.replyId));
   }
-  redirect(`/posts/${item.post.id}?notice=reply-deleted#replies`);
+  const notice = item.replyState === "hidden" ? "reply-hidden" : "reply-deleted";
+  redirect(`/posts/${item.post.id}?notice=${notice}#replies`);
 }
