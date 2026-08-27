@@ -11,6 +11,12 @@ import { restoreRevisionAction } from "./actions";
 
 export const dynamic = "force-dynamic";
 
+const revisionKindLabels = {
+  CONTENT_EDIT: "内容编辑",
+  RESTORE: "版本恢复",
+  ANNOTATION_STATE: "批注状态变化",
+} as const;
+
 export default async function PostRevisionsPage({
   params,
   searchParams,
@@ -33,6 +39,11 @@ export default async function PostRevisionsPage({
   const attachmentIds = new Set(selected.assetRefs.filter((ref) => ref.usage === "attachment").map((ref) => ref.assetId));
   const selectedAttachments = selected.assets.filter((asset) => attachmentIds.has(asset.id));
   const selectedIsCurrent = selected.revision.id === post.post.currentRevisionId;
+  const currentSnapshot = selectedIsCurrent || !post.post.currentRevisionId
+    ? selected
+    : await getRevisionSnapshot(postId, post.post.currentRevisionId);
+  const selectedAnnotationIds = new Set(selected.annotationStates.map((state) => state.annotationId));
+  const exitingAnnotationCount = currentSnapshot?.annotationStates.filter((state) => !selectedAnnotationIds.has(state.annotationId)).length ?? 0;
 
   return (
     <div className="page-column revision-admin-page">
@@ -58,6 +69,7 @@ export default async function PostRevisionsPage({
                 <strong>{revision.title}</strong>
                 <small>{formatDateTime(revision.createdAt)} · {creator.displayName}</small>
                 <span className="revision-badges">
+                  <em>{revisionKindLabels[revision.kind]}</em>
                   {isCurrent && <em>当前版本</em>}
                   {restoreNumber && <em>恢复自 v{restoreNumber}</em>}
                 </span>
@@ -71,11 +83,18 @@ export default async function PostRevisionsPage({
             {!selectedIsCurrent && <RestoreRevisionForm
               revisionNumber={selected.revision.revisionNumber}
               restoresDeletedPost={Boolean(post.post.deletedAt)}
+              annotationCount={selected.annotationStates.length}
+              exitingAnnotationCount={exitingAnnotationCount}
               action={restoreRevisionAction.bind(null, postId, selected.revision.id)}
             />}
             {selectedIsCurrent && <span className="current-revision-pill">当前版本</span>}
           </div>
           <article className="markdown-body revision-markdown" dangerouslySetInnerHTML={{ __html: await renderMarkdown(selected.revision.markdown) }} />
+          <section className="revision-assets">
+            <div className="section-heading"><h3>批注快照</h3><span>{selected.annotationStates.length} 条</span></div>
+            <p className="muted">该版本记录了当时属于正文的批注锚点，以及每条批注当时的删除或隐藏状态。</p>
+            {!selectedIsCurrent && exitingAnnotationCount > 0 && <p className="content-notice" role="status">恢复此版本将使当前版本中的 {exitingAnnotationCount} 条批注不再属于当前正文。</p>}
+          </section>
           <section className="revision-assets">
             <div className="section-heading"><h3>附件快照</h3><span>{selectedAttachments.length} 个</span></div>
             {selectedAttachments.length === 0

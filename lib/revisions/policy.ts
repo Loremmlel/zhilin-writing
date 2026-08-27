@@ -1,9 +1,51 @@
+import { collectAnnotationIds, parseAnnotationMarkdown } from "../annotations/markdown.ts";
+
 export type AssetUsage = "inline" | "attachment";
 
 export type AssetSnapshotRef = {
   assetId: string;
   usage: AssetUsage;
 };
+
+export type AnnotationStateSnapshot = {
+  annotationId: string;
+  deletedAt: Date | null;
+  deletedByUserId: string | null;
+  hiddenAt: Date | null;
+  hiddenByUserId: string | null;
+};
+
+function assertMatchingAnnotationIds(label: string, left: string[], right: string[]) {
+  const a = [...left].sort();
+  const b = [...right].sort();
+  const consistent = a.length === new Set(a).size
+    && b.length === new Set(b).size
+    && a.length === b.length
+    && a.every((id, index) => id === b[index]);
+  if (!consistent) throw new Error(`${label}批注状态不一致`);
+}
+
+export function planAnnotationRestore(input: {
+  currentMarkdown: string;
+  currentAnchorIds: string[];
+  currentStates: AnnotationStateSnapshot[];
+  sourceMarkdown: string;
+  sourceStates: AnnotationStateSnapshot[];
+}) {
+  const currentMarkdownIds = collectAnnotationIds(parseAnnotationMarkdown(input.currentMarkdown));
+  const currentStateIds = input.currentStates.map((state) => state.annotationId);
+  assertMatchingAnnotationIds("当前正文与锚点", currentMarkdownIds, input.currentAnchorIds);
+  assertMatchingAnnotationIds("当前正文与快照", currentMarkdownIds, currentStateIds);
+
+  const sourceAnchorIds = collectAnnotationIds(parseAnnotationMarkdown(input.sourceMarkdown));
+  assertMatchingAnnotationIds("历史版本", sourceAnchorIds, input.sourceStates.map((state) => state.annotationId));
+  const sourceSet = new Set(sourceAnchorIds);
+  return {
+    sourceAnchorIds,
+    exitingAnnotationIds: currentMarkdownIds.filter((id) => !sourceSet.has(id)),
+    restoredStates: sourceAnchorIds.map((id) => input.sourceStates.find((state) => state.annotationId === id)!),
+  };
+}
 
 type ComparablePostContent = {
   title: string;
