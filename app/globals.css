@@ -14,6 +14,9 @@
   --danger: #a44d47;
   --warning: #8b6a2c;
   --warning-soft: #f6f0df;
+  --annotation: #f7e8e6;
+  --annotation-active: #efcbc6;
+  --annotation-ink: #7d3934;
   --shadow: 0 12px 35px rgba(35, 48, 37, .055);
   --radius: 14px;
   --z-header: 400;
@@ -26,7 +29,7 @@
 }
 
 * { box-sizing: border-box; }
-html { background: var(--paper); color: var(--ink); scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track); scrollbar-width: thin; }
+html { background: var(--paper); color: var(--ink); scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track); scrollbar-width: thin; scrollbar-gutter: stable; }
 *::-webkit-scrollbar { width: 10px; height: 10px; }
 *::-webkit-scrollbar-track { background: var(--scrollbar-track); }
 *::-webkit-scrollbar-thumb { border: 2px solid var(--scrollbar-track); border-radius: 999px; background: var(--scrollbar-thumb); }
@@ -184,6 +187,53 @@ button, summary, input[type="file"] { cursor: pointer; }
 .markdown-body th, .markdown-body td { padding: 9px 12px; border: 1px solid var(--line-strong); text-align: left; }
 .markdown-body th { background: var(--green-pale); }
 .markdown-body img { max-width: 100%; height: auto; border-radius: 10px; }
+.annotation-range { padding: .05em .08em; margin-inline: -.03em; border-bottom: 1px dotted rgba(125, 57, 52, .5); border-radius: 3px; background: var(--annotation); box-decoration-break: clone; -webkit-box-decoration-break: clone; cursor: pointer; transition: background .18s, box-shadow .18s; }
+.annotation-range:hover, .annotation-range:focus-visible, .annotation-range.is-active { background: var(--annotation-active); box-shadow: 0 0 0 2px rgba(125, 57, 52, .12); outline: none; }
+.reading-page--annotated { width: min(1240px, calc(100% - 40px)); }
+.post-article--annotated { padding-inline: 46px; }
+.annotation-reading-layout { position: relative; display: grid; grid-template-columns: minmax(0, 720px) minmax(270px, 330px); gap: 70px; align-items: start; }
+.annotation-reading-layout--empty { display: block; }
+.annotation-reading-layout--empty .annotation-sidebar { display: none; }
+.annotation-document-body { min-width: 0; }
+.annotation-sidebar { position: relative; min-width: 0; }
+.annotation-card { position: absolute; inset-inline: 0; padding: 15px 16px; border: 1px solid #ead6d3; border-radius: 10px; background: #fffaf8; box-shadow: 0 5px 18px rgba(72, 42, 39, .04); outline: none; transition: border-color .18s, background .18s, box-shadow .18s, transform .18s; }
+.annotation-card:hover, .annotation-card:focus-visible, .annotation-card.is-active { border-color: #d7aaa5; background: #fff7f5; box-shadow: 0 8px 24px rgba(90, 48, 44, .09); transform: translateX(2px); }
+.annotation-card-header { display: flex; align-items: center; gap: 9px; }
+.annotation-card-header > div { min-width: 0; display: grid; gap: 2px; }
+.annotation-card-header strong { font-size: 13px; }
+.annotation-card-header time { color: var(--muted); font-size: 11px; }
+.annotation-card-locate { min-height: 30px; margin-left: auto; padding: 0 8px; border: 0; border-radius: 6px; background: transparent; color: var(--annotation-ink); font-size: 11px; font-weight: 700; }
+.annotation-card-locate:hover, .annotation-card-locate:focus-visible { background: var(--annotation); outline: 2px solid rgba(125, 57, 52, .2); outline-offset: 1px; }
+.annotation-card-excerpt { margin: 11px 0 9px; padding: 7px 9px; border-left: 2px solid #d8aaa5; background: var(--annotation); color: #76504c; font: 12px/1.55 Georgia, "Noto Serif SC", serif; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.markdown-body--annotation { font: 13px/1.75 inherit; }
+.markdown-body--annotation p { margin: .55em 0; }
+.markdown-body--annotation > :last-child { margin-bottom: 0; }
+.annotation-reply-list { display: grid; gap: 0; margin: 14px -16px 0; border-top: 1px solid #eadeda; }
+.annotation-reply { padding: 13px 16px; border-bottom: 1px solid #eadeda; background: rgba(251, 250, 247, .66); }
+.annotation-reply header { display: flex; align-items: center; gap: 8px; }
+.annotation-reply header > div { min-width: 0; display: grid; gap: 1px; }
+.annotation-reply header strong { font-size: 12px; }
+.annotation-reply header span { color: var(--muted); font-size: 10px; }
+.annotation-inline-reply { margin-top: 8px; }
+.annotation-inline-reply summary { width: fit-content; color: var(--annotation-ink); font-size: 11px; font-weight: 700; list-style: none; }
+.annotation-inline-reply summary:hover, .annotation-inline-reply summary:focus-visible { text-decoration: underline; outline: none; }
+.annotation-inline-reply--root { margin-top: 13px; }
+.annotation-reply-form { margin-top: 9px; }
+.annotation-reply-form .markdown-editor--compact { min-height: 115px; }
+.annotation-reply-form .markdown-editor--compact .milkdown, .annotation-reply-form .markdown-editor--compact .milkdown .ProseMirror { min-height: 92px; }
+.annotation-reply-form .markdown-editor--compact .milkdown .ProseMirror { padding: 12px; }
+.annotation-reply-form-actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 8px; }
+.annotation-placeholder { margin: 11px 0; color: var(--warning); font-size: 12px; font-weight: 700; line-height: 1.65; }
+.annotation-card > .text-button--danger, .annotation-reply > .text-button--danger { margin-top: 7px; font-size: 11px; }
+.annotation-sheet-actions { display: flex; justify-content: flex-end; margin: -8px 0 8px; }
+.annotation-sheet-thread { padding-bottom: 4px; }
+.annotation-connectors { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+.annotation-connectors path { fill: none; stroke: #d6a29d; stroke-width: 1.15; stroke-dasharray: 2 3; vector-effect: non-scaling-stroke; transition: stroke .18s, stroke-width .18s; }
+.annotation-connectors path.is-active { stroke: var(--annotation-ink); stroke-width: 1.8; stroke-dasharray: none; }
+.annotation-selection-menu { position: fixed; z-index: var(--z-popover); min-height: 34px; padding: 0 13px; border: 1px solid #d7aaa5; border-radius: 8px; background: #fffaf8; color: var(--annotation-ink); box-shadow: 0 9px 28px rgba(63, 42, 39, .14); font-size: 13px; font-weight: 700; }
+.annotation-selection-menu:hover, .annotation-selection-menu:focus-visible { background: var(--annotation); outline: 2px solid rgba(125, 57, 52, .25); outline-offset: 2px; }
+.annotation-composer { margin-top: 20px; }
+.annotation-selection-preview { max-height: 105px; overflow: auto; margin: 0 0 15px; padding: 11px 13px; border-left: 3px solid #d8aaa5; background: var(--annotation); color: #76504c; font: 14px/1.7 Georgia, "Noto Serif SC", serif; }
 .attachment-area { margin-top: 42px; padding-top: 24px; border-top: 1px solid var(--line); }
 .attachment-area h2 { font: 700 18px Georgia, serif; }
 .attachment-link { padding: 12px 14px; display: flex; justify-content: space-between; border: 1px solid var(--line); border-radius: 8px; margin-top: 8px; }
@@ -269,17 +319,18 @@ button, summary, input[type="file"] { cursor: pointer; }
 .admin-row strong { font-size: 14px; }
 .admin-row span { color: var(--muted); font-size: 12px; }
 .admin-row--link:hover { color: var(--green-dark); }
-.admin-page .list-tabs { margin-bottom: 8px; }
+.admin-page .list-tabs { margin-bottom: 8px; overflow-x: auto; scrollbar-gutter: stable; }
+.admin-page .list-tabs a { flex: none; }
 .list-tabs--secondary { height: 44px; gap: 24px; margin-bottom: 18px; font-size: 13px; }
 .admin-content-list { margin-top: 4px; }
 .admin-content-row { align-items: flex-start; padding-block: 16px; }
 .admin-content-main { min-width: 0; flex: 1; }
-.status-line { display: flex !important; flex-flow: row wrap; gap: 6px !important; }
-.status-pill { width: fit-content; padding: 3px 8px; border-radius: 999px; font-size: 11px !important; font-weight: 750; }
-.status-pill--normal { background: var(--green-soft); color: var(--green-dark) !important; }
-.status-pill--deleted { background: var(--warning-soft); color: var(--warning) !important; }
-.status-pill--hidden { background: #fbefed; color: var(--danger) !important; }
-.admin-row-actions { display: flex !important; flex-wrap: wrap; justify-content: flex-end; gap: 8px 12px !important; }
+.admin-row .status-line { display: flex; flex-flow: row wrap; gap: 6px; }
+.admin-row .status-pill { width: fit-content; padding: 3px 8px; border-radius: 999px; font-size: 11px; font-weight: 750; }
+.admin-row .status-pill--normal { background: var(--green-soft); color: var(--green-dark); }
+.admin-row .status-pill--deleted { background: var(--warning-soft); color: var(--warning); }
+.admin-row .status-pill--hidden { background: #fbefed; color: var(--danger); }
+.admin-row .admin-row-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px 12px; }
 .admin-content-preview { margin-top: 6px; color: var(--green-dark); font-size: 12px; }
 .admin-content-preview pre { max-width: 560px; max-height: 180px; overflow: auto; margin: 8px 0 0; padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: #f8f8f3; color: #4e554e; white-space: pre-wrap; overflow-wrap: anywhere; font: 12px/1.65 ui-monospace, monospace; }
 .moderation-form { margin-top: 20px; }
@@ -319,6 +370,14 @@ button, summary, input[type="file"] { cursor: pointer; }
   .post-article { padding-inline: clamp(22px, 6vw, 42px); }
   .revision-admin-layout { grid-template-columns: 1fr; }
   .revision-timeline { position: static; max-height: 360px; }
+  .reading-page--annotated { width: min(920px, calc(100% - 40px)); }
+  .post-article--annotated { padding-inline: clamp(22px, 6vw, 42px); }
+  .annotation-reading-layout { display: block; }
+  .annotation-sidebar, .annotation-connectors { display: none; }
+  .dialog-backdrop.annotation-sheet-backdrop { padding: 0; place-items: end center; }
+  .dialog-surface.annotation-sheet-surface { width: min(100%, 680px); max-height: min(82dvh, 760px); padding: 20px 20px calc(20px + env(safe-area-inset-bottom)); border-radius: 18px 18px 0 0; border-bottom: 0; overscroll-behavior: contain; }
+  .annotation-sheet-surface .dialog-header { padding-right: 70px; }
+  .annotation-sheet-surface .dialog-header h2 { font-size: 23px; }
 }
 
 @media (max-width: 640px) {
@@ -337,6 +396,7 @@ button, summary, input[type="file"] { cursor: pointer; }
   .editor-topline { align-items: flex-start; flex-direction: column; gap: 4px; }
   .markdown-editor .milkdown .ProseMirror { padding: 22px 18px; }
   .post-article { padding: 4px 20px 36px; }
+  .reading-page--annotated { width: min(100% - 24px, 920px); }
   .reply { padding: 16px 14px; }
   .reply--nested { margin-left: 22px; }
   .profile-header { grid-template-columns: 1fr; }
@@ -361,4 +421,12 @@ button, summary, input[type="file"] { cursor: pointer; }
 @media (forced-colors: active) {
   * { scrollbar-color: auto; }
   .button, .account-menu-trigger, .revision-list-item { border: 1px solid ButtonText; }
+  .annotation-range { border: 1px solid LinkText; background: Canvas; color: CanvasText; }
+  .annotation-card, .annotation-sheet-surface { border: 1px solid ButtonText; }
+  .annotation-connectors path { stroke: LinkText; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Accessibility override must win over component-level transitions and keyframes. */
+  *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }

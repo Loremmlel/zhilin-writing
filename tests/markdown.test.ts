@@ -24,3 +24,14 @@ test("produces searchable plain text without Markdown syntax", () => {
   const text = markdownToPlainText("# 雨天随笔\n\n这是 **安静** 的一天。[旧书店](https://example.com)");
   assert.equal(text, "雨天随笔 这是 安静 的一天。旧书店");
 });
+
+test("renders annotation directives as safe semantic marks without exposing internal syntax", async () => {
+  const id = "ann_550e8400-e29b-41d4-a716-446655440000";
+  const html = await renderMarkdown(`这里有 :annotation[一段 **批注文字**和[链接](https://example.com)]{#${id}}。`);
+  assert.match(html, /<mark class="annotation-range"/);
+  assert.match(html, new RegExp(`data-annotation-id="${id}"`));
+  assert.match(html, /<strong>批注文字<\/strong>/);
+  assert.match(html, /<a href="https:\/\/example.com">链接<\/a>/);
+  assert.doesNotMatch(html, /:annotation\[/);
+  assert.equal(markdownToPlainText(`:annotation[文字]{#${id}}`), "文字");
+});

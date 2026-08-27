@@ -2,7 +2,7 @@ import type { BatchItem } from "drizzle-orm/batch";
 import { and, eq, isNotNull, isNull } from "drizzle-orm";
 
 import { getDb } from "@/db";
-import { adminAuditLog, posts, replies } from "@/db/schema";
+import { adminAuditLog, annotationReplies, annotations, postAnnotationAnchors, posts, replies } from "@/db/schema";
 import { deriveLastActivityAt } from "./policy";
 import {
   planAdminLifecycleTransition,
@@ -24,22 +24,35 @@ async function findReplyRecord(replyId: string) {
   return (await getDb().select().from(replies).where(eq(replies.id, replyId)).limit(1))[0] ?? null;
 }
 
-async function derivePostActivityAfterReplyChange(
+export async function derivePostActivityAfterInteractionChange(
   postId: string,
-  replyId: string,
-  patch: Partial<Pick<LifecycleRecord, "deletedAt" | "hiddenAt">>,
+  change?:
+    | { kind: "reply"; id: string; deletedAt?: Date | null; hiddenAt?: Date | null }
+    | { kind: "annotation"; id: string; deletedAt?: Date | null; hiddenAt?: Date | null; current?: boolean }
+    | { kind: "annotationReply"; id: string; deletedAt?: Date | null; hiddenAt?: Date | null },
 ) {
   const db = getDb();
-  const [post, replyRows] = await Promise.all([
+  const [post, replyRows, annotationRows, annotationReplyRows] = await Promise.all([
     db.select({ publishedAt: posts.publishedAt }).from(posts).where(eq(posts.id, postId)).limit(1).then((rows) => rows[0]),
     db.select({ id: replies.id, publishedAt: replies.publishedAt, deletedAt: replies.deletedAt, hiddenAt: replies.hiddenAt })
       .from(replies)
       .where(eq(replies.postId, postId)),
+    db.select({ id: annotations.id, publishedAt: annotations.createdAt, deletedAt: annotations.deletedAt, hiddenAt: annotations.hiddenAt })
+      .from(postAnnotationAnchors).innerJoin(annotations, eq(postAnnotationAnchors.annotationId, annotations.id))
+      .where(eq(postAnnotationAnchors.postId, postId)),
+    db.select({ id: annotationReplies.id, publishedAt: annotationReplies.createdAt, deletedAt: annotationReplies.deletedAt, hiddenAt: annotationReplies.hiddenAt })
+      .from(postAnnotationAnchors).innerJoin(annotationReplies, eq(postAnnotationAnchors.annotationId, annotationReplies.annotationId))
+      .where(eq(postAnnotationAnchors.postId, postId)),
   ]);
   if (!post) throw new Error("帖子不存在");
-  return deriveLastActivityAt(post.publishedAt, replyRows.map((reply) => (
-    reply.id === replyId ? { ...reply, ...patch } : reply
-  )));
+  const patchRows = <T extends { id: string; deletedAt: Date | null; hiddenAt: Date | null }>(kind: "reply" | "annotation" | "annotationReply", rows: T[]) => rows
+    .filter((row) => !(change?.kind === "annotation" && kind === "annotation" && row.id === change.id && change.current === false))
+    .map((row) => change?.kind === kind && row.id === change.id ? { ...row, deletedAt: change.deletedAt ?? row.deletedAt, hiddenAt: change.hiddenAt ?? row.hiddenAt } : row);
+  return deriveLastActivityAt(post.publishedAt, [
+    ...patchRows("reply", replyRows),
+    ...patchRows("annotation", annotationRows),
+    ...patchRows("annotationReply", annotationReplyRows),
+  ]);
 }
 
 function insertAuditOperation(
@@ -75,7 +88,7 @@ export async function deleteReplyByAuthor(replyId: string, actorUserId: string) 
   if (!reply) throw new Error("回复不存在");
   const plan = planAuthorDelete(reply, actorUserId, new Date());
   if (!plan.changed) return { changed: false as const, postId: reply.postId };
-  const lastActivityAt = await derivePostActivityAfterReplyChange(reply.postId, reply.id, plan.patch);
+  const lastActivityAt = await derivePostActivityAfterInteractionChange(reply.postId, { kind: "reply", id: reply.id, ...plan.patch });
   const db = getDb();
   await db.batch(asBatch([
     db.update(replies).set(plan.patch).where(and(
@@ -110,11 +123,8 @@ async function transitionPost(
     insertAuditOperation(plan.audit),
   ];
   if (actionType === "POST_RESTORED") {
-    const publicReplies = await db.select({ publishedAt: replies.publishedAt, deletedAt: replies.deletedAt, hiddenAt: replies.hiddenAt })
-      .from(replies)
-      .where(eq(replies.postId, postId));
     operations.push(db.update(posts).set({
-      lastActivityAt: deriveLastActivityAt(post.publishedAt, publicReplies),
+      lastActivityAt: await derivePostActivityAfterInteractionChange(postId),
     }).where(eq(posts.id, postId)));
   }
   await db.batch(asBatch(operations));
@@ -132,7 +142,7 @@ async function transitionReply(
   if (!reply) throw new Error("回复不存在");
   const plan = planAdminLifecycleTransition(actionType, "REPLY", replyId, reply, adminUserId, new Date(), reason, operationId);
   if (!plan.changed || !plan.audit) return { changed: false as const, postId: reply.postId };
-  const lastActivityAt = await derivePostActivityAfterReplyChange(reply.postId, reply.id, plan.patch);
+  const lastActivityAt = await derivePostActivityAfterInteractionChange(reply.postId, { kind: "reply", id: reply.id, ...plan.patch });
   const db = getDb();
   const lifecycleGuard = actionType === "REPLY_HIDDEN"
     ? isNull(replies.hiddenAt)

@@ -2,33 +2,57 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { Avatar } from "@/components/avatar";
+import { AnnotationReadingLayout, type AnnotationCardView } from "@/components/annotations/annotation-reading-layout";
 import { DeleteContentControl } from "@/components/lifecycle/delete-content-control";
 import { ReplyForm } from "@/components/reply-form";
 import { ReplyList } from "@/components/reply-list";
 import { getPostDetail, listReplies } from "@/db/queries";
+import { listCurrentAnnotationThreads } from "@/lib/annotations/queries";
 import { requireMember } from "@/lib/auth/access";
 import { formatDateTime } from "@/lib/format";
 import { deletePostConfirmation } from "@/lib/lifecycle/policy";
 import { renderMarkdown } from "@/lib/markdown/render";
-import { createReplyAction, deletePostAction, deleteReplyAction } from "./actions";
+import { createAnnotationAction, createAnnotationReplyAction, createReplyAction, deleteAnnotationAction, deleteAnnotationReplyAction, deletePostAction, deleteReplyAction } from "./actions";
 
-export default async function PostPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ notice?: string }> }) {
+export default async function PostPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ notice?: string; annotation?: string }> }) {
   const [{ id }, query] = await Promise.all([params, searchParams]);
-  const [{ member }, item, rawReplies] = await Promise.all([requireMember(`/posts/${id}`), getPostDetail(id), listReplies(id)]);
+  const [{ member }, item, rawReplies, rawAnnotations] = await Promise.all([requireMember(`/posts/${id}`), getPostDetail(id), listReplies(id), listCurrentAnnotationThreads(id)]);
   if (!item) notFound();
-  const [postHtml, replyViews] = await Promise.all([
+  const [postHtml, replyViews, annotationViews] = await Promise.all([
     item.markdown ? renderMarkdown(item.markdown) : Promise.resolve(""),
     Promise.all(rawReplies.map(async (reply) => ({
       ...reply,
       html: reply.lifecycle.contentVisible ? await renderMarkdown(reply.reply.markdown) : "",
+    }))),
+    Promise.all(rawAnnotations.map(async (row): Promise<AnnotationCardView> => ({
+      id: row.annotation.id,
+      originalSelectedText: row.annotation.originalSelectedText,
+      contentHtml: row.lifecycle.contentVisible ? await renderMarkdown(row.annotation.contentMarkdown) : "",
+      createdAtLabel: formatDateTime(row.annotation.createdAt),
+      author: { id: row.author.id, displayName: row.author.displayName, avatarAssetId: row.author.avatarAssetId },
+      lifecycle: row.lifecycle,
+      deleteDescription: row.replies.some((reply) => reply.author.id !== row.annotation.authorId && reply.lifecycle.state === "normal")
+        ? "删除后批注正文会变为占位，但其他成员的回复仍会保留。"
+        : "删除后这条批注会从当前正文撤下；历史版本仍可由管理员恢复。",
+      replySubmissionKey: crypto.randomUUID(),
+      replies: await Promise.all(row.replies.map(async (reply) => ({
+        id: reply.reply.id,
+        contentHtml: reply.lifecycle.contentVisible ? await renderMarkdown(reply.reply.contentMarkdown) : "",
+        createdAtLabel: formatDateTime(reply.reply.createdAt),
+        replySubmissionKey: crypto.randomUUID(),
+        author: { id: reply.author.id, displayName: reply.author.displayName, avatarAssetId: reply.author.avatarAssetId },
+        replyTo: reply.replyTo ? { id: reply.replyTo.id, displayName: reply.replyTo.displayName } : null,
+        lifecycle: { state: reply.lifecycle.state, contentVisible: reply.lifecycle.contentVisible, placeholder: reply.lifecycle.placeholder },
+        deleteDescription: reply.lifecycle.visibleDependentCount > 0 ? "删除后内容会变为占位，明确回复它的其他内容仍会保留。" : "删除后这条回复会从普通页面撤下。",
+      }))),
     }))),
   ]);
   const topReplyAction = createReplyAction.bind(null, id, null);
   const visibleReplyCount = replyViews.filter((reply) => reply.lifecycle.contentVisible).length;
   const discussionVisible = item.lifecycle.contentVisible || item.lifecycle.discussionReachable;
   return (
-    <div className="reading-page page-column">
-      {item.lifecycle.contentVisible ? <article className="post-article">
+    <div className={`reading-page page-column${annotationViews.length ? " reading-page--annotated" : ""}`}>
+      {item.lifecycle.contentVisible ? <article className={`post-article${annotationViews.length ? " post-article--annotated" : ""}`}>
           <header className="post-header">
             <div className="post-kicker">{item.tags.map((tag) => <Link className="tag" key={tag.id} href={`/tags/${encodeURIComponent(tag.normalizedName)}`}>{tag.name}</Link>)}</div>
             <h1>{item.title}</h1>
@@ -45,7 +69,17 @@ export default async function PostPage({ params, searchParams }: { params: Promi
               />}
             </div>
           </header>
-          <div className="markdown-body" dangerouslySetInnerHTML={{ __html: postHtml }} />
+          {item.post.currentRevisionId ? <AnnotationReadingLayout
+            html={postHtml}
+            annotations={annotationViews}
+            baseRevisionId={item.post.currentRevisionId}
+            action={createAnnotationAction.bind(null, id)}
+            replyAction={createAnnotationReplyAction.bind(null, id)}
+            deleteAction={deleteAnnotationAction.bind(null, id)}
+            deleteReplyAction={deleteAnnotationReplyAction.bind(null, id)}
+            currentUserId={member.id}
+            initialAnnotationId={query.annotation}
+          /> : <div className="markdown-body" dangerouslySetInnerHTML={{ __html: postHtml }} />}
           {item.attachments.length > 0 && <section className="attachment-area">
             <h2>附件</h2>
             {item.attachments.map((asset) => <a href={`/api/assets/${asset.id}`} key={asset.id} className="attachment-link"><span>{asset.filename}</span><small>{Math.ceil(asset.byteSize / 1024)} KB</small></a>)}

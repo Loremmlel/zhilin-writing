@@ -197,6 +197,7 @@ export async function getPostDetail(id: string) {
     publishedAt: row.post.publishedAt,
     editedAt: row.post.editedAt,
     lastActivityAt: row.post.lastActivityAt,
+    currentRevisionId: row.post.currentRevisionId,
     deletedAt: row.post.deletedAt,
     hiddenAt: row.post.hiddenAt,
   };
