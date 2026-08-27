@@ -23,8 +23,8 @@ export type AnnotationReplyAction = (annotationId: string, targetReplyId: string
 export type AnnotationDeleteAction = (annotationId: string, state: LifecycleActionState, formData: FormData) => Promise<LifecycleActionState>;
 export type AnnotationReplyDeleteAction = (replyId: string, state: LifecycleActionState, formData: FormData) => Promise<LifecycleActionState>;
 
-export function AnnotationThread({ annotation, currentUserId, replyAction, deleteAction, deleteReplyAction, onLocate }: {
-  annotation: AnnotationCardView; currentUserId: string; replyAction: AnnotationReplyAction; deleteAction: AnnotationDeleteAction; deleteReplyAction: AnnotationReplyDeleteAction; onLocate?: () => void;
+export function AnnotationThread({ annotation, currentUserId, replyAction, deleteAction, deleteReplyAction, onLocate, allowReplies = true }: {
+  annotation: AnnotationCardView; currentUserId: string; replyAction: AnnotationReplyAction; deleteAction: AnnotationDeleteAction; deleteReplyAction: AnnotationReplyDeleteAction; onLocate?: () => void; allowReplies?: boolean;
 }) {
   return <>
     <header className="annotation-card-header">
@@ -39,8 +39,8 @@ export function AnnotationThread({ annotation, currentUserId, replyAction, delet
       <header><Avatar name={reply.author.displayName} assetId={reply.author.avatarAssetId} size="small" /><div><strong>{reply.author.displayName}</strong><span>{reply.replyTo ? `回复 ${reply.replyTo.displayName}` : "回复批注"} · {reply.createdAtLabel}</span></div></header>
       {reply.lifecycle.contentVisible ? <div className="markdown-body markdown-body--annotation" dangerouslySetInnerHTML={{ __html: reply.contentHtml }} /> : <p className="annotation-placeholder">{reply.lifecycle.placeholder}</p>}
       {reply.lifecycle.contentVisible && reply.author.id === currentUserId && <DeleteContentControl action={deleteReplyAction.bind(null, reply.id)} label="删除回复" title="删除这条批注回复？" description={reply.deleteDescription} />}
-      {reply.lifecycle.contentVisible && annotation.lifecycle.state !== "hidden" && <details className="annotation-inline-reply"><summary>回复 {reply.author.displayName}</summary><AnnotationReplyForm action={replyAction.bind(null, annotation.id, reply.id)} initialSubmissionKey={reply.replySubmissionKey} label="发布回复" /></details>}
+      {allowReplies && reply.lifecycle.contentVisible && annotation.lifecycle.state !== "hidden" && <details className="annotation-inline-reply"><summary>回复 {reply.author.displayName}</summary><AnnotationReplyForm action={replyAction.bind(null, annotation.id, reply.id)} initialSubmissionKey={reply.replySubmissionKey} label="发布回复" /></details>}
     </section>)}</div>}
-    {annotation.lifecycle.state !== "hidden" && <details className="annotation-inline-reply annotation-inline-reply--root"><summary>回复这条批注</summary><AnnotationReplyForm action={replyAction.bind(null, annotation.id, null)} initialSubmissionKey={annotation.replySubmissionKey} /></details>}
+    {allowReplies && annotation.lifecycle.state !== "hidden" && <details className="annotation-inline-reply annotation-inline-reply--root"><summary>回复这条批注</summary><AnnotationReplyForm action={replyAction.bind(null, annotation.id, null)} initialSubmissionKey={annotation.replySubmissionKey} /></details>}
   </>;
 }

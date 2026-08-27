@@ -104,7 +104,6 @@ export async function deleteAnnotationByAuthor(postId: string, annotationId: str
   const annotation = await findAnnotation(annotationId);
   if (!annotation) throw new Error("批注不存在");
   assertAnnotationBelongsToPost(annotation.postId, postId);
-  if (!await getPost(postId)) throw new Error("帖子不存在或当前不可访问");
   const db = getDb();
   const discussionReplies = await db.select().from(annotationReplies).where(eq(annotationReplies.annotationId, annotationId));
   const now = new Date();
@@ -146,8 +145,7 @@ export async function deleteAnnotationReplyByAuthor(postId: string, replyId: str
   const annotation = await findAnnotation(reply.annotationId);
   if (!annotation) throw new Error("批注不存在");
   assertAnnotationBelongsToPost(annotation.postId, postId);
-  const [accessiblePost, currentAnchorIds] = await Promise.all([getPost(postId), getCurrentAnnotationAnchorIds(postId)]);
-  if (!accessiblePost) throw new Error("帖子不存在或当前不可访问");
+  const currentAnchorIds = await getCurrentAnnotationAnchorIds(postId);
   if (!currentAnchorIds.includes(annotation.id)) throw new Error("该批注不属于当前正文");
   const plan = planAuthorDelete(reply, actorUserId, new Date());
   if (!plan.changed) return { changed: false as const, postId: annotation.postId };

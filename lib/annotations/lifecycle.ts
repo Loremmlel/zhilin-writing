@@ -20,7 +20,7 @@ export function buildAnnotationReplyLifecycleViews(replies: AnnotationReplyRecor
 export function planAnnotationAuthorDelete(annotation: AnnotationRecord, replies: AnnotationReplyRecord[], actorUserId: string, now: Date) {
   if (annotation.authorId !== actorUserId) throw new Error("你不能删除这条批注");
   if (annotation.deletedAt) return { changed: false as const, retainAnchor: false, patch: {} };
-  const retainAnchor = replies.some((reply) => reply.authorId !== actorUserId && contentState(reply).state === "normal");
+  const retainAnchor = replies.some((reply) => reply.authorId !== actorUserId && !reply.deletedAt);
   return { changed: true as const, retainAnchor, patch: { deletedAt: now, deletedByUserId: actorUserId } };
 }
 

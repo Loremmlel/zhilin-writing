@@ -8,6 +8,7 @@ const reply = (overrides: Record<string, unknown> = {}) => ({ id: "r1", annotati
 test("deleting a root removes its anchor only when no other member discussion depends on it", () => {
   assert.equal(planAnnotationAuthorDelete(root, [], "a", new Date()).retainAnchor, false);
   assert.equal(planAnnotationAuthorDelete(root, [reply()], "a", new Date()).retainAnchor, true);
+  assert.equal(planAnnotationAuthorDelete(root, [reply({ hiddenAt: new Date(), hiddenByUserId: "admin" })], "a", new Date()).retainAnchor, true);
   assert.equal(planAnnotationAuthorDelete(root, [reply({ authorId: "a" })], "a", new Date()).retainAnchor, false);
 });
 

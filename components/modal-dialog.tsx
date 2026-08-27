@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, type ReactNode } from "react";
+import { isTopmostModal } from "@/lib/ui/modal-stack";
 
 type ModalDialogProps = {
   open: boolean;
@@ -31,6 +32,7 @@ export function ModalDialog({ open, title, description, onClose, children, alert
     const focusable = () => root ? [...root.querySelectorAll<HTMLElement>(focusableSelector)] : [];
     window.setTimeout(() => (focusable()[0] ?? root)?.focus(), 0);
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (!root || !isTopmostModal(root)) return;
       if (event.key === "Escape") {
         event.preventDefault();
         onCloseRef.current();
@@ -74,6 +76,7 @@ export function ModalDialog({ open, title, description, onClose, children, alert
         aria-labelledby={titleId}
         aria-describedby={description ? descriptionId : undefined}
         tabIndex={-1}
+        data-modal-dialog="true"
       >
         <header className="dialog-header">
           <h2 id={titleId}>{title}</h2>

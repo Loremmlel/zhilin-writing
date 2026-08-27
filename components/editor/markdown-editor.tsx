@@ -6,6 +6,7 @@ import "@milkdown/crepe/theme/frame.css";
 import { useEffect, useRef } from "react";
 
 import { editorSessionKey } from "@/lib/editor/lifecycle";
+import { annotationPlugin } from "@/lib/editor/annotation-mark";
 
 export type UploadedAsset = {
   id: string;
@@ -70,6 +71,7 @@ function MarkdownEditorSession({ initialMarkdown, onMarkdownChange, onAssetUploa
         },
       },
     });
+    crepe.editor.use(annotationPlugin);
     crepe.on((listener) => {
       listener.markdownUpdated((_ctx, markdown, previous) => {
         if (!disposed && markdown !== previous) onChangeRef.current(markdown);

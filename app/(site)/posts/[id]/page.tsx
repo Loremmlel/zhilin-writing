@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import { Avatar } from "@/components/avatar";
 import { AnnotationReadingLayout, type AnnotationCardView } from "@/components/annotations/annotation-reading-layout";
+import { AnnotationThread } from "@/components/annotations/annotation-thread";
 import { DeleteContentControl } from "@/components/lifecycle/delete-content-control";
 import { ReplyForm } from "@/components/reply-form";
 import { ReplyList } from "@/components/reply-list";
@@ -19,7 +20,7 @@ export default async function PostPage({ params, searchParams }: { params: Promi
   const [{ member }, item, rawReplies, rawAnnotations] = await Promise.all([requireMember(`/posts/${id}`), getPostDetail(id), listReplies(id), listCurrentAnnotationThreads(id)]);
   if (!item) notFound();
   const [postHtml, replyViews, annotationViews] = await Promise.all([
-    item.markdown ? renderMarkdown(item.markdown) : Promise.resolve(""),
+    item.markdown ? renderMarkdown(item.markdown, { annotationIds: rawAnnotations.map((row) => row.annotation.id) }) : Promise.resolve(""),
     Promise.all(rawReplies.map(async (reply) => ({
       ...reply,
       html: reply.lifecycle.contentVisible ? await renderMarkdown(reply.reply.markdown) : "",
@@ -93,6 +94,13 @@ export default async function PostPage({ params, searchParams }: { params: Promi
             ? <p className="muted">帖子正文和附件已撤下，其他成员已经发布的讨论仍保留在下方。</p>
             : <p className="muted">正文、标题和附件不再公开显示。</p>}
         </article>}
+      {!item.lifecycle.contentVisible && item.lifecycle.discussionReachable && annotationViews.length > 0 && <section className="annotation-detached-discussions" aria-label="保留的正文批注讨论">
+        <div className="section-heading"><h2>正文批注讨论</h2><span>{annotationViews.length} 条</span></div>
+        <p className="muted">正文已经撤下；其他成员发布的批注与回复仍保留。</p>
+        <div className="annotation-detached-list">{annotationViews.map((annotation) => <article id={`annotation-card-${annotation.id}`} key={annotation.id} className={`annotation-card annotation-card--flow${query.annotation === annotation.id ? " is-active" : ""}`}>
+          <AnnotationThread annotation={annotation} currentUserId={member.id} replyAction={createAnnotationReplyAction.bind(null, id)} deleteAction={deleteAnnotationAction.bind(null, id)} deleteReplyAction={deleteAnnotationReplyAction.bind(null, id)} allowReplies={false} />
+        </article>)}</div>
+      </section>}
       {discussionVisible && <section className="replies-section" id="replies">
         {query.notice === "reply-deleted" && <div className="content-notice" role="status">该回复已经被删除。</div>}
         {query.notice === "reply-hidden" && <div className="content-notice" role="status">该回复已被管理员隐藏。</div>}

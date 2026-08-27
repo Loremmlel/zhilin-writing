@@ -234,6 +234,10 @@ button, summary, input[type="file"] { cursor: pointer; }
 .annotation-selection-menu:hover, .annotation-selection-menu:focus-visible { background: var(--annotation); outline: 2px solid rgba(125, 57, 52, .25); outline-offset: 2px; }
 .annotation-composer { margin-top: 20px; }
 .annotation-selection-preview { max-height: 105px; overflow: auto; margin: 0 0 15px; padding: 11px 13px; border-left: 3px solid #d8aaa5; background: var(--annotation); color: #76504c; font: 14px/1.7 Georgia, "Noto Serif SC", serif; }
+.annotation-detached-discussions { margin-top: 28px; padding: 24px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper-strong); }
+.annotation-detached-discussions > .muted { display: block; margin: -5px 0 17px; }
+.annotation-detached-list { display: grid; gap: 12px; }
+.annotation-card--flow { position: relative; inset: auto; top: auto !important; }
 .attachment-area { margin-top: 42px; padding-top: 24px; border-top: 1px solid var(--line); }
 .attachment-area h2 { font: 700 18px Georgia, serif; }
 .attachment-link { padding: 12px 14px; display: flex; justify-content: space-between; border: 1px solid var(--line); border-radius: 8px; margin-top: 8px; }

@@ -25,19 +25,29 @@ const sanitizeSchema: SanitizeSchema = {
   },
 };
 
-const annotationHandler: Handler = (state, node) => {
-  const annotationId = node?.name === "annotation" && typeof node.attributes?.id === "string" ? node.attributes.id : "";
-  const result = {
-    type: "element" as const,
-    tagName: "mark",
-    properties: { className: ["annotation-range"], dataAnnotationId: annotationId, tabIndex: 0, ariaLabel: "带批注的文字，按回车查看批注" },
-    children: state.all(node),
-  };
-  state.patch(node, result);
-  return state.applyData(node, result);
-};
+const annotationIdPattern = /^ann_[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
-export async function renderMarkdown(markdown: string): Promise<string> {
+function directiveHandler(allowedAnnotationIds?: Set<string>): Handler {
+  return (state, node) => {
+    const annotationId = node?.name === "annotation" && typeof node.attributes?.id === "string" ? node.attributes.id : "";
+    const admitted = annotationIdPattern.test(annotationId) && (!allowedAnnotationIds || allowedAnnotationIds.has(annotationId));
+    const result = admitted ? {
+      type: "element" as const,
+      tagName: "mark",
+      properties: { className: ["annotation-range"], dataAnnotationId: annotationId, tabIndex: 0, ariaLabel: "带批注的文字，按回车查看批注" },
+      children: state.all(node),
+    } : {
+      type: "element" as const,
+      tagName: "span",
+      properties: {},
+      children: state.all(node),
+    };
+    state.patch(node, result);
+    return state.applyData(node, result);
+  };
+}
+
+export async function renderMarkdown(markdown: string, options: { annotationIds?: string[] } = {}): Promise<string> {
   const safeSource = markdown.replace(
     /<(script|iframe|object|embed)\b[^>]*>[\s\S]*?<\/\1\s*>/gi,
     "",
@@ -46,7 +56,7 @@ export async function renderMarkdown(markdown: string): Promise<string> {
     .use(remarkParse)
     .use(remarkGfm)
     .use(remarkDirective)
-    .use(remarkRehype, { handlers: { textDirective: annotationHandler } })
+    .use(remarkRehype, { handlers: { textDirective: directiveHandler(options.annotationIds ? new Set(options.annotationIds) : undefined) } })
     .use(rehypeSanitize, sanitizeSchema)
     .use(rehypeStringify)
     .process(safeSource);

@@ -40,7 +40,8 @@ export function replyTargetHref(postId: string, replyId: string): string {
 }
 
 export function annotationTargetHref(postId: string, annotationId: string): string {
-  return `/posts/${encodeURIComponent(postId)}?annotation=${encodeURIComponent(annotationId)}`;
+  const encodedId = encodeURIComponent(annotationId);
+  return `/posts/${encodeURIComponent(postId)}?annotation=${encodedId}#annotation-card-${encodedId}`;
 }
 
 export function canExposeAnnotationActivitySnapshot(
