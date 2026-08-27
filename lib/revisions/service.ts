@@ -150,6 +150,7 @@ export async function restorePostRevision(postId: string, sourceRevisionId: stri
       id: revisionId,
       postId,
       revisionNumber: restorePlan.revisionNumber,
+      kind: "RESTORE",
       title: restorePlan.title,
       markdown: restorePlan.markdown,
       createdAt: now,

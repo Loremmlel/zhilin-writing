@@ -87,7 +87,7 @@ export function validateLifecycleOperationId(value: string) {
 
 export function canExposeActivitySnapshot(
   postState: ContentState,
-  eventType: "POST_CREATED" | "POST_REPLY_CREATED",
+  eventType: "POST_CREATED" | "POST_REPLY_CREATED" | "ANNOTATION_CREATED" | "ANNOTATION_REPLY_CREATED",
   replyState: ContentState,
 ) {
   return postState === "normal" && (eventType === "POST_CREATED" || replyState === "normal");

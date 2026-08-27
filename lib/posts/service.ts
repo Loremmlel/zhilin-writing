@@ -5,6 +5,8 @@ import { getDb } from "@/db";
 import { activityEvents, assets, notifications, postAssetRefs, postRevisions, posts, postTags, replies, revisionAssetRefs, tags } from "@/db/schema";
 import { findReply, findReplyBySubmissionKey, getPost } from "@/db/queries";
 import { activityEventId, notificationId, resolveReplyRecipient, validateSubmissionKey } from "@/lib/activity/policy";
+import { assertOrdinaryPostMarkdown, ANNOTATED_POST_EDIT_MESSAGE } from "@/lib/annotations/policy";
+import { postHasCurrentAnnotationAnchors } from "@/lib/annotations/queries";
 import { canEditPost, normalizeReplyTarget, validatePostInput, validateReplyMarkdown } from "@/lib/domain/rules";
 import { markdownToPlainText } from "@/lib/markdown/render";
 import { buildAssetSnapshot, resolveSaveBase, type AssetSnapshotRef } from "@/lib/revisions/policy";
@@ -51,6 +53,7 @@ async function validateSnapshotAssets(authorId: string, refs: AssetSnapshotRef[]
 
 export async function createPost(authorId: string, input: SavePostInput) {
   const clean = validatePostInput(input);
+  assertOrdinaryPostMarkdown(clean.markdown);
   const now = new Date();
   const id = crypto.randomUUID();
   const revisionId = crypto.randomUUID();
@@ -79,6 +82,7 @@ export async function createPost(authorId: string, input: SavePostInput) {
       id: revisionId,
       postId: id,
       revisionNumber: 1,
+      kind: "CONTENT_EDIT",
       title: clean.title,
       markdown: clean.markdown,
       createdAt: now,
@@ -120,11 +124,13 @@ export async function updatePost(postId: string, currentUserId: string, input: S
   const existing = await getPost(postId);
   if (!existing) throw new Error("帖子不存在");
   if (!canEditPost(existing.post.authorId, currentUserId)) throw new Error("你不能编辑这篇帖子");
+  if (await postHasCurrentAnnotationAnchors(postId)) throw new Error(ANNOTATED_POST_EDIT_MESSAGE);
   if (!existing.post.currentRevisionId) throw new Error("帖子当前版本不存在");
   if (!input.baseRevisionId) throw new Error("缺少编辑基础版本，请刷新后重试");
   const base = resolveSaveBase(existing.post.currentRevisionId, input.baseRevisionId, input.overwriteBaseRevisionId);
   if (!base.ok) throw new EditConflictError(await getConflictSnapshot(postId, base.currentRevisionId));
   const clean = validatePostInput(input);
+  assertOrdinaryPostMarkdown(clean.markdown);
   const db = getDb();
   const currentRevision = (await db.select().from(postRevisions).where(eq(postRevisions.id, existing.post.currentRevisionId)).limit(1))[0];
   if (!currentRevision) throw new Error("帖子当前版本不存在");
@@ -176,6 +182,7 @@ export async function updatePost(postId: string, currentUserId: string, input: S
       id: revisionId,
       postId,
       revisionNumber: savePlan.revisionNumber,
+      kind: "CONTENT_EDIT",
       title: clean.title,
       markdown: clean.markdown,
       createdAt: now,
