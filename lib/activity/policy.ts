@@ -39,6 +39,18 @@ export function replyTargetHref(postId: string, replyId: string): string {
   return `/posts/${encodeURIComponent(postId)}#reply-${encodeURIComponent(replyId)}`;
 }
 
+export function annotationTargetHref(postId: string, annotationId: string): string {
+  return `/posts/${encodeURIComponent(postId)}?annotation=${encodeURIComponent(annotationId)}`;
+}
+
+export function canExposeAnnotationActivitySnapshot(
+  postState: "normal" | "deleted" | "hidden",
+  targetState: "normal" | "deleted" | "hidden",
+  anchorAvailable: boolean,
+) {
+  return postState === "normal" && targetState === "normal" && anchorAvailable;
+}
+
 export function validateSubmissionKey(value: string): string {
   const key = value.trim().toLocaleLowerCase("en-US");
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(key)) {

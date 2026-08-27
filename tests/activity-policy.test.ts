@@ -3,6 +3,8 @@ import test from "node:test";
 
 import {
   activityEventId,
+  annotationTargetHref,
+  canExposeAnnotationActivitySnapshot,
   notificationId,
   replyTargetHref,
   resolveReplyRecipient,
@@ -33,6 +35,14 @@ test("activity previews are whitespace-normalized and truncated by Unicode chara
 
 test("reply targets use a stable DOM anchor instead of text matching", () => {
   assert.equal(replyTargetHref("post-a", "reply-b"), "/posts/post-a#reply-reply-b");
+});
+
+test("annotation targets use the stable annotation id and redact unavailable snapshots", () => {
+  assert.equal(annotationTargetHref("post-a", "ann-a"), "/posts/post-a?annotation=ann-a");
+  assert.equal(canExposeAnnotationActivitySnapshot("normal", "normal", true), true);
+  assert.equal(canExposeAnnotationActivitySnapshot("normal", "deleted", true), false);
+  assert.equal(canExposeAnnotationActivitySnapshot("normal", "normal", false), false);
+  assert.equal(canExposeAnnotationActivitySnapshot("hidden", "normal", true), false);
 });
 
 test("reply idempotency accepts UUID submissions and rejects forged keys", () => {
