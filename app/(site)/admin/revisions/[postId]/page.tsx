@@ -89,7 +89,7 @@ export default async function PostRevisionsPage({
             />}
             {selectedIsCurrent && <span className="current-revision-pill">当前版本</span>}
           </div>
-          <article className="markdown-body revision-markdown" dangerouslySetInnerHTML={{ __html: await renderMarkdown(selected.revision.markdown, { annotationIds: selected.annotationStates.map((state) => state.annotationId) }) }} />
+          <article className="markdown-body revision-markdown" dangerouslySetInnerHTML={{ __html: await renderMarkdown(selected.revision.markdown, { annotationIds: selected.annotationStates.map((state) => state.annotationId), interactiveAnnotations: false }) }} />
           <section className="revision-assets">
             <div className="section-heading"><h3>批注快照</h3><span>{selected.annotationStates.length} 条</span></div>
             <p className="muted">该版本记录了当时属于正文的批注锚点，以及每条批注当时的删除或隐藏状态。</p>

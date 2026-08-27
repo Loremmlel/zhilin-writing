@@ -189,6 +189,7 @@ button, summary, input[type="file"] { cursor: pointer; }
 .markdown-body img { max-width: 100%; height: auto; border-radius: 10px; }
 .annotation-range { padding: .05em .08em; margin-inline: -.03em; border-bottom: 1px dotted rgba(125, 57, 52, .5); border-radius: 3px; background: var(--annotation); box-decoration-break: clone; -webkit-box-decoration-break: clone; cursor: pointer; transition: background .18s, box-shadow .18s; }
 .annotation-range:hover, .annotation-range:focus-visible, .annotation-range.is-active { background: var(--annotation-active); box-shadow: 0 0 0 2px rgba(125, 57, 52, .12); outline: none; }
+.annotation-range--preview { cursor: default; }
 .reading-page--annotated { width: min(1240px, calc(100% - 40px)); }
 .post-article--annotated { padding-inline: 46px; }
 .annotation-reading-layout { position: relative; display: grid; grid-template-columns: minmax(0, 720px) minmax(270px, 330px); gap: 70px; align-items: start; }
@@ -316,6 +317,8 @@ button, summary, input[type="file"] { cursor: pointer; }
 
 .admin-page { width: min(840px, calc(100% - 40px)); }
 .admin-section { padding: 24px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper-strong); margin-bottom: 18px; }
+.admin-page .list-tabs { overflow-x: auto; }
+.admin-page .list-tabs a { flex: none; }
 .admin-list { border-top: 1px solid var(--line); }
 .admin-row { min-height: 62px; padding: 12px 3px; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: 15px; }
 .admin-row:last-child { border-bottom: 0; }

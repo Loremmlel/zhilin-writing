@@ -32,7 +32,7 @@ export default async function PostPage({ params, searchParams }: { params: Promi
       createdAtLabel: formatDateTime(row.annotation.createdAt),
       author: { id: row.author.id, displayName: row.author.displayName, avatarAssetId: row.author.avatarAssetId },
       lifecycle: row.lifecycle,
-      deleteDescription: row.replies.some((reply) => reply.author.id !== row.annotation.authorId && reply.lifecycle.state === "normal")
+      deleteDescription: row.retainsAnchorOnAuthorDelete
         ? "删除后批注正文会变为占位，但其他成员的回复仍会保留。"
         : "删除后这条批注会从当前正文撤下；历史版本仍可由管理员恢复。",
       replySubmissionKey: crypto.randomUUID(),

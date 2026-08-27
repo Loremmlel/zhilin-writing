@@ -69,6 +69,7 @@ export async function listCurrentAnnotationThreads(postId: string) {
       ...root,
       annotation: rootState === "normal" ? root.annotation : { ...root.annotation, contentMarkdown: "" },
       lifecycle: { state: rootState, contentVisible: rootState === "normal", placeholder: rootState === "hidden" ? "该批注已被管理员隐藏。" : rootState === "deleted" ? "该批注已被作者删除。" : null },
+      retainsAnchorOnAuthorDelete: threadRows.some((row) => row.reply.authorId !== root.annotation.authorId && !row.reply.deletedAt),
       replies: threadRows.flatMap((row) => {
         const view = lifecycleById.get(row.reply.id);
         if (!view) return [];

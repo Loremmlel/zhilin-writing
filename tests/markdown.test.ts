@@ -43,6 +43,9 @@ test("readonly rendering exposes only annotation ids admitted by the current sna
   assert.match(blocked, /可见文字/);
   const allowed = await renderMarkdown(`:annotation[可见文字]{#${id}}`, { annotationIds: [id] });
   assert.match(allowed, new RegExp(`data-annotation-id="${id}"`));
+  const preview = await renderMarkdown(`:annotation[可见文字]{#${id}}`, { annotationIds: [id], interactiveAnnotations: false });
+  assert.match(preview, /annotation-range--preview/);
+  assert.doesNotMatch(preview, /tabindex=/);
   const unknown = await renderMarkdown(":note[普通文字]{#note}");
   assert.doesNotMatch(unknown, /annotation-range|data-annotation-id/);
   assert.match(unknown, /普通文字/);
