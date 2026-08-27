@@ -9,10 +9,13 @@ import {
   listUsers,
   type AdminContentStatus,
 } from "@/db/queries";
+import { listAdminAnnotationReplies, listAdminAnnotations } from "@/lib/annotations/queries";
 import { requireAdministrator } from "@/lib/auth/access";
 import { formatDateTime } from "@/lib/format";
 import {
   addAllowlistAction,
+  moderateAnnotationAction,
+  moderateAnnotationReplyAction,
   moderatePostAction,
   moderateReplyAction,
   removeAllowlistAction,
@@ -32,21 +35,33 @@ const auditLabels: Record<string, string> = {
   REPLY_UNHIDDEN: "取消隐藏回复",
   REPLY_RESTORED: "恢复已删除回复",
   REVISION_RESTORED: "恢复帖子历史版本",
+  ANNOTATION_HIDDEN: "隐藏批注",
+  ANNOTATION_UNHIDDEN: "取消隐藏批注",
+  ANNOTATION_REPLY_HIDDEN: "隐藏批注回复",
+  ANNOTATION_REPLY_UNHIDDEN: "取消隐藏批注回复",
 };
+
+type AdminContentType = "posts" | "replies" | "annotations" | "annotation-replies";
 
 export default async function AdminPage({ searchParams }: {
   searchParams: Promise<{ error?: string; type?: string; status?: string }>;
 }) {
   const [, query] = await Promise.all([requireAdministrator("/admin"), searchParams]);
-  const contentType = query.type === "replies" ? "replies" : "posts";
+  const contentType: AdminContentType = query.type === "replies" || query.type === "annotations" || query.type === "annotation-replies" ? query.type : "posts";
   const status: AdminContentStatus = query.status === "deleted" || query.status === "hidden" ? query.status : "normal";
   const [allowed, users, content, audit] = await Promise.all([
     listAllowedUsers(),
     listUsers(),
-    contentType === "posts" ? listAdminPosts(status) : listAdminReplies(status),
+    contentType === "posts"
+      ? listAdminPosts(status)
+      : contentType === "replies"
+        ? listAdminReplies(status)
+        : contentType === "annotations"
+          ? listAdminAnnotations(status)
+          : listAdminAnnotationReplies(status),
     listAdminAuditLog(),
   ]);
-  const contentHref = (nextType: "posts" | "replies", nextStatus: AdminContentStatus) => `/admin?type=${nextType}&status=${nextStatus}`;
+  const contentHref = (nextType: AdminContentType, nextStatus: AdminContentStatus) => `/admin?type=${nextType}&status=${nextStatus}`;
 
   return (
     <div className="page-column admin-page">
@@ -57,6 +72,8 @@ export default async function AdminPage({ searchParams }: {
         <nav className="list-tabs" aria-label="内容类型">
           <Link href={contentHref("posts", status)} className={contentType === "posts" ? "is-active" : ""}>Posts</Link>
           <Link href={contentHref("replies", status)} className={contentType === "replies" ? "is-active" : ""}>Replies</Link>
+          <Link href={contentHref("annotations", status)} className={contentType === "annotations" ? "is-active" : ""}>Annotations</Link>
+          <Link href={contentHref("annotation-replies", status)} className={contentType === "annotation-replies" ? "is-active" : ""}>Annotation replies</Link>
         </nav>
         <nav className="list-tabs list-tabs--secondary" aria-label="内容状态">
           {(Object.keys(statusLabels) as AdminContentStatus[]).map((value) => <Link key={value} href={contentHref(contentType, value)} className={status === value ? "is-active" : ""}>{statusLabels[value]}</Link>)}
@@ -102,6 +119,46 @@ export default async function AdminPage({ searchParams }: {
               {reply.hiddenAt
                 ? <ContentLifecycleControl key={`reply-${reply.id}-unhide-${reply.hiddenAt.getTime()}`} action={moderateReplyAction.bind(null, reply.id, "unhide")} operation="unhide" targetLabel="回复" />
                 : <ContentLifecycleControl key={`reply-${reply.id}-hide`} action={moderateReplyAction.bind(null, reply.id, "hide")} operation="hide" targetLabel="回复" />}
+            </div>
+          </article>)}
+
+          {contentType === "annotations" && (content as Awaited<ReturnType<typeof listAdminAnnotations>>).map(({ annotation, author, post }) => <article className="admin-row admin-content-row" key={annotation.id}>
+            <div className="admin-content-main">
+              <div className="status-line">
+                {!annotation.deletedAt && !annotation.hiddenAt && <span className="status-pill status-pill--normal">正常</span>}
+                {annotation.deletedAt && <span className="status-pill status-pill--deleted">用户已删除</span>}
+                {annotation.hiddenAt && <span className="status-pill status-pill--hidden">管理员已隐藏</span>}
+              </div>
+              <strong>{author.displayName} 批注《{post.title}》</strong>
+              <span>{formatDateTime(annotation.createdAt)} · 原选文：{annotation.originalSelectedText}</span>
+              {annotation.hiddenReason && <span>隐藏原因：{annotation.hiddenReason}</span>}
+              <details className="admin-content-preview"><summary>查看原始 Markdown</summary><pre>{annotation.contentMarkdown}</pre></details>
+            </div>
+            <div className="admin-row-actions">
+              <Link className="text-link" href={`/posts/${post.id}?annotation=${annotation.id}`}>对应帖子</Link>
+              {annotation.hiddenAt
+                ? <ContentLifecycleControl key={`annotation-${annotation.id}-unhide-${annotation.hiddenAt.getTime()}`} action={moderateAnnotationAction.bind(null, annotation.id, "unhide")} operation="unhide" targetLabel="批注" />
+                : <ContentLifecycleControl key={`annotation-${annotation.id}-hide`} action={moderateAnnotationAction.bind(null, annotation.id, "hide")} operation="hide" targetLabel="批注" />}
+            </div>
+          </article>)}
+
+          {contentType === "annotation-replies" && (content as Awaited<ReturnType<typeof listAdminAnnotationReplies>>).map(({ reply, author, annotation, post }) => <article className="admin-row admin-content-row" key={reply.id}>
+            <div className="admin-content-main">
+              <div className="status-line">
+                {!reply.deletedAt && !reply.hiddenAt && <span className="status-pill status-pill--normal">正常</span>}
+                {reply.deletedAt && <span className="status-pill status-pill--deleted">用户已删除</span>}
+                {reply.hiddenAt && <span className="status-pill status-pill--hidden">管理员已隐藏</span>}
+              </div>
+              <strong>{author.displayName} 回复《{post.title}》中的批注</strong>
+              <span>{formatDateTime(reply.createdAt)} · 批注 {annotation.id}</span>
+              {reply.hiddenReason && <span>隐藏原因：{reply.hiddenReason}</span>}
+              <details className="admin-content-preview"><summary>查看原始 Markdown</summary><pre>{reply.contentMarkdown}</pre></details>
+            </div>
+            <div className="admin-row-actions">
+              <Link className="text-link" href={`/posts/${post.id}?annotation=${annotation.id}`}>对应帖子</Link>
+              {reply.hiddenAt
+                ? <ContentLifecycleControl key={`annotation-reply-${reply.id}-unhide-${reply.hiddenAt.getTime()}`} action={moderateAnnotationReplyAction.bind(null, reply.id, "unhide")} operation="unhide" targetLabel="批注回复" />
+                : <ContentLifecycleControl key={`annotation-reply-${reply.id}-hide`} action={moderateAnnotationReplyAction.bind(null, reply.id, "hide")} operation="hide" targetLabel="批注回复" />}
             </div>
           </article>)}
           {content.length === 0 && <p className="empty-copy">此筛选下没有内容。</p>}

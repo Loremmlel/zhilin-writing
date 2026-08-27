@@ -29,7 +29,8 @@ const allowedParagraphParents = new Set(["root", "listItem", "blockquote"]);
 const supportedContainers = new Set(["strong", "emphasis", "delete", "link", "textDirective"]);
 
 function cloneWithoutPosition<T extends InlineNode>(node: T): T {
-  const { position: _position, ...rest } = node;
+  const rest = { ...node };
+  delete rest.position;
   return structuredClone(rest) as T;
 }
 

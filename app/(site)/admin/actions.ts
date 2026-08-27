@@ -16,6 +16,7 @@ import {
   unhideReplyByAdmin,
 } from "@/lib/lifecycle/service";
 import { validateLifecycleOperationId } from "@/lib/lifecycle/policy";
+import { moderateAnnotationByAdmin, moderateAnnotationReplyByAdmin } from "@/lib/annotations/service";
 
 export async function addAllowlistAction(formData: FormData) {
   const { member } = await requireAdministrator("/admin");
@@ -71,5 +72,53 @@ export async function moderateReplyAction(
     return { success: true };
   } catch (error) {
     return { error: error instanceof Error ? error.message : "回复状态更新失败" };
+  }
+}
+
+export async function moderateAnnotationAction(
+  annotationId: string,
+  operation: "hide" | "unhide",
+  _state: LifecycleActionState,
+  formData: FormData,
+): Promise<LifecycleActionState> {
+  void _state;
+  try {
+    const { member } = await requireAdministrator("/admin");
+    const operationId = validateLifecycleOperationId(String(formData.get("operationId") ?? ""));
+    await moderateAnnotationByAdmin({
+      annotationId,
+      administratorId: member.id,
+      operation,
+      operationId,
+      reason: String(formData.get("reason") ?? ""),
+    });
+    revalidatePath("/", "layout");
+    return { success: true };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "批注状态更新失败" };
+  }
+}
+
+export async function moderateAnnotationReplyAction(
+  replyId: string,
+  operation: "hide" | "unhide",
+  _state: LifecycleActionState,
+  formData: FormData,
+): Promise<LifecycleActionState> {
+  void _state;
+  try {
+    const { member } = await requireAdministrator("/admin");
+    const operationId = validateLifecycleOperationId(String(formData.get("operationId") ?? ""));
+    await moderateAnnotationReplyByAdmin({
+      replyId,
+      administratorId: member.id,
+      operation,
+      operationId,
+      reason: String(formData.get("reason") ?? ""),
+    });
+    revalidatePath("/", "layout");
+    return { success: true };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "批注回复状态更新失败" };
   }
 }

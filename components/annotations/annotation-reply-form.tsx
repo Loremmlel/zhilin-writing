@@ -18,10 +18,13 @@ export function AnnotationReplyForm({ action, initialSubmissionKey, label = "回
   const [resetRevision, setResetRevision] = useState(0);
   useEffect(() => {
     if (!state.annotationReplyId) return;
-    setMarkdown("");
-    setSubmissionKey(crypto.randomUUID());
-    setResetRevision((value) => value + 1);
-    router.refresh();
+    const timer = window.setTimeout(() => {
+      setMarkdown("");
+      setSubmissionKey(crypto.randomUUID());
+      setResetRevision((value) => value + 1);
+      router.refresh();
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [router, state.annotationReplyId]);
   return <form action={formAction} className="annotation-reply-form" noValidate>
     <input type="hidden" name="contentMarkdown" value={markdown} />

@@ -13,7 +13,7 @@ export function ContentLifecycleControl({
 }: {
   action: LifecycleFormAction;
   operation: "hide" | "unhide" | "restore";
-  targetLabel: "帖子" | "回复";
+  targetLabel: "帖子" | "回复" | "批注" | "批注回复";
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);

@@ -8,7 +8,6 @@ import {
   planAdminLifecycleTransition,
   planAuthorDelete,
   type AdminLifecycleAction,
-  type LifecycleRecord,
 } from "./transitions";
 
 function asBatch(items: BatchItem<"sqlite">[]) {
