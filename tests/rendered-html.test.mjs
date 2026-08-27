@@ -59,3 +59,15 @@ test("production artifact contains V4 lifecycle placeholders, confirmations, and
   assert.match(styles, /status-pill--deleted/);
   assert.match(styles, /deleted-placeholder/);
 });
+
+test("production artifact contains V5 annotation reading, discussion, and edit protection", async () => {
+  const [source, styles] = await Promise.all([builtServerSource(), builtCssSource()]);
+  assert.match(source, /添加批注/);
+  assert.match(source, /正文批注讨论/);
+  assert.match(source, /批注正文编辑保护将在下一版本完成/);
+  assert.match(source, /批注状态变化/);
+  assert.match(source, /Annotation replies/);
+  assert.match(styles, /annotation-range/);
+  assert.match(styles, /annotation-connectors/);
+  assert.match(styles, /annotation-sheet-surface/);
+});
