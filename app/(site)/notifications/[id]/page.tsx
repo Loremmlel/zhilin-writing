@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 
 import { findOwnedNotification, markNotificationRead } from "@/db/queries";
-import { replyTargetHref } from "@/lib/activity/policy";
+import { annotationTargetHref, replyTargetHref } from "@/lib/activity/policy";
 import { requireMember } from "@/lib/auth/access";
 
 export default async function OpenNotificationPage({ params }: { params: Promise<{ id: string }> }) {
@@ -16,6 +16,10 @@ export default async function OpenNotificationPage({ params }: { params: Promise
   }
   if (item.notification.replyId && item.replyAvailable) {
     redirect(replyTargetHref(item.post.id, item.notification.replyId));
+  }
+  if (item.notification.annotationId) {
+    if (item.annotationCurrent) redirect(annotationTargetHref(item.post.id, item.notification.annotationId));
+    redirect(`/posts/${item.post.id}?notice=annotation-unavailable`);
   }
   const notice = item.replyState === "hidden" ? "reply-hidden" : "reply-deleted";
   redirect(`/posts/${item.post.id}?notice=${notice}#replies`);

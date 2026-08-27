@@ -1,9 +1,10 @@
 import { and, asc, count, desc, eq, inArray, isNotNull, isNull, like, ne, or } from "drizzle-orm";
 
 import { getDb } from "./index";
-import { adminAuditLog, activityEvents, allowedUsers, assets, notifications, postAssetRefs, postTags, posts, replies, tags, users } from "./schema";
+import { adminAuditLog, activityEvents, allowedUsers, annotationReplies, annotations, assets, notifications, postAnnotationAnchors, postAssetRefs, postTags, posts, replies, tags, users } from "./schema";
 import { canExposeActivitySnapshot, contentState } from "@/lib/lifecycle/policy";
 import { buildPostLifecycleView, buildReplyLifecycleViews } from "@/lib/lifecycle/views";
+import { canExposeAnnotationActivitySnapshot } from "@/lib/activity/policy";
 
 export type PostSort = "latest" | "active";
 
@@ -185,11 +186,7 @@ export async function getPostDetail(id: string) {
     .where(eq(posts.id, id))
     .limit(1))[0];
   if (!row) return null;
-  const replyStates = await getDb().select({
-    authorId: replies.authorId,
-    deletedAt: replies.deletedAt,
-    hiddenAt: replies.hiddenAt,
-  }).from(replies).where(eq(replies.postId, id));
+  const replyStates = await getPostDiscussionStates(id);
   const lifecycle = buildPostLifecycleView(row.post, replyStates);
   const base = {
     id: row.post.id,
@@ -210,6 +207,39 @@ export async function getPostDetail(id: string) {
     tags: lifecycle.contentVisible ? await getTagsForPost(id) : [],
     attachments: lifecycle.contentVisible ? await getPostAttachments(id) : [],
   };
+}
+
+async function getPostDiscussionStates(postId: string) {
+  const [postReplies, annotationRoots, annotationThreadReplies] = await Promise.all([
+    getDb().select({
+      authorId: replies.authorId,
+      deletedAt: replies.deletedAt,
+      hiddenAt: replies.hiddenAt,
+    }).from(replies).where(eq(replies.postId, postId)),
+    getDb().select({
+      authorId: annotations.authorId,
+      deletedAt: annotations.deletedAt,
+      hiddenAt: annotations.hiddenAt,
+    }).from(postAnnotationAnchors)
+      .innerJoin(annotations, eq(postAnnotationAnchors.annotationId, annotations.id))
+      .where(eq(postAnnotationAnchors.postId, postId)),
+    getDb().select({
+      authorId: annotationReplies.authorId,
+      deletedAt: annotationReplies.deletedAt,
+      hiddenAt: annotationReplies.hiddenAt,
+    }).from(postAnnotationAnchors)
+      .innerJoin(annotationReplies, eq(postAnnotationAnchors.annotationId, annotationReplies.annotationId))
+      .where(eq(postAnnotationAnchors.postId, postId)),
+  ]);
+  return [...postReplies, ...annotationRoots, ...annotationThreadReplies];
+}
+
+async function currentAnnotationAnchorAvailable(postId: string, annotationId: string | null) {
+  if (!annotationId) return false;
+  return Boolean((await getDb().select({ annotationId: postAnnotationAnchors.annotationId })
+    .from(postAnnotationAnchors)
+    .where(and(eq(postAnnotationAnchors.postId, postId), eq(postAnnotationAnchors.annotationId, annotationId)))
+    .limit(1))[0]);
 }
 
 export async function getPostForAdministration(id: string) {
@@ -281,11 +311,13 @@ export async function findReplyBySubmissionKey(authorId: string, submissionKey: 
 
 export async function listUserActivity(actorUserId: string, limit = 50) {
   const rows = await getDb()
-    .select({ event: activityEvents, actor: users, post: posts, reply: replies })
+    .select({ event: activityEvents, actor: users, post: posts, reply: replies, annotation: annotations, annotationReply: annotationReplies })
     .from(activityEvents)
     .innerJoin(users, eq(activityEvents.actorUserId, users.id))
     .leftJoin(posts, eq(activityEvents.postId, posts.id))
     .leftJoin(replies, eq(activityEvents.replyId, replies.id))
+    .leftJoin(annotations, eq(activityEvents.annotationId, annotations.id))
+    .leftJoin(annotationReplies, eq(activityEvents.annotationReplyId, annotationReplies.id))
     .where(and(eq(activityEvents.actorUserId, actorUserId), isNull(activityEvents.invalidatedAt)))
     .orderBy(desc(activityEvents.createdAt))
     .limit(limit);
@@ -293,23 +325,33 @@ export async function listUserActivity(actorUserId: string, limit = 50) {
   return Promise.all(rows.map(async (row) => {
     const postState = row.post ? contentState(row.post).state : "deleted";
     const replyState = row.reply ? contentState(row.reply).state : "deleted";
-    const postReachable = row.post ? buildPostLifecycleView(row.post, await getDb().select({
-      authorId: replies.authorId,
-      deletedAt: replies.deletedAt,
-      hiddenAt: replies.hiddenAt,
-    }).from(replies).where(eq(replies.postId, row.post.id))).discussionReachable : false;
-    const eventMetadataVisible = canExposeActivitySnapshot(postState, row.event.eventType, replyState);
+    const annotationState = row.annotation ? contentState(row.annotation).state : "deleted";
+    const annotationReplyState = row.annotationReply ? contentState(row.annotationReply).state : "deleted";
+    const annotationCurrent = row.post ? await currentAnnotationAnchorAvailable(row.post.id, row.event.annotationId) : false;
+    const postReachable = row.post ? buildPostLifecycleView(row.post, await getPostDiscussionStates(row.post.id)).discussionReachable : false;
+    const annotationEvent = row.event.eventType === "ANNOTATION_CREATED" || row.event.eventType === "ANNOTATION_REPLY_CREATED";
+    const annotationTargetState = row.event.eventType === "ANNOTATION_REPLY_CREATED" ? annotationReplyState : annotationState;
+    const eventMetadataVisible = annotationEvent
+      ? canExposeAnnotationActivitySnapshot(postState, annotationTargetState, annotationCurrent)
+      : canExposeActivitySnapshot(postState, row.event.eventType, replyState);
     return {
       ...row,
       event: { ...row.event, metadataJson: eventMetadataVisible ? row.event.metadataJson : null },
       post: row.post ? { ...row.post, title: postState === "normal" ? row.post.title : "", markdown: "", searchText: "" } : null,
       reply: row.reply ? { ...row.reply, markdown: replyState === "normal" ? row.reply.markdown : "" } : null,
+      annotation: row.annotation ? { ...row.annotation, contentMarkdown: annotationState === "normal" && annotationCurrent ? row.annotation.contentMarkdown : "", originalSelectedText: annotationState === "normal" && annotationCurrent ? row.annotation.originalSelectedText : "" } : null,
+      annotationReply: row.annotationReply ? { ...row.annotationReply, contentMarkdown: annotationReplyState === "normal" && annotationCurrent ? row.annotationReply.contentMarkdown : "" } : null,
       replyTo: row.event.replyToUserId ? await findUserById(row.event.replyToUserId) : null,
       postAvailable: Boolean(row.post && postState === "normal"),
       postReachable,
       postState,
       replyAvailable: Boolean(row.reply && replyState === "normal"),
       replyState,
+      annotationCurrent,
+      annotationAvailable: Boolean(row.annotation && annotationState === "normal" && annotationCurrent),
+      annotationState,
+      annotationReplyAvailable: Boolean(row.annotationReply && annotationReplyState === "normal" && annotationCurrent),
+      annotationReplyState,
     };
   }));
 }
@@ -326,12 +368,14 @@ export async function listNotifications(recipientUserId: string, options: { unre
   const conditions = [eq(notifications.recipientUserId, recipientUserId)];
   if (options.unreadOnly) conditions.push(isNull(notifications.readAt));
   const rows = await getDb()
-    .select({ notification: notifications, event: activityEvents, actor: users, post: posts, reply: replies })
+    .select({ notification: notifications, event: activityEvents, actor: users, post: posts, reply: replies, annotation: annotations, annotationReply: annotationReplies })
     .from(notifications)
     .innerJoin(activityEvents, eq(notifications.eventId, activityEvents.id))
     .innerJoin(users, eq(notifications.actorUserId, users.id))
     .leftJoin(posts, eq(notifications.postId, posts.id))
     .leftJoin(replies, eq(notifications.replyId, replies.id))
+    .leftJoin(annotations, eq(notifications.annotationId, annotations.id))
+    .leftJoin(annotationReplies, eq(notifications.annotationReplyId, annotationReplies.id))
     .where(and(...conditions))
     .orderBy(desc(notifications.createdAt))
     .limit(options.limit ?? 60);
@@ -341,12 +385,14 @@ export async function listNotifications(recipientUserId: string, options: { unre
 
 export async function findOwnedNotification(id: string, recipientUserId: string) {
   const row = (await getDb()
-    .select({ notification: notifications, event: activityEvents, actor: users, post: posts, reply: replies })
+    .select({ notification: notifications, event: activityEvents, actor: users, post: posts, reply: replies, annotation: annotations, annotationReply: annotationReplies })
     .from(notifications)
     .innerJoin(activityEvents, eq(notifications.eventId, activityEvents.id))
     .innerJoin(users, eq(notifications.actorUserId, users.id))
     .leftJoin(posts, eq(notifications.postId, posts.id))
     .leftJoin(replies, eq(notifications.replyId, replies.id))
+    .leftJoin(annotations, eq(notifications.annotationId, annotations.id))
+    .leftJoin(annotationReplies, eq(notifications.annotationReplyId, annotationReplies.id))
     .where(and(eq(notifications.id, id), eq(notifications.recipientUserId, recipientUserId)))
     .limit(1))[0];
   if (!row) return null;
@@ -357,25 +403,37 @@ async function lifecycleNotificationRow<T extends {
   event: typeof activityEvents.$inferSelect;
   post: typeof posts.$inferSelect | null;
   reply: typeof replies.$inferSelect | null;
+  annotation: typeof annotations.$inferSelect | null;
+  annotationReply: typeof annotationReplies.$inferSelect | null;
 }>(row: T) {
   const postState = row.post ? contentState(row.post).state : "deleted";
   const replyState = row.reply ? contentState(row.reply).state : "deleted";
-  const postReachable = row.post ? buildPostLifecycleView(row.post, await getDb().select({
-    authorId: replies.authorId,
-    deletedAt: replies.deletedAt,
-    hiddenAt: replies.hiddenAt,
-  }).from(replies).where(eq(replies.postId, row.post.id))).discussionReachable : false;
-  const eventMetadataVisible = canExposeActivitySnapshot(postState, row.event.eventType, replyState);
+  const annotationState = row.annotation ? contentState(row.annotation).state : "deleted";
+  const annotationReplyState = row.annotationReply ? contentState(row.annotationReply).state : "deleted";
+  const annotationCurrent = row.post ? await currentAnnotationAnchorAvailable(row.post.id, row.event.annotationId) : false;
+  const postReachable = row.post ? buildPostLifecycleView(row.post, await getPostDiscussionStates(row.post.id)).discussionReachable : false;
+  const annotationEvent = row.event.eventType === "ANNOTATION_CREATED" || row.event.eventType === "ANNOTATION_REPLY_CREATED";
+  const annotationTargetState = row.event.eventType === "ANNOTATION_REPLY_CREATED" ? annotationReplyState : annotationState;
+  const eventMetadataVisible = annotationEvent
+    ? canExposeAnnotationActivitySnapshot(postState, annotationTargetState, annotationCurrent)
+    : canExposeActivitySnapshot(postState, row.event.eventType, replyState);
   return {
     ...row,
     event: { ...row.event, metadataJson: eventMetadataVisible ? row.event.metadataJson : null },
     post: row.post ? { ...row.post, title: postState === "normal" ? row.post.title : "", markdown: "", searchText: "" } : null,
     reply: row.reply ? { ...row.reply, markdown: replyState === "normal" ? row.reply.markdown : "" } : null,
+    annotation: row.annotation ? { ...row.annotation, contentMarkdown: annotationState === "normal" && annotationCurrent ? row.annotation.contentMarkdown : "", originalSelectedText: annotationState === "normal" && annotationCurrent ? row.annotation.originalSelectedText : "" } : null,
+    annotationReply: row.annotationReply ? { ...row.annotationReply, contentMarkdown: annotationReplyState === "normal" && annotationCurrent ? row.annotationReply.contentMarkdown : "" } : null,
     postAvailable: Boolean(row.post && postState === "normal"),
     postReachable,
     postState,
     replyAvailable: Boolean(row.reply && replyState === "normal"),
     replyState,
+    annotationCurrent,
+    annotationAvailable: Boolean(row.annotation && annotationState === "normal" && annotationCurrent),
+    annotationState,
+    annotationReplyAvailable: Boolean(row.annotationReply && annotationReplyState === "normal" && annotationCurrent),
+    annotationReplyState,
   };
 }
 

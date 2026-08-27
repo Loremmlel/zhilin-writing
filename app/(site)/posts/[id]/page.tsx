@@ -96,6 +96,7 @@ export default async function PostPage({ params, searchParams }: { params: Promi
       {discussionVisible && <section className="replies-section" id="replies">
         {query.notice === "reply-deleted" && <div className="content-notice" role="status">该回复已经被删除。</div>}
         {query.notice === "reply-hidden" && <div className="content-notice" role="status">该回复已被管理员隐藏。</div>}
+        {query.notice === "annotation-unavailable" && <div className="content-notice" role="status">该批注已不可用，或不再属于当前正文。</div>}
         <div className="section-heading"><h2>回复</h2><span>{visibleReplyCount} 条</span></div>
         {replyViews.length > 0 ? <ReplyList items={replyViews} currentUserId={member.id} replyActionFor={(targetId) => createReplyAction.bind(null, id, targetId)} deleteActionFor={(replyId) => deleteReplyAction.bind(null, id, replyId)} /> : <p className="empty-copy">还没有回复。可以从一句认真读过的话开始。</p>}
         {item.lifecycle.contentVisible && <div className="new-reply-block"><h3>写一条回复</h3><ReplyForm action={topReplyAction} initialSubmissionKey={crypto.randomUUID()} /></div>}
