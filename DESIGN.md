@@ -1,5 +1,5 @@
 ---
-version: "1.0"
+version: "1.1"
 name: "知临中学"
 description: "面向少数受邀同学的私密 Markdown 写作社区，以旧校刊纸张与克制校园绿构成安静、可信的阅读界面。"
 colors:
@@ -8,12 +8,16 @@ colors:
   ink: "#20251F"
   muted: "#737970"
   line: "#E6E4DC"
-  green: "#4F825F"
-  green-dark: "#356145"
-  green-soft: "#EDF4EE"
+  primary: "#4F825F"
+  primary-dark: "#356145"
+  primary-soft: "#EDF4EE"
+  primary-pale: "#F5F8F3"
   danger: "#A44D47"
   warning: "#8B6A2C"
   warning-soft: "#F6F0DF"
+  annotation: "#F7E8E6"
+  annotation-active: "#EFCBC6"
+  annotation-ink: "#7D3934"
 typography:
   display:
     fontFamily: "Georgia, Noto Serif SC, serif"
@@ -35,6 +39,9 @@ components:
   dialog: {}
   editor: {}
   revision-timeline: {}
+  annotation-range: {}
+  annotation-sidebar: {}
+  annotation-sheet: {}
 ---
 
 # 知临中学 Design System
@@ -47,7 +54,7 @@ components:
 
 ### Product context and register
 
-- **Audience and primary job:** 几位彼此认识的受邀中国用户，写作、阅读、回复并在管理员帮助下保护内容历史。
+- **Audience and primary job:** 几位彼此认识的受邀中国用户，写作、阅读、回复、正文批注并在管理员帮助下保护内容历史。
 - **Target market and evidence:** 私密中文社区；当前产品规格与现有简体中文界面是直接依据。
 - **Locale and language policy:** `zh-CN`；界面动作使用简洁中文，技术名词只在管理员界面保留必要英文，如 Post revisions。
 - **Usage scene:** 桌面长文写作为主，手机阅读和轻量回复为辅；低频、低压力、内容密度中等。
@@ -55,11 +62,11 @@ components:
 - **Memorable signature:** 简笔柚叶/柚子校徽与校刊纸张式长文表面。
 - **Restraint:** 编辑器、冲突确认、管理员恢复优先保证可读、可撤回和明确后果。
 - **Anti-references:** 不做增长型社交网络、炫光 SaaS 仪表盘、小香风名媛感或新闻报纸式高密排版。
-- **Token ownership/runtime mapping:** 本文件记录规范值，`app/globals.css :root` 是运行时唯一 CSS token 来源；修改规范值时必须同步两处并通过静态审计。
+- **Token ownership/runtime mapping:** 本文件记录规范值，`app/globals.css :root` 是运行时唯一 CSS token 来源；`primary*` 规范 token 映射到既有 `--green*` 运行时变量，`annotation*` 一对一映射到 `--annotation*`。修改规范值时必须同步两处并通过静态审计。
 
 ## Colors
 
-`paper`/`paper-strong` 提供两层暖白表面，`ink` 与 `muted` 建立正文和辅助信息层级。`green` 是品牌、焦点和当前选择，`green-soft` 仅用于轻提示与选中背景。`warning`/`warning-soft` 标记作者已撤回的内容，`danger` 标记管理员隐藏与高后果确认；状态同时使用文字而不单靠颜色。强制色模式退回系统颜色。
+`paper`/`paper-strong` 提供两层暖白表面，`ink` 与 `muted` 建立正文和辅助信息层级。`primary` 是品牌、焦点和当前选择，`primary-soft` 仅用于轻提示与选中背景。`annotation` 是克制的淡红正文范围，`annotation-active` 只在 hover、focus 或联动激活时增强，`annotation-ink` 用于批注操作与连线；批注范围另有点状下划线、焦点与语义标签，不能只靠颜色。`warning`/`warning-soft` 标记作者已撤回的内容，`danger` 标记管理员隐藏与高后果确认；强制色模式退回系统颜色。
 
 ## Typography
 
@@ -67,7 +74,7 @@ components:
 
 ## Layout
 
-普通内容列最大宽度 920px，编辑器 1080px，revision 管理页 1180px。管理员历史在宽屏采用 320px 左侧时间线和右侧预览；900px 以下堆叠，时间线自身限高滚动。所有固定弹窗保留安全边距，移动端转为单列操作。
+普通内容列最大宽度 920px，编辑器 1080px，revision 管理页 1180px。带批注的桌面帖子扩展为舒适正文列、70px 连线沟槽和 270–330px 右栏；卡片按正文位置顺序错开。900px 以下去掉侧栏和引导线，批注线程使用底部 Sheet。管理员历史在宽屏采用 320px 左侧时间线和右侧预览；900px 以下堆叠，时间线自身限高滚动。所有固定弹窗保留安全边距，移动端转为单列操作。
 
 ## Elevation & Depth
 
@@ -95,13 +102,19 @@ components:
 
 表单由应用处理错误，长文本不可拖拽破坏布局。账户浮层支持点击外部和 Escape 关闭。冲突、放弃草稿与恢复操作使用共享 `ModalDialog`，包含焦点循环、Escape 和焦点恢复。
 
+批注输入复用精简 Markdown 编辑器；用户只能从阅读页合法文本选区打开输入，不存在 Annotation Markdown 源码入口。移动端 thread 使用共享 ModalDialog 的 bottom-sheet 变体：限制高度、尊重安全区、内部可滚动并可由 Escape / 关闭按钮退出。
+
+### Annotation reading
+
+正文范围、右侧卡片、SVG connector 与移动端 Sheet 全部用稳定 `annotation_id` 联动。正文 mark 可聚焦，卡片可键盘访问；内部普通链接仍保持导航语义。桌面卡片按文档位置排列并避免重叠，resize/scroll 只重新测量几何，不重新解析 Markdown。删除或隐藏的根内容只显示占位，其他成员讨论不被连带移除。
+
 ### Iconography
 
 使用现有简笔线性 SVG，描边约 1.6–1.7px；只有常见通知铃可无文字，其余关键动作保留文字标签。
 
 ### Motion
 
-常规反馈为 150–200ms，现有回复定位高亮为 2.5s 后消退。动画只表达状态；减少动态偏好下不得依赖动画传达结果。
+常规反馈为 150–200ms，现有回复与批注深链定位使用短暂增强状态。动画只表达状态；减少动态偏好下取消平移和过渡，不得依赖动画传达结果。
 
 ### Content and data visualization
 
@@ -110,6 +123,8 @@ components:
 ## Do's and Don'ts
 
 - **Do:** 让当前帖子与历史预览共享同一 Markdown 渲染语义。
+- **Do:** 让正文范围、卡片、connector 和通知深链只通过稳定 annotation id 建立关系。
 - **Do:** 让危险选择明确说明不会删除既有 revision。
+- **Don't:** 用文字搜索、DOM offset 或 Markdown source offset 重新定位批注。
 - **Don't:** 把 revision、restore 或编辑操作混入公开 Activity。
 - **Don't:** 用都市 SaaS 渐变、巨型指标或过度圆润卡片破坏私密校刊感。
