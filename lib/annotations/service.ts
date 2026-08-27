@@ -45,7 +45,7 @@ export async function createAnnotation(input: {
   }, { baseRevisionId: input.baseRevisionId, annotationId, revisionId, selection: input.selection }, now);
   const eventId = activityEventId("ANNOTATION_CREATED", input.postId, annotationId);
   const operations: BatchItem<"sqlite">[] = [
-    db.update(posts).set({ title: sql<string>`CASE WHEN ${posts.currentRevisionId} = ${input.baseRevisionId} THEN ${posts.title} ELSE NULL END` }).where(eq(posts.id, input.postId)),
+    db.update(posts).set({ title: sql<string>`CASE WHEN ${posts.currentRevisionId} = ${input.baseRevisionId} AND ${posts.deletedAt} IS NULL AND ${posts.hiddenAt} IS NULL THEN ${posts.title} ELSE NULL END` }).where(eq(posts.id, input.postId)),
     db.insert(postRevisions).values({ id: revisionId, postId: input.postId, revisionNumber: plan.revisionNumber, kind: plan.revisionKind, title: plan.title, markdown: plan.markdown, createdAt: now, createdByUserId: input.authorId, restoreSourceRevisionId: null }),
     db.insert(annotations).values({ id: annotationId, postId: input.postId, authorId: input.authorId, contentMarkdown, originalSelectedText: plan.originalSelectedText, createdAt: now, createdOnRevisionId: revisionId, submissionKey, deletedAt: null, deletedByUserId: null, hiddenAt: null, hiddenByUserId: null, hiddenReason: null }),
     db.update(posts).set({ markdown: plan.markdown, currentRevisionId: revisionId, lastActivityAt: plan.lastActivityAt }).where(and(eq(posts.id, input.postId), eq(posts.currentRevisionId, input.baseRevisionId))),
@@ -64,7 +64,8 @@ export async function createAnnotation(input: {
   } catch (error) {
     const repeated = await findAnnotationBySubmissionKey(input.authorId, submissionKey);
     if (repeated) return repeated.id;
-    const latest = (await db.select({ currentRevisionId: posts.currentRevisionId }).from(posts).where(eq(posts.id, input.postId)).limit(1))[0];
+    const latest = (await db.select({ currentRevisionId: posts.currentRevisionId, deletedAt: posts.deletedAt, hiddenAt: posts.hiddenAt }).from(posts).where(eq(posts.id, input.postId)).limit(1))[0];
+    if (!latest || latest.deletedAt || latest.hiddenAt) throw new Error("帖子不存在或当前不可访问");
     if (latest?.currentRevisionId !== input.baseRevisionId) throw new Error("帖子已更新，请重新选择文字后再批注");
     throw error;
   }
@@ -84,19 +85,33 @@ export async function createAnnotationReply(input: {
   ]);
   if (!post) throw new Error("帖子不存在或当前不可访问");
   if (!annotation || annotation.postId !== input.postId) throw new Error("批注不存在或不属于当前帖子");
+  if (!post.post.currentRevisionId) throw new Error("帖子当前版本不存在");
   const now = new Date();
   const plan = planAnnotationReplyCreation({ id: annotation.id, postId: annotation.postId, authorId: annotation.authorId, hiddenAt: annotation.hiddenAt, currentAnchorIds }, { actorUserId: input.authorId, targetReply }, now);
   const id = crypto.randomUUID();
   const eventId = activityEventId("ANNOTATION_REPLY_CREATED", input.postId, id);
   const db = getDb();
   const operations: BatchItem<"sqlite">[] = [
+    db.update(posts).set({ title: sql<string>`CASE WHEN ${posts.currentRevisionId} = ${post.post.currentRevisionId} AND ${posts.deletedAt} IS NULL AND ${posts.hiddenAt} IS NULL THEN ${posts.title} ELSE NULL END` }).where(eq(posts.id, input.postId)),
+    ...(targetReply ? [db.update(annotationReplies).set({ contentMarkdown: sql<string>`CASE WHEN ${annotationReplies.annotationId} = ${annotation.id} AND ${annotationReplies.deletedAt} IS NULL AND ${annotationReplies.hiddenAt} IS NULL THEN ${annotationReplies.contentMarkdown} ELSE NULL END` }).where(eq(annotationReplies.id, targetReply.id))] : []),
     db.insert(annotationReplies).values({ id, annotationId: annotation.id, authorId: input.authorId, replyToUserId: plan.replyToUserId, replyToReplyId: plan.replyToReplyId, contentMarkdown, submissionKey, createdAt: now, deletedAt: null, deletedByUserId: null, hiddenAt: null, hiddenByUserId: null, hiddenReason: null }),
     db.update(posts).set({ lastActivityAt: now }).where(eq(posts.id, input.postId)),
     db.insert(activityEvents).values({ id: eventId, actorUserId: input.authorId, eventType: "ANNOTATION_REPLY_CREATED", postId: input.postId, replyId: null, annotationId: annotation.id, annotationReplyId: id, rootReplyId: null, replyToUserId: plan.replyToUserId, metadataJson: JSON.stringify({ title: post.post.title }), createdAt: now, invalidatedAt: null }),
   ];
   if (plan.notificationRecipientUserId) operations.push(db.insert(notifications).values({ id: notificationId(eventId, plan.notificationRecipientUserId, "ANNOTATION_REPLY_RECEIVED"), recipientUserId: plan.notificationRecipientUserId, actorUserId: input.authorId, eventId, notificationType: "ANNOTATION_REPLY_RECEIVED", postId: input.postId, replyId: null, annotationId: annotation.id, annotationReplyId: id, createdAt: now, readAt: null }));
   try { await commitAnnotationMutation((items) => db.batch(asBatch(items)), operations); }
-  catch (error) { const repeated = await findAnnotationReplyBySubmissionKey(input.authorId, submissionKey); if (repeated) return repeated.id; throw error; }
+  catch (error) {
+    const repeated = await findAnnotationReplyBySubmissionKey(input.authorId, submissionKey);
+    if (repeated) return repeated.id;
+    const latestPost = (await db.select({ currentRevisionId: posts.currentRevisionId, deletedAt: posts.deletedAt, hiddenAt: posts.hiddenAt }).from(posts).where(eq(posts.id, input.postId)).limit(1))[0];
+    if (!latestPost || latestPost.deletedAt || latestPost.hiddenAt) throw new Error("帖子不存在或当前不可访问");
+    if (latestPost.currentRevisionId !== post.post.currentRevisionId) throw new Error("帖子已更新，请重新打开批注讨论后再回复");
+    if (targetReply) {
+      const latestTarget = await findAnnotationReply(targetReply.id);
+      if (!latestTarget || latestTarget.annotationId !== annotation.id || latestTarget.deletedAt || latestTarget.hiddenAt) throw new Error("该回复当前不可回复");
+    }
+    throw error;
+  }
   return id;
 }
 
