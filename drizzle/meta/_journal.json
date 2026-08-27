@@ -29,6 +29,13 @@
       "when": 1787706933066,
       "tag": "0003_careless_the_hood",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1787830691588,
+      "tag": "0004_far_alex_wilder",
+      "breakpoints": true
     }
   ]
 }

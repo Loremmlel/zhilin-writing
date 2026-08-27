@@ -80,6 +80,54 @@ export const replies = sqliteTable(
   ],
 );
 
+export const annotations = sqliteTable(
+  "annotations",
+  {
+    id: text("id").primaryKey(),
+    postId: text("post_id").notNull().references(() => posts.id),
+    authorId: text("author_id").notNull().references(() => users.id),
+    contentMarkdown: text("content_markdown").notNull(),
+    originalSelectedText: text("original_selected_text").notNull(),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+    createdOnRevisionId: text("created_on_revision_id").notNull().references(() => postRevisions.id),
+    submissionKey: text("submission_key").notNull(),
+    deletedAt: integer("deleted_at", { mode: "timestamp_ms" }),
+    deletedByUserId: text("deleted_by_user_id").references(() => users.id),
+    hiddenAt: integer("hidden_at", { mode: "timestamp_ms" }),
+    hiddenByUserId: text("hidden_by_user_id").references(() => users.id),
+    hiddenReason: text("hidden_reason"),
+  },
+  (table) => [
+    index("annotations_post_created_idx").on(table.postId, table.createdAt),
+    index("annotations_author_created_idx").on(table.authorId, table.createdAt),
+    uniqueIndex("annotations_author_submission_unique").on(table.authorId, table.submissionKey),
+  ],
+);
+
+export const annotationReplies = sqliteTable(
+  "annotation_replies",
+  {
+    id: text("id").primaryKey(),
+    annotationId: text("annotation_id").notNull().references(() => annotations.id),
+    authorId: text("author_id").notNull().references(() => users.id),
+    replyToUserId: text("reply_to_user_id").references(() => users.id),
+    replyToReplyId: text("reply_to_reply_id"),
+    contentMarkdown: text("content_markdown").notNull(),
+    submissionKey: text("submission_key").notNull(),
+    createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+    deletedAt: integer("deleted_at", { mode: "timestamp_ms" }),
+    deletedByUserId: text("deleted_by_user_id").references(() => users.id),
+    hiddenAt: integer("hidden_at", { mode: "timestamp_ms" }),
+    hiddenByUserId: text("hidden_by_user_id").references(() => users.id),
+    hiddenReason: text("hidden_reason"),
+  },
+  (table) => [
+    index("annotation_replies_annotation_created_idx").on(table.annotationId, table.createdAt),
+    index("annotation_replies_reply_to_reply_idx").on(table.replyToReplyId),
+    uniqueIndex("annotation_replies_author_submission_unique").on(table.authorId, table.submissionKey),
+  ],
+);
+
 export const adminAuditLog = sqliteTable(
   "admin_audit_log",
   {
@@ -93,8 +141,12 @@ export const adminAuditLog = sqliteTable(
       "REPLY_UNHIDDEN",
       "REPLY_RESTORED",
       "REVISION_RESTORED",
+      "ANNOTATION_HIDDEN",
+      "ANNOTATION_UNHIDDEN",
+      "ANNOTATION_REPLY_HIDDEN",
+      "ANNOTATION_REPLY_UNHIDDEN",
     ] }).notNull(),
-    targetType: text("target_type", { enum: ["POST", "REPLY"] }).notNull(),
+    targetType: text("target_type", { enum: ["POST", "REPLY", "ANNOTATION", "ANNOTATION_REPLY"] }).notNull(),
     targetId: text("target_id").notNull(),
     createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
     metadataJson: text("metadata_json"),
@@ -112,9 +164,11 @@ export const activityEvents = sqliteTable(
   {
     id: text("id").primaryKey(),
     actorUserId: text("actor_user_id").notNull().references(() => users.id),
-    eventType: text("event_type", { enum: ["POST_CREATED", "POST_REPLY_CREATED"] }).notNull(),
+    eventType: text("event_type", { enum: ["POST_CREATED", "POST_REPLY_CREATED", "ANNOTATION_CREATED", "ANNOTATION_REPLY_CREATED"] }).notNull(),
     postId: text("post_id").notNull().references(() => posts.id),
     replyId: text("reply_id").references(() => replies.id),
+    annotationId: text("annotation_id").references(() => annotations.id),
+    annotationReplyId: text("annotation_reply_id").references(() => annotationReplies.id),
     rootReplyId: text("root_reply_id"),
     replyToUserId: text("reply_to_user_id").references(() => users.id),
     metadataJson: text("metadata_json"),
@@ -135,9 +189,11 @@ export const notifications = sqliteTable(
     recipientUserId: text("recipient_user_id").notNull().references(() => users.id),
     actorUserId: text("actor_user_id").notNull().references(() => users.id),
     eventId: text("event_id").notNull().references(() => activityEvents.id),
-    notificationType: text("notification_type", { enum: ["POST_REPLY_RECEIVED"] }).notNull(),
+    notificationType: text("notification_type", { enum: ["POST_REPLY_RECEIVED", "POST_ANNOTATION_RECEIVED", "ANNOTATION_REPLY_RECEIVED"] }).notNull(),
     postId: text("post_id").notNull().references(() => posts.id),
     replyId: text("reply_id").references(() => replies.id),
+    annotationId: text("annotation_id").references(() => annotations.id),
+    annotationReplyId: text("annotation_reply_id").references(() => annotationReplies.id),
     createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
     readAt: integer("read_at", { mode: "timestamp_ms" }),
   },
@@ -200,6 +256,7 @@ export const postRevisions = sqliteTable(
     id: text("id").primaryKey(),
     postId: text("post_id").notNull().references(() => posts.id),
     revisionNumber: integer("revision_number").notNull(),
+    kind: text("kind", { enum: ["CONTENT_EDIT", "RESTORE", "ANNOTATION_STATE"] }).notNull().default("CONTENT_EDIT"),
     title: text("title").notNull(),
     markdown: text("markdown").notNull(),
     createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
@@ -209,6 +266,34 @@ export const postRevisions = sqliteTable(
   (table) => [
     uniqueIndex("post_revisions_post_number_unique").on(table.postId, table.revisionNumber),
     index("post_revisions_post_created_idx").on(table.postId, table.createdAt),
+  ],
+);
+
+export const postAnnotationAnchors = sqliteTable(
+  "post_annotation_anchors",
+  {
+    postId: text("post_id").notNull().references(() => posts.id),
+    annotationId: text("annotation_id").notNull().references(() => annotations.id),
+  },
+  (table) => [
+    primaryKey({ columns: [table.postId, table.annotationId] }),
+    index("post_annotation_anchors_annotation_idx").on(table.annotationId),
+  ],
+);
+
+export const revisionAnnotationStates = sqliteTable(
+  "revision_annotation_states",
+  {
+    revisionId: text("revision_id").notNull().references(() => postRevisions.id),
+    annotationId: text("annotation_id").notNull().references(() => annotations.id),
+    deletedAt: integer("deleted_at", { mode: "timestamp_ms" }),
+    deletedByUserId: text("deleted_by_user_id").references(() => users.id),
+    hiddenAt: integer("hidden_at", { mode: "timestamp_ms" }),
+    hiddenByUserId: text("hidden_by_user_id").references(() => users.id),
+  },
+  (table) => [
+    primaryKey({ columns: [table.revisionId, table.annotationId] }),
+    index("revision_annotation_states_annotation_idx").on(table.annotationId),
   ],
 );
 
@@ -241,10 +326,14 @@ export const revisionAssetRefs = sqliteTable(
 export type SiteUser = typeof users.$inferSelect;
 export type PostRecord = typeof posts.$inferSelect;
 export type ReplyRecord = typeof replies.$inferSelect;
+export type AnnotationRecord = typeof annotations.$inferSelect;
+export type AnnotationReplyRecord = typeof annotationReplies.$inferSelect;
 export type ActivityEventRecord = typeof activityEvents.$inferSelect;
 export type NotificationRecord = typeof notifications.$inferSelect;
 export type AssetRecord = typeof assets.$inferSelect;
 export type PostRevisionRecord = typeof postRevisions.$inferSelect;
+export type PostAnnotationAnchorRecord = typeof postAnnotationAnchors.$inferSelect;
+export type RevisionAnnotationStateRecord = typeof revisionAnnotationStates.$inferSelect;
 export type PostAssetRefRecord = typeof postAssetRefs.$inferSelect;
 export type RevisionAssetRefRecord = typeof revisionAssetRefs.$inferSelect;
 export type AdminAuditRecord = typeof adminAuditLog.$inferSelect;
