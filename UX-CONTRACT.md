@@ -91,6 +91,10 @@
 | Delete annotation | 删除批注 + confirm | disabled confirm | same post | no-thread anchor exits; dependent thread becomes placeholder | retry is a no-op | refreshed article/thread | V5 spec |
 | Hide annotation | administrator action + confirm | disabled confirm | current admin filter | placeholder/audit; root creates annotation-state revision | retry is a no-op | refreshed row | V5 spec |
 | Restore annotated revision | 恢复此版本 + annotation impact confirm | disabled confirm | new revision preview |正文、assets、anchors、states一起恢复 | transaction rollback and stale-version error | page heading | V5 spec |
+| Parse DOCX | 选择 `.docx` | staged Worker progress + cancel | import Preview | canonical rendering, annotations and warnings | typed error; original file remains local | Preview heading | V5.5 spec |
+| Resume DOCX Preview | 打开导入页并选择 24h 内草稿 | local IndexedDB load | import Preview | same batch/UUIDs/assets restored | discard stale/invalid Preview | Preview heading | V5.5 spec |
+| Confirm DOCX import | 确认导入 | disabled duplicate submit | new post | one initial revision + POST_CREATED | Preview retained; R2 objects stay temporary | post heading | V5.5 spec |
+| Map Word author | 关联站内用户 | local validation | same Preview | source identity remains visible | mapping retained with inline error | mapping control | V5.5 spec |
 
 ## Navigation and responsive behavior
 
@@ -99,6 +103,7 @@
 - Revision selection is URL-addressable; the route itself remains administrator-only.
 - At 900px the revision timeline stacks above preview; at 640px dialogs and actions become one column.
 - At 900px annotated reading removes sidebar/connectors and opens the selected thread in a bottom Sheet; native text selection and page scrolling remain available.
+- At 900px DOCX Preview stacks the document, annotation threads, author mappings and warnings; desktop keeps the document as the dominant surface with one bounded right rail.
 - Focus must remain visible below the sticky header; modal focus is trapped and restored.
 
 ## Overlays and feedback
@@ -109,6 +114,7 @@
 - Unsaved changes: device-local IndexedDB autosave; server post changes only after explicit save.
 - Layer contract: header 400 < popover 450 < backdrop 500 < dialog 600.
 - Annotation floating selection action uses popover 450; mobile Sheet reuses backdrop/dialog layers and focus contract.
+- DOCX parsing progress is inline and cancellable; unsafe or over-limit files use a persistent typed error, never a partial Preview.
 
 ## Async and resilience
 
@@ -120,6 +126,9 @@
 - Version conflict: exact base revision check; no automatic merge; online/manual/explicit overwrite choices.
 - Stale-request handling: component effects use live flags/cleanup; file upload errors remain local.
 - Mutation failure: editor state and draft remain intact.
+- DOCX parsing runs in a browser Worker with a 20-second hard timeout. Import Preview persists in IndexedDB for 24 hours without the original binary; successful commit deletes the Preview record.
+- DOCX image uploads use existing temporary R2 assets. D1 failure leaves them temporary for the existing seven-day GC rather than attempting a cross-storage rollback.
+- `import_batch_id` and Preview-generated annotation/reply UUIDs remain stable across refresh and retry; duplicate commit returns the same post.
 - Lifecycle mutations never use operation time as `last_activity_at`; reply removal/hide recalculates from remaining public reply publication times.
 - Creating annotation or annotation reply updates `last_activity_at`; annotation structural revisions never update `edited_at`, never create post-edit notifications, and never bump activity by themselves.
 - Asset deletion is never performed in content handlers. A bounded GC service rechecks current-post, revision, avatar, and temporary-expiry references immediately before deleting an R2 object.
@@ -131,6 +140,7 @@
 - Sensitive values: opaque IDs remain hidden except in internal form values/URLs.
 - Forms prevent duplicate submit; editor fields retain input after errors.
 - Ordinary post create/update rejects annotation directives. Annotation creation re-parses current canonical Markdown, verifies exact base revision, one eligible text block, exact selected text and zero overlap before inserting a server-controlled ID.
+- DOCX Commit treats browser IR as untrusted: it revalidates schema, Markdown AST, annotation invariants, imported `author_id=NULL`, attribution membership, temporary asset ownership, safe links, counts, sizes and batch idempotency without re-uploading or re-parsing the source DOCX.
 
 ## Permission and clipboard
 
@@ -140,6 +150,7 @@
 - Ordinary server actions enforce ownership for delete. Hide, unhide, restore, raw lifecycle lists, and audit history require `requireAdministrator()`.
 - Current annotation membership is the `post_annotation_anchors` relation, not a nullable row heuristic. Notification/activity readers redact root or reply Markdown unless the target is visible and its root anchor belongs to the current revision.
 - V5 temporarily blocks ordinary正文 editing whenever current anchors exist; V6 may lift the lock only by adding AnnotationGuard at the ProseMirror transaction boundary.
+- Imported Annotation/Reply is immutable and always identifies its Word source. Attribution grants no ownership or lifecycle permission; the Post author may remove an imported thread without cascading to later native replies.
 - Clipboard copy is not part of V3.
 
 ## Verification

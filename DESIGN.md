@@ -108,6 +108,10 @@ components:
 
 正文范围、右侧卡片、SVG connector 与移动端 Sheet 全部用稳定 `annotation_id` 联动。正文 mark 可聚焦，卡片可键盘访问；内部普通链接仍保持导航语义。桌面卡片按文档位置排列并避免重叠，resize/scroll 只重新测量几何，不重新解析 Markdown。删除或隐藏的根内容只显示占位，其他成员讨论不被连带移除。
 
+### DOCX import workspace
+
+DOCX 导入是现有写作表面的受控入口，不是营销上传页。初始态使用清楚的文件选择区说明浏览器解析、20 MB 限制与原始文件不上传；解析态保持固定布局并显示分阶段进度、取消和 typed error；Preview 在桌面使用校刊正文纸面与批注/警告右栏，在移动端按现有 Annotation Sheet 语义堆叠。Word author mapping 明示“Word 导入”和可选站内关联，不能把关联用户渲染成原作者。warnings 使用既有 info/warning/danger 层级和可展开分类，不用装饰性仪表盘。包含正文批注时必须显示 V5 编辑锁提示。
+
 ### Iconography
 
 使用现有简笔线性 SVG，描边约 1.6–1.7px；只有常见通知铃可无文字，其余关键动作保留文字标签。
@@ -125,6 +129,8 @@ components:
 - **Do:** 让当前帖子与历史预览共享同一 Markdown 渲染语义。
 - **Do:** 让正文范围、卡片、connector 和通知深链只通过稳定 annotation id 建立关系。
 - **Do:** 让危险选择明确说明不会删除既有 revision。
+- **Do:** 让 DOCX Preview 与正式帖子共享 canonical Markdown、Annotation 和图片渲染语义。
 - **Don't:** 用文字搜索、DOM offset 或 Markdown source offset 重新定位批注。
+- **Don't:** 把 DOCX 导入做成 Word 像素预览，或让 attributed user 看起来像站内原生作者。
 - **Don't:** 把 revision、restore 或编辑操作混入公开 Activity。
 - **Don't:** 用都市 SaaS 渐变、巨型指标或过度圆润卡片破坏私密校刊感。
