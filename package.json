@@ -18,7 +18,9 @@
   "dependencies": {
     "@milkdown/crepe": "^7.22.1",
     "@milkdown/kit": "^7.22.1",
+    "@zip.js/zip.js": "2.8.60",
     "drizzle-orm": "0.45.2",
+    "fast-xml-parser": "5.11.1",
     "mdast-util-to-string": "^4.0.0",
     "next": "16.2.6",
     "react": "19.2.6",
@@ -30,7 +32,8 @@
     "remark-parse": "^11.0.0",
     "remark-rehype": "^11.1.2",
     "remark-stringify": "^11.0.0",
-    "unified": "^11.0.5"
+    "unified": "^11.0.5",
+    "zod": "4.4.3"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "1.37.1",
@@ -44,7 +47,9 @@
     "drizzle-kit": "0.31.10",
     "eslint": "9.39.4",
     "eslint-config-next": "16.2.6",
+    "fake-indexeddb": "6.2.5",
     "happy-dom": "^18.0.1",
+    "officeparser": "7.8.0",
     "react-server-dom-webpack": "19.2.6",
     "tailwindcss": "4.2.1",
     "typescript": "5.9.3",

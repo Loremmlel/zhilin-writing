@@ -69,7 +69,7 @@ UI files stay under `components/docx-import/`; existing V5 Annotation components
 - Produces: deterministic fixture generator `writeDocxFixture(path, parts)` used by later parser tests.
 - Decision output: ADR states the exact installed version, each observed gate, and the production-path decision.
 
-- [ ] **Step 1: Install exact dependencies without production code**
+- [x] **Step 1: Install exact dependencies without production code**
 
 Run:
 
@@ -80,7 +80,7 @@ npm install --save-dev --save-exact 'officeparser@7.8.0' 'fake-indexeddb@6.2.5'
 
 Expected: `package-lock.json` resolves exactly those direct versions; `officeparser` and `fake-indexeddb` remain under `devDependencies`.
 
-- [ ] **Step 2: Write the failing gate-contract test**
+- [x] **Step 2: Write the failing gate-contract test**
 
 Create a table-driven test that demands exactly seven named gates and makes eligibility their conjunction:
 
@@ -95,13 +95,13 @@ test("officeparser is eligible only when every required comment capability passe
 });
 ```
 
-- [ ] **Step 3: Run RED**
+- [x] **Step 3: Run RED**
 
 Run: `npm run test:unit -- tests/docx-officeparser-probe.test.ts`
 
 Expected: FAIL because `lib/docx-import/officeparser-probe.ts` does not exist.
 
-- [ ] **Step 4: Implement the gate evaluator and deterministic probe fixtures**
+- [x] **Step 4: Implement the gate evaluator and deterministic probe fixtures**
 
 Define the exact gate names:
 
@@ -119,7 +119,7 @@ export const OFFICEPARSER_PROBE_GATES = [
 
 The fixture generator must write OPC parts with fixed timestamps and fixed XML strings. The adjacent fixture uses two end/start-touching ranges; the overlap fixture uses two intersecting ranges plus one nested range; the threaded fixture includes `w14:paraId`, `w15:paraIdParent`, and `w15:done=1`.
 
-- [ ] **Step 5: Run GREEN and the actual probe**
+- [x] **Step 5: Run GREEN and the actual probe**
 
 Run:
 
@@ -131,7 +131,7 @@ node scripts/probe-officeparser.mjs
 
 Expected: the unit test passes; the probe prints one report containing all seven booleans and finishes within two hours. If any gate is false, the script reports `productionEligible: false` and no later production module imports `officeparser`. If all seven are true, stop before Task 2 and amend the ADR and implementation plan rather than silently changing the approved production architecture.
 
-- [ ] **Step 6: Record evidence, commit, and push**
+- [x] **Step 6: Record evidence, commit, and push**
 
 Write the actual version, gate evidence, and conclusion in the ADR. Update the progress document with commands and results. Run `git diff --check`, commit as `docs: record officeparser DOCX probe`, obtain a Sites source write credential, and push `HEAD:main` immediately.
 
