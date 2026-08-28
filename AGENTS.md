@@ -17,6 +17,8 @@
 
 ## Git 工作流
 
+- 每次提交的 author 使用：`user.email=loremmlel@163.com`、`user.name='柚子'`。
+- 在新环境提交前，确认已执行：`git config --local user.email 'loremmlel@163.com'` 和 `git config --local user.name '柚子'`。
 - 纯 Git、文档或分支整理任务：先检查 `git status --short --branch`、远端和分支指向；不要无关地执行 `npm install`、构建、预览或部署。
 - 修改分支历史前，先确认工作树干净、重新获取目标远端引用，并使用 `--force-with-lease` 保护并发更新；不要使用无条件的 `--force`。
 - 用户要求移动或合并提交时，保留原始提交历史；完成后核对本地分支、远端分支、提交数量和工作树状态。
