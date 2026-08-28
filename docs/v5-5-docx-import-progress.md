@@ -9,6 +9,7 @@
 - 已确认：单次 D1 batch、R2 temporary asset、initial revision、batch 幂等。
 - 已确认：Preview/IndexedDB 24 小时恢复、真实 producer fixtures、TDD、分功能提交与 owner-only 私有部署。
 - 规范：`docs/superpowers/specs/2026-08-28-docx-import-v5-5-design.md`
+- 原始需求归档：`docs/V5.5原始spec.md`；内容与用户提供的 `V5.5原始spec.md` 在统一换行后逐字符一致，源文件 SHA-256 为 `9807b2d397d8e3aa5a31e5dd17b3ce77ba7bfc0381b58213550a48b8620d17bf`。该文件仅作原始资料，实施状态以已确认设计、计划、ledger 和后续用户指令为准。
 - 计划：`docs/superpowers/plans/2026-08-28-docx-import-v5-5.md`，13 个 Task；每个 Task 完成后独立提交、推送并暂停等待确认。
 - 验证：20 个必需 warning code、全部固定安全限额、幂等/身份/revision/R2 约束均已通过文档静态自审；`git diff --check` 通过。
 - 提交：设计 `fed4755`；实施计划 `984b4a3`。
