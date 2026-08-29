@@ -31,3 +31,16 @@
 - 验证：probe focused tests 4/4 通过；完整 `npm run test:unit` 99/99 通过；`npx tsc --noEmit` 通过；四个新增代码/测试/脚本文件的定向 ESLint 通过；仓库全量 ESLint 直接运行退出 0。
 - 环境记录：现有 `npm run lint` 经 WSL 调用 `scripts/sites-env.sh` 时，因该 checkout 的 CRLF 在 `set -o pipefail` 处退出；直接以相同 ESLint 参数运行通过。本 Task 未改动该包装脚本，后续最终验证需在 Sites 构建环境或 LF shell 副本中复核。
 - 检查点：Task 2 尚未开始，等待用户确认继续。
+
+## 2026-08-29 — Task 2：Import IR 与 DOCX package/XML 安全边界
+
+- 状态：实现完成；Task 3 尚未开始。
+- RED：新增 `tests/docx-package-security.test.ts` 后，测试按预期因缺少 `lib/docx-import/limits.ts`、`package.ts`、`types.ts` 和 `xml.ts` 失败（`ERR_MODULE_NOT_FOUND`）；原有 99 项单测仍通过。
+- 类型边界：新增不可变 `DOCX_IMPORT_LIMITS`、typed `DocxImportError`/error code、20 个首版 warning code，以及 blocks、inline segments、assets、threads、skipped threads、`ParsedDocx`、`DocxImportIR`、`DocxPreviewRecord` 的 discriminated TypeScript interfaces。
+- Package gate：验证 `.docx` 扩展名、20 MB compressed size、OLE magic、ZIP local-file signature、必需 parts、1000 entries、200 MB uncompressed total、100:1 per-entry ratio、20 MB XML part，以及 encrypted、symlink、unsafe path、Unicode/case-fold duplicate entry；显式安全目录条目允许存在但不暴露为可读 part。
+- Zip.js API：`ZipReader` 与 `getEntries()` 均使用 `strictness: "strict"`、`checkAmbiguity: true`、`maxAppendedDataSize: 0`；解压读取使用 strict local-header check、CRC-32 与 overlapping-entry check，并在解压后重新核对实际 byte length。
+- XML gate：读取支持 UTF-8 BOM、UTF-16LE BOM 与 UTF-16BE BOM；解析前对原始文本不区分大小写拒绝 `DOCTYPE`/`ENTITY`，限制 100 层 nesting。`XMLValidator.validate()` 先验证结构，`XMLParser` 使用 `preserveOrder: true`、`ignoreAttributes: false`、`attributeNamePrefix: "@_"`、`processEntities: false`、禁用 tag/attribute value coercion；namespace-tolerant helpers 保持 source order。
+- Fixtures：新增通用确定性 DOCX fixture helper，可生成压缩、加密、symlink、entry-count 与受控 central/local header metadata 边界样本；安全测试覆盖最小有效包及全部 Task 2 hard-failure classes。
+- GREEN：package/XML focused tests 15/15 通过；`asset-lifecycle` 与 `markdown` focused regression 9/9 通过；`npx tsc --noEmit` 与六个新增/修改代码测试文件的定向 ESLint 均退出 0。
+- 环境说明：`npx` 仍打印仓库既有的 npm `http-proxy` 配置弃用提示；直接 Node test runner 的输出无 warning。本 Task 未修改 npm 配置。
+- 提交：本节与 Task 2 代码、fixtures 和测试同一提交；推送后暂停，等待确认再进入 Task 3。

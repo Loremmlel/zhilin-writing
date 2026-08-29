@@ -154,7 +154,7 @@ Write the actual version, gate evidence, and conclusion in the ADR. Update the p
 - Produces: `parseOrderedXml(xml, partName)` and namespace-tolerant helpers `xmlChildren`, `xmlChild`, `xmlAttr`, `xmlText`.
 - Consumes: `makeDocxFixture(parts, options)` in every later parser test.
 
-- [ ] **Step 1: Write failing package and XML tests**
+- [x] **Step 1: Write failing package and XML tests**
 
 Cover valid minimum package plus every hard failure class:
 
@@ -177,13 +177,13 @@ test("rejects a compression ratio above 100 to 1", async () => {
 
 Also assert extension, ZIP magic, OLE magic, encrypted entry, duplicate/ambiguous filename, traversal path, entry count, total uncompressed size, required parts, XML part size, nesting depth, and malformed XML.
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 Run: `npm run test:unit -- tests/docx-package-security.test.ts`
 
 Expected: FAIL on missing `limits.ts`, `package.ts`, and `xml.ts` exports.
 
-- [ ] **Step 3: Implement the minimal typed trust boundary**
+- [x] **Step 3: Implement the minimal typed trust boundary**
 
 Use immutable limits:
 
@@ -222,7 +222,7 @@ Cosmetic codes aggregate by code/count. Every skipped Annotation thread retains 
 
 Open Zip.js with `checkAmbiguity: true`, `strictness: "strict"`, and bounded appended data. Preflight `EntryMetaData.encrypted`, `symlink`, `compressedSize`, `uncompressedSize`, normalized package path, unique filename, totals, and ratio before extraction; recheck extracted byte length. Reject `DOCTYPE`/`ENTITY` case-insensitively before calling fast-xml-parser. Use `preserveOrder: true`, `ignoreAttributes: false`, `attributeNamePrefix: "@_"`, `processEntities: false`, and explicit boolean/tag value behavior.
 
-- [ ] **Step 4: Run GREEN and focused regression**
+- [x] **Step 4: Run GREEN and focused regression**
 
 Run:
 
@@ -233,7 +233,7 @@ npm run test:unit -- tests/asset-lifecycle.test.ts tests/markdown.test.ts
 
 Expected: all pass with no warning output.
 
-- [ ] **Step 5: Record, commit, and push**
+- [x] **Step 5: Record, commit, and push**
 
 Update progress with each safety case and the exact dependency APIs used. Run `git diff --check`, commit as `feat: validate DOCX packages safely`, obtain a new short-lived Sites credential, and push immediately.
 
