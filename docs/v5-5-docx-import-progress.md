@@ -44,3 +44,16 @@
 - GREEN：package/XML focused tests 15/15 通过；`asset-lifecycle` 与 `markdown` focused regression 9/9 通过；`npx tsc --noEmit` 与六个新增/修改代码测试文件的定向 ESLint 均退出 0。
 - 环境说明：`npx` 仍打印仓库既有的 npm `http-proxy` 配置弃用提示；直接 Node test runner 的输出无 warning。本 Task 未修改 npm 配置。
 - 提交：本节与 Task 2 代码、fixtures 和测试同一提交；推送后暂停，等待确认再进入 Task 3。
+
+## 2026-08-29 — Task 3：DOCX 正文语义与 canonical Markdown
+
+- 状态：实现完成；Task 4 尚未开始。
+- RED：新增 `tests/docx-import-body.test.ts` 后，测试按预期因缺少 `lib/docx-import/markdown.ts` 失败（`ERR_MODULE_NOT_FOUND`）；审阅阶段另补相邻列表合并与正文行首 Markdown 转义用例，分别观察到 3 个列表块而非 2 个、以及 `#`/`-`/`>` 未转义的预期失败。
+- Styles：`styles.xml` 的 paragraph/character style 使用 cycle-safe `basedOn` 解析；只接受显式 Heading1–Heading9、Quote/IntenseQuote 与集中 code style whitelist，不根据字体、字号、颜色或缩进猜测语义。H5–H9 flatten 为 H4，并聚合 `HEADING_LEVEL_CLAMPED`。
+- Lists：通过 `numPr → numId → abstractNum → ilvl/numFmt` 解析 bullet、numeric、alphabetic 与 roman 类型；最多保留三层，后续层级 flatten 并聚合 `LIST_DEPTH_CLAMPED`。相邻项目仅在 numId、format 与原始 level 均相同时合并。
+- Inline/links：支持 bold、italic、strike 与显式 code character style；视觉格式不进入正文语义并聚合 `VISUAL_FORMATTING_DROPPED`。external hyperlink 仅允许 `http:`、`https:`、`mailto:`；不安全目标保留 display text、丢弃 URL，并聚合新增 typed warning `HYPERLINK_UNSAFE_DROPPED`。
+- Fields/revisions：普通 simple/complex field 丢弃 instruction、保留 cached result；TOC 整段跳过并聚合 `TOC_SKIPPED`。`w:ins`/`moveTo` 保留，`w:del`/`moveFrom` 丢弃，并聚合 `TRACK_CHANGES_FLATTENED`。
+- Ordered walker：正文按 source order 生成稳定 block/item ID；comment range 的 active IDs 在单遍遍历中复制到每个 `InlineSegment.commentIds`。本 Task 按计划不构造 threads、assets 或 skipped threads，留给 Task 4/5。
+- Canonical Markdown：只渲染 IR 语义，确定性输出 H1–H4、paragraph、quote、三层 ordered/unordered list、inline marks、code 与安全链接；转义可能重解释正文的 Markdown 标点，不做 Unicode normalization，并在渲染后执行 1.5 MB UTF-8 hard limit。
+- GREEN：Task 3 body 与既有 Markdown/annotation round-trip focused tests 14/14 通过；完整 `npm run test:unit` 120/120 通过；`npx tsc --noEmit` 与八个新增/修改代码测试文件的定向 ESLint 均退出 0；`npx` 仅输出仓库既有的 `http-proxy` 弃用提示。
+- 提交：本节与 Task 3 代码、fixtures 和测试同一提交；推送后暂停，等待确认再进入 Task 4。

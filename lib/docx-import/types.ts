@@ -21,6 +21,7 @@ export type DocxImportErrorCode =
   | "XML_DEPTH_LIMIT"
   | "XML_MALFORMED"
   | "XML_ENCODING_INVALID"
+  | "MARKDOWN_SIZE_LIMIT"
   | "PACKAGE_CLOSED";
 
 export class DocxImportError extends Error {
@@ -44,6 +45,7 @@ export type ImportWarningCode =
   | "HEADING_LEVEL_CLAMPED"
   | "LIST_DEPTH_CLAMPED"
   | "VISUAL_FORMATTING_DROPPED"
+  | "HYPERLINK_UNSAFE_DROPPED"
   | "TOC_SKIPPED"
   | "TRACK_CHANGES_FLATTENED"
   | "TABLE_HEADER_SYNTHESIZED"

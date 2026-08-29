@@ -256,7 +256,7 @@ Update progress with each safety case and the exact dependency APIs used. Run `g
 - Produces: `renderCanonicalImportMarkdown(blocks, assets, threads): string`.
 - Produces: `parseDocx(file, onProgress?): Promise<ParsedDocx>`; at this task it returns body blocks, warnings, and an empty accepted-thread list while preserving `commentIds` on segments.
 
-- [ ] **Step 1: Write failing semantic tests**
+- [x] **Step 1: Write failing semantic tests**
 
 Use one fixture containing based-on styles, H1/H5, Quote/IntenseQuote, paragraph/list styles, bold/italic/strike, explicit `CodeChar`, safe/unsafe hyperlinks, cached field text, TOC, `w:ins`, and `w:del`:
 
@@ -279,13 +279,13 @@ test("uses semantic styles and accepted revision text without visual guessing", 
 
 Add table-driven list tests for bullet/numeric/alphabetic/roman formats and levels 0–3, asserting level 3 clamps to the third site level and aggregates `LIST_DEPTH_CLAMPED`.
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 Run: `npm run test:unit -- tests/docx-import-body.test.ts`
 
 Expected: FAIL because lookups, walker, renderer, and orchestrator do not exist.
 
-- [ ] **Step 3: Implement lookups and the ordered walker**
+- [x] **Step 3: Implement lookups and the ordered walker**
 
 Resolve paragraph and character styles through cycle-safe `basedOn` traversal. Normalize style IDs/names only for explicit Heading1–Heading9, Quote, IntenseQuote, and the centralized code whitelist. Resolve `numPr → numId → abstractNum → ilvl/numFmt`; do not inspect font metrics or indentation.
 
@@ -303,11 +303,11 @@ type WalkContext = {
 
 At every text run, create one `InlineSegment` with copied `commentIds`, effective marks, and a sanitized `http:`, `https:`, or `mailto:` link. Preserve unsafe-link display text and emit a typed warning. Keep `w:ins`/`moveTo`; skip `w:del`/`moveFrom`. Aggregate cosmetic warnings with counts.
 
-- [ ] **Step 4: Implement canonical Markdown rendering**
+- [x] **Step 4: Implement canonical Markdown rendering**
 
 Render only IR semantics: H1–H4, paragraphs, quotes, three-level ordered/unordered lists, escaped inline marks, code, and safe links. Normalize renderer whitespace deterministically without Unicode normalization. Enforce the 1.5 MB UTF-8 limit after rendering.
 
-- [ ] **Step 5: Run GREEN and round-trip regression**
+- [x] **Step 5: Run GREEN and round-trip regression**
 
 Run:
 
@@ -318,7 +318,7 @@ npm run test:unit -- tests/markdown.test.ts tests/annotation-roundtrip.test.ts
 
 Expected: body tests and the existing V5 canonical parser/stringifier tests pass.
 
-- [ ] **Step 6: Record, commit, and push**
+- [x] **Step 6: Record, commit, and push**
 
 Update progress with supported style/list/field rules and warning evidence. Commit as `feat: import DOCX body semantics` after `git diff --check`; push immediately with a Sites credential.
 

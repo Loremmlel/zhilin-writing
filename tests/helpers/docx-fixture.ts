@@ -17,6 +17,20 @@ export const MINIMAL_DOCUMENT = `<?xml version="1.0" encoding="UTF-8"?>
   <w:body><w:p><w:r><w:t>正文</w:t></w:r></w:p></w:body>
 </w:document>`;
 
+export function wordDocumentXml(body: string): string {
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <w:body>${body}<w:sectPr/></w:body>
+</w:document>`;
+}
+
+export function documentRelationshipsXml(relationships: string): string {
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  ${relationships}
+</Relationships>`;
+}
+
 type FixtureValue = string | Uint8Array;
 
 export interface DocxFixtureEntry {

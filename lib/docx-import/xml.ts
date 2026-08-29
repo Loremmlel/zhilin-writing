@@ -111,6 +111,10 @@ export function xmlText(input: OrderedXmlNode | OrderedXmlNodes): string {
   return text;
 }
 
+export function xmlName(node: OrderedXmlNode): string | undefined {
+  return tagName(node);
+}
+
 function childNodeArray(node: OrderedXmlNode): OrderedXmlNodes {
   const name = tagName(node);
   if (!name) return [];
