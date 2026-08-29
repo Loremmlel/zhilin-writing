@@ -26,7 +26,10 @@ export type DocxImportErrorCode =
   | "IMAGE_COUNT_LIMIT"
   | "IMAGE_SIZE_LIMIT"
   | "MARKDOWN_SIZE_LIMIT"
-  | "PACKAGE_CLOSED";
+  | "PACKAGE_CLOSED"
+  | "PARSE_ABORTED"
+  | "PARSE_TIMEOUT"
+  | "PARSE_FAILED";
 
 export class DocxImportError extends Error {
   readonly code: DocxImportErrorCode;
