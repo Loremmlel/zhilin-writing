@@ -72,3 +72,16 @@
 - GREEN：Task 4 与既有 annotation selection/round-trip/Markdown focused regression 28/28 通过；Task 4 + package/XML security regression 33/33 通过；完整 `npm run test:unit` 138/138 通过；`npx tsc --noEmit` 与九个 Task4 新增/修改代码测试文件的定向 ESLint 均退出 0。`npx` 仅输出仓库既有的 `http-proxy` 弃用提示。
 - 最小实现：计划列出的 `lookups.ts` 无需改动；comments optional parts 由现有受限 package reader 直接读取，避免为单一调用增加转发层。
 - 提交：本节与 Task 4 代码和测试同一提交；推送后暂停，等待确认再进入 Task 5。
+
+## 2026-08-29 — Task 5：表格、图片、脚注与特殊内容的确定性降级
+
+- 状态：实现与三轮代码审阅修复完成；Task 6 尚未开始。
+- RED：新增 `tests/docx-import-rich-content.test.ts`，先后观察到 rich-content 模块缺失、URL 中竖线未转义、percent-encoded media target 未解析，以及审阅补充的图片缓存/源顺序/MIME、未引用 note 批注、表格 grid offset、列表图片、纯图片空批注范围、无效图片残留段落拆分等预期失败，再逐项实现至 GREEN。
+- Tables：矩形表格输出 GFM table；无显式 header 时合成空 header 并聚合 `TABLE_HEADER_SYNTHESIZED`；单元格多段落以 ` / ` 展平。`gridSpan`、`vMerge`、`rowSpan`、`colSpan` 等合并标记统一按 source order 降级为普通段落，不输出 raw HTML；`tblGrid`、`gridBefore`、`gridAfter` 用于稳定矩形化。table cell 批注仍按 `ANNOTATION_TABLE_UNSUPPORTED` 原子跳过。
+- Images：仅接受 relationship 指向 `word/media/` 的内嵌 PNG/JPEG/GIF/WebP；同时校验 `[Content_Types].xml` 的 Default/Override（含 percent-decoding）、扩展名、MIME 与 magic signature。alt 依次取 descr、title、filename、`image`；floating image 保留并聚合 warning。正文按图片所在 source offset 拆分，列表内图片保持单一 list item 后附图片；纯图片段落保留零长度文字 segment，确保空范围仍归类为空批注。
+- Asset safety：单图 10 MB、总图片数 200 的 hard limit；相同 package media bytes 复用缓存，避免重复引用造成内存放大。缺失、不安全、格式/MIME/signature 不一致的图片确定性跳过；material validation 拒绝候选后进行轻量二次 walk，避免无效图片在 Markdown 中留下错误段落拆分。
+- Special content：textbox 中可读段落以 ` / ` 展平；OMML 输出稳定占位符 `[公式]`；可读 DrawingML shape text 保留，不可读 shape 聚合 `SHAPE_CONTENT_SKIPPED`。所有降级均使用 typed warning。
+- Notes：footnote/endnote 按正文引用顺序共享稳定编号，正文插入 `[N]`，文末追加 `---` 与“脚注（从 Word 导入）”列表；未引用 notes 中的批注也会被扫描并归类为 non-text，避免误绑定正文。notes 降级 warning 聚合输出。
+- 审阅修复：消除重复媒体引用的内存放大；补齐图片 source order、MIME/扩展名/signature 一致性、未引用 note 批注、table grid offset；修复列表图片重复项目、纯图片空范围、无效 signature 残留拆分与 merged-table 合成空格问题。最终独立审阅无 Critical、Important 或 Minor 发现。
+- GREEN：Task 5 + 正文/批注/asset focused regression 38/38 通过；完整 `npm run test:unit` 150/150 通过；TypeScript、定向 ESLint 与 `git diff --check` 在提交前复核。
+- 提交：本节与 Task 5 代码和测试同一提交，消息为 `feat: import DOCX rich content safely`；推送后暂停，等待确认再进入 Task 6。

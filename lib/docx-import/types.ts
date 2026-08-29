@@ -23,6 +23,8 @@ export type DocxImportErrorCode =
   | "XML_ENCODING_INVALID"
   | "COMMENT_LIMIT"
   | "COMMENT_ID_DUPLICATE"
+  | "IMAGE_COUNT_LIMIT"
+  | "IMAGE_SIZE_LIMIT"
   | "MARKDOWN_SIZE_LIMIT"
   | "PACKAGE_CLOSED";
 
@@ -57,6 +59,7 @@ export type ImportWarningCode =
   | "IMAGE_FORMAT_UNSUPPORTED"
   | "TEXTBOX_FLATTENED"
   | "EQUATION_SKIPPED"
+  | "SHAPE_CONTENT_SKIPPED"
   | "NOTES_FLATTENED_TO_APPENDIX"
   | "ANNOTATION_EMPTY_RANGE"
   | "ANNOTATION_CROSS_BLOCK"
@@ -81,6 +84,7 @@ export interface InlineSegment {
   marks: InlineMark[];
   link?: string;
   commentIds: string[];
+  synthetic?: "noteReference" | "equation";
 }
 
 interface ImportBlockBase {
@@ -161,6 +165,8 @@ export interface ImportAsset {
   sourceRelationshipId: string;
   floating: boolean;
 }
+
+export type ImportAssetCandidate = ImportAsset;
 
 export interface ImportedReply {
   replyId: string;

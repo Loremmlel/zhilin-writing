@@ -15,7 +15,7 @@ export function renderCanonicalImportMarkdown(
   assets: ImportAsset[],
   threads: ImportedThread[],
 ): string {
-  void assets;
+  const assetIds = new Set(assets.map((asset) => asset.id));
   const threadsByBlock = new Map<string, ImportedThread[]>();
   for (const thread of threads) {
     const blockThreads = threadsByBlock.get(thread.blockId) ?? [];
@@ -24,7 +24,7 @@ export function renderCanonicalImportMarkdown(
   }
   const rendered: Array<{ type: ImportBlock["type"]; value: string }> = [];
   for (const block of blocks) {
-    const value = renderBlock(block, threadsByBlock);
+    const value = renderBlock(block, threadsByBlock, assetIds);
     if (value || block.type === "paragraph") rendered.push({ type: block.type, value });
   }
 
@@ -52,7 +52,11 @@ export function renderCanonicalImportMarkdown(
   return markdown;
 }
 
-function renderBlock(block: ImportBlock, threadsByBlock: Map<string, ImportedThread[]>): string {
+function renderBlock(
+  block: ImportBlock,
+  threadsByBlock: Map<string, ImportedThread[]>,
+  assetIds: ReadonlySet<string>,
+): string {
   if (block.type === "paragraph") return renderInline(block.segments, threadsByBlock.get(block.id));
   if (block.type === "heading") {
     return `${"#".repeat(block.level)} ${renderInline(block.segments, threadsByBlock.get(block.id))}`;
@@ -64,10 +68,28 @@ function renderBlock(block: ImportBlock, threadsByBlock: Map<string, ImportedThr
       .join("\n");
   }
   if (block.type === "list") return renderList(block, threadsByBlock);
-  if (block.type === "table") return "";
-  if (block.type === "image") return "";
-  if (block.type === "notesAppendix") return "";
+  if (block.type === "table") {
+    const row = (cells: typeof block.header.cells) => `| ${cells.map((cell) => renderTableCell(cell.segments)).join(" | ")} |`;
+    const separator = `| ${block.header.cells.map(() => "---").join(" | ")} |`;
+    return [row(block.header.cells), separator, ...block.rows.map((item) => row(item.cells))].join("\n");
+  }
+  if (block.type === "image") {
+    return assetIds.has(block.assetId)
+      ? `![${escapeMarkdownLiteral(block.alt)}](docx-asset:${block.assetId})`
+      : "";
+  }
+  if (block.type === "notesAppendix") {
+    return `---\n\n${block.title}\n\n${block.notes
+      .map((note) => `[${note.number}] ${renderInline(note.segments)}`)
+      .join("\n\n")}`;
+  }
   return "";
+}
+
+function renderTableCell(segments: InlineSegment[]): string {
+  return renderInline(segments)
+    .replace(/(?<!\\)\|/g, "\\|")
+    .replace(/\r?\n/g, "\\n");
 }
 
 function renderList(block: ListBlock, threadsByBlock: Map<string, ImportedThread[]>): string {
@@ -108,7 +130,13 @@ function renderSegmentSlice(segments: InlineSegment[], start: number, end: numbe
       Math.max(0, start - segmentStart),
       Math.min(segment.text.length, end - segmentStart),
     );
-    let value = segment.marks.includes("code") ? renderCode(text) : escapeMarkdownLiteral(text);
+    let value = segment.synthetic
+      ? text
+      : segment.marks.includes("code") ? renderCode(text) : escapeMarkdownLiteral(text);
+    if (segment.synthetic) {
+      rendered.push(value);
+      continue;
+    }
     if (segment.marks.includes("strike")) value = `~~${value}~~`;
     if (segment.marks.includes("em")) value = `*${value}*`;
     if (segment.marks.includes("strong")) value = `**${value}**`;

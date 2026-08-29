@@ -40,6 +40,7 @@ export interface NumberingLevel {
 export interface DocumentRelationship {
   id: string;
   target: string;
+  type: string;
   external: boolean;
 }
 
@@ -52,6 +53,7 @@ export interface DocxLookups {
   ): RunProperties & { codeStyle: boolean };
   numbering(reference: NumberingReference | undefined): NumberingLevel | undefined;
   relationship(id: string | undefined): DocumentRelationship | undefined;
+  contentType(path: string): string | undefined;
 }
 
 interface StyleDefinition {
@@ -76,6 +78,10 @@ interface AbstractNumbering {
 const CODE_STYLE_NAMES = new Set(["code", "codechar", "sourcecode"]);
 
 export async function loadDocxLookups(pkg: DocxPackageReader): Promise<DocxLookups> {
+  const contentTypes = parseContentTypes(parseOrderedXml(
+    await pkg.readText("[Content_Types].xml"),
+    "[Content_Types].xml",
+  ));
   const styles = pkg.has("word/styles.xml")
     ? parseStyles(parseOrderedXml(await pkg.readText("word/styles.xml"), "word/styles.xml"))
     : new Map<string, StyleDefinition>();
@@ -148,7 +154,41 @@ export async function loadDocxLookups(pkg: DocxPackageReader): Promise<DocxLooku
     relationship(id) {
       return id ? relationships.get(id) : undefined;
     },
+    contentType(path) {
+      return contentTypes.overrides.get(path)
+        ?? contentTypes.defaults.get(path.split(".").at(-1)?.toLocaleLowerCase("en-US") ?? "");
+    },
   };
+}
+
+function parseContentTypes(nodes: OrderedXmlNode[]): {
+  defaults: Map<string, string>;
+  overrides: Map<string, string>;
+} {
+  const defaults = new Map<string, string>();
+  const overrides = new Map<string, string>();
+  const root = xmlChild(nodes, "Types");
+  if (!root) return { defaults, overrides };
+  for (const node of xmlChildren(root, "Default")) {
+    const extension = xmlAttr(node, "Extension")?.toLocaleLowerCase("en-US");
+    const contentType = xmlAttr(node, "ContentType")?.toLocaleLowerCase("en-US");
+    if (extension && contentType) defaults.set(extension, contentType);
+  }
+  for (const node of xmlChildren(root, "Override")) {
+    const partName = normalizePartName(xmlAttr(node, "PartName"));
+    const contentType = xmlAttr(node, "ContentType")?.toLocaleLowerCase("en-US");
+    if (partName && contentType) overrides.set(partName, contentType);
+  }
+  return { defaults, overrides };
+}
+
+function normalizePartName(value: string | undefined): string | undefined {
+  if (!value) return undefined;
+  try {
+    return decodeURIComponent(value).replace(/^\//, "");
+  } catch {
+    return undefined;
+  }
 }
 
 export function parseParagraphProperties(node: OrderedXmlNode | undefined): ParagraphProperties {
@@ -240,10 +280,11 @@ function parseRelationships(nodes: OrderedXmlNode[]): Map<string, DocumentRelati
     const id = xmlAttr(node, "Id");
     const target = xmlAttr(node, "Target");
     const type = xmlAttr(node, "Type");
-    if (!id || !target || !type?.endsWith("/hyperlink")) continue;
+    if (!id || !target || !type) continue;
     result.set(id, {
       id,
       target,
+      type,
       external: xmlAttr(node, "TargetMode")?.toLocaleLowerCase("en-US") === "external",
     });
   }
