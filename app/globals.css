@@ -369,6 +369,74 @@ button, summary, input[type="file"] { cursor: pointer; }
 .onboarding-card h1, .onboarding-card p { margin: 0; }
 .onboarding-brand { color: var(--green-dark); font: 700 18px Georgia, serif; letter-spacing: .08em; }
 
+.new-post-import-link { width: fit-content; margin-top: 18px; }
+.docx-import-page { width: min(1180px, calc(100% - 40px)); }
+.docx-import-workspace { display: grid; gap: 22px; }
+.docx-import-dropzone { position: relative; min-height: 330px; padding: 48px 30px; border: 1px dashed #aebcaf; border-radius: var(--radius); display: grid; place-items: center; align-content: center; gap: 10px; background: linear-gradient(rgba(251, 250, 247, .82), rgba(251, 250, 247, .82)), repeating-linear-gradient(0deg, transparent 0 30px, rgba(79, 130, 95, .035) 30px 31px); text-align: center; cursor: pointer; outline: none; transition: border-color .18s, background .18s, box-shadow .18s; }
+.docx-import-dropzone:hover, .docx-import-dropzone:focus-visible, .docx-import-dropzone.is-drag-over { border-color: var(--green); background-color: var(--green-pale); box-shadow: 0 0 0 3px rgba(79, 130, 95, .09); }
+.docx-import-dropzone input { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.docx-import-dropzone h2 { margin: 5px 0 0; font: 700 27px Georgia, "Noto Serif SC", serif; }
+.docx-import-dropzone p { margin: 0; color: #4f574f; line-height: 1.7; }
+.docx-import-dropzone small { color: var(--muted); }
+.docx-import-file-mark { width: 66px; height: 76px; border: 1px solid #a9b9aa; border-radius: 7px 7px 11px 7px; display: grid; place-items: end center; padding-bottom: 13px; background: var(--paper-strong); color: var(--green-dark); box-shadow: 5px 6px 0 var(--green-soft); font: 800 11px/1 inherit; letter-spacing: .07em; }
+.docx-import-recovery { padding: 22px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper-strong); }
+.docx-import-recovery-list { display: grid; gap: 8px; }
+.docx-import-recovery-list article { min-height: 64px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 9px; display: flex; align-items: center; justify-content: space-between; gap: 14px; background: var(--green-pale); }
+.docx-import-recovery-list article > div { display: flex; align-items: center; gap: 12px; }
+.docx-import-recovery-list article > div:first-child { min-width: 0; display: grid; gap: 3px; }
+.docx-import-recovery-list strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.docx-import-recovery-list span { color: var(--muted); font-size: 12px; }
+.docx-import-error { padding: 15px 17px; border: 1px solid #e0b9b4; border-radius: 10px; display: flex; align-items: center; justify-content: space-between; gap: 18px; background: #fbefed; }
+.docx-import-error p { margin: 4px 0 0; color: #704b47; line-height: 1.55; }
+.docx-import-progress { min-height: 270px; padding: 34px; border: 1px solid var(--line); border-radius: var(--radius); display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 28px; background: var(--paper-strong); box-shadow: var(--shadow); }
+.docx-import-progress h2 { margin: 7px 0 8px; font: 700 27px Georgia, "Noto Serif SC", serif; }
+.docx-import-progress p { margin: 0; color: var(--muted); }
+.docx-import-progress progress { grid-column: 1 / -1; width: 100%; height: 8px; border: 0; border-radius: 999px; overflow: hidden; background: var(--green-soft); }
+.docx-import-progress progress::-webkit-progress-bar { background: var(--green-soft); }
+.docx-import-progress progress::-webkit-progress-value { background: var(--green); }
+.docx-import-progress progress::-moz-progress-bar { background: var(--green); }
+.docx-import-preview { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 340px); gap: 24px; align-items: start; }
+.docx-import-document { min-width: 0; padding: 32px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper-strong); box-shadow: var(--shadow); }
+.docx-import-preview-heading { margin-bottom: 24px; padding-bottom: 20px; border-bottom: 1px solid var(--line); display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; }
+.docx-import-preview-heading h2 { margin: 7px 0 0; font: 700 28px/1.3 Georgia, "Noto Serif SC", serif; }
+.docx-import-source { max-width: 45%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-size: 12px; }
+.docx-import-lock-notice { margin: -5px 0 20px; padding: 12px 14px; border-left: 3px solid var(--annotation-ink); background: var(--annotation); color: #704943; font-size: 13px; line-height: 1.65; }
+.docx-import-rail { min-width: 0; display: grid; gap: 14px; }
+.docx-import-panel { padding: 19px; border: 1px solid var(--line); border-radius: 11px; background: var(--paper-strong); }
+.docx-import-panel .section-heading h2 { font-size: 18px; }
+.docx-import-panel > .muted { display: block; margin: -7px 0 15px; line-height: 1.6; }
+.docx-import-thread-list, .docx-import-author-list { display: grid; gap: 9px; }
+.docx-import-thread { padding: 13px; border: 1px solid #ead6d3; border-radius: 9px; background: #fffaf8; }
+.docx-import-thread header { display: flex; align-items: baseline; justify-content: space-between; gap: 9px; }
+.docx-import-thread header strong { font-size: 13px; }
+.docx-import-thread header span { color: var(--muted); font-size: 10px; text-align: right; }
+.docx-import-thread blockquote { margin: 10px 0 8px; padding: 7px 9px; border-left: 2px solid #d8aaa5; background: var(--annotation); color: #76504c; font: 12px/1.55 Georgia, "Noto Serif SC", serif; }
+.docx-import-thread > p { margin: 0; color: #3f4540; font-size: 12px; line-height: 1.65; }
+.docx-import-thread-reply { margin: 11px -13px -13px; padding: 10px 13px; border-top: 1px solid #eadeda; display: grid; gap: 3px; background: rgba(251, 250, 247, .7); }
+.docx-import-thread-reply strong { font-size: 11px; }
+.docx-import-thread-reply span { color: #555d55; font-size: 11px; line-height: 1.55; }
+.docx-import-author-list label { display: grid; gap: 7px; }
+.docx-import-author-list label > span { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 13px; font-weight: 700; }
+.docx-import-author-list small { color: var(--annotation-ink); font-size: 10px; font-weight: 700; }
+.docx-import-author-list select { width: 100%; min-height: 39px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: 8px; background: #fff; color: var(--ink); }
+.docx-import-author-list select:focus-visible { border-color: #9ab79f; outline: 3px solid rgba(79, 130, 95, .1); }
+.docx-import-warning-summary ul, .docx-import-validation ul { margin: 0; padding: 0; display: grid; gap: 7px; list-style: none; }
+.docx-import-warning-summary li { padding: 9px 10px; border-left: 3px solid #bca45f; background: var(--warning-soft); display: grid; gap: 3px; font-size: 11px; line-height: 1.5; }
+.docx-import-warning-summary li[data-severity="info"] { border-left-color: #8ca58e; background: var(--green-pale); }
+.docx-import-warning-summary li[data-severity="error"] { border-left-color: var(--danger); background: #fbefed; }
+.docx-import-warning-summary li span { color: var(--muted); }
+.docx-import-warning-groups { margin-top: 10px; color: var(--green-dark); font-size: 11px; }
+.docx-import-warning-groups summary { cursor: pointer; font-weight: 700; }
+.docx-import-warning-groups ul { margin-top: 8px; }
+.docx-import-clear-state { margin: 0; color: var(--green-dark); font-size: 12px; line-height: 1.6; }
+.docx-import-validation { border-color: #e0b9b4; background: #fff9f7; }
+.docx-import-validation h2 { margin: 0 0 10px; color: var(--danger); font: 700 18px Georgia, "Noto Serif SC", serif; }
+.docx-import-validation li { padding-left: 15px; position: relative; color: #704b47; font-size: 12px; line-height: 1.55; }
+.docx-import-validation li::before { content: "•"; position: absolute; left: 2px; }
+.docx-import-actions { position: sticky; bottom: 12px; z-index: 20; padding: 13px 15px; border: 1px solid #d5d6cf; border-radius: 11px; display: flex; align-items: center; justify-content: space-between; gap: 18px; background: rgba(255, 254, 250, .94); box-shadow: 0 10px 35px rgba(35, 44, 37, .1); backdrop-filter: blur(8px); }
+.docx-import-actions > div { display: flex; align-items: center; gap: 13px; }
+.docx-import-actions span { color: var(--muted); font-size: 12px; }
+
 @media (max-width: 900px) {
   .header-inner { grid-template-columns: 1fr auto; }
   .header-search { grid-column: 1 / -1; grid-row: 2; margin-bottom: 13px; }
@@ -385,6 +453,9 @@ button, summary, input[type="file"] { cursor: pointer; }
   .dialog-surface.annotation-sheet-surface { width: min(100%, 680px); max-height: min(82dvh, 760px); padding: 20px 20px calc(20px + env(safe-area-inset-bottom)); border-radius: 18px 18px 0 0; border-bottom: 0; overscroll-behavior: contain; }
   .annotation-sheet-surface .dialog-header { padding-right: 70px; }
   .annotation-sheet-surface .dialog-header h2 { font-size: 23px; }
+  .docx-import-preview { grid-template-columns: 1fr; }
+  .docx-import-rail { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .docx-import-validation { grid-column: 1 / -1; }
 }
 
 @media (max-width: 640px) {
@@ -423,13 +494,26 @@ button, summary, input[type="file"] { cursor: pointer; }
   .revision-preview { padding: 20px; }
   .admin-content-row { align-items: stretch; flex-direction: column; }
   .admin-row-actions { justify-content: flex-start; }
+  .docx-import-page { width: min(100% - 24px, 1180px); }
+  .docx-import-dropzone { min-height: 290px; padding-inline: 18px; }
+  .docx-import-progress { grid-template-columns: 1fr; text-align: center; }
+  .docx-import-progress .docx-import-file-mark { margin-inline: auto; }
+  .docx-import-progress progress { grid-column: auto; }
+  .docx-import-document { padding: 20px 16px; }
+  .docx-import-preview-heading, .docx-import-recovery-list article, .docx-import-error { align-items: flex-start; flex-direction: column; }
+  .docx-import-source { max-width: 100%; }
+  .docx-import-rail { grid-template-columns: 1fr; }
+  .docx-import-validation { grid-column: auto; }
+  .docx-import-actions { position: static; align-items: stretch; flex-direction: column-reverse; }
+  .docx-import-actions > div { align-items: stretch; flex-direction: column; }
+  .docx-import-actions .button { width: 100%; }
 }
 
 @media (forced-colors: active) {
   * { scrollbar-color: auto; }
   .button, .account-menu-trigger, .revision-list-item { border: 1px solid ButtonText; }
   .annotation-range { border: 1px solid LinkText; background: Canvas; color: CanvasText; }
-  .annotation-card, .annotation-sheet-surface { border: 1px solid ButtonText; }
+  .annotation-card, .annotation-sheet-surface, .docx-import-dropzone, .docx-import-panel { border: 1px solid ButtonText; }
   .annotation-connectors path { stroke: LinkText; }
 }
 

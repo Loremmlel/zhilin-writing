@@ -29,6 +29,16 @@ export async function loadImportPreview(
   return preview ?? null;
 }
 
+export async function listImportPreviews(now = Date.now()): Promise<DocxPreviewRecord[]> {
+  await purgeExpiredImportPreviews(now);
+  const previews = await withLocalStore<DocxPreviewRecord[]>(
+    IMPORT_PREVIEW_STORE_NAME,
+    "readonly",
+    (store) => store.getAll(),
+  );
+  return previews.sort((left, right) => right.createdAt.localeCompare(left.createdAt));
+}
+
 export async function removeImportPreview(importBatchId: string): Promise<void> {
   await withLocalStore<undefined>(
     IMPORT_PREVIEW_STORE_NAME,
@@ -81,6 +91,7 @@ function normalizePreview(preview: DocxPreviewRecord, now: number): DocxPreviewR
   return {
     version: 1,
     importBatchId: preview.importBatchId,
+    title: preview.title,
     createdAt: new Date(createdAt).toISOString(),
     expiresAt: new Date(createdAt + DOCX_IMPORT_LIMITS.previewTtlMs).toISOString(),
     ir: preview.ir,

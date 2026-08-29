@@ -238,6 +238,7 @@ export interface DocxPreviewAsset {
 export interface DocxPreviewRecord {
   version: 1;
   importBatchId: string;
+  title?: string;
   createdAt: string;
   expiresAt: string;
   ir: DocxImportIR;

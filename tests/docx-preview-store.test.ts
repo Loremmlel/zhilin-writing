@@ -3,6 +3,7 @@ import test, { afterEach, beforeEach } from "node:test";
 import "fake-indexeddb/auto";
 
 import {
+  listImportPreviews,
   loadImportPreview,
   purgeExpiredImportPreviews,
   removeImportPreview,
@@ -23,6 +24,7 @@ test("recovers a complete finalized Preview without original DOCX bytes", async 
   assert.deepEqual(loaded, preview);
   assert.equal(loaded?.ir.source.filename, "source.docx");
   assert.equal(loaded?.ir.source.sha256, "source-hash");
+  assert.equal(loaded?.title, "Imported title");
   assert.equal(loaded?.temporaryAssets[0]?.assetId, "asset-1");
   assert.equal(loaded?.authorMappings.Author, "user-1");
   assert.equal(loaded?.ir.threads[0]?.annotationId, "ann_00000000-0000-4000-8000-000000000001");
@@ -120,10 +122,21 @@ test("removes a Preview after commit or explicit abandonment", async () => {
   assert.equal(await loadImportPreview("batch-1", Date.parse("2026-08-29T12:00:00.000Z")), null);
 });
 
+test("lists active recoverable Previews newest first without expired records", async () => {
+  const now = Date.parse("2026-08-29T12:00:00.000Z");
+  await saveImportPreview(previewFixture("older", "ignored", "2026-08-29T10:00:00.000Z"), now);
+  await saveImportPreview(previewFixture("newer", "ignored", "2026-08-29T11:00:00.000Z"), now);
+  await saveImportPreview(previewFixture("expired", "ignored", "2026-08-28T10:00:00.000Z"), now);
+
+  const previews = await listImportPreviews(now);
+  assert.deepEqual(previews.map((preview) => preview.importBatchId), ["newer", "older"]);
+});
+
 function previewFixture(importBatchId: string, expiresAt: string, createdAt = "2026-08-29T00:00:00.000Z"): DocxPreviewRecord {
   return {
     version: 1,
     importBatchId,
+    title: "Imported title",
     createdAt,
     expiresAt,
     ir: {

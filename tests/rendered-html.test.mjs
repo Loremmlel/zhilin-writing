@@ -71,3 +71,16 @@ test("production artifact contains V5 annotation reading, discussion, and edit p
   assert.match(styles, /annotation-connectors/);
   assert.match(styles, /annotation-sheet-surface/);
 });
+
+test("production artifact contains the V5.5 DOCX import entry and Preview workspace", async () => {
+  const [source, styles] = await Promise.all([builtServerSource(), builtCssSource()]);
+  assert.match(source, /从 DOCX 导入/);
+  assert.match(source, /选择 DOCX 文件/);
+  assert.match(source, /解析进度/);
+  assert.match(source, /Word 作者关联/);
+  assert.match(source, /此 DOCX 含正文批注。导入后正文将在 V6 AnnotationGuard 完成前暂时锁定编辑。/);
+  assert.match(source, /取消导入/);
+  assert.match(source, /确认导入/);
+  assert.match(styles, /docx-import-workspace/);
+  assert.match(styles, /docx-import-warning-summary/);
+});

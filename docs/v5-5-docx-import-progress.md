@@ -100,3 +100,15 @@
 - GREEN：Task 6 Worker/Preview focused tests 19/19 通过；完整 `npm run test:unit` 171/171 通过；`npx tsc --noEmit`、八个相关文件的定向 ESLint、`git diff --check` 与 `npm run build` 均退出 0。`npx` 仍只输出仓库既有的 npm `http-proxy` 配置弃用提示；构建仅保留既有的大 chunk 警告。
 - 最小实现：图片上传与 Preview UI 按计划留在 Task 7；Task 6 只建立可测试的 Worker/ID/存储边界，未新增依赖或重复 IndexedDB adapter。
 - 提交：本节与 Task 6 代码和测试同一提交，消息为 `feat: run DOCX import in a recoverable worker preview`；推送后暂停，等待确认再进入 Task 7。
+
+## 2026-08-29 — Task 7：导入工作区与可验证 Preview
+
+- 状态：实现与自检完成；Task 8 尚未开始。
+- 入口与权限：新增成员专用 `/posts/import`，服务端执行 `requireMember("/posts/import")` 并只向客户端提供站内用户 ID/显示名；新帖子页增加“从 DOCX 导入”入口。导入页沿用现有校刊纸面、Milkdown、Annotation mark、`/api/assets` 与共享确认弹窗，不新增上传或编辑依赖。
+- 状态机：工作区覆盖 `selecting → parsing → uploading → previewing`，并为 Task 9 预留 `committing → complete`。文件选择只接受一个非空 `.docx` 且压缩体积不超过 20 MB；Worker 显示六个真实阶段、20 秒边界与取消。支持图片按源顺序逐张上传、计数进度、失败重试；失败前已上传对象保持 temporary，由既有 GC 回收。
+- Preview：解析完成后生成一次性 batch/root/reply IDs，把 `docx-asset:` 引用替换为认证临时 URL，再保存 24 小时 Preview。标题与正文可编辑；Milkdown 显示 canonical Markdown、图片、表格与 Annotation mark。右栏显示 Word 原作者、批注/一层回复、可选站内关联、typed warnings 和逐条 skipped threads；默认最多展示 50 条明细，其余按本地化类别聚合计数。存在 accepted Annotation 时显示精确 V5.5 编辑锁提示。
+- 本地恢复：Preview store 新增按 `createdAt` 倒序列出有效记录，并持久化用户编辑后的标题、Markdown、author mappings、最终 IDs 与 temporary asset refs；过期/畸形记录仍在加载前清理。恢复时重新验证 expiry、图片数量/MIME/文件名、temporary URL 形状、author mapping 用户与 source author；主动放弃使用共享 alert dialog，删除 IndexedDB 记录且不伪装同步删除 R2 temporary objects。
+- Commit 前校验：新增 `validateEditedImportPreview()`，统一 trim/校验 120 字标题、非空正文、1.5 MB UTF-8 上限、error-severity warning、exact annotation ID set、duplicate/missing/unknown anchor、selected text 不变、nested/overlap、unsafe URL、过期 Preview 与临时图片引用。成功 payload 复用 Preview 的 batch/root/reply IDs，只替换最终 title/canonical Markdown；任一 blocking error 都保持编辑内容并禁用 Confirm。真正的 authenticated atomic commit 仍留在 Task 9。
+- RED/GREEN：Preview tests 先因 `preview-validation.ts` 缺失失败；恢复列表先因 `listImportPreviews` 缺失失败；标题持久化、临时图片缺失/篡改也分别观察到预期失败后实现。最终 Task 7 focused tests 13/13 通过；完整 `npm run test:unit` 178/178 通过；`npx tsc --noEmit`、定向 ESLint、strict premium UI audit、`git diff --check`、`npm run build` 与七项 rendered artifact assertions 均退出 0。构建产物包含 `/posts/import`；按当前 Sites 规则，用户未单独授权 browser/visual/E2E QA，因此未启动 Agent preview 或浏览器交互测试。
+- 最小实现：Task 7 不新增数据库表、不实现正式 Confirm endpoint、不伪造成功状态，也不提前实现 Task 8 imported identity schema 或 Task 9 atomic commit；Confirm 保持 disabled，Task 9 接入现有 validation payload 后再启用。
+- 提交：本节将与 Task 7 代码和测试同一提交，消息为 `feat: add DOCX import preview workspace`；推送后暂停，等待确认再进入 Task 8。
