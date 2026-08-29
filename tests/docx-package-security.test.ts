@@ -241,6 +241,28 @@ test("rejects malformed XML and nesting deeper than 100 elements", async () => {
   );
 });
 
+test("rejects undeclared and invalid numeric entity references", async () => {
+  for (const malformed of [
+    "<root>&foo;</root>",
+    "<root>&AMP;</root>",
+    "<root>&#0;</root>",
+    '<root value="&#xD800;"/>',
+  ]) {
+    await expectImportError(
+      () => parseOrderedXml(malformed, "word/document.xml"),
+      "XML_MALFORMED",
+    );
+  }
+});
+
+test("preserves CDATA without interpreting entity-shaped content", () => {
+  const nodes = parseOrderedXml(
+    "<root><![CDATA[&foo;&amp;]]></root>",
+    "word/document.xml",
+  );
+  assert.equal(xmlText(xmlChild(nodes, "root")!), "&foo;&amp;");
+});
+
 test("ordered XML helpers preserve source order and ignore namespace prefixes", () => {
   const nodes = parseOrderedXml(
     `<w:document xmlns:w="urn:test" w:kind="main"><w:p>A</w:p><x:p xmlns:x="urn:other">B<w:r>C</w:r></x:p></w:document>`,

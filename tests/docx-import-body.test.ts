@@ -50,7 +50,8 @@ test("uses semantic styles and accepted revision text without visual guessing", 
     "TOC_SKIPPED",
   ]);
   assert.deepEqual(parsed.assets, []);
-  assert.deepEqual(parsed.threads, []);
+  assert.equal(parsed.threads.length, 1);
+  assert.equal(parsed.threads[0]?.sourceCommentId, "7");
   assert.deepEqual(parsed.skippedThreads, []);
 });
 
@@ -178,6 +179,12 @@ async function semanticBodyFixture(): Promise<File> {
     "word/styles.xml": styles,
     "word/numbering.xml": numbering,
     "word/_rels/document.xml.rels": relationships,
+    "word/comments.xml": `<?xml version="1.0" encoding="UTF-8"?>
+      <w:comments xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:w14="http://schemas.microsoft.com/office/word/2010/wordml">
+        <w:comment w:id="7" w:author="批注作者">
+          <w:p w14:paraId="00000007"><w:r><w:t>批注正文</w:t></w:r></w:p>
+        </w:comment>
+      </w:comments>`,
   });
 }
 

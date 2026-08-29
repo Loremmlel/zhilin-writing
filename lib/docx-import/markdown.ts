@@ -16,10 +16,15 @@ export function renderCanonicalImportMarkdown(
   threads: ImportedThread[],
 ): string {
   void assets;
-  void threads;
+  const threadsByBlock = new Map<string, ImportedThread[]>();
+  for (const thread of threads) {
+    const blockThreads = threadsByBlock.get(thread.blockId) ?? [];
+    blockThreads.push(thread);
+    threadsByBlock.set(thread.blockId, blockThreads);
+  }
   const rendered: Array<{ type: ImportBlock["type"]; value: string }> = [];
   for (const block of blocks) {
-    const value = renderBlock(block);
+    const value = renderBlock(block, threadsByBlock);
     if (value || block.type === "paragraph") rendered.push({ type: block.type, value });
   }
 
@@ -47,45 +52,76 @@ export function renderCanonicalImportMarkdown(
   return markdown;
 }
 
-function renderBlock(block: ImportBlock): string {
-  if (block.type === "paragraph") return renderInline(block.segments);
-  if (block.type === "heading") return `${"#".repeat(block.level)} ${renderInline(block.segments)}`;
-  if (block.type === "quote") {
-    return renderInline(block.segments).split("\n").map((line) => `> ${line}`).join("\n");
+function renderBlock(block: ImportBlock, threadsByBlock: Map<string, ImportedThread[]>): string {
+  if (block.type === "paragraph") return renderInline(block.segments, threadsByBlock.get(block.id));
+  if (block.type === "heading") {
+    return `${"#".repeat(block.level)} ${renderInline(block.segments, threadsByBlock.get(block.id))}`;
   }
-  if (block.type === "list") return renderList(block);
+  if (block.type === "quote") {
+    return renderInline(block.segments, threadsByBlock.get(block.id))
+      .split("\n")
+      .map((line) => `> ${line}`)
+      .join("\n");
+  }
+  if (block.type === "list") return renderList(block, threadsByBlock);
   if (block.type === "table") return "";
   if (block.type === "image") return "";
   if (block.type === "notesAppendix") return "";
   return "";
 }
 
-function renderList(block: ListBlock): string {
+function renderList(block: ListBlock, threadsByBlock: Map<string, ImportedThread[]>): string {
   const prefix = `${"  ".repeat(block.depth)}${block.ordered ? "1." : "-"} `;
   return block.items.map((item) => {
-    const own = `${prefix}${renderInline(item.segments)}`;
-    const children = item.children.map(renderList).filter(Boolean);
+    const own = `${prefix}${renderInline(item.segments, threadsByBlock.get(item.id))}`;
+    const children = item.children.map((child) => renderList(child, threadsByBlock)).filter(Boolean);
     return children.length ? `${own}\n${children.join("\n")}` : own;
   }).join("\n");
 }
 
-function renderInline(segments: InlineSegment[]): string {
-  return segments.map((segment) => {
-    let value = segment.marks.includes("code")
-      ? renderCode(segment.text)
-      : escapeMarkdown(segment.text);
+function renderInline(segments: InlineSegment[], threads: ImportedThread[] = []): string {
+  if (threads.length === 0) return renderSegmentSlice(segments, 0, Number.POSITIVE_INFINITY);
+  const ranges = [...threads].sort((left, right) => left.blockLocalStart - right.blockLocalStart);
+  let cursor = 0;
+  let rendered = "";
+  for (const thread of ranges) {
+    rendered += renderSegmentSlice(segments, cursor, thread.blockLocalStart);
+    rendered += `:annotation[${renderSegmentSlice(
+      segments,
+      thread.blockLocalStart,
+      thread.blockLocalEnd,
+    )}]{#${thread.annotationId}}`;
+    cursor = thread.blockLocalEnd;
+  }
+  return rendered + renderSegmentSlice(segments, cursor, Number.POSITIVE_INFINITY);
+}
+
+function renderSegmentSlice(segments: InlineSegment[], start: number, end: number): string {
+  let cursor = 0;
+  const rendered: string[] = [];
+  for (const segment of segments) {
+    const segmentStart = cursor;
+    const segmentEnd = cursor + segment.text.length;
+    cursor = segmentEnd;
+    if (segmentEnd <= start || segmentStart >= end) continue;
+    const text = segment.text.slice(
+      Math.max(0, start - segmentStart),
+      Math.min(segment.text.length, end - segmentStart),
+    );
+    let value = segment.marks.includes("code") ? renderCode(text) : escapeMarkdownLiteral(text);
     if (segment.marks.includes("strike")) value = `~~${value}~~`;
     if (segment.marks.includes("em")) value = `*${value}*`;
     if (segment.marks.includes("strong")) value = `**${value}**`;
     if (segment.link) value = `[${value}](${escapeLinkDestination(segment.link)})`;
-    return value;
-  }).join("");
+    rendered.push(value);
+  }
+  return rendered.join("");
 }
 
-function escapeMarkdown(value: string): string {
+export function escapeMarkdownLiteral(value: string): string {
   return value
     .replace(/\\/g, "\\\\")
-    .replace(/([`*_[\]~#>+\-.!|])/g, "\\$1");
+    .replace(/([`*_[\]~#>+\-.!|:&])/g, "\\$1");
 }
 
 function renderCode(value: string): string {

@@ -341,7 +341,7 @@ Update progress with supported style/list/field rules and warning evidence. Comm
 - Produces: `resolveAnnotationThreads(walked, threads): { accepted; skipped; warnings }`.
 - Consumes: per-segment active comment IDs produced by Task 3; never consumes searched text.
 
-- [ ] **Step 1: Write failing range and graph tests**
+- [x] **Step 1: Write failing range and graph tests**
 
 Cover one, adjacent, overlap, nested, empty, cross-paragraph, list-item, table-cell, image, missing definition, threaded replies, resolved state, missing commentsExtended, missing parent, duplicate paraId, and cycle. Include CJK, `😀` surrogate pairs, `e\u0301`, and RTL text in ranges.
 
@@ -359,13 +359,13 @@ test("keeps adjacent ranges and greedily skips an intersecting candidate", async
 });
 ```
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 Run: `npm run test:unit -- tests/docx-import-comments.test.ts`
 
 Expected: FAIL because comment catalog, graph, and range resolver do not exist.
 
-- [ ] **Step 3: Complete single-pass range formation**
+- [x] **Step 3: Complete single-pass range formation**
 
 In `walker.ts`, handle range markers exactly where encountered:
 
@@ -377,13 +377,13 @@ if (name === "w:commentRangeEnd") context.activeCommentIds.delete(requiredId(nod
 
 At block close, derive each comment's UTF-16 start/end from the completed segments and record every location category/block transition. Do not normalize text or map through Markdown.
 
-- [ ] **Step 4: Build threads and resolve legality**
+- [x] **Step 4: Build threads and resolve legality**
 
 Map a comment's last `w14:paraId` to the matching record in `word/commentsExtended.xml` via CommentEx `w15:paraId`; use only `w15:paraIdParent` for immediate parent and `w15:done` for `sourceResolved`/`source_resolved`. Without `commentsExtended.xml`, make each definition a flat root. A bad root or graph makes its entire thread skipped; include `replyCount` in `ANNOTATION_THREAD_SKIPPED` payload.
 
 For each block, sort root candidates by `start ASC`, `length DESC`, `sourceCommentId ASC`, then greedy accept. Treat only `candidate.start < accepted.end && accepted.start < candidate.end` as intersection so touching endpoints survive.
 
-- [ ] **Step 5: Render annotation directives and run GREEN**
+- [x] **Step 5: Render annotation directives and run GREEN**
 
 Wrap accepted inline ranges as the existing `:annotation[]{#ann_*}` canonical directive after IDs are finalized. For the pre-finalized parser test, use stable injected ID factories. Run:
 
@@ -394,7 +394,7 @@ npm run test:unit -- tests/annotation-selection.test.ts tests/annotation-roundtr
 
 Expected: all range/graph tests and all existing V5 annotation tests pass.
 
-- [ ] **Step 6: Record, commit, and push**
+- [x] **Step 6: Record, commit, and push**
 
 Update progress with the single-pass proof, UTF-16 cases, graph fallback, and overlap ordering. Commit as `feat: import DOCX comment threads` and push immediately.
 

@@ -57,3 +57,18 @@
 - Canonical Markdown：只渲染 IR 语义，确定性输出 H1–H4、paragraph、quote、三层 ordered/unordered list、inline marks、code 与安全链接；转义可能重解释正文的 Markdown 标点，不做 Unicode normalization，并在渲染后执行 1.5 MB UTF-8 hard limit。
 - GREEN：Task 3 body 与既有 Markdown/annotation round-trip focused tests 14/14 通过；完整 `npm run test:unit` 120/120 通过；`npx tsc --noEmit` 与八个新增/修改代码测试文件的定向 ESLint 均退出 0；`npx` 仅输出仓库既有的 `http-proxy` 弃用提示。
 - 提交：本节与 Task 3 代码、fixtures 和测试同一提交；推送后暂停，等待确认再进入 Task 4。
+
+## 2026-08-29 — Task 4：Word 批注范围、回复图与 deterministic overlap
+
+- 状态：实现与代码审阅修复完成；Task 5 尚未开始。
+- RED：新增 `tests/docx-import-comments.test.ts` 后，测试按预期因缺少 `lib/docx-import/annotations.ts` 失败（`ERR_MODULE_NOT_FOUND`）。
+- Single pass：正文 walker 在遇到 `commentRangeStart`/`commentRangeEnd` 时更新 active comment IDs，在 block/list-item 关闭时从完成的 segments 推导原始 UTF-16 spans；不搜索文本、不经过 Markdown offset，也不做 Unicode normalization。测试覆盖 CJK、`😀` surrogate pair、`e\u0301` combining sequence 与 RTL 文本。
+- Locations：同段普通正文、标题、引用与 list item 使用稳定 block/item ID；跨段范围、空范围、table cell、image/non-text 与缺失 definition 分别产生逐 thread typed warning。Task 5 尚未解析 table/image 内容，本 Task 只记录其 location 并原子跳过对应批注。
+- Thread graph：从 `comments.xml` 读取 source order、author、initials、date、body 与最后 paragraph 的 `w14:paraId`；仅用 `commentsExtended.xml` 的 `w15:paraIdParent` 建 immediate parent、`w15:done` 建 resolved state。缺失 commentsExtended 时所有 definitions 保守退化为 flat roots，不猜 reply。
+- Graph failure：missing parent、duplicate paraId、unbound CommentEx 与 cycle 按连通 component 原子跳过，不提升 reply 为 root；指向重复 paraId 的歧义子节点也并入该无效 component。所有已知 catalog thread 的跳过 warning payload 都包含 `replyCount`，graph failure 另含 deterministic reason。
+- Overlap：同 block root candidates 按 `start ASC → length DESC → sourceCommentId ASC` 排序后 greedy accept；sourceCommentId 使用平台无关的 UTF-16 code-unit 比较。仅严格相交才冲突，因此 touching endpoints 保留，包含、嵌套、交叠与重复范围都稳定跳过，并记录 `conflictsWithSourceCommentId`。
+- Canonical Markdown：accepted ranges 在最终 ID 生成后渲染为现有 `:annotation[...]{#ann_*}` directive，跨 inline strong/em/strike/link 保留原语义；测试使用注入式稳定 ID factories，生产默认沿用现有 `ann_<uuid-v4>` 与 UUID reply IDs。
+- 审阅修复：整 block inline-code 范围拒绝；directive/entity-shaped 原文与批注正文安全转义；comments+replies 500 条 hard limit；语义重复的 source comment ID hard fail；存在 `commentsExtended.xml` 时缺失/非唯一 CommentEx 绑定按 `UNBOUND_COMMENT_EX` 原子跳过并保留所有可解析候选父边；递归识别 drawing/pict 内嵌 comment markers 并归类 non-text；预定义与数字 XML entity 在 parser 边界对文本和属性统一安全解码，UTF-16 offset 以实际文本计算，预定义实体保持 XML 大小写规则，CDATA 保留字面内容，未声明及非法 numeric entity 按 `XML_MALFORMED` 拒绝。
+- GREEN：Task 4 与既有 annotation selection/round-trip/Markdown focused regression 28/28 通过；Task 4 + package/XML security regression 33/33 通过；完整 `npm run test:unit` 138/138 通过；`npx tsc --noEmit` 与九个 Task4 新增/修改代码测试文件的定向 ESLint 均退出 0。`npx` 仅输出仓库既有的 `http-proxy` 弃用提示。
+- 最小实现：计划列出的 `lookups.ts` 无需改动；comments optional parts 由现有受限 package reader 直接读取，避免为单一调用增加转发层。
+- 提交：本节与 Task 4 代码和测试同一提交；推送后暂停，等待确认再进入 Task 5。

@@ -1,3 +1,9 @@
+import {
+  type AnnotationIdFactories,
+  buildWordThreads,
+  parseWordComments,
+  resolveAnnotationThreads,
+} from "./annotations.ts";
 import { loadDocxLookups } from "./lookups.ts";
 import { renderCanonicalImportMarkdown } from "./markdown.ts";
 import { openDocxPackage } from "./package.ts";
@@ -5,10 +11,15 @@ import type { ParsedDocx } from "./types.ts";
 import { walkMainDocument } from "./walker.ts";
 import { parseOrderedXml } from "./xml.ts";
 
-export type DocxParsePhase = "opening" | "lookups" | "document" | "rendering";
+export type DocxParsePhase = "opening" | "lookups" | "document" | "comments" | "rendering";
 export type DocxParseProgress = (phase: DocxParsePhase) => void;
+export type DocxParseOptions = AnnotationIdFactories;
 
-export async function parseDocx(file: File, onProgress?: DocxParseProgress): Promise<ParsedDocx> {
+export async function parseDocx(
+  file: File,
+  onProgress?: DocxParseProgress,
+  options: DocxParseOptions = {},
+): Promise<ParsedDocx> {
   onProgress?.("opening");
   const pkg = await openDocxPackage(file);
   try {
@@ -20,8 +31,23 @@ export async function parseDocx(file: File, onProgress?: DocxParseProgress): Pro
       "word/document.xml",
     );
     const walked = walkMainDocument(document, lookups);
+    onProgress?.("comments");
+    const comments = pkg.has("word/comments.xml")
+      ? parseOrderedXml(await pkg.readText("word/comments.xml"), "word/comments.xml")
+      : [];
+    const commentsExtended = pkg.has("word/commentsExtended.xml")
+      ? parseOrderedXml(
+        await pkg.readText("word/commentsExtended.xml"),
+        "word/commentsExtended.xml",
+      )
+      : undefined;
+    const resolved = resolveAnnotationThreads(
+      walked,
+      buildWordThreads(parseWordComments(comments, commentsExtended)),
+      options,
+    );
     onProgress?.("rendering");
-    const canonicalMarkdown = renderCanonicalImportMarkdown(walked.blocks, [], []);
+    const canonicalMarkdown = renderCanonicalImportMarkdown(walked.blocks, [], resolved.accepted);
     const firstHeading = walked.blocks.find((block) => block.type === "heading");
     const suggestedTitle = firstHeading && "segments" in firstHeading
       ? firstHeading.segments.map((segment) => segment.text).join("").trim()
@@ -32,9 +58,9 @@ export async function parseDocx(file: File, onProgress?: DocxParseProgress): Pro
       suggestedTitle,
       blocks: walked.blocks,
       assets: [],
-      threads: [],
-      skippedThreads: [],
-      warnings: walked.warnings,
+      threads: resolved.accepted,
+      skippedThreads: resolved.skipped,
+      warnings: [...walked.warnings, ...resolved.warnings],
       canonicalMarkdown,
     };
   } finally {

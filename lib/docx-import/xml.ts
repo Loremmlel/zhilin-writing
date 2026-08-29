@@ -8,6 +8,13 @@ export type OrderedXmlNodes = OrderedXmlNode[];
 
 const encoder = new TextEncoder();
 const FORBIDDEN_XML_DECLARATION = /<!\s*(?:DOCTYPE|ENTITY)\b/i;
+const PREDEFINED_XML_ENTITIES: Readonly<Record<string, string>> = {
+  "&amp;": "&",
+  "&lt;": "<",
+  "&gt;": ">",
+  "&quot;": "\"",
+  "&apos;": "'",
+};
 
 export function assertSafeXmlText(xml: string, partName: string): void {
   const byteLength = encoder.encode(xml).byteLength;
@@ -56,11 +63,13 @@ export function parseOrderedXml(xml: string, partName: string): OrderedXmlNodes 
       parseAttributeValue: false,
       trimValues: false,
       allowBooleanAttributes: false,
+      cdataPropName: "#cdata",
     });
     const parsed: unknown = parser.parse(xml);
     if (!Array.isArray(parsed)) {
       throw new Error("preserveOrder parser returned a non-array root");
     }
+    decodeParsedEntities(parsed as OrderedXmlNodes, partName);
     return parsed as OrderedXmlNodes;
   } catch (error) {
     if (error instanceof DocxImportError) throw error;
@@ -109,6 +118,69 @@ export function xmlText(input: OrderedXmlNode | OrderedXmlNodes): string {
     }
   }
   return text;
+}
+
+function decodeParsedEntities(nodes: OrderedXmlNodes, partName: string): void {
+  for (const node of nodes) {
+    for (const [name, value] of Object.entries(node)) {
+      if (name === "#text") {
+        node[name] = decodeXmlEntities(String(value), partName);
+      } else if (name === ":@" && value && typeof value === "object" && !Array.isArray(value)) {
+        for (const [attributeName, attributeValue] of Object.entries(value)) {
+          (value as Record<string, unknown>)[attributeName] = decodeXmlEntities(
+            String(attributeValue),
+            partName,
+          );
+        }
+      } else if (name !== "#cdata" && Array.isArray(value)) {
+        decodeParsedEntities(value as OrderedXmlNodes, partName);
+      }
+    }
+  }
+}
+
+function decodeXmlEntities(value: string, partName: string): string {
+  let decoded = "";
+  let cursor = 0;
+  while (cursor < value.length) {
+    const start = value.indexOf("&", cursor);
+    if (start === -1) return decoded + value.slice(cursor);
+    decoded += value.slice(cursor, start);
+    const end = value.indexOf(";", start + 1);
+    if (end === -1) throw invalidEntity(partName, value.slice(start));
+    const entity = value.slice(start, end + 1);
+    const known = PREDEFINED_XML_ENTITIES[entity];
+    if (known !== undefined) {
+      decoded += known;
+    } else {
+      const body = entity.slice(1, -1);
+      const hexadecimal = /^#x[\da-f]+$/i.test(body);
+      const decimal = /^#\d+$/.test(body);
+      if (!hexadecimal && !decimal) throw invalidEntity(partName, entity);
+      const codePoint = Number.parseInt(body.slice(hexadecimal ? 2 : 1), hexadecimal ? 16 : 10);
+      if (!isXmlCodePoint(codePoint)) throw invalidEntity(partName, entity);
+      decoded += String.fromCodePoint(codePoint);
+    }
+    cursor = end + 1;
+  }
+  return decoded;
+}
+
+function invalidEntity(partName: string, entity: string): DocxImportError {
+  return new DocxImportError(
+    "XML_MALFORMED",
+    "DOCX XML contains an invalid entity reference",
+    { partName, entity },
+  );
+}
+
+function isXmlCodePoint(value: number): boolean {
+  return value === 0x9
+    || value === 0xA
+    || value === 0xD
+    || (value >= 0x20 && value <= 0xD7FF)
+    || (value >= 0xE000 && value <= 0xFFFD)
+    || (value >= 0x10000 && value <= 0x10FFFF);
 }
 
 export function xmlName(node: OrderedXmlNode): string | undefined {
