@@ -88,14 +88,15 @@
 
 ## 2026-08-29 — Task 6：Worker 边界与可恢复的 24 小时 Preview
 
-- 状态：实现与自审完成；Task 7 尚未开始。
+- 状态：实现、独立 rereview 与修复完成；Task 7 尚未开始。
 - 同步与基线：`feature/v5.5-docx-import` 已通过 Sites 短期凭据从 `origin` 获取并确认 `Already up to date`；Task 6 开始前完整单测为 150/150 通过。
 - RED：新增 Worker、Preview store 与旧草稿迁移测试后，分别观察到 `browser.ts`、`worker-protocol.ts`、`preview-store.ts`、共享 IndexedDB opener 缺失的预期失败；测试自身的 strip-only TypeScript 语法问题修正后再次确认失败来自缺少生产模块。
 - Worker protocol：定义 `start`、`cancel`、`progress`、`success`、`failure` 精确消息联合。真实 Worker 依次报告 `package-validation → xml-preload → document-walk → thread-validation → markdown-generation → done`，不访问网络或持久层；原始 DOCX 以 transferable `ArrayBuffer` 单次送入 Worker。
 - Controller：`parseDocxWithWorker` 默认执行固定 20 秒 hard timeout，转发 caller abort，并在 success、structured parser failure、abort、timeout 和 source-read failure 后统一清理 listener/timer、终止 Worker、忽略 late messages。Worker 的 typed code、message 与 details 原样重建为 `DocxImportError`，Worker 启动失败也统一包装为 typed `PARSE_FAILED`。
 - Finalization：浏览器使用 `crypto.subtle.digest('SHA-256')` 计算 source hash；`finalizeDocxPreview` 在 Preview 前一次生成所有最终 `ann_<uuid>` root ID 与 UUID reply ID，并用最终 IDs 重新渲染 canonical Markdown。Worker 内只使用非最终 source placeholder，刷新与重试复用持久化后的 finalized payload。
 - IndexedDB：新增共享 `lib/indexed-db.ts`，把 `zhilin-writing` schema 从 version 1 升至 version 2；保留无 keyPath 的 `drafts` store，新增以 `importBatchId` 为 keyPath、`expiresAt` 为 index 的 `docx-import-previews` store。现有 draft adapter 不再以 version 1 单独打开数据库。
-- Preview lifecycle：新增 save/load/remove/purge API；load 前清理过期记录，`expiresAt <= now` 的边界记录立即删除。测试覆盖 filename/SHA、final IR/Markdown、warnings、temporary asset refs、author mappings、最终 root/reply IDs 的恢复，并确认记录不包含原始 DOCX `File`、`Blob` 或 `ArrayBuffer`。
-- GREEN：Task 6 focused tests 12/12 通过；完整 `npm run test:unit` 162/162 通过；`npx tsc --noEmit`、十个相关文件的定向 ESLint 与 `git diff --check` 均退出 0。`npx` 仍只输出仓库既有的 npm `http-proxy` 配置弃用提示。
+- Preview lifecycle：新增 save/load/remove/purge API；load 前清理过期记录，`expiresAt <= now` 的边界记录立即删除。保存时白名单化顶层字段、严格校验 canonical ISO 时间戳、从 `createdAt` 推导 24 小时 TTL，并仅允许 `Uint8Array` 作为持久化图片字节；畸形旧记录在清理时一并删除。测试覆盖 filename/SHA、final IR/Markdown、warnings、temporary asset refs、author mappings、最终 root/reply IDs 的恢复，并确认记录不包含原始 DOCX `File`、`Blob` 或 `ArrayBuffer`。
+- 独立 rereview：新子代理未发现 Critical；发现 Worker 外层 scope 丢失 transferable、asset bytes 类型校验过宽、`Date.parse` 接受畸形时间戳，以及进度回调异常未收敛等问题，均已通过先 RED 后 GREEN 的测试修复。
+- GREEN：Task 6 Worker/Preview focused tests 19/19 通过；完整 `npm run test:unit` 171/171 通过；`npx tsc --noEmit`、八个相关文件的定向 ESLint、`git diff --check` 与 `npm run build` 均退出 0。`npx` 仍只输出仓库既有的 npm `http-proxy` 配置弃用提示；构建仅保留既有的大 chunk 警告。
 - 最小实现：图片上传与 Preview UI 按计划留在 Task 7；Task 6 只建立可测试的 Worker/ID/存储边界，未新增依赖或重复 IndexedDB adapter。
 - 提交：本节与 Task 6 代码和测试同一提交，消息为 `feat: run DOCX import in a recoverable worker preview`；推送后暂停，等待确认再进入 Task 7。

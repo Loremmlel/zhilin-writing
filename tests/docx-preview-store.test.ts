@@ -8,6 +8,7 @@ import {
   removeImportPreview,
   saveImportPreview,
 } from "../lib/docx-import/preview-store.ts";
+import { DOCX_IMPORT_LIMITS } from "../lib/docx-import/limits.ts";
 import type { DocxPreviewRecord } from "../lib/docx-import/types.ts";
 import { LOCAL_DB_NAME } from "../lib/indexed-db.ts";
 
@@ -16,7 +17,7 @@ afterEach(deleteLocalDatabase);
 
 test("recovers a complete finalized Preview without original DOCX bytes", async () => {
   const preview = previewFixture("batch-1", "2026-08-30T00:00:00.000Z");
-  await saveImportPreview(preview);
+  await saveImportPreview(preview, Date.parse("2026-08-29T12:00:00.000Z"));
 
   const loaded = await loadImportPreview("batch-1", Date.parse("2026-08-29T12:00:00.000Z"));
   assert.deepEqual(loaded, preview);
@@ -28,9 +29,82 @@ test("recovers a complete finalized Preview without original DOCX bytes", async 
   assert.equal(containsOriginalBinary(loaded), false);
 });
 
+test("derives a 24-hour expiry when a Preview has invalid timestamps", async () => {
+  const now = Date.parse("2026-08-29T12:00:00.000Z");
+  await saveImportPreview(previewFixture("derived", "not-a-date", "not-a-date"), now);
+
+  const loaded = await loadImportPreview(
+    "derived",
+    now + DOCX_IMPORT_LIMITS.previewTtlMs - 1,
+  );
+  assert.equal(loaded?.createdAt, new Date(now).toISOString());
+  assert.equal(loaded?.expiresAt, new Date(now + DOCX_IMPORT_LIMITS.previewTtlMs).toISOString());
+});
+
+test("treats rollover and numeric timestamps as invalid instead of extending their parsed date", async () => {
+  const now = Date.parse("2026-08-29T12:00:00.000Z");
+  for (const value of ["0", "2026-02-30T00:00:00.000Z"]) {
+    await saveImportPreview(previewFixture(`invalid-${value}`, value, value), now);
+    const loaded = await loadImportPreview(
+      `invalid-${value}`,
+      now + DOCX_IMPORT_LIMITS.previewTtlMs - 1,
+    );
+    assert.equal(loaded?.createdAt, new Date(now).toISOString());
+  }
+});
+
+test("strips accidental source binary fields before IndexedDB persistence", async () => {
+  const preview = {
+    ...previewFixture("contaminated", "2026-08-30T00:00:00.000Z"),
+    sourceFile: new File(["original docx"], "source.docx"),
+  } as DocxPreviewRecord & { sourceFile: File };
+  await saveImportPreview(preview, Date.parse("2026-08-29T12:00:00.000Z"));
+
+  const loaded = await loadImportPreview("contaminated", Date.parse("2026-08-29T12:00:00.000Z"));
+  assert.equal(containsOriginalBinary(loaded), false);
+  assert.equal("sourceFile" in (loaded ?? {}), false);
+});
+
+test("rejects non-Uint8Array asset bytes while retaining valid extracted image bytes", async () => {
+  const now = Date.parse("2026-08-29T12:00:00.000Z");
+  const validAsset = {
+    id: "asset-1",
+    filename: "image.png",
+    mimeType: "image/png" as const,
+    bytes: new Uint8Array([1, 2, 3]),
+    alt: "image",
+    sourceRelationshipId: "rImage",
+    floating: false,
+  };
+  const valid = previewFixture("valid-asset", "2026-08-30T00:00:00.000Z");
+  valid.ir.assets = [validAsset];
+  await saveImportPreview(valid, now);
+  const loaded = await loadImportPreview("valid-asset", now);
+  assert.deepEqual([...((loaded?.ir.assets[0]?.bytes ?? new Uint8Array()) as Uint8Array)], [1, 2, 3]);
+
+  for (const [label, bytes] of [
+    ["array-buffer", new ArrayBuffer(3)],
+    ["blob", new Blob(["abc"])],
+    ["data-view", new DataView(new ArrayBuffer(3))],
+  ] as const) {
+    const contaminated = previewFixture(`invalid-asset-${label}`, "2026-08-30T00:00:00.000Z");
+    contaminated.ir.assets = [{ ...validAsset, bytes } as never];
+    await assert.rejects(
+      saveImportPreview(contaminated, now),
+      (error: unknown) => error instanceof Error && error.name === "DocxImportError",
+    );
+  }
+});
+
 test("purges Previews expiring at or before the 24-hour boundary", async () => {
-  await saveImportPreview(previewFixture("expired", "2026-08-29T12:00:00.000Z"));
-  await saveImportPreview(previewFixture("active", "2026-08-29T12:00:00.001Z"));
+  await saveImportPreview(
+    previewFixture("expired", "2026-08-29T12:00:00.000Z", "2026-08-28T12:00:00.000Z"),
+    Date.parse("2026-08-29T12:00:00.000Z"),
+  );
+  await saveImportPreview(
+    previewFixture("active", "2026-08-29T12:00:00.001Z", "2026-08-28T12:00:00.001Z"),
+    Date.parse("2026-08-29T12:00:00.000Z"),
+  );
 
   assert.equal(await purgeExpiredImportPreviews(Date.parse("2026-08-29T12:00:00.000Z")), 1);
   assert.equal(await loadImportPreview("expired", Date.parse("2026-08-29T12:00:00.000Z")), null);
@@ -38,16 +112,19 @@ test("purges Previews expiring at or before the 24-hour boundary", async () => {
 });
 
 test("removes a Preview after commit or explicit abandonment", async () => {
-  await saveImportPreview(previewFixture("batch-1", "2026-08-30T00:00:00.000Z"));
+  await saveImportPreview(
+    previewFixture("batch-1", "2026-08-30T00:00:00.000Z"),
+    Date.parse("2026-08-29T12:00:00.000Z"),
+  );
   await removeImportPreview("batch-1");
   assert.equal(await loadImportPreview("batch-1", Date.parse("2026-08-29T12:00:00.000Z")), null);
 });
 
-function previewFixture(importBatchId: string, expiresAt: string): DocxPreviewRecord {
+function previewFixture(importBatchId: string, expiresAt: string, createdAt = "2026-08-29T00:00:00.000Z"): DocxPreviewRecord {
   return {
     version: 1,
     importBatchId,
-    createdAt: "2026-08-28T12:00:00.000Z",
+    createdAt,
     expiresAt,
     ir: {
       version: 1,

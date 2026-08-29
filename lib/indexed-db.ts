@@ -6,6 +6,7 @@ export const IMPORT_PREVIEW_EXPIRY_INDEX = "expiresAt";
 
 export function openLocalDatabase(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
+    let blocked = false;
     const request = indexedDB.open(LOCAL_DB_NAME, LOCAL_DB_VERSION);
     request.onupgradeneeded = () => {
       const db = request.result;
@@ -17,7 +18,19 @@ export function openLocalDatabase(): Promise<IDBDatabase> {
         previews.createIndex(IMPORT_PREVIEW_EXPIRY_INDEX, "expiresAt");
       }
     };
-    request.onsuccess = () => resolve(request.result);
+    request.onblocked = () => {
+      blocked = true;
+      reject(new Error("本地数据升级被其他标签页阻塞"));
+    };
+    request.onsuccess = () => {
+      const db = request.result;
+      db.onversionchange = () => db.close();
+      if (blocked) {
+        db.close();
+        return;
+      }
+      resolve(db);
+    };
     request.onerror = () => reject(request.error ?? new Error("无法打开本地数据"));
   });
 }

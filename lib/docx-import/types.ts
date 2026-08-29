@@ -29,7 +29,8 @@ export type DocxImportErrorCode =
   | "PACKAGE_CLOSED"
   | "PARSE_ABORTED"
   | "PARSE_TIMEOUT"
-  | "PARSE_FAILED";
+  | "PARSE_FAILED"
+  | "PREVIEW_DATA_INVALID";
 
 export class DocxImportError extends Error {
   readonly code: DocxImportErrorCode;

@@ -2,6 +2,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  DOCX_IMPORT_LIMITS,
+} from "../lib/docx-import/limits.ts";
+import {
   finalizeDocxPreview,
   parseDocxWithWorker,
   sha256DocxSource,
@@ -14,8 +17,14 @@ import {
   type DocxWorkerResponse,
 } from "../lib/docx-import/worker-protocol.ts";
 import { handleDocxWorkerRequest } from "../lib/docx-import/docx-import.worker.ts";
+import { registerDocxWorkerScope } from "../lib/docx-import/docx-import.worker.ts";
 import { DocxImportError, type ParsedDocx } from "../lib/docx-import/types.ts";
-import { makeDocxFixture } from "./helpers/docx-fixture.ts";
+import {
+  documentRelationshipsXml,
+  makeDocxFixture,
+  MINIMAL_CONTENT_TYPES,
+  wordDocumentXml,
+} from "./helpers/docx-fixture.ts";
 
 const SOURCE_UUID = "00000000-0000-4000-8000-000000000001";
 const ROOT_UUID = "00000000-0000-4000-8000-000000000002";
@@ -67,6 +76,11 @@ test("uses the exact ordered DOCX worker stages and transfers source bytes once"
       current.emit({ kind: "progress", requestId: start.requestId, stage });
     }
     current.emit({ kind: "success", requestId: start.requestId, result: parsed });
+    current.emit({
+      kind: "failure",
+      requestId: start.requestId,
+      error: { code: "PARSE_FAILED", message: "late failure" },
+    });
   });
 
   const result = await parseDocxWithWorker(new File(["docx"], "source.docx"), {
@@ -99,6 +113,49 @@ test("the real worker emits every parse stage in order before success", async ()
   assert.equal(responses.at(-1)?.kind, "success");
 });
 
+test("transfers parsed image buffers with the worker success message", async () => {
+  const file = await makeDocxFixture({
+    "[Content_Types].xml": `${MINIMAL_CONTENT_TYPES.replace(
+      "</Types>",
+      '<Default Extension="png" ContentType="image/png"/></Types>',
+    )}`,
+    "word/document.xml": wordDocumentXml(`<w:p><w:r><w:drawing><wp:inline><wp:docPr/><a:graphic><pic:pic><pic:blipFill><a:blip r:embed="rImage"/></pic:blipFill></pic:pic></a:graphic></wp:inline></w:drawing></w:r></w:p>`),
+    "word/_rels/document.xml.rels": documentRelationshipsXml(
+      '<Relationship Id="rImage" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/picture.png"/>',
+    ),
+    "word/media/picture.png": new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+  });
+  const responses: DocxWorkerResponse[] = [];
+  const transfers: Transferable[][] = [];
+  let complete!: (message: DocxWorkerResponse) => void;
+  const completion = new Promise<DocxWorkerResponse>((resolve) => {
+    complete = resolve;
+  });
+  let listener: ((event: MessageEvent<DocxWorkerRequest>) => void) | undefined;
+  registerDocxWorkerScope({
+    addEventListener: (_type, callback) => {
+      listener = callback;
+    },
+    postMessage: (message, transfer = []) => {
+      responses.push(message);
+      transfers.push(transfer);
+      if (message.kind === "success" || message.kind === "failure") complete(message);
+    },
+  });
+  listener!({ data: {
+    kind: "start",
+    requestId: "request-image",
+    filename: file.name,
+    bytes: await file.arrayBuffer(),
+  } } as MessageEvent<DocxWorkerRequest>);
+  const terminal = await completion;
+
+  const successIndex = responses.findIndex((message) => message.kind === "success");
+  assert.equal(terminal.kind, "success");
+  assert.notEqual(successIndex, -1);
+  assert.equal(transfers[successIndex]?.length, 1);
+});
+
 test("preserves a structured worker error code and payload before terminating", async () => {
   const worker = new FakeWorker((current) => {
     const start = current.messages[0];
@@ -124,6 +181,37 @@ test("preserves a structured worker error code and payload before terminating", 
   assert.equal(worker.terminated, true);
 });
 
+test("wraps a Worker error event as a typed parse error", async () => {
+  const worker = new FakeWorker((current) => {
+    current.onerror?.({ message: "worker crashed" } as ErrorEvent);
+  });
+
+  await assert.rejects(
+    parseDocxWithWorker(new File(["docx"], "source.docx"), { workerFactory: () => worker }),
+    (error: unknown) => error instanceof DocxImportError && error.code === "PARSE_FAILED",
+  );
+  assert.equal(worker.terminated, true);
+});
+
+test("rejects when a progress callback fails and terminates the worker", async () => {
+  const worker = new FakeWorker((current) => {
+    const start = current.messages[0];
+    assert.equal(start.kind, "start");
+    if (start.kind === "start") {
+      current.emit({ kind: "progress", requestId: start.requestId, stage: "package-validation" });
+    }
+  });
+
+  await assert.rejects(
+    parseDocxWithWorker(new File(["docx"], "source.docx"), {
+      workerFactory: () => worker,
+      onProgress: () => { throw new Error("progress callback failed"); },
+    }),
+    (error: unknown) => error instanceof DocxImportError && error.code === "PARSE_FAILED",
+  );
+  assert.equal(worker.terminated, true);
+});
+
 test("wraps Worker startup failure as a typed parse error", async () => {
   await assert.rejects(
     parseDocxWithWorker(new File(["docx"], "source.docx"), {
@@ -133,6 +221,20 @@ test("wraps Worker startup failure as a typed parse error", async () => {
     }),
     (error: unknown) => error instanceof DocxImportError && error.code === "PARSE_FAILED",
   );
+});
+
+test("wraps source-file read failure and terminates the worker", async () => {
+  const worker = new FakeWorker(() => undefined);
+  const file = {
+    name: "source.docx",
+    arrayBuffer: () => Promise.reject(new Error("read failed")),
+  } as unknown as File;
+
+  await assert.rejects(
+    parseDocxWithWorker(file, { workerFactory: () => worker }),
+    (error: unknown) => error instanceof DocxImportError && error.code === "PARSE_FAILED",
+  );
+  assert.equal(worker.terminated, true);
 });
 
 test("forwards caller abort as cancel and terminates the worker", async () => {
@@ -152,9 +254,11 @@ test("forwards caller abort as cancel and terminates the worker", async () => {
 
 test("terminates a timed-out DOCX worker with a typed error", async () => {
   let expire: (() => void) | undefined;
+  let delay: number | undefined;
   const timer: DocxWorkerTimer = {
-    set: (callback) => {
+    set: (callback, delayMs) => {
       expire = callback;
+      delay = delayMs;
       return 1;
     },
     clear: () => undefined,
@@ -164,11 +268,11 @@ test("terminates a timed-out DOCX worker with a typed error", async () => {
   await assert.rejects(
     parseDocxWithWorker(new File(["docx"], "source.docx"), {
       workerFactory: () => worker,
-      timeoutMs: 20_000,
       timer,
     }),
     (error: unknown) => error instanceof DocxImportError && error.code === "PARSE_TIMEOUT",
   );
+  assert.equal(delay, DOCX_IMPORT_LIMITS.workerTimeoutMs);
   assert.equal(worker.terminated, true);
 });
 

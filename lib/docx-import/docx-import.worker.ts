@@ -1,5 +1,6 @@
 import { parseDocx, type DocxParsePhase } from "./parse.ts";
 import { DocxImportError } from "./types.ts";
+import type { ParsedDocx } from "./types.ts";
 import type {
   DocxWorkerProgressStage,
   DocxWorkerRequest,
@@ -17,7 +18,7 @@ const cancelledRequests = new Set<string>();
 
 export async function handleDocxWorkerRequest(
   message: DocxWorkerRequest,
-  post: (message: DocxWorkerResponse) => void,
+  post: (message: DocxWorkerResponse, transfer?: Transferable[]) => void,
 ): Promise<void> {
   if (message.kind === "cancel") {
     cancelledRequests.add(message.requestId);
@@ -40,7 +41,7 @@ export async function handleDocxWorkerRequest(
     );
     if (cancelledRequests.has(requestId)) return;
     post({ kind: "progress", requestId, stage: "done" });
-    post({ kind: "success", requestId, result });
+    post({ kind: "success", requestId, result }, resultTransferables(result));
   } catch (error) {
     if (cancelledRequests.has(requestId)) return;
     const typed = error instanceof DocxImportError
@@ -56,16 +57,30 @@ export async function handleDocxWorkerRequest(
   }
 }
 
-const scope = globalThis as typeof globalThis & {
+export function resultTransferables(result: ParsedDocx): Transferable[] {
+  const buffers = new Set<ArrayBuffer>();
+  for (const asset of result.assets) {
+    if (asset.bytes.buffer instanceof ArrayBuffer) buffers.add(asset.bytes.buffer);
+  }
+  return [...buffers];
+}
+
+export interface DocxWorkerScope {
   addEventListener?: (
     type: "message",
     listener: (event: MessageEvent<DocxWorkerRequest>) => void,
   ) => void;
-  postMessage?: (message: DocxWorkerResponse) => void;
-};
+  postMessage?: (message: DocxWorkerResponse, transfer?: Transferable[]) => void;
+}
 
-if (typeof scope.addEventListener === "function" && typeof scope.postMessage === "function") {
+export function registerDocxWorkerScope(scope: DocxWorkerScope): void {
+  if (typeof scope.addEventListener !== "function" || typeof scope.postMessage !== "function") return;
   scope.addEventListener("message", (event) => {
-    void handleDocxWorkerRequest(event.data, (message) => scope.postMessage!(message));
+    void handleDocxWorkerRequest(event.data, (message, transfer) => {
+      scope.postMessage!(message, transfer);
+    });
   });
 }
+
+const scope = globalThis as typeof globalThis & DocxWorkerScope;
+registerDocxWorkerScope(scope);

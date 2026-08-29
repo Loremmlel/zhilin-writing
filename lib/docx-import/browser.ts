@@ -96,7 +96,16 @@ export async function parseDocxWithWorker(
       const message = event.data;
       if (settled || message.requestId !== requestId) return;
       if (message.kind === "progress") {
-        options.onProgress?.(message.stage);
+        try {
+          options.onProgress?.(message.stage);
+        } catch (error) {
+          fail(new DocxImportError(
+            "PARSE_FAILED",
+            "DOCX import progress callback failed",
+            undefined,
+            { cause: error },
+          ));
+        }
       } else if (message.kind === "success") {
         succeed(message.result);
       } else {

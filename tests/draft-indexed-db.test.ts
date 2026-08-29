@@ -8,6 +8,7 @@ import {
   IMPORT_PREVIEW_STORE_NAME,
   LOCAL_DB_NAME,
   LOCAL_DB_VERSION,
+  openLocalDatabase,
 } from "../lib/indexed-db.ts";
 
 beforeEach(deleteLocalDatabase);
@@ -31,6 +32,16 @@ test("upgrades the version-1 draft database without losing an existing draft", a
   assert.equal(upgraded.version, LOCAL_DB_VERSION);
   assert.equal(upgraded.objectStoreNames.contains("drafts"), true);
   assert.equal(upgraded.objectStoreNames.contains(IMPORT_PREVIEW_STORE_NAME), true);
+  upgraded.close();
+});
+
+test("reports a blocked upgrade and succeeds after the old connection closes", async () => {
+  const oldDb = await openVersionOneDatabase();
+  await assert.rejects(openLocalDatabase(), /本地数据升级被其他标签页阻塞/);
+
+  oldDb.close();
+  const upgraded = await openLocalDatabase();
+  assert.equal(upgraded.version, LOCAL_DB_VERSION);
   upgraded.close();
 });
 
