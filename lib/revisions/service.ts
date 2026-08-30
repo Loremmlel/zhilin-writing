@@ -5,6 +5,7 @@ import { getDb } from "@/db";
 import {
   assets,
   adminAuditLog,
+  annotationReplies,
   annotations,
   postAnnotationAnchors,
   postAssetRefs,
@@ -13,11 +14,12 @@ import {
   posts,
   revisionAssetRefs,
   revisionAnnotationStates,
+  revisionImportedReplyStates,
   tags,
   users,
 } from "@/db/schema";
 import { markdownToPlainText } from "@/lib/markdown/render";
-import { planAnnotationRestore, type AnnotationStateSnapshot, type AssetSnapshotRef } from "./policy";
+import { planAnnotationRestore, type AnnotationStateSnapshot, type AssetSnapshotRef, type ImportedReplyStateSnapshot } from "./policy";
 import { planRestore } from "./save-plan";
 
 export type RevisionSnapshot = {
@@ -25,6 +27,7 @@ export type RevisionSnapshot = {
   assetRefs: AssetSnapshotRef[];
   assets: (typeof assets.$inferSelect)[];
   annotationStates: AnnotationStateSnapshot[];
+  importedReplyStates: ImportedReplyStateSnapshot[];
 };
 
 export type EditConflictSnapshot = {
@@ -76,21 +79,51 @@ export async function getRevisionAnnotationStates(revisionId: string): Promise<A
     .orderBy(asc(revisionAnnotationStates.annotationId));
 }
 
+export async function getRevisionImportedReplyStates(revisionId: string): Promise<ImportedReplyStateSnapshot[]> {
+  return getDb()
+    .select({
+      annotationReplyId: revisionImportedReplyStates.annotationReplyId,
+      deletedAt: revisionImportedReplyStates.deletedAt,
+      deletedByUserId: revisionImportedReplyStates.deletedByUserId,
+      hiddenAt: revisionImportedReplyStates.hiddenAt,
+      hiddenByUserId: revisionImportedReplyStates.hiddenByUserId,
+    })
+    .from(revisionImportedReplyStates)
+    .where(eq(revisionImportedReplyStates.revisionId, revisionId))
+    .orderBy(asc(revisionImportedReplyStates.annotationReplyId));
+}
+
+export async function getCurrentImportedReplyStates(postId: string): Promise<ImportedReplyStateSnapshot[]> {
+  return getDb()
+    .select({
+      annotationReplyId: annotationReplies.id,
+      deletedAt: annotationReplies.deletedAt,
+      deletedByUserId: annotationReplies.deletedByUserId,
+      hiddenAt: annotationReplies.hiddenAt,
+      hiddenByUserId: annotationReplies.hiddenByUserId,
+    })
+    .from(annotationReplies)
+    .innerJoin(annotations, eq(annotationReplies.annotationId, annotations.id))
+    .where(and(eq(annotations.postId, postId), eq(annotationReplies.sourceType, "DOCX_IMPORT")))
+    .orderBy(asc(annotationReplies.id));
+}
+
 export async function getRevisionSnapshot(postId: string, revisionId: string): Promise<RevisionSnapshot | null> {
   const revision = (await getDb().select().from(postRevisions).where(and(
     eq(postRevisions.id, revisionId),
     eq(postRevisions.postId, postId),
   )).limit(1))[0];
   if (!revision) return null;
-  const [assetRefs, annotationStates] = await Promise.all([
+  const [assetRefs, annotationStates, importedReplyStates] = await Promise.all([
     getRevisionAssetRefs(revision.id),
     getRevisionAnnotationStates(revision.id),
+    getRevisionImportedReplyStates(revision.id),
   ]);
   const assetIds = [...new Set(assetRefs.map((ref) => ref.assetId))];
   const rows = assetIds.length === 0
     ? []
     : await getDb().select().from(assets).where(and(inArray(assets.id, assetIds), isNull(assets.deletedAt)));
-  return { revision, assetRefs, assets: rows, annotationStates };
+  return { revision, assetRefs, assets: rows, annotationStates, importedReplyStates };
 }
 
 export async function getConflictSnapshot(postId: string, revisionId: string): Promise<EditConflictSnapshot> {
@@ -156,8 +189,10 @@ export async function restorePostRevision(postId: string, sourceRevisionId: stri
     currentMarkdown: current.revision.markdown,
     currentAnchorIds,
     currentStates: current.annotationStates,
+    currentImportedReplyStates: current.importedReplyStates,
     sourceMarkdown: source.revision.markdown,
     sourceStates: source.annotationStates,
+    sourceImportedReplyStates: source.importedReplyStates,
   });
   if (annotationRestore.sourceAnchorIds.length > 0) {
     const sourceRows = await db.select({ id: annotations.id, postId: annotations.postId })
@@ -166,6 +201,17 @@ export async function restorePostRevision(postId: string, sourceRevisionId: stri
     const sourceById = new Map(sourceRows.map((row) => [row.id, row]));
     if (annotationRestore.sourceAnchorIds.some((id) => sourceById.get(id)?.postId !== postId)) {
       throw new Error("历史版本包含不存在或不属于当前帖子的批注");
+    }
+  }
+  if (annotationRestore.restoredImportedReplyStates.length > 0) {
+    const replyIds = annotationRestore.restoredImportedReplyStates.map((state) => state.annotationReplyId);
+    const sourceRows = await db.select({ id: annotationReplies.id, postId: annotations.postId })
+      .from(annotationReplies)
+      .innerJoin(annotations, eq(annotationReplies.annotationId, annotations.id))
+      .where(and(inArray(annotationReplies.id, replyIds), eq(annotationReplies.sourceType, "DOCX_IMPORT")));
+    const sourceById = new Map(sourceRows.map((row) => [row.id, row]));
+    if (replyIds.some((id) => sourceById.get(id)?.postId !== postId)) {
+      throw new Error("历史版本包含不存在或不属于当前帖子的导入批注回复");
     }
   }
 
@@ -222,6 +268,14 @@ export async function restorePostRevision(postId: string, sourceRevisionId: stri
       hiddenReason: null,
     }).where(and(eq(annotations.id, state.annotationId), eq(annotations.postId, postId)))),
     ...annotationRestore.restoredStates.map((state) => db.insert(revisionAnnotationStates).values({ revisionId, ...state })),
+    ...annotationRestore.restoredImportedReplyStates.map((state) => db.update(annotationReplies).set({
+      deletedAt: state.deletedAt,
+      deletedByUserId: state.deletedByUserId,
+      hiddenAt: state.hiddenAt,
+      hiddenByUserId: state.hiddenByUserId,
+      hiddenReason: null,
+    }).where(and(eq(annotationReplies.id, state.annotationReplyId), eq(annotationReplies.sourceType, "DOCX_IMPORT")))),
+    ...annotationRestore.restoredImportedReplyStates.map((state) => db.insert(revisionImportedReplyStates).values({ revisionId, ...state })),
     db.insert(adminAuditLog).values({
       id: crypto.randomUUID(),
       adminUserId: administratorId,
@@ -234,6 +288,7 @@ export async function restorePostRevision(postId: string, sourceRevisionId: stri
         newRevisionId: revisionId,
         annotationCount: annotationRestore.sourceAnchorIds.length,
         exitingAnnotationCount: annotationRestore.exitingAnnotationIds.length,
+        importedReplyCount: annotationRestore.restoredImportedReplyStates.length,
       }),
       dedupeKey,
     }),

@@ -11,7 +11,7 @@ export default async function NotificationsPage({ searchParams }: { searchParams
   const items = await listNotifications(member.id, { unreadOnly });
   return <div className="page-column notifications-page">
     <header className="page-header notification-header">
-      <div><span className="eyebrow">只属于你的消息</span><h1>通知</h1><p>这里仅显示别人对你的帖子和回复作出的直接回应。</p></div>
+      <div><span className="eyebrow">只属于你的消息</span><h1>通知</h1><p>这里显示别人对你的内容作出的直接回应，以及 DOCX 导入时与你关联的 Word 批注。</p></div>
       <form action={markAllNotificationsReadAction} noValidate><button className="button button--ghost button--small">全部标记已读</button></form>
     </header>
     <nav className="list-tabs" aria-label="通知筛选">

@@ -151,3 +151,14 @@
 - Review follow-up：修复 2 项 Important finding。混合有/无 Word 时间的 imported replies 现在以缺失时间最后的统一 tuple 排序，六种输入排列得到相同结果；unwrap 分支在 D1 batch 执行时额外以 `NOT EXISTS` 检查未删除 native reply，若规划后出现站内回复则利用既有非空 guard 原子回滚，避免回复因 anchor 被移除而不可访问。
 - GREEN：Task 10 focused tests 15/15、完整单测 218/218、`npx tsc --noEmit`、全量 ESLint、strict premium UI audit、anti-pattern/permission 静态搜索、`git diff --check`、生产构建与 7/7 rendered artifact assertions 均通过。仅保留仓库既有的 npm `http-proxy`、ESLint parser 与大 chunk warning；按项目约定未启动 browser/visual/E2E QA，也未部署站点。
 - 提交：本节将与 Task 10 identity、query、permission、lifecycle、UI 和测试同一提交，消息为 `feat: distinguish imported DOCX annotation threads`；推送后暂停，等待确认再进入 Task 11。
+
+## 2026-08-30 — Task 11：Imported reply 完整快照与归属汇总通知
+
+- 状态：实现与完整验证完成；Task 12 尚未开始。
+- RED：新增 `tests/docx-import-revision.test.ts` 与 `tests/docx-attribution-notification.test.ts`，并扩展 commit 测试；先确认 imported reply restore 结果缺失、重复 reply snapshot 未拒绝、归属通知策略模块缺失及 commit metadata 不完整等预期失败，再逐项实现至 GREEN。
+- Snapshot：所有会写入当前 V5 annotation-state revision 的入口，同一事务保存 imported root 与 imported reply 的 deleted/hidden 状态。恢复时读取目标 revision 的 reply snapshots，只更新属于该帖且 `source_type='DOCX_IMPORT'` 的回复；native replies 不被改写或合成。新 restore revision 同步记录恢复后的 imported reply 状态，重复或跨帖 snapshot 被显式拒绝。
+- Notification：commit planner 以 recipient + import batch 聚合映射到该用户的 Word 批注数量，排除 importer 自己与空映射；每位收件人最多一条 `DOCX_ATTRIBUTION_NOTICE`，不生成个人 annotation activity。稳定 metadata 只保存 post ID/title、导入者显示名与 mapped comment count，不暴露 root/reply ID，也不赋予编辑、删除或所有权。
+- UI/privacy：通知列表与详情页使用专属 DOCX 汇总模板，明确说明仅用于显示来源身份并提供帖子入口，不复用 native annotation 文案。帖子不可访问时不显示已存标题，改为“一篇帖子”，避免软删除或隐藏后的标题泄露；畸形旧 metadata 使用明确的资料不完整提示。
+- GREEN：Task 11 focused tests 20/20、revision/annotation regression 43/43、完整单测 222/222、`npx tsc --noEmit`、全量 ESLint、strict premium UI audit、anti-pattern 静态搜索、`git diff --check` 与生产构建均通过。仅保留仓库既有的 npm `http-proxy`、ESLint parser 与大 chunk warning；按项目约定未启动 browser/visual/E2E QA，也未部署站点。
+- 最小实现：本任务不新增 schema、migration 或依赖，不提前实现 Task 12；归属映射仍只是透明展示信息。
+- 提交：本节将与 Task 11 snapshot、notification policy、UI 和测试同一提交，消息为 `feat: snapshot DOCX replies and attribution notices`；推送后暂停，等待确认再进入 Task 12。

@@ -95,6 +95,7 @@
 | Resume DOCX Preview | 打开导入页并选择 24h 内草稿 | local IndexedDB load | import Preview | same batch/UUIDs/assets restored | discard stale/invalid Preview | Preview heading | V5.5 spec |
 | Confirm DOCX import | 确认导入 | disabled duplicate submit | new post | one initial revision + POST_CREATED | Preview retained; R2 objects stay temporary | post heading | V5.5 spec |
 | Map Word author | 关联站内用户 | local validation | same Preview | source identity remains visible | mapping retained with inline error | mapping control | V5.5 spec |
+| Read DOCX attribution notice | 通知列表或详情 | 标记已读 | imported post | 汇总显示关联批注数量与导入者 | 帖子不可访问时保留历史通知占位 | 通知详情标题 | V5.5 spec |
 
 ## Navigation and responsive behavior
 

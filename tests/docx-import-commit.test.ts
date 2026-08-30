@@ -295,6 +295,7 @@ test("the pure planner chunks rows and creates one normal post activity only", (
   const validated = validateDocxImportCommitPayload(manyRootFixture(12));
   const plan = planDocxImportCommit(validated, {
     importerUserId: IMPORTER_ID,
+    importerDisplayName: "Importer",
     postId: uuid(600),
     revisionId: uuid(601),
     eventId: "activity:test",
@@ -309,6 +310,15 @@ test("the pure planner chunks rows and creates one normal post activity only", (
   assert.equal(plan.activityCount, 1);
   assert.equal(plan.annotationActivityCount, 0);
   assert.equal(plan.notificationCount, 1);
+  const notification = plan.statements.find((statement) => statement.kind === "notifications");
+  assert.ok(notification);
+  const metadata = JSON.parse(String(notification.params[9]));
+  assert.deepEqual(metadata, {
+    postId: uuid(600),
+    postTitle: "导入标题",
+    importerDisplayName: "Importer",
+    commentCount: 12,
+  });
 });
 
 test("the service keeps every lookup and batch statement within D1's 100-bind ceiling", async () => {
@@ -318,7 +328,7 @@ test("the service keeps every lookup and batch statement within D1's 100-bind ce
     async first<T>(sql: string, params: readonly SqlValue[]) {
       parameterCounts.push(params.length);
       if (params.length > 100) throw new Error("D1_BIND_LIMIT");
-      return (sql.includes("INNER JOIN allowed_users") ? { id: IMPORTER_ID } : null) as T | null;
+      return (sql.includes("INNER JOIN allowed_users") ? { id: IMPORTER_ID, displayName: "Importer" } : null) as T | null;
     },
     async all<T>(sql: string, params: readonly SqlValue[]) {
       parameterCounts.push(params.length);

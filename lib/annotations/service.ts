@@ -3,11 +3,11 @@ import { and, eq, isNotNull, isNull, sql } from "drizzle-orm";
 
 import { getDb } from "@/db";
 import { getPost } from "@/db/queries";
-import { activityEvents, adminAuditLog, annotationReplies, annotations, notifications, postAnnotationAnchors, postRevisions, posts, revisionAnnotationStates, revisionAssetRefs } from "@/db/schema";
+import { activityEvents, adminAuditLog, annotationReplies, annotations, notifications, postAnnotationAnchors, postRevisions, posts, revisionAnnotationStates, revisionAssetRefs, revisionImportedReplyStates } from "@/db/schema";
 import { activityEventId, notificationId, truncateActivityPreview } from "@/lib/activity/policy";
 import { derivePostActivityAfterInteractionChange } from "@/lib/lifecycle/service";
 import { planAuthorDelete } from "@/lib/lifecycle/transitions";
-import { getCurrentAssetRefs } from "@/lib/revisions/service";
+import { getCurrentAssetRefs, getCurrentImportedReplyStates } from "@/lib/revisions/service";
 import { findAnnotation, findAnnotationBySubmissionKey, findAnnotationReply, findAnnotationReplyBySubmissionKey, getCurrentAnnotationAnchorIds, getCurrentAnnotationStates } from "./queries";
 import { collectAnnotationIds, parseAnnotationMarkdown, stringifyAnnotationMarkdown } from "./markdown";
 import { planAnnotationAdminTransition, planAnnotationAuthorDelete, planImportedAnnotationThreadRemoval } from "./lifecycle";
@@ -34,7 +34,11 @@ export async function createAnnotation(input: {
   const db = getDb();
   const currentRevision = (await db.select().from(postRevisions).where(and(eq(postRevisions.id, post.post.currentRevisionId), eq(postRevisions.postId, input.postId))).limit(1))[0];
   if (!currentRevision) throw new Error("帖子当前版本不存在");
-  const [currentStates, currentAssetRefs] = await Promise.all([getCurrentAnnotationStates(input.postId), getCurrentAssetRefs(input.postId)]);
+  const [currentStates, currentAssetRefs, currentImportedReplyStates] = await Promise.all([
+    getCurrentAnnotationStates(input.postId),
+    getCurrentAssetRefs(input.postId),
+    getCurrentImportedReplyStates(input.postId),
+  ]);
   const now = new Date();
   const annotationId = createAnnotationId();
   const revisionId = crypto.randomUUID();
@@ -53,6 +57,7 @@ export async function createAnnotation(input: {
     ...currentAssetRefs.map((ref) => db.insert(revisionAssetRefs).values({ revisionId, ...ref })),
     ...currentStates.map((state) => db.insert(revisionAnnotationStates).values({ revisionId, ...state })),
     db.insert(revisionAnnotationStates).values({ revisionId, annotationId, deletedAt: null, deletedByUserId: null, hiddenAt: null, hiddenByUserId: null }),
+    ...currentImportedReplyStates.map((state) => db.insert(revisionImportedReplyStates).values({ revisionId, ...state })),
     db.insert(activityEvents).values({ id: eventId, actorUserId: input.authorId, eventType: "ANNOTATION_CREATED", postId: input.postId, replyId: null, annotationId, annotationReplyId: null, rootReplyId: null, replyToUserId: null, metadataJson: JSON.stringify({ title: post.post.title, selectedText: truncateActivityPreview(plan.originalSelectedText, 48) }), createdAt: now, invalidatedAt: null }),
   ];
   if (plan.notificationRecipientUserId) operations.push(db.insert(notifications).values({
@@ -129,7 +134,11 @@ export async function deleteAnnotationByAuthor(postId: string, annotationId: str
   if (!post?.currentRevisionId) throw new Error("帖子当前版本不存在");
   const currentRevision = (await db.select().from(postRevisions).where(eq(postRevisions.id, post.currentRevisionId)).limit(1))[0];
   if (!currentRevision) throw new Error("帖子当前版本不存在");
-  const [currentStates, currentAssetRefs] = await Promise.all([getCurrentAnnotationStates(annotation.postId), getCurrentAssetRefs(annotation.postId)]);
+  const [currentStates, currentAssetRefs, currentImportedReplyStates] = await Promise.all([
+    getCurrentAnnotationStates(annotation.postId),
+    getCurrentAssetRefs(annotation.postId),
+    getCurrentImportedReplyStates(annotation.postId),
+  ]);
   const currentAnchorIds = currentStates.map((state) => state.annotationId);
   if (!currentAnchorIds.includes(annotationId)) throw new Error("该批注不属于当前正文");
   const currentTree = parseAnnotationMarkdown(post.markdown);
@@ -150,6 +159,7 @@ export async function deleteAnnotationByAuthor(postId: string, annotationId: str
     ...(!lifecyclePlan.retainAnchor ? [db.delete(postAnnotationAnchors).where(and(eq(postAnnotationAnchors.postId, annotation.postId), eq(postAnnotationAnchors.annotationId, annotationId)))] : []),
     ...currentAssetRefs.map((ref) => db.insert(revisionAssetRefs).values({ revisionId, ...ref })),
     ...nextStates.map((state) => db.insert(revisionAnnotationStates).values({ revisionId, ...state })),
+    ...currentImportedReplyStates.map((state) => db.insert(revisionImportedReplyStates).values({ revisionId, ...state })),
   ];
   await commitAnnotationMutation((items) => db.batch(asBatch(items)), operations);
   return { changed: true as const, postId: annotation.postId, retainedAnchor: lifecyclePlan.retainAnchor };
@@ -175,7 +185,11 @@ export async function removeImportedAnnotationThread(postId: string, annotationI
 
   const currentRevision = (await db.select().from(postRevisions).where(and(eq(postRevisions.id, post.currentRevisionId), eq(postRevisions.postId, postId))).limit(1))[0];
   if (!currentRevision) throw new Error("帖子当前版本不存在");
-  const [currentStates, currentAssetRefs] = await Promise.all([getCurrentAnnotationStates(postId), getCurrentAssetRefs(postId)]);
+  const [currentStates, currentAssetRefs, currentImportedReplyStates] = await Promise.all([
+    getCurrentAnnotationStates(postId),
+    getCurrentAssetRefs(postId),
+    getCurrentImportedReplyStates(postId),
+  ]);
   const currentAnchorIds = currentStates.map((state) => state.annotationId);
   if (!currentAnchorIds.includes(annotationId)) throw new Error("该批注不属于当前正文");
   const currentTree = parseAnnotationMarkdown(post.markdown);
@@ -188,6 +202,10 @@ export async function removeImportedAnnotationThread(postId: string, annotationI
   assertAnchorInvariant(collectAnnotationIds(nextTree), nextStates.map((state) => state.annotationId));
   const lastActivityAt = await derivePostActivityAfterInteractionChange(postId, { kind: "annotation", id: annotationId, deletedAt: now, current: lifecyclePlan.retainAnchor });
   const revisionId = crypto.randomUUID();
+  const removedReplyIds = new Set(discussionReplies.filter((reply) => reply.sourceType === "DOCX_IMPORT").map((reply) => reply.id));
+  const nextImportedReplyStates = currentImportedReplyStates.map((state) => removedReplyIds.has(state.annotationReplyId)
+    ? { ...state, ...lifecyclePlan.patch }
+    : state);
   const postGuard = buildImportedThreadRemovalPostGuard({
     currentRevisionId: currentRevision.id,
     annotationId,
@@ -202,6 +220,7 @@ export async function removeImportedAnnotationThread(postId: string, annotationI
     ...(!lifecyclePlan.retainAnchor ? [db.delete(postAnnotationAnchors).where(and(eq(postAnnotationAnchors.postId, postId), eq(postAnnotationAnchors.annotationId, annotationId)))] : []),
     ...currentAssetRefs.map((ref) => db.insert(revisionAssetRefs).values({ revisionId, ...ref })),
     ...nextStates.map((state) => db.insert(revisionAnnotationStates).values({ revisionId, ...state })),
+    ...nextImportedReplyStates.map((state) => db.insert(revisionImportedReplyStates).values({ revisionId, ...state })),
   ];
   await commitAnnotationMutation((items) => db.batch(asBatch(items)), operations);
   return { changed: true as const, postId, retainedAnchor: lifecyclePlan.retainAnchor };
@@ -231,7 +250,11 @@ export async function moderateAnnotationByAdmin(input: { annotationId: string; a
   const annotation = await findAnnotation(input.annotationId);
   if (!annotation) throw new Error("批注不存在");
   const db = getDb();
-  const [currentStates, currentAssetRefs] = await Promise.all([getCurrentAnnotationStates(annotation.postId), getCurrentAssetRefs(annotation.postId)]);
+  const [currentStates, currentAssetRefs, currentImportedReplyStates] = await Promise.all([
+    getCurrentAnnotationStates(annotation.postId),
+    getCurrentAssetRefs(annotation.postId),
+    getCurrentImportedReplyStates(annotation.postId),
+  ]);
   const currentAnchor = currentStates.some((state) => state.annotationId === annotation.id);
   const plan = planAnnotationAdminTransition({ targetType: "ANNOTATION", targetId: annotation.id, record: annotation, administratorId: input.administratorId, operation: input.operation, operationId: input.operationId, reason: input.reason, currentAnchor, now: new Date() });
   if (!plan.changed || !plan.audit) return { changed: false as const, postId: annotation.postId };
@@ -254,6 +277,7 @@ export async function moderateAnnotationByAdmin(input: { annotationId: string; a
     db.update(posts).set({ currentRevisionId: revisionId }).where(and(eq(posts.id, annotation.postId), eq(posts.currentRevisionId, currentRevision.id))),
     ...currentAssetRefs.map((ref) => db.insert(revisionAssetRefs).values({ revisionId, ...ref })),
     ...nextStates.map((state) => db.insert(revisionAnnotationStates).values({ revisionId, ...state })),
+    ...currentImportedReplyStates.map((state) => db.insert(revisionImportedReplyStates).values({ revisionId, ...state })),
     auditInsert,
   ]);
   return { changed: true as const, postId: annotation.postId };

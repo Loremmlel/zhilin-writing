@@ -5,6 +5,7 @@ import { adminAuditLog, activityEvents, allowedUsers, annotationReplies, annotat
 import { canExposeActivitySnapshot, contentState } from "@/lib/lifecycle/policy";
 import { buildPostLifecycleView, buildReplyLifecycleViews } from "@/lib/lifecycle/views";
 import { canExposeAnnotationActivitySnapshot } from "@/lib/activity/policy";
+import { parseDocxAttributionNoticeMetadata } from "@/lib/notifications/policy";
 
 export type PostSort = "latest" | "active";
 
@@ -400,6 +401,7 @@ export async function findOwnedNotification(id: string, recipientUserId: string)
 }
 
 async function lifecycleNotificationRow<T extends {
+  notification: typeof notifications.$inferSelect;
   event: typeof activityEvents.$inferSelect;
   post: typeof posts.$inferSelect | null;
   reply: typeof replies.$inferSelect | null;
@@ -417,8 +419,12 @@ async function lifecycleNotificationRow<T extends {
   const eventMetadataVisible = annotationEvent
     ? canExposeAnnotationActivitySnapshot(postState, annotationTargetState, annotationCurrent)
     : canExposeActivitySnapshot(postState, row.event.eventType, replyState);
+  const docxAttribution = row.notification.notificationType === "DOCX_ATTRIBUTION_NOTICE"
+    ? parseDocxAttributionNoticeMetadata(row.notification.metadataJson)
+    : null;
   return {
     ...row,
+    docxAttribution: docxAttribution?.postId === row.notification.postId ? docxAttribution : null,
     event: { ...row.event, metadataJson: eventMetadataVisible ? row.event.metadataJson : null },
     post: row.post ? { ...row.post, title: postState === "normal" ? row.post.title : "", markdown: "", searchText: "" } : null,
     reply: row.reply ? { ...row.reply, markdown: replyState === "normal" ? row.reply.markdown : "" } : null,

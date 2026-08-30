@@ -1,6 +1,7 @@
 import { validateAnnotationContent } from "../annotations/policy.ts";
 import { parseAnnotationMarkdown } from "../annotations/markdown.ts";
 import { markdownToPlainText } from "../markdown/render.ts";
+import { buildDocxAttributionNotices } from "../notifications/policy.ts";
 import { DOCX_IMPORT_LIMITS } from "./limits.ts";
 import {
   DocxImportCommitSchema,
@@ -56,6 +57,7 @@ export type CommitAssetContext = {
 
 export type DocxImportCommitContext = {
   importerUserId: string;
+  importerDisplayName: string;
   postId: string;
   revisionId: string;
   eventId: string;
@@ -203,14 +205,22 @@ export function planDocxImportCommit(
     "reply_to_user_id", "metadata_json", "created_at", "invalidated_at",
   ], [[context.eventId, context.importerUserId, "POST_CREATED", context.postId, null, null, null, null, null, JSON.stringify({ docxImportPayloadHash: context.payloadHash }), now, null]]);
 
-  const attributionCounts = new Map<string, number>();
-  for (const item of roots.flatMap((root) => [root, ...root.replies])) {
-    const recipient = validated.authorMappings[item.sourceAuthorName] ?? item.attributedUserId;
-    if (recipient && recipient !== context.importerUserId) attributionCounts.set(recipient, (attributionCounts.get(recipient) ?? 0) + 1);
-  }
-  const notificationRows = [...attributionCounts].sort(([left], [right]) => left.localeCompare(right)).map(([recipient, commentCount]) => [
-    `notification:${context.eventId}:${recipient}:docx-attribution-notice`, recipient, context.importerUserId, context.eventId,
-    "DOCX_ATTRIBUTION_NOTICE", context.postId, null, null, null, JSON.stringify({ commentCount }), validated.importBatchId, now, null,
+  const notices = buildDocxAttributionNotices({
+    importBatchId: validated.importBatchId,
+    eventId: context.eventId,
+    postId: context.postId,
+    postTitle: validated.title,
+    importerUserId: context.importerUserId,
+    importerDisplayName: context.importerDisplayName,
+    createdAt: now,
+    attributedUserIds: roots.flatMap((root) => [root, ...root.replies]).map((item) => (
+      validated.authorMappings[item.sourceAuthorName] ?? item.attributedUserId
+    )),
+  });
+  const notificationRows = notices.map((notice) => [
+    notice.id, notice.recipientUserId, notice.actorUserId, notice.eventId, notice.notificationType,
+    notice.postId, notice.replyId, notice.annotationId, notice.annotationReplyId, notice.metadataJson,
+    notice.importBatchId, notice.createdAt, notice.readAt,
   ]);
   addRows("notifications", "notifications", [
     "id", "recipient_user_id", "actor_user_id", "event_id", "notification_type", "post_id", "reply_id", "annotation_id",

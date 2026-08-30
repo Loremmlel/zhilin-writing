@@ -55,7 +55,8 @@ export async function commitDocxImport(
     throw error;
   }
   const payloadHash = await sha256(stableJson(validated));
-  if (!await isAllowlistedMember(db, importerUserId)) throw new DocxImportCommitError("MEMBER_REQUIRED", 403);
+  const importer = await loadImporterProfile(db, importerUserId);
+  if (!importer) throw new DocxImportCommitError("MEMBER_REQUIRED", 403);
 
   const existing = await findExistingBatch(db, validated.importBatchId);
   if (existing) return assertMatchingBatch(existing, importerUserId, validated.source.filename, validated.source.sha256, payloadHash);
@@ -72,6 +73,7 @@ export async function commitDocxImport(
   const eventId = `activity:post:${postId}:created`;
   const plan = planDocxImportCommit(validated, {
     importerUserId,
+    importerDisplayName: importer.displayName,
     postId,
     revisionId,
     eventId,
@@ -105,12 +107,11 @@ async function runtimeDatabase(): Promise<DocxImportCommitDatabase> {
   };
 }
 
-async function isAllowlistedMember(db: DocxImportCommitDatabase, userId: string): Promise<boolean> {
-  const row = await db.first<{ id: string }>(
-    "SELECT u.id AS id FROM users u INNER JOIN allowed_users au ON au.email = u.email_key WHERE u.id = ? LIMIT 1",
+async function loadImporterProfile(db: DocxImportCommitDatabase, userId: string): Promise<{ displayName: string } | null> {
+  return db.first<{ displayName: string }>(
+    "SELECT u.display_name AS displayName FROM users u INNER JOIN allowed_users au ON au.email = u.email_key WHERE u.id = ? LIMIT 1",
     [userId],
   );
-  return Boolean(row);
 }
 
 async function allowedMemberIds(db: DocxImportCommitDatabase, ids: string[]): Promise<Set<string>> {

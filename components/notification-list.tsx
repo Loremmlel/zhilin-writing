@@ -5,15 +5,17 @@ import type { listNotifications } from "@/db/queries";
 import { truncateActivityPreview } from "@/lib/activity/policy";
 import { formatDateTime } from "@/lib/format";
 import { markdownToPlainText } from "@/lib/markdown/render";
+import { formatDocxAttributionNotice } from "@/lib/notifications/policy";
 
 type NotificationItem = Awaited<ReturnType<typeof listNotifications>>[number];
 
 export function NotificationList({ items }: { items: NotificationItem[] }) {
-  if (items.length === 0) return <div className="empty-state"><h2>这里很安静</h2><p>别人回复你的帖子或回复后，会在这里通知你。</p></div>;
+  if (items.length === 0) return <div className="empty-state"><h2>这里很安静</h2><p>有同学回复你的内容，或 DOCX 导入关联了你的 Word 批注后，会在这里通知你。</p></div>;
   return <section className="notification-list" aria-label="通知列表">
     {items.map((item) => {
       const isUnread = !item.notification.readAt;
-      const annotationNotification = item.notification.notificationType !== "POST_REPLY_RECEIVED";
+      const isDocxAttribution = item.notification.notificationType === "DOCX_ATTRIBUTION_NOTICE";
+      const annotationNotification = !isDocxAttribution && item.notification.notificationType !== "POST_REPLY_RECEIVED";
       const annotationUnavailable = annotationNotification && (!item.annotationCurrent || (
         item.notification.notificationType === "POST_ANNOTATION_RECEIVED"
           ? !item.annotationAvailable
@@ -23,7 +25,11 @@ export function NotificationList({ items }: { items: NotificationItem[] }) {
         <Avatar name={item.actor.displayName} assetId={item.actor.avatarAssetId} />
         <div className="notification-content">
           <p>
-            <strong>{item.actor.displayName}</strong>{" "}
+            {isDocxAttribution
+              ? item.docxAttribution
+                ? formatDocxAttributionNotice(item.docxAttribution, { includePostTitle: item.postAvailable })
+                : "收到了一条 DOCX 批注关联通知，但通知详情已不可用。"
+              : <><strong>{item.actor.displayName}</strong>{" "}
             {!item.post || !item.postReachable
               ? "有一条关联内容已不可用"
               : item.notification.notificationType === "POST_ANNOTATION_RECEIVED"
@@ -38,7 +44,7 @@ export function NotificationList({ items }: { items: NotificationItem[] }) {
                 ? `回复了你，但该回复已经被${item.replyState === "hidden" ? "管理员隐藏" : "删除"}`
                 : item.event.replyToUserId
                   ? item.postAvailable ? <>回复了你在《{item.post.title}》中的回复</> : <>回复了你在一条正文已撤下的讨论中的回复</>
-                  : item.postAvailable ? <>回复了你的帖子《{item.post.title}》</> : <>回复了你的一条正文已撤下的讨论</>}
+                  : item.postAvailable ? <>回复了你的帖子《{item.post.title}》</> : <>回复了你的一条正文已撤下的讨论</>}</>}
           </p>
           {item.notification.notificationType === "POST_REPLY_RECEIVED" && item.replyAvailable && item.reply && <blockquote>{truncateActivityPreview(markdownToPlainText(item.reply.markdown), 90)}</blockquote>}
           {item.notification.notificationType === "ANNOTATION_REPLY_RECEIVED" && item.annotationReplyAvailable && item.annotationReply && <blockquote>{truncateActivityPreview(markdownToPlainText(item.annotationReply.contentMarkdown), 90)}</blockquote>}

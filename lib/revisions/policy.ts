@@ -15,6 +15,14 @@ export type AnnotationStateSnapshot = {
   hiddenByUserId: string | null;
 };
 
+export type ImportedReplyStateSnapshot = {
+  annotationReplyId: string;
+  deletedAt: Date | null;
+  deletedByUserId: string | null;
+  hiddenAt: Date | null;
+  hiddenByUserId: string | null;
+};
+
 function assertMatchingAnnotationIds(label: string, left: string[], right: string[]) {
   const a = [...left].sort();
   const b = [...right].sort();
@@ -29,8 +37,10 @@ export function planAnnotationRestore(input: {
   currentMarkdown: string;
   currentAnchorIds: string[];
   currentStates: AnnotationStateSnapshot[];
+  currentImportedReplyStates?: ImportedReplyStateSnapshot[];
   sourceMarkdown: string;
   sourceStates: AnnotationStateSnapshot[];
+  sourceImportedReplyStates?: ImportedReplyStateSnapshot[];
 }) {
   const currentMarkdownIds = collectAnnotationIds(parseAnnotationMarkdown(input.currentMarkdown));
   const currentStateIds = input.currentStates.map((state) => state.annotationId);
@@ -39,12 +49,22 @@ export function planAnnotationRestore(input: {
 
   const sourceAnchorIds = collectAnnotationIds(parseAnnotationMarkdown(input.sourceMarkdown));
   assertMatchingAnnotationIds("历史版本", sourceAnchorIds, input.sourceStates.map((state) => state.annotationId));
+  const currentImportedReplyStates = input.currentImportedReplyStates ?? [];
+  const sourceImportedReplyStates = input.sourceImportedReplyStates ?? [];
+  assertUniqueImportedReplyStates("当前版本", currentImportedReplyStates);
+  assertUniqueImportedReplyStates("历史版本", sourceImportedReplyStates);
   const sourceSet = new Set(sourceAnchorIds);
   return {
     sourceAnchorIds,
     exitingAnnotationIds: currentMarkdownIds.filter((id) => !sourceSet.has(id)),
     restoredStates: sourceAnchorIds.map((id) => input.sourceStates.find((state) => state.annotationId === id)!),
+    restoredImportedReplyStates: sourceImportedReplyStates,
   };
+}
+
+function assertUniqueImportedReplyStates(label: string, states: ImportedReplyStateSnapshot[]) {
+  const ids = states.map((state) => state.annotationReplyId);
+  if (ids.length !== new Set(ids).size) throw new Error(`${label}导入批注回复快照不一致`);
 }
 
 type ComparablePostContent = {
