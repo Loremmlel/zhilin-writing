@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { DocxImportPreview } from "@/components/docx-import/docx-import-preview";
 import { ModalDialog } from "@/components/modal-dialog";
@@ -9,6 +10,7 @@ import {
   parseDocxWithWorker,
   sha256DocxSource,
 } from "@/lib/docx-import/browser";
+import { toDocxImportCommitPayload } from "@/lib/docx-import/commit-schema";
 import { DOCX_IMPORT_LIMITS } from "@/lib/docx-import/limits";
 import {
   replaceDocxAssetReferences,
@@ -49,9 +51,16 @@ const errorLabels: Record<string, string> = {
   IMAGE_COUNT_LIMIT: "文档中的图片数量超过 200 张。",
   PREVIEW_LOAD_FAILED: "无法读取当前浏览器中保存的导入预览。",
   PREVIEW_REMOVE_FAILED: "无法删除当前浏览器中的导入预览，请重试。",
+  MEMBER_REQUIRED: "当前账号已失去导入权限。预览仍保存在本地。",
+  IMPORT_BATCH_CONFLICT: "这份预览与已提交的内容不一致，请重新选择 DOCX。",
+  ATTRIBUTED_USER_INVALID: "批注作者关联已失效，请重新选择。",
+  ASSET_NOT_CLAIMABLE: "预览图片已失效，请重新导入 DOCX。",
+  IMPORT_COMMIT_FAILED: "未能完成导入。预览和临时图片仍保留，可以重试。",
+  COMMIT_REQUEST_FAILED: "未能完成导入。预览仍保存在本地，可以重试。",
 };
 
 export function DocxImportWorkspace({ users }: { users: SiteUser[] }) {
+  const router = useRouter();
   const abortRef = useRef<AbortController | null>(null);
   const discardedRef = useRef(new Set<string>());
   const [phase, setPhase] = useState<Phase>("selecting");
@@ -213,6 +222,40 @@ export function DocxImportWorkspace({ users }: { users: SiteUser[] }) {
     setDiscardBatchId(null);
   }
 
+  async function confirmImport() {
+    if (!preview || !validation?.ok) return;
+    setError(null);
+    setPhase("committing");
+    try {
+      const response = await fetch("/api/docx-import", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(toDocxImportCommitPayload(validation.payload)),
+      });
+      const data = await response.json() as {
+        result?: { postId: string };
+        error?: { code?: string; message?: string };
+      };
+      if (!response.ok || !data.result) {
+        throw Object.assign(new Error(data.error?.message ?? "导入提交失败"), {
+          code: data.error?.code ?? "COMMIT_REQUEST_FAILED",
+        });
+      }
+      discardedRef.current.add(preview.importBatchId);
+      await removeImportPreview(preview.importBatchId);
+      setRecoverable((items) => items.filter((item) => item.importBatchId !== preview.importBatchId));
+      setPhase("complete");
+      router.push(`/posts/${data.result.postId}`);
+      router.refresh();
+    } catch (caught) {
+      const code = typeof caught === "object" && caught && "code" in caught
+        ? String(caught.code)
+        : "COMMIT_REQUEST_FAILED";
+      setError({ code, message: caught instanceof Error ? caught.message : "导入提交失败" });
+      setPhase("previewing");
+    }
+  }
+
   return <section className="docx-import-workspace" aria-busy={phase === "parsing" || phase === "uploading" || phase === "committing"}>
     {phase === "selecting" && <>
       {recoverable.length > 0 && <section className="docx-import-recovery" aria-labelledby="docx-recovery-heading">
@@ -269,9 +312,19 @@ export function DocxImportWorkspace({ users }: { users: SiteUser[] }) {
         })} />
       <div className="docx-import-actions">
         <button type="button" className="button button--ghost" onClick={() => setDiscardBatchId(preview.importBatchId)}>取消导入</button>
-        <div><span>{validation.ok ? "预览已通过本地校验" : `还有 ${validation.errors.length} 项需要修正`}</span><button type="button" className="button button--primary" disabled aria-disabled="true">确认导入</button></div>
+        <div><span>{validation.ok ? "预览已通过本地校验" : `还有 ${validation.errors.length} 项需要修正`}</span><button type="button" className="button button--primary" disabled={!validation.ok} aria-disabled={!validation.ok} onClick={() => void confirmImport()}>确认导入</button></div>
       </div>
     </>}
+
+    {phase === "committing" && <section className="docx-import-progress" role="status" aria-live="polite" aria-labelledby="docx-commit-heading">
+      <span className="docx-import-file-mark" aria-hidden="true">DOCX</span>
+      <div>
+        <span className="eyebrow">保存进度</span>
+        <h2 id="docx-commit-heading">正在保存帖子</h2>
+        <p>正在一次写入正文、批注和图片关系，请勿关闭页面。</p>
+      </div>
+      <progress aria-label="正在保存帖子" />
+    </section>}
 
     {phase === "complete" && <div className="empty-state"><h2>导入完成</h2><p>正在打开新帖子。</p></div>}
 

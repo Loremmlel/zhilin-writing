@@ -123,3 +123,15 @@
 - Nullable compatibility：旧 lifecycle/annotation helper 改用实际需要的窄类型；imported `NULL` author 不获得删除权、不会生成原生回复收件人，也不会让已删除帖子因为历史 Word 内容被误判为其他成员讨论。
 - GREEN：Task 8 migration focused tests 5/5、完整 `npm run test:unit` 191/191、`npx tsc --noEmit`、`npx drizzle-kit check`、定向 ESLint、`git diff --check` 与 `npm run build` 均通过；Wrangler 4.92.0 临时本地 D1 顺序应用 0000–0005 全部成功。`npx` 仅输出仓库既有的 npm `http-proxy` 弃用提示，构建仅保留既有的大 chunk 警告。
 - 提交：本节与 Task 8 schema、migration、snapshot、兼容修复和测试同一提交，消息为 `feat: model imported DOCX annotation identity`；推送后暂停，等待确认再进入 Task 9。
+
+## 2026-08-30 — Task 9：不可信 IR 校验与原子幂等提交
+
+- 状态：实现与完整验证完成；Task 10 尚未开始。
+- 同步：从 Sites `origin` 拉取 `feature/v5.5-docx-import` 并确认已是最新；Task 9 基线完整单测为 191/191 通过。
+- RED：新增 `tests/docx-import-commit.test.ts` 后，测试按预期因缺少 `commit-schema.ts` 失败；实现初版后又分别暴露 envelope fixture 未同步及递归 Zod block 推断为 `unknown`，修正测试数据与显式 schema 类型后转绿。
+- Trust boundary：`DocxImportCommitSchema` 使用 strict Zod object 拒绝未知字段；服务端重新校验标题、1.5 MB UTF-8 Markdown、`.docx` source/SHA、final batch/root/reply UUID、source range、500 条 root+reply 上限、reply graph、author mapping 与 imported `author_id=NULL`。服务端重新解析 canonical Markdown，要求 annotation ID 集合、次数与 selected text 精确一致，并拒绝 nested/cross-block/overlap、unsafe URL、error warning 与被篡改 asset manifest。
+- Asset/auth：endpoint 只从 `requireMember("/posts/import")` 取得当前成员 ID，raw JSON 交给 service；service 再验证 allowlist、attributed users，以及每张 temporary image 的 owner、status、MIME、filename、size 与未删除状态。asset claim 位于同一 D1 batch 中，并用 owner/status/MIME guard 触发硬失败；不移动或删除 R2 object。
+- Atomic planner：post/revision ID 由服务端生成；FK 顺序包含 post、完整 initial revision、import batch、asset binding/ref、roots/replies、root/reply snapshots、唯一 `POST_CREATED` event 与每位 attribution recipient 至多一条汇总通知。所有 bulk rows 固定按 32 条分块，但全部 statements 只调用一次 `db.batch()`；imported roots/replies 不生成个人 annotation activity。
+- 幂等与恢复：相同 batch/importer/source/durable payload 重试返回同一 post/revision 且 `alreadyCommitted=true`；不同 importer、hash 或 payload 返回 409 conflict。唯一键 race 在 batch 失败后重新读取并只接受 exact match；注入中途失败证明所有 post/revision/thread/snapshot/activity/notification/ref rows 均回滚，temporary asset 保持未绑定。客户端失败时保留原 batch/root/reply IDs 与 IndexedDB Preview，成功后删除 Preview 并导航到新帖子。
+- GREEN：Task 9 focused tests 10/10、完整 `npm test` 的 201/201 单测、生产构建与 7/7 rendered artifact assertions 均通过；`npx tsc --noEmit`、全量 ESLint、strict premium UI audit 与 `git diff --check` 退出 0。构建产物包含 `/api/docx-import`；仅保留仓库既有的 npm `http-proxy` 弃用提示、ESLint parser 提示与大 chunk warning。按当前授权未启动 browser/visual/E2E QA，也未部署站点。
+- 提交：本节将与 Task 9 schema、planner、service、endpoint、Confirm flow 和测试同一提交，消息为 `feat: commit DOCX imports atomically`；推送后暂停，等待确认再进入 Task 10。
