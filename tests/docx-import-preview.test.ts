@@ -84,6 +84,13 @@ test("blocks edited annotation text, nested directives, and overlapping imported
   const overlap = validateEditedImportPreview(overlapFixture);
   assert.equal(overlap.ok, false);
   assert.ok(overlap.errors.some((item) => item.code === "ANNOTATION_OVERLAP"));
+
+  const imageAnchor = validateEditedImportPreview({
+    ...editableFixture(),
+    markdown: `:annotation[![正文](https://example.com/image.png)]{#${ROOT_ID}}`,
+  });
+  assert.equal(imageAnchor.ok, false);
+  assert.ok(imageAnchor.errors.some((item) => item.code === "ANNOTATION_NON_TEXT_RANGE"));
 });
 
 test("blocks unsafe external URLs and error-severity import warnings", () => {

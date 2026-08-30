@@ -5,18 +5,24 @@ import test from "node:test";
 
 import {
   DocxImportCommitSchema,
+  parseDocxImportCommitBody,
+  prepareDocxImportSubmission,
   toDocxImportCommitPayload,
+  type DocxImportCommitInput,
 } from "../lib/docx-import/commit-schema.ts";
 import {
   planDocxImportCommit,
   validateDocxImportCommitPayload,
+  type SqlValue,
 } from "../lib/docx-import/commit-plan.ts";
 import {
   commitDocxImport,
   type DocxImportCommitDatabase,
   type D1StatementPlan,
 } from "../lib/docx-import/commit-service.ts";
+import { beginDocxImportCommit } from "../lib/docx-import/commit-lock.ts";
 import type { CommitSafeImportPreview } from "../lib/docx-import/preview-validation.ts";
+import type { ListBlock } from "../lib/docx-import/types.ts";
 
 const IMPORTER_ID = "00000000-0000-4000-8000-000000000101";
 const MEMBER_ID = "00000000-0000-4000-8000-000000000102";
@@ -69,6 +75,108 @@ test("the trust boundary enforces title, Markdown, UUID, uniqueness, and item li
     sourceDocumentOrder: index + 1,
   }));
   assert.throws(() => validateDocxImportCommitPayload(overLimit), /COMMENT_LIMIT/);
+
+  const oversizedIrText = commitFixture();
+  oversizedIrText.ir.blocks.push(
+    { id: "large-1", type: "paragraph", segments: [{ text: "a".repeat(800_000), marks: [], commentIds: [] }] },
+    { id: "large-2", type: "paragraph", segments: [{ text: "b".repeat(800_000), marks: [], commentIds: [] }] },
+  );
+  assert.throws(() => validateDocxImportCommitPayload(oversizedIrText), /IR_TEXT_SIZE_LIMIT/);
+
+  const recursiveList = commitFixture();
+  recursiveList.ir.blocks.push(nestedListBlock(0, 20));
+  assert.throws(() => validateDocxImportCommitPayload(recursiveList), /COMMIT_SCHEMA_INVALID/);
+
+  const nestedWarning = commitFixture();
+  (nestedWarning.ir.warnings as unknown[]).push({
+    code: "VISUAL_FORMATTING_DROPPED",
+    severity: "warning",
+    payload: { nested: { arbitrary: true } },
+  });
+  assert.throws(() => validateDocxImportCommitPayload(nestedWarning), /COMMIT_SCHEMA_INVALID/);
+
+  const tableExpansion = commitFixture();
+  tableExpansion.ir.blocks.push({
+    id: "large-table",
+    type: "table",
+    header: { cells: Array.from({ length: 100 }, () => ({ segments: [] })) },
+    rows: Array.from({ length: 101 }, () => ({
+      cells: Array.from({ length: 100 }, () => ({ segments: [] })),
+    })),
+  });
+  assert.throws(() => validateDocxImportCommitPayload(tableExpansion), /IR_NODE_LIMIT/);
+
+  const warningExpansion = commitFixture();
+  warningExpansion.ir.warnings.push({
+    code: "VISUAL_FORMATTING_DROPPED",
+    severity: "warning",
+    payload: Object.fromEntries(Array.from({ length: 20_000 }, (_, index) => [`field-${index}`, index])),
+  });
+  assert.throws(() => validateDocxImportCommitPayload(warningExpansion), /COMMIT_SCHEMA_INVALID/);
+
+  const aggregateWarnings = commitFixture();
+  aggregateWarnings.ir.warnings = Array.from({ length: 500 }, (_, warningIndex) => ({
+    code: "VISUAL_FORMATTING_DROPPED" as const,
+    severity: "warning" as const,
+    payload: Object.fromEntries(Array.from({ length: 20 }, (_, fieldIndex) => [
+      `field-${warningIndex}-${fieldIndex}`,
+      fieldIndex,
+    ])),
+  }));
+  assert.throws(() => validateDocxImportCommitPayload(aggregateWarnings), /IR_NODE_LIMIT/);
+});
+
+test("the IR budget counts repeated segment links and comment IDs", () => {
+  const linked = commitFixture();
+  const linkedParagraph = linked.ir.blocks[0]!;
+  assert.equal(linkedParagraph.type, "paragraph");
+  if (linkedParagraph.type !== "paragraph") return;
+  linkedParagraph.segments.push(...Array.from({ length: 400 }, (_, index) => ({
+    text: "x",
+    marks: [],
+    link: `https://${"a".repeat(4_070)}${index.toString(36)}`,
+    commentIds: [],
+  })));
+  assert.throws(() => validateDocxImportCommitPayload(linked), /IR_TEXT_SIZE_LIMIT/);
+
+  const commented = commitFixture();
+  const commentedParagraph = commented.ir.blocks[0]!;
+  assert.equal(commentedParagraph.type, "paragraph");
+  if (commentedParagraph.type !== "paragraph") return;
+  commentedParagraph.segments.push(...Array.from({ length: 16 }, () => ({
+    text: "x",
+    marks: [],
+    commentIds: Array.from({ length: 500 }, () => "c".repeat(200)),
+  })));
+  assert.throws(() => validateDocxImportCommitPayload(commented), /IR_TEXT_SIZE_LIMIT/);
+});
+
+test("the raw commit body is size-limited before JSON parsing", () => {
+  const oversized = commitFixture();
+  const paragraph = oversized.ir.blocks[0]!;
+  assert.equal(paragraph.type, "paragraph");
+  if (paragraph.type !== "paragraph") return;
+  paragraph.segments.push(...Array.from({ length: 1_600 }, (_, index) => ({
+    text: "x",
+    marks: [],
+    link: `https://${"a".repeat(4_070)}${index.toString(36)}`,
+    commentIds: [],
+  })));
+  const body = JSON.stringify(oversized);
+  assert.ok(new TextEncoder().encode(body).byteLength > 6 * 1024 * 1024);
+  assert.throws(() => parseDocxImportCommitBody(body), /COMMIT_BODY_SIZE_LIMIT/);
+  assert.throws(() => parseDocxImportCommitBody("{"), /COMMIT_SCHEMA_INVALID/);
+});
+
+test("the browser synchronously locks Confirm before its first durable checkpoint", () => {
+  const lock = { current: false };
+  let phase = "previewing";
+
+  assert.equal(beginDocxImportCommit(lock, () => { phase = "committing"; }), true);
+  assert.equal(lock.current, true);
+  assert.equal(phase, "committing");
+  assert.equal(beginDocxImportCommit(lock, () => { phase = "previewing"; }), false);
+  assert.equal(phase, "committing");
 });
 
 test("the server reparses Markdown and rejects missing, extra, changed, nested, or unsafe anchors", () => {
@@ -96,6 +204,11 @@ test("the server reparses Markdown and rejects missing, extra, changed, nested, 
   unsafe.markdown = `:annotation[[正文](javascript:alert(1))]{#${ROOT_ID}}`;
   unsafe.ir.canonicalMarkdown = unsafe.markdown;
   assert.throws(() => validateDocxImportCommitPayload(unsafe), /UNSAFE_EXTERNAL_URL/);
+
+  const imageAnchor = commitFixture();
+  imageAnchor.markdown = `:annotation[![正文](https://example.com/image.png)]{#${ROOT_ID}}`;
+  imageAnchor.ir.canonicalMarkdown = imageAnchor.markdown;
+  assert.throws(() => validateDocxImportCommitPayload(imageAnchor), /ANNOTATION_NON_TEXT_RANGE/);
 });
 
 test("the server rejects forged source ranges, reply graphs, mappings, and asset manifests", () => {
@@ -126,16 +239,25 @@ test("the server rejects forged source ranges, reply graphs, mappings, and asset
 });
 
 test("the browser commit payload omits image bytes and preserves finalized retry IDs", () => {
-  const payload = toDocxImportCommitPayload(previewFixtureWithAsset());
+  const preview = previewFixtureWithAsset();
+  const payload = toDocxImportCommitPayload(preview);
   assert.equal(payload.importBatchId, BATCH_ID);
   assert.equal(payload.ir.threads[0]?.annotationId, ROOT_ID);
   assert.equal(payload.ir.threads[0]?.replies[0]?.replyId, REPLY_ID);
   assert.equal("bytes" in payload.ir.assets[0]!, false);
   assert.equal(JSON.stringify(payload).includes("1,2,3"), false);
+
+  const submission = prepareDocxImportSubmission(preview);
+  assert.deepEqual(JSON.parse(submission.body), payload);
+  assert.equal(submission.preview.title, preview.title);
+  assert.equal(submission.preview.canonicalMarkdown, preview.markdown);
+  assert.equal(submission.preview.ir.canonicalMarkdown, preview.markdown);
+  assert.equal(submission.preview.importBatchId, payload.importBatchId);
+  assert.equal(submission.preview.ir.threads[0]?.annotationId, payload.ir.threads[0]?.annotationId);
 });
 
 test("the pure planner chunks rows and creates one normal post activity only", () => {
-  const validated = validateDocxImportCommitPayload(commitFixture({ withAsset: true }));
+  const validated = validateDocxImportCommitPayload(manyRootFixture(12));
   const plan = planDocxImportCommit(validated, {
     importerUserId: IMPORTER_ID,
     postId: uuid(600),
@@ -143,14 +265,44 @@ test("the pure planner chunks rows and creates one normal post activity only", (
     eventId: "activity:test",
     payloadHash: "b".repeat(64),
     now: new Date("2026-08-30T00:00:00.000Z"),
-    assets: [{ id: ASSET_ID, ownerId: IMPORTER_ID, kind: "image", mimeType: "image/png", status: "temporary", deletedAt: null }],
+    assets: [],
   });
 
   assert.ok(plan.statements.length > 0);
   assert.ok(plan.rowChunks.every((chunk) => chunk.rowCount <= 32));
+  assert.ok(plan.statements.every((statement) => statement.params.length <= 100));
   assert.equal(plan.activityCount, 1);
   assert.equal(plan.annotationActivityCount, 0);
   assert.equal(plan.notificationCount, 1);
+});
+
+test("the service keeps every lookup and batch statement within D1's 100-bind ceiling", async () => {
+  const input = manyRootFixture(101, true);
+  const parameterCounts: number[] = [];
+  const adapter: DocxImportCommitDatabase = {
+    async first<T>(sql: string, params: readonly SqlValue[]) {
+      parameterCounts.push(params.length);
+      if (params.length > 100) throw new Error("D1_BIND_LIMIT");
+      return (sql.includes("INNER JOIN allowed_users") ? { id: IMPORTER_ID } : null) as T | null;
+    },
+    async all<T>(sql: string, params: readonly SqlValue[]) {
+      parameterCounts.push(params.length);
+      if (params.length > 100) throw new Error("D1_BIND_LIMIT");
+      if (sql.includes("INNER JOIN allowed_users")) return params.map((id) => ({ id })) as T[];
+      return [];
+    },
+    async batch(statements: readonly D1StatementPlan[]) {
+      for (const statement of statements) {
+        parameterCounts.push(statement.params.length);
+        if (statement.params.length > 100) throw new Error("D1_BIND_LIMIT");
+      }
+    },
+  };
+
+  const result = await commitDocxImport(IMPORTER_ID, input, adapter);
+  assert.equal(result.alreadyCommitted, false);
+  assert.ok(parameterCounts.length > 3);
+  assert.ok(parameterCounts.every((count) => count <= 100));
 });
 
 test("the service rejects non-members, invalid attribution, and unclaimable assets", async () => {
@@ -263,7 +415,7 @@ test("a mid-batch failure rolls back every D1 relation and leaves assets tempora
   }
 });
 
-function commitFixture(options: { withAsset?: boolean } = {}) {
+function commitFixture(options: { withAsset?: boolean } = {}): DocxImportCommitInput {
   const withAsset = options.withAsset ?? false;
   return {
     version: 1 as const,
@@ -342,6 +494,53 @@ function previewFixtureWithAsset(): CommitSafeImportPreview {
     canonicalMarkdown: input.markdown,
     temporaryAssets: input.temporaryAssets,
     authorMappings: input.authorMappings,
+  };
+}
+
+function manyRootFixture(count: number, uniqueAuthors = false) {
+  const input = commitFixture();
+  input.ir.blocks = [];
+  input.ir.threads = [];
+  input.authorMappings = {};
+  const markdown: string[] = [];
+  for (let index = 0; index < count; index += 1) {
+    const annotationId = `ann_${uuid(10_000 + index)}`;
+    const author = uniqueAuthors ? `Author ${index}` : "Author";
+    const attributedUserId = uniqueAuthors ? uuid(20_000 + index) : MEMBER_ID;
+    const blockId = `p-${index}`;
+    input.ir.blocks.push({
+      id: blockId,
+      type: "paragraph",
+      segments: [{ text: "正文", marks: [], commentIds: [`root-${index}`] }],
+    });
+    input.ir.threads.push({
+      ...commitFixture().ir.threads[0]!,
+      annotationId,
+      sourceCommentId: `root-${index}`,
+      blockId,
+      sourceAuthorName: author,
+      sourceDocumentOrder: index,
+      replies: [],
+    });
+    input.authorMappings[author] = attributedUserId;
+    markdown.push(`:annotation[正文]{#${annotationId}}`);
+  }
+  input.markdown = markdown.join("\n\n");
+  input.ir.canonicalMarkdown = input.markdown;
+  return input;
+}
+
+function nestedListBlock(depth: 0 | 1 | 2, remaining: number): ListBlock {
+  return {
+    id: `list-${remaining}`,
+    type: "list",
+    ordered: false,
+    depth,
+    items: [{
+      id: `list-item-${remaining}`,
+      segments: [{ text: "item", marks: [], commentIds: [] }],
+      children: remaining > 0 ? [nestedListBlock(Math.min(depth + 1, 2) as 0 | 1 | 2, remaining - 1)] : [],
+    }],
   };
 }
 

@@ -48,6 +48,7 @@ const validationLabels: Record<string, string> = {
   ANNOTATION_ANCHOR_DUPLICATE: "同一批注锚点在正文中出现了多次。",
   ANNOTATION_TEXT_CHANGED: "带批注的原文发生变化，请恢复该范围。",
   ANNOTATION_NESTED: "批注锚点不能互相嵌套。",
+  ANNOTATION_NON_TEXT_RANGE: "批注锚点不能包含图片或其他非正文内容。",
   ANNOTATION_OVERLAP: "批注范围发生重叠，无法安全导入。",
   UNSAFE_EXTERNAL_URL: "正文包含不安全链接，请移除后再确认。",
   IMPORT_WARNING_ERROR: "源文件包含阻断导入的问题。",

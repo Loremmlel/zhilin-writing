@@ -10,7 +10,8 @@ import {
   parseDocxWithWorker,
   sha256DocxSource,
 } from "@/lib/docx-import/browser";
-import { toDocxImportCommitPayload } from "@/lib/docx-import/commit-schema";
+import { beginDocxImportCommit } from "@/lib/docx-import/commit-lock";
+import { prepareDocxImportSubmission } from "@/lib/docx-import/commit-schema";
 import { DOCX_IMPORT_LIMITS } from "@/lib/docx-import/limits";
 import {
   replaceDocxAssetReferences,
@@ -51,7 +52,9 @@ const errorLabels: Record<string, string> = {
   IMAGE_COUNT_LIMIT: "文档中的图片数量超过 200 张。",
   PREVIEW_LOAD_FAILED: "无法读取当前浏览器中保存的导入预览。",
   PREVIEW_REMOVE_FAILED: "无法删除当前浏览器中的导入预览，请重试。",
+  AUTH_REQUIRED: "登录状态已失效。预览仍保存在本地，请重新登录。",
   MEMBER_REQUIRED: "当前账号已失去导入权限。预览仍保存在本地。",
+  ONBOARDING_REQUIRED: "请先完成站内资料设置。预览仍保存在本地。",
   IMPORT_BATCH_CONFLICT: "这份预览与已提交的内容不一致，请重新选择 DOCX。",
   ATTRIBUTED_USER_INVALID: "批注作者关联已失效，请重新选择。",
   ASSET_NOT_CLAIMABLE: "预览图片已失效，请重新导入 DOCX。",
@@ -62,6 +65,7 @@ const errorLabels: Record<string, string> = {
 export function DocxImportWorkspace({ users }: { users: SiteUser[] }) {
   const router = useRouter();
   const abortRef = useRef<AbortController | null>(null);
+  const commitInFlightRef = useRef(false);
   const discardedRef = useRef(new Set<string>());
   const [phase, setPhase] = useState<Phase>("selecting");
   const [preview, setPreview] = useState<EditedImportPreview | null>(null);
@@ -224,13 +228,22 @@ export function DocxImportWorkspace({ users }: { users: SiteUser[] }) {
 
   async function confirmImport() {
     if (!preview || !validation?.ok) return;
+    const submission = prepareDocxImportSubmission(validation.payload);
+    if (!beginDocxImportCommit(commitInFlightRef, () => setPhase("committing"))) return;
     setError(null);
-    setPhase("committing");
+    try {
+      await saveImportPreview(submission.preview);
+    } catch {
+      commitInFlightRef.current = false;
+      setError({ code: "PREVIEW_SAVE_FAILED", message: "预览未能保存到当前浏览器。" });
+      setPhase("previewing");
+      return;
+    }
     try {
       const response = await fetch("/api/docx-import", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify(toDocxImportCommitPayload(validation.payload)),
+        body: submission.body,
       });
       const data = await response.json() as {
         result?: { postId: string };
@@ -242,12 +255,14 @@ export function DocxImportWorkspace({ users }: { users: SiteUser[] }) {
         });
       }
       discardedRef.current.add(preview.importBatchId);
-      await removeImportPreview(preview.importBatchId);
+      try { await removeImportPreview(preview.importBatchId); }
+      catch { /* The committed post is authoritative; an exact retry remains idempotent. */ }
       setRecoverable((items) => items.filter((item) => item.importBatchId !== preview.importBatchId));
       setPhase("complete");
       router.push(`/posts/${data.result.postId}`);
       router.refresh();
     } catch (caught) {
+      commitInFlightRef.current = false;
       const code = typeof caught === "object" && caught && "code" in caught
         ? String(caught.code)
         : "COMMIT_REQUEST_FAILED";

@@ -1,7 +1,8 @@
 import { z } from "zod";
 
 import type { CommitSafeImportPreview } from "./preview-validation.ts";
-import type { ImportBlock, ListBlock } from "./types.ts";
+import type { DocxPreviewRecord, ImportBlock, ImportWarning, ListBlock } from "./types.ts";
+import { DOCX_IMPORT_LIMITS } from "./limits.ts";
 
 const uuidV4 = z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
 const annotationId = z.string().regex(/^ann_[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
@@ -9,6 +10,33 @@ const sourceId = z.string().min(1).max(200);
 const sourceName = z.string().min(1).max(300);
 const isoDate = z.string().datetime({ offset: true });
 const imageMime = z.enum(["image/png", "image/jpeg", "image/gif", "image/webp"]);
+const encoder = new TextEncoder();
+
+export class DocxImportBodyError extends Error {
+  readonly code: "COMMIT_BODY_SIZE_LIMIT" | "COMMIT_SCHEMA_INVALID";
+
+  constructor(code: "COMMIT_BODY_SIZE_LIMIT" | "COMMIT_SCHEMA_INVALID", options?: ErrorOptions) {
+    super(code, options);
+    this.name = "DocxImportBodyError";
+    this.code = code;
+  }
+}
+
+export function parseDocxImportCommitBody(body: string): unknown {
+  if (encoder.encode(body).byteLength > DOCX_IMPORT_LIMITS.commitBodyBytes) {
+    throw new DocxImportBodyError("COMMIT_BODY_SIZE_LIMIT");
+  }
+  try {
+    return JSON.parse(body);
+  } catch (error) {
+    throw new DocxImportBodyError("COMMIT_SCHEMA_INVALID", { cause: error });
+  }
+}
+
+const warningPayload = z.record(
+  z.string().min(1).max(100),
+  z.union([z.string().max(2_000), z.number().finite(), z.boolean(), z.null()]),
+).refine((payload) => Object.keys(payload).length <= 20);
 const warningCode = z.enum([
   "HEADING_LEVEL_CLAMPED", "LIST_DEPTH_CLAMPED", "VISUAL_FORMATTING_DROPPED",
   "HYPERLINK_UNSAFE_DROPPED", "TOC_SKIPPED", "TRACK_CHANGES_FLATTENED",
@@ -28,7 +56,7 @@ const inlineSegment = z.strictObject({
   synthetic: z.enum(["noteReference", "equation"]).optional(),
 });
 
-const listBlock: z.ZodType<ListBlock> = z.lazy(() => z.strictObject({
+const listBlock: z.ZodType<ListBlock> = z.strictObject({
   id: sourceId,
   type: z.literal("list"),
   ordered: z.boolean(),
@@ -37,9 +65,9 @@ const listBlock: z.ZodType<ListBlock> = z.lazy(() => z.strictObject({
   items: z.array(z.strictObject({
     id: sourceId,
     segments: z.array(inlineSegment).max(10_000),
-    children: z.array(listBlock).max(1_000),
+    children: z.array(z.never()).max(0),
   })).max(10_000),
-}));
+});
 
 const block: z.ZodType<ImportBlock> = z.union([
   z.strictObject({ id: sourceId, type: z.literal("paragraph"), segments: z.array(inlineSegment).max(10_000) }),
@@ -97,7 +125,7 @@ const warning = z.strictObject({
   severity: z.enum(["info", "warning", "error"]),
   sourceRef: z.string().max(500).optional(),
   count: z.number().int().positive().optional(),
-  payload: z.record(z.string(), z.unknown()).optional(),
+  payload: warningPayload.optional(),
 });
 
 const source = z.strictObject({
@@ -132,7 +160,7 @@ export const DocxImportCommitSchema = z.strictObject({
       sourceDocumentOrder: z.number().int().nonnegative(),
       warning,
     })).max(500),
-    warnings: z.array(warning).max(10_000),
+    warnings: z.array(warning).max(500),
     canonicalMarkdown: z.string().max(1_500_000),
   }),
   temporaryAssets: z.array(z.strictObject({
@@ -145,6 +173,24 @@ export const DocxImportCommitSchema = z.strictObject({
 });
 
 export type DocxImportCommitInput = z.infer<typeof DocxImportCommitSchema>;
+
+export type PreparedDocxImportSubmission = {
+  body: string;
+  preview: DocxPreviewRecord;
+};
+
+export function prepareDocxImportSubmission(preview: CommitSafeImportPreview): PreparedDocxImportSubmission {
+  const payload = toDocxImportCommitPayload(preview);
+  return {
+    body: JSON.stringify(payload),
+    preview: {
+      ...preview,
+      title: preview.title,
+      canonicalMarkdown: preview.markdown,
+      ir: { ...preview.ir, canonicalMarkdown: preview.markdown },
+    },
+  };
+}
 
 export function toDocxImportCommitPayload(preview: CommitSafeImportPreview): DocxImportCommitInput {
   return {
@@ -171,8 +217,22 @@ export function toDocxImportCommitPayload(preview: CommitSafeImportPreview): Doc
         authorId: null,
         replies: thread.replies.map((reply) => ({ ...reply, authorId: null })),
       })),
+      skippedThreads: preview.ir.skippedThreads.map((thread) => ({
+        ...thread,
+        warning: toCommitWarning(thread.warning),
+      })),
+      warnings: preview.ir.warnings.map(toCommitWarning),
     },
     temporaryAssets: preview.temporaryAssets.map((asset) => ({ ...asset })),
     authorMappings: { ...preview.authorMappings },
   };
+}
+
+function toCommitWarning(warning: ImportWarning): DocxImportCommitInput["ir"]["warnings"][number] {
+  const payload = warning.payload
+    ? Object.fromEntries(Object.entries(warning.payload).filter(([, value]) => (
+      value === null || ["string", "number", "boolean"].includes(typeof value)
+    ))) as Record<string, string | number | boolean | null>
+    : undefined;
+  return { ...warning, ...(payload && Object.keys(payload).length > 0 ? { payload } : { payload: undefined }) };
 }

@@ -2,6 +2,7 @@ import {
   type CommitAssetContext,
   type D1StatementPlan,
   type SqlValue,
+  D1_MAX_BOUND_PARAMETERS,
   DocxImportValidationError,
   planDocxImportCommit,
   validateDocxImportCommitPayload,
@@ -114,21 +115,30 @@ async function isAllowlistedMember(db: DocxImportCommitDatabase, userId: string)
 
 async function allowedMemberIds(db: DocxImportCommitDatabase, ids: string[]): Promise<Set<string>> {
   if (ids.length === 0) return new Set();
-  const placeholders = ids.map(() => "?").join(", ");
-  const rows = await db.all<{ id: string }>(
-    `SELECT u.id AS id FROM users u INNER JOIN allowed_users au ON au.email = u.email_key WHERE u.id IN (${placeholders})`,
-    ids,
-  );
+  const rows = await allByIds<{ id: string }>(db, ids, (placeholders) => (
+    `SELECT u.id AS id FROM users u INNER JOIN allowed_users au ON au.email = u.email_key WHERE u.id IN (${placeholders})`
+  ));
   return new Set(rows.map((row) => row.id));
 }
 
 async function loadAssets(db: DocxImportCommitDatabase, ids: string[]): Promise<AssetRow[]> {
   if (ids.length === 0) return [];
-  const placeholders = ids.map(() => "?").join(", ");
-  return db.all<AssetRow>(
-    `SELECT id, owner_id AS ownerId, kind, filename, mime_type AS mimeType, byte_size AS byteSize, status, deleted_at AS deletedAt FROM assets WHERE id IN (${placeholders})`,
-    ids,
-  );
+  return allByIds<AssetRow>(db, ids, (placeholders) => (
+    `SELECT id, owner_id AS ownerId, kind, filename, mime_type AS mimeType, byte_size AS byteSize, status, deleted_at AS deletedAt FROM assets WHERE id IN (${placeholders})`
+  ));
+}
+
+async function allByIds<T>(
+  db: DocxImportCommitDatabase,
+  ids: string[],
+  sql: (placeholders: string) => string,
+): Promise<T[]> {
+  const rows: T[] = [];
+  for (let index = 0; index < ids.length; index += D1_MAX_BOUND_PARAMETERS) {
+    const chunk = ids.slice(index, index + D1_MAX_BOUND_PARAMETERS);
+    rows.push(...await db.all<T>(sql(chunk.map(() => "?").join(", ")), chunk));
+  }
+  return rows;
 }
 
 function assertClaimableAssets(

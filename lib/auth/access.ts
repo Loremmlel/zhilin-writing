@@ -1,9 +1,21 @@
 import { redirect } from "next/navigation";
 import { env } from "cloudflare:workers";
 
-import { requireChatGPTUser } from "@/app/chatgpt-auth";
+import { getChatGPTUser, requireChatGPTUser } from "@/app/chatgpt-auth";
 import { ensureConfiguredAdministrator, findAllowedUser, findUserByEmail } from "@/db/queries";
-import { resolveAllowedIdentity } from "@/lib/auth/authorize";
+import { resolveAllowedIdentity, resolveApiMemberAccess } from "@/lib/auth/authorize";
+
+export async function getApiMemberAccess() {
+  return resolveApiMemberAccess(
+    await getChatGPTUser(),
+    typeof env.BOOTSTRAP_ADMIN_EMAIL === "string" ? env.BOOTSTRAP_ADMIN_EMAIL : null,
+    {
+      findAllowedUser,
+      ensureConfiguredAdministrator,
+      findMemberByEmail: findUserByEmail,
+    },
+  );
+}
 
 export async function requireSiteAccess(returnTo: string) {
   const identity = await requireChatGPTUser(returnTo);

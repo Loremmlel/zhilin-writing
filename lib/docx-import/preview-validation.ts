@@ -19,6 +19,7 @@ export type ImportPreviewValidationCode =
   | "ANNOTATION_ANCHOR_DUPLICATE"
   | "ANNOTATION_TEXT_CHANGED"
   | "ANNOTATION_NESTED"
+  | "ANNOTATION_NON_TEXT_RANGE"
   | "ANNOTATION_OVERLAP"
   | "UNSAFE_EXTERNAL_URL"
   | "IMPORT_WARNING_ERROR"
@@ -166,6 +167,10 @@ function validateMarkdownTree(
     }
     if ((node.type === "link" || node.type === "image") && node.url?.startsWith("/api/assets/")) {
       referencedAssets.add(node.url);
+    }
+    if (node.type === "image") {
+      const owner = [...ancestors].reverse().find((ancestor) => ancestor.type === "textDirective" && ancestor.name === "annotation");
+      if (owner) errors.push({ code: "ANNOTATION_NON_TEXT_RANGE", annotationId: owner.attributes?.id ?? undefined });
     }
     if (node.type !== "textDirective" || node.name !== "annotation") return;
     const id = node.attributes?.id;

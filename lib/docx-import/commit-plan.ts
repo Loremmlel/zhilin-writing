@@ -8,6 +8,7 @@ import {
 } from "./commit-schema.ts";
 
 const ROW_CHUNK_SIZE = 32;
+export const D1_MAX_BOUND_PARAMETERS = 100;
 const encoder = new TextEncoder();
 
 export type SqlValue = string | number | null;
@@ -116,8 +117,9 @@ export function planDocxImportCommit(
   const statements: D1StatementPlan[] = [];
   const rowChunks: Array<{ kind: string; rowCount: number }> = [];
   const addRows = (kind: string, table: string, columns: string[], rows: SqlValue[][]) => {
-    for (let index = 0; index < rows.length; index += ROW_CHUNK_SIZE) {
-      const chunk = rows.slice(index, index + ROW_CHUNK_SIZE);
+    const rowsPerStatement = Math.min(ROW_CHUNK_SIZE, Math.floor(D1_MAX_BOUND_PARAMETERS / columns.length));
+    for (let index = 0; index < rows.length; index += rowsPerStatement) {
+      const chunk = rows.slice(index, index + rowsPerStatement);
       statements.push({
         kind,
         rowCount: chunk.length,
@@ -226,17 +228,72 @@ export function planDocxImportCommit(
 
 function validateBlocks(payload: DocxImportCommitInput) {
   const ids = new Set<string>();
-  const visit = (block: DocxImportCommitInput["ir"]["blocks"][number]) => {
-    if (ids.has(block.id)) fail("BLOCK_ID_DUPLICATE");
-    ids.add(block.id);
-    if (block.type === "list") {
-      for (const item of block.items) {
-        if (ids.has(item.id)) fail("BLOCK_ID_DUPLICATE");
-        ids.add(item.id);
-        for (const child of item.children) visit(child);
+  let nodeCount = 0;
+  let segmentCount = 0;
+  let textBytes = 0;
+  const countNodes = (count = 1) => {
+    nodeCount += count;
+    if (nodeCount > DOCX_IMPORT_LIMITS.irNodes) fail("IR_NODE_LIMIT");
+  };
+  const countSegments = (segments: Array<{ text: string; link?: string; commentIds: string[] }>) => {
+    segmentCount += segments.length;
+    if (segmentCount > DOCX_IMPORT_LIMITS.irSegments) fail("IR_SEGMENT_LIMIT");
+    for (const segment of segments) {
+      countTextBytes(segment.text);
+      if (segment.link !== undefined) {
+        countNodes();
+        countTextBytes(segment.link);
+      }
+      for (const commentId of segment.commentIds) {
+        countNodes();
+        countTextBytes(commentId);
       }
     }
   };
+  const countTextBytes = (value: string) => {
+    textBytes += encoder.encode(value).byteLength;
+    if (textBytes > DOCX_IMPORT_LIMITS.markdownUtf8Bytes) fail("IR_TEXT_SIZE_LIMIT");
+  };
+  const countWarning = (warning: DocxImportCommitInput["ir"]["warnings"][number]) => {
+    countNodes();
+    for (const [key, value] of Object.entries(warning.payload ?? {})) {
+      countNodes();
+      countTextBytes(key);
+      if (typeof value === "string") countTextBytes(value);
+    }
+  };
+  const visit = (block: DocxImportCommitInput["ir"]["blocks"][number]) => {
+    countNodes();
+    if (ids.has(block.id)) fail("BLOCK_ID_DUPLICATE");
+    ids.add(block.id);
+    if ("segments" in block) countSegments(block.segments);
+    if (block.type === "list") {
+      for (const item of block.items) {
+        countNodes();
+        if (ids.has(item.id)) fail("BLOCK_ID_DUPLICATE");
+        ids.add(item.id);
+        countSegments(item.segments);
+      }
+    }
+    if (block.type === "table") {
+      countNodes(1 + block.header.cells.length);
+      for (const cell of block.header.cells) countSegments(cell.segments);
+      for (const row of block.rows) {
+        countNodes(1 + row.cells.length);
+        for (const cell of row.cells) countSegments(cell.segments);
+      }
+    }
+    if (block.type === "notesAppendix") {
+      for (const note of block.notes) {
+        countNodes();
+        countSegments(note.segments);
+      }
+    }
+  };
+  countNodes(payload.ir.assets.length + payload.ir.threads.length + payload.ir.skippedThreads.length);
+  for (const thread of payload.ir.threads) countNodes(thread.replies.length);
+  for (const skipped of payload.ir.skippedThreads) countWarning(skipped.warning);
+  for (const warning of payload.ir.warnings) countWarning(warning);
   payload.ir.blocks.forEach(visit);
 }
 
@@ -322,7 +379,11 @@ function validateMarkdown(payload: DocxImportCommitInput, markdown: string, sele
     const scan = (node: MarkdownNode, nested: boolean) => {
       if (node.url && !safeUrl(node.url)) fail("UNSAFE_EXTERNAL_URL");
       if (node.type === "text" || node.type === "inlineCode") { offset += node.value?.length ?? 0; return; }
-      if (node.type === "image") { offset += node.alt?.length ?? 0; return; }
+      if (node.type === "image") {
+        if (nested) fail("ANNOTATION_NON_TEXT_RANGE");
+        offset += node.alt?.length ?? 0;
+        return;
+      }
       const directive = node.type === "textDirective" && node.name === "annotation";
       if (directive) {
         if (nested) fail("ANNOTATION_NESTED");

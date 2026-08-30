@@ -9,6 +9,9 @@ export const DOCX_IMPORT_LIMITS = Object.freeze({
   imageBytes: 10 * 1024 * 1024,
   commentsAndReplies: 500,
   markdownUtf8Bytes: 1_500_000,
+  commitBodyBytes: 6 * 1024 * 1024,
+  irNodes: 10_000,
+  irSegments: 100_000,
   workerTimeoutMs: 20_000,
   previewTtlMs: 24 * 60 * 60 * 1000,
 });

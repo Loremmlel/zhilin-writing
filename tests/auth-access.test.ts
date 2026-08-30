@@ -41,3 +41,37 @@ test("the configured owner is initialized as administrator", async () => {
     allowed: { email: "owner@example.com", isAdmin: true },
   });
 });
+
+test("API member resolution returns typed outcomes without page redirects", async () => {
+  const authModule = await import("../lib/auth/authorize.ts");
+  const baseDependencies = {
+    findAllowedUser: async () => ({ email: "member@example.com", isAdmin: false }),
+    ensureConfiguredAdministrator: async () => null,
+    findMemberByEmail: async () => ({ id: "member-id" }),
+  };
+
+  assert.deepEqual(
+    await authModule.resolveApiMemberAccess(null, null, baseDependencies),
+    { ok: false, code: "AUTH_REQUIRED", status: 401 },
+  );
+  assert.deepEqual(
+    await authModule.resolveApiMemberAccess(
+      { email: "revoked@example.com" },
+      null,
+      { ...baseDependencies, findAllowedUser: async () => null },
+    ),
+    { ok: false, code: "MEMBER_REQUIRED", status: 403 },
+  );
+  assert.deepEqual(
+    await authModule.resolveApiMemberAccess(
+      { email: "member@example.com" },
+      null,
+      { ...baseDependencies, findMemberByEmail: async () => null },
+    ),
+    { ok: false, code: "ONBOARDING_REQUIRED", status: 403 },
+  );
+  assert.deepEqual(
+    await authModule.resolveApiMemberAccess({ email: "member@example.com" }, null, baseDependencies),
+    { ok: true, member: { id: "member-id" } },
+  );
+});
