@@ -226,7 +226,7 @@ function assertSemanticMatrix(ir: DocxImportIR) {
   assert.match(ir.canonicalMarkdown, /保留插入保留移动/);
   assert.match(ir.canonicalMarkdown, /文本框一 \/ 文本框二/);
   assert.match(ir.canonicalMarkdown, /\[公式\]/);
-  assert.match(ir.canonicalMarkdown, /中.*😀.*é.*אב/s);
+  assert.match(ir.canonicalMarkdown, /中[\s\S]*😀[\s\S]*é[\s\S]*אב/);
   assert.deepEqual(ir.threads.map((thread) => thread.sourceCommentId), ["25", "1", "2", "3", "4", "10"]);
   assert.equal(ir.threads.find((thread) => thread.sourceCommentId === "10")?.sourceResolved, true);
   assert.deepEqual(ir.threads.find((thread) => thread.sourceCommentId === "10")?.replies.map((reply) => [
