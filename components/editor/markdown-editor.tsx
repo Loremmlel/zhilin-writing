@@ -21,6 +21,7 @@ type MarkdownEditorProps = {
   onMarkdownChange: (markdown: string) => void;
   onAssetUploaded?: (asset: UploadedAsset) => void;
   compact?: boolean;
+  allowImageUploads?: boolean;
   resetRevision?: number;
 };
 
@@ -35,7 +36,7 @@ async function uploadImage(file: File, onAssetUploaded?: (asset: UploadedAsset) 
   return asset.url;
 }
 
-function MarkdownEditorSession({ initialMarkdown, onMarkdownChange, onAssetUploaded, compact = false }: MarkdownEditorProps) {
+function MarkdownEditorSession({ initialMarkdown, onMarkdownChange, onAssetUploaded, compact = false, allowImageUploads = true }: MarkdownEditorProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const initialMarkdownRef = useRef(initialMarkdown);
   const onChangeRef = useRef(onMarkdownChange);
@@ -54,7 +55,7 @@ function MarkdownEditorSession({ initialMarkdown, onMarkdownChange, onAssetUploa
         [CrepeFeature.AI]: false,
         [CrepeFeature.Latex]: false,
         [CrepeFeature.CodeMirror]: false,
-        [CrepeFeature.ImageBlock]: !compact,
+        [CrepeFeature.ImageBlock]: !compact && allowImageUploads,
         [CrepeFeature.Table]: !compact,
         [CrepeFeature.BlockEdit]: !compact,
         [CrepeFeature.TopBar]: !compact,
@@ -82,7 +83,7 @@ function MarkdownEditorSession({ initialMarkdown, onMarkdownChange, onAssetUploa
       disposed = true;
       window.setTimeout(() => void crepe.destroy(), 0);
     };
-  }, [compact]);
+  }, [allowImageUploads, compact]);
 
   return <div ref={rootRef} className={compact ? "markdown-editor markdown-editor--compact" : "markdown-editor"} />;
 }

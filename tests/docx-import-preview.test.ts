@@ -7,6 +7,7 @@ import type { DocxPreviewRecord } from "../lib/docx-import/types.ts";
 
 const ROOT_ID = "ann_00000000-0000-4000-8000-000000000001";
 const REPLY_ID = "00000000-0000-4000-8000-000000000002";
+const TEST_NOW = Date.parse("2026-08-29T12:00:00.000Z");
 
 test("trims the title and preserves finalized import IDs in the commit payload", () => {
   const result = validateEditedImportPreview({
@@ -98,6 +99,16 @@ test("blocks unsafe external URLs and error-severity import warnings", () => {
   const blocked = validateEditedImportPreview(warning);
   assert.equal(blocked.ok, false);
   assert.ok(blocked.errors.some((item) => item.code === "IMPORT_WARNING_ERROR"));
+
+  const skipped = editableFixture();
+  skipped.ir.skippedThreads = [{
+    sourceCommentId: "99",
+    sourceDocumentOrder: 2,
+    warning: { code: "ANNOTATION_THREAD_SKIPPED", severity: "error" },
+  }];
+  const skippedBlocked = validateEditedImportPreview(skipped);
+  assert.equal(skippedBlocked.ok, false);
+  assert.ok(skippedBlocked.errors.some((item) => item.code === "IMPORT_WARNING_ERROR"));
 });
 
 test("blocks restored Previews with missing or tampered temporary image references", () => {
@@ -127,6 +138,45 @@ test("blocks restored Previews with missing or tampered temporary image referenc
   assert.ok(tamperedResult.errors.some((item) => item.code === "ASSET_REFERENCE_INVALID"));
 });
 
+test("requires Markdown asset references to match the temporary manifest exactly", () => {
+  const valid = editableFixtureWithImage();
+  assert.equal(validateEditedImportPreview(valid).ok, true);
+
+  const untracked = {
+    ...valid,
+    markdown: `${valid.markdown}\n\n![new](/api/assets/untracked)`,
+  };
+  const untrackedResult = validateEditedImportPreview(untracked);
+  assert.equal(untrackedResult.ok, false);
+  assert.ok(untrackedResult.errors.some((item) => item.code === "ASSET_REFERENCE_INVALID"));
+
+  const removed = { ...valid, markdown: `:annotation[正文]{#${ROOT_ID}}` };
+  const removedResult = validateEditedImportPreview(removed);
+  assert.equal(removedResult.ok, false);
+  assert.ok(removedResult.errors.some((item) => item.code === "ASSET_REFERENCE_INVALID"));
+});
+
+test("blocks restored author mappings that no longer identify a site user", () => {
+  const stale = editableFixture();
+  stale.authorMappings = { Author: "deleted-user" };
+
+  const result = validateEditedImportPreview(stale, TEST_NOW, new Set(["active-user"]));
+
+  assert.equal(result.ok, false);
+  assert.ok(result.errors.some((item) => item.code === "AUTHOR_MAPPING_INVALID"));
+});
+
+test("normalizes legacy empty author mappings as no association", () => {
+  const legacy = editableFixture();
+  legacy.authorMappings = { Author: "" };
+
+  const result = validateEditedImportPreview(legacy, TEST_NOW, new Set(["active-user"]));
+
+  assert.equal(result.ok, true);
+  if (!result.ok) return;
+  assert.deepEqual(result.payload.authorMappings, {});
+});
+
 function editableFixture() {
   return {
     ...previewFixture(),
@@ -135,12 +185,33 @@ function editableFixture() {
   };
 }
 
+function editableFixtureWithImage() {
+  const fixture = editableFixture();
+  fixture.ir.assets = [{
+    id: "docx-image-1",
+    filename: "image.png",
+    mimeType: "image/png",
+    bytes: new Uint8Array([1, 2, 3]),
+    alt: "image",
+    sourceRelationshipId: "rImage",
+    floating: false,
+  }];
+  fixture.temporaryAssets = [{
+    assetId: "asset-1",
+    temporaryUrl: "/api/assets/asset-1",
+    filename: "image.png",
+    mimeType: "image/png",
+  }];
+  fixture.markdown = `:annotation[正文]{#${ROOT_ID}}\n\n![image](/api/assets/asset-1)`;
+  return fixture;
+}
+
 function previewFixture(): DocxPreviewRecord {
   return {
     version: 1,
     importBatchId: "00000000-0000-4000-8000-000000000010",
     createdAt: "2026-08-29T00:00:00.000Z",
-    expiresAt: "2026-08-30T00:00:00.000Z",
+    expiresAt: "2099-08-30T00:00:00.000Z",
     ir: {
       version: 1,
       importBatchId: "00000000-0000-4000-8000-000000000010",

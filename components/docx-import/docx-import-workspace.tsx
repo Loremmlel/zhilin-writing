@@ -11,11 +11,16 @@ import {
 } from "@/lib/docx-import/browser";
 import { DOCX_IMPORT_LIMITS } from "@/lib/docx-import/limits";
 import {
+  replaceDocxAssetReferences,
+  uploadDocxAssetsSequentially,
+} from "@/lib/docx-import/preview-assets";
+import {
   listImportPreviews,
   removeImportPreview,
   saveImportPreview,
 } from "@/lib/docx-import/preview-store";
 import {
+  normalizeAuthorMappings,
   validateEditedImportPreview,
   type EditedImportPreview,
 } from "@/lib/docx-import/preview-validation";
@@ -42,10 +47,11 @@ const errorLabels: Record<string, string> = {
   ZIP_ENCRYPTED_ENTRY: "该 DOCX 已加密或受密码保护，暂时无法导入。",
   IMAGE_SIZE_LIMIT: "文档中有图片超过 10 MB。",
   IMAGE_COUNT_LIMIT: "文档中的图片数量超过 200 张。",
+  PREVIEW_LOAD_FAILED: "无法读取当前浏览器中保存的导入预览。",
+  PREVIEW_REMOVE_FAILED: "无法删除当前浏览器中的导入预览，请重试。",
 };
 
 export function DocxImportWorkspace({ users }: { users: SiteUser[] }) {
-  const inputRef = useRef<HTMLInputElement>(null);
   const abortRef = useRef<AbortController | null>(null);
   const discardedRef = useRef(new Set<string>());
   const [phase, setPhase] = useState<Phase>("selecting");
@@ -58,10 +64,14 @@ export function DocxImportWorkspace({ users }: { users: SiteUser[] }) {
   const [error, setError] = useState<{ code: string; message: string } | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [discardBatchId, setDiscardBatchId] = useState<string | null>(null);
+  const [validationNow, setValidationNow] = useState(() => Date.now());
+  const validUserIds = useMemo(() => new Set(users.map((user) => user.id)), [users]);
 
   useEffect(() => {
     let live = true;
-    void listImportPreviews().then((items) => { if (live) setRecoverable(items); });
+    void listImportPreviews()
+      .then((items) => { if (live) setRecoverable(items); })
+      .catch(() => { if (live) setError({ code: "PREVIEW_LOAD_FAILED", message: "Preview load failed" }); });
     return () => { live = false; abortRef.current?.abort(); };
   }, []);
 
@@ -76,13 +86,30 @@ export function DocxImportWorkspace({ users }: { users: SiteUser[] }) {
         ir: { ...preview.ir, canonicalMarkdown: preview.markdown },
       };
       void saveImportPreview(record)
-        .then(() => setError((current) => current?.code === "PREVIEW_SAVE_FAILED" ? null : current))
+        .then(async () => {
+          if (discardedRef.current.has(record.importBatchId)) {
+            await removePreviewRecord(record.importBatchId);
+            return;
+          }
+          setError((current) => current?.code === "PREVIEW_SAVE_FAILED" ? null : current);
+        })
         .catch(() => setError({ code: "PREVIEW_SAVE_FAILED", message: "预览未能保存到当前浏览器。" }));
     }, 500);
     return () => window.clearTimeout(timer);
   }, [phase, preview]);
 
-  const validation = useMemo(() => preview ? validateEditedImportPreview(preview) : null, [preview]);
+  useEffect(() => {
+    if (!preview) return;
+    const expiresAt = Date.parse(preview.expiresAt);
+    const delay = Number.isFinite(expiresAt) ? Math.max(0, expiresAt - Date.now() + 1) : 0;
+    const timer = window.setTimeout(() => setValidationNow(Date.now()), delay);
+    return () => window.clearTimeout(timer);
+  }, [preview]);
+
+  const validation = useMemo(
+    () => preview ? validateEditedImportPreview(preview, validationNow, validUserIds) : null,
+    [preview, validationNow, validUserIds],
+  );
 
   async function beginImport(file: File) {
     const clientError = validateSourceFile(file);
@@ -107,15 +134,14 @@ export function DocxImportWorkspace({ users }: { users: SiteUser[] }) {
       setPhase("uploading");
       setUploadTotal(ir.assets.length);
       setUploadedCount(0);
-      const temporaryAssets: DocxPreviewAsset[] = [];
-      let markdown = ir.canonicalMarkdown;
-      for (const [index, asset] of ir.assets.entries()) {
-        if (controller.signal.aborted) throw new DOMException("Aborted", "AbortError");
-        const uploaded = await uploadImageAsset(asset, controller.signal);
-        temporaryAssets.push(uploaded);
-        markdown = markdown.replaceAll(`docx-asset:${asset.id}`, uploaded.temporaryUrl);
-        setUploadedCount(index + 1);
-      }
+      const uploadedAssets = await uploadDocxAssetsSequentially(
+        ir.assets,
+        controller.signal,
+        uploadImageAsset,
+        setUploadedCount,
+      );
+      const temporaryAssets = uploadedAssets.map(({ uploaded }) => uploaded);
+      const markdown = replaceDocxAssetReferences(ir.canonicalMarkdown, uploadedAssets);
       const now = Date.now();
       const record: DocxPreviewRecord = {
         version: 1,
@@ -128,8 +154,9 @@ export function DocxImportWorkspace({ users }: { users: SiteUser[] }) {
         temporaryAssets,
         authorMappings: {},
       };
-      await saveImportPreview(record, now);
-      setPreview(toEditable(record, users));
+      await saveImportPreview(record, now, controller.signal);
+      controller.signal.throwIfAborted();
+      setPreview(toEditable(record));
       setRecoverable((items) => [record, ...items.filter((item) => item.importBatchId !== record.importBatchId)]);
       setPhase("previewing");
     } catch (caught) {
@@ -147,27 +174,41 @@ export function DocxImportWorkspace({ users }: { users: SiteUser[] }) {
     abortRef.current?.abort();
   }
 
-  function restorePreview(record: DocxPreviewRecord) {
-    const editable = toEditable(record, users);
-    const restoredValidation = validateEditedImportPreview(editable);
+  async function removePreviewRecord(batchId: string): Promise<boolean> {
+    try {
+      await removeImportPreview(batchId);
+      return true;
+    } catch {
+      setError({ code: "PREVIEW_REMOVE_FAILED", message: "Preview removal failed" });
+      return false;
+    }
+  }
+
+  async function restorePreview(record: DocxPreviewRecord, now: number) {
+    const editable = toEditable(record);
+    const restoredValidation = validateEditedImportPreview(editable, now, validUserIds);
     if (!restoredValidation.ok && restoredValidation.errors.some((item) => item.code === "PREVIEW_EXPIRED")) {
-      void removeImportPreview(record.importBatchId);
+      if (!await removePreviewRecord(record.importBatchId)) return;
       setRecoverable((items) => items.filter((item) => item.importBatchId !== record.importBatchId));
       setError({ code: "PREVIEW_EXPIRED", message: "Preview expired" });
       return;
     }
     setError(null);
+    setValidationNow(now);
     setPreview(editable);
     setPhase("previewing");
   }
 
   async function discardPreview(batchId: string) {
     discardedRef.current.add(batchId);
-    await removeImportPreview(batchId);
-    setRecoverable((items) => items.filter((item) => item.importBatchId !== batchId));
-    if (preview?.importBatchId === batchId) {
-      setPreview(null);
-      setPhase("selecting");
+    if (await removePreviewRecord(batchId)) {
+      setRecoverable((items) => items.filter((item) => item.importBatchId !== batchId));
+      if (preview?.importBatchId === batchId) {
+        setPreview(null);
+        setPhase("selecting");
+      }
+    } else {
+      discardedRef.current.delete(batchId);
     }
     setDiscardBatchId(null);
   }
@@ -178,18 +219,15 @@ export function DocxImportWorkspace({ users }: { users: SiteUser[] }) {
         <div className="section-heading"><h2 id="docx-recovery-heading">继续未完成的导入</h2><span>保留 24 小时</span></div>
         <div className="docx-import-recovery-list">{recoverable.map((record) => <article key={record.importBatchId}>
           <div><strong>{record.title ?? record.ir.suggestedTitle}</strong><span>{record.ir.source.filename}</span></div>
-          <div><button type="button" className="button button--small button--ghost" onClick={() => restorePreview(record)}>继续预览</button><button type="button" className="text-button text-button--danger" onClick={() => setDiscardBatchId(record.importBatchId)}>放弃</button></div>
+          <div><button type="button" className="button button--small button--ghost" onClick={() => void restorePreview(record, Date.now())}>继续预览</button><button type="button" className="text-button text-button--danger" onClick={() => setDiscardBatchId(record.importBatchId)}>放弃</button></div>
         </article>)}</div>
       </section>}
 
-      <div className={`docx-import-dropzone${dragOver ? " is-drag-over" : ""}`}
-        role="button" tabIndex={0} aria-label="选择 DOCX 文件"
-        onClick={() => inputRef.current?.click()}
-        onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); inputRef.current?.click(); } }}
+      <label className={`docx-import-dropzone${dragOver ? " is-drag-over" : ""}`}
         onDragOver={(event) => { event.preventDefault(); setDragOver(true); }}
         onDragLeave={() => setDragOver(false)}
         onDrop={(event) => { event.preventDefault(); setDragOver(false); const file = event.dataTransfer.files[0]; if (file) void beginImport(file); }}>
-        <input ref={inputRef} type="file" aria-label="选择 DOCX 文件" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" onClick={(event) => event.stopPropagation()} onChange={(event) => {
+        <input type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" onChange={(event) => {
           const file = event.target.files?.[0];
           if (file) void beginImport(file);
           event.currentTarget.value = "";
@@ -198,7 +236,7 @@ export function DocxImportWorkspace({ users }: { users: SiteUser[] }) {
         <h2>选择 DOCX 文件</h2>
         <p>拖到这里，或点击浏览文件。一次选择 1 个，最大 20 MB。</p>
         <small>解析在浏览器内完成；原始 DOCX 不会上传。</small>
-      </div>
+      </label>
 
       {error && <div className="docx-import-error" role="alert">
         <div><strong>未能准备预览</strong><p>{errorLabels[error.code] ?? error.message}</p></div>
@@ -222,7 +260,13 @@ export function DocxImportWorkspace({ users }: { users: SiteUser[] }) {
       <DocxImportPreview preview={preview} users={users} validation={validation}
         onTitleChange={(title) => setPreview((current) => current ? { ...current, title } : current)}
         onMarkdownChange={(markdown) => setPreview((current) => current ? { ...current, markdown } : current)}
-        onMappingChange={(sourceAuthorName, userId) => setPreview((current) => current ? { ...current, authorMappings: { ...current.authorMappings, [sourceAuthorName]: userId } } : current)} />
+        onMappingChange={(sourceAuthorName, userId) => setPreview((current) => {
+          if (!current) return current;
+          const authorMappings = { ...current.authorMappings };
+          if (userId) authorMappings[sourceAuthorName] = userId;
+          else delete authorMappings[sourceAuthorName];
+          return { ...current, authorMappings };
+        })} />
       <div className="docx-import-actions">
         <button type="button" className="button button--ghost" onClick={() => setDiscardBatchId(preview.importBatchId)}>取消导入</button>
         <div><span>{validation.ok ? "预览已通过本地校验" : `还有 ${validation.errors.length} 项需要修正`}</span><button type="button" className="button button--primary" disabled aria-disabled="true">确认导入</button></div>
@@ -252,10 +296,11 @@ async function uploadImageAsset(asset: DocxPreviewRecord["ir"]["assets"][number]
   return { assetId: data.asset.id, temporaryUrl: data.asset.url, filename: data.asset.filename, mimeType: asset.mimeType };
 }
 
-function toEditable(record: DocxPreviewRecord, users: SiteUser[]): EditedImportPreview {
-  const validUserIds = new Set(users.map((user) => user.id));
+function toEditable(record: DocxPreviewRecord): EditedImportPreview {
   const validAuthors = new Set(record.ir.threads.flatMap((thread) => [thread.sourceAuthorName, ...thread.replies.map((reply) => reply.sourceAuthorName)]));
-  const authorMappings = Object.fromEntries(Object.entries(record.authorMappings).filter(([author, userId]) => validAuthors.has(author) && validUserIds.has(userId)));
+  const authorMappings = Object.fromEntries(
+    Object.entries(normalizeAuthorMappings(record.authorMappings)).filter(([author]) => validAuthors.has(author)),
+  );
   return { ...record, title: record.title ?? record.ir.suggestedTitle, markdown: record.canonicalMarkdown, authorMappings };
 }
 

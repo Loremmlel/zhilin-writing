@@ -122,6 +122,16 @@ test("removes a Preview after commit or explicit abandonment", async () => {
   assert.equal(await loadImportPreview("batch-1", Date.parse("2026-08-29T12:00:00.000Z")), null);
 });
 
+test("removes a Preview when cancellation arrives during persistence", async () => {
+  const now = Date.parse("2026-08-29T12:00:00.000Z");
+  const controller = new AbortController();
+  const saving = saveImportPreview(previewFixture("cancelled", "2026-08-30T00:00:00.000Z"), now, controller.signal);
+  queueMicrotask(() => controller.abort());
+
+  await assert.rejects(saving, (error: unknown) => error instanceof DOMException && error.name === "AbortError");
+  assert.equal(await loadImportPreview("cancelled", now), null);
+});
+
 test("lists active recoverable Previews newest first without expired records", async () => {
   const now = Date.parse("2026-08-29T12:00:00.000Z");
   await saveImportPreview(previewFixture("older", "ignored", "2026-08-29T10:00:00.000Z"), now);

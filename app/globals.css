@@ -373,7 +373,7 @@ button, summary, input[type="file"] { cursor: pointer; }
 .docx-import-page { width: min(1180px, calc(100% - 40px)); }
 .docx-import-workspace { display: grid; gap: 22px; }
 .docx-import-dropzone { position: relative; min-height: 330px; padding: 48px 30px; border: 1px dashed #aebcaf; border-radius: var(--radius); display: grid; place-items: center; align-content: center; gap: 10px; background: linear-gradient(rgba(251, 250, 247, .82), rgba(251, 250, 247, .82)), repeating-linear-gradient(0deg, transparent 0 30px, rgba(79, 130, 95, .035) 30px 31px); text-align: center; cursor: pointer; outline: none; transition: border-color .18s, background .18s, box-shadow .18s; }
-.docx-import-dropzone:hover, .docx-import-dropzone:focus-visible, .docx-import-dropzone.is-drag-over { border-color: var(--green); background-color: var(--green-pale); box-shadow: 0 0 0 3px rgba(79, 130, 95, .09); }
+.docx-import-dropzone:hover, .docx-import-dropzone:focus-within, .docx-import-dropzone.is-drag-over { border-color: var(--green); background-color: var(--green-pale); box-shadow: 0 0 0 3px rgba(79, 130, 95, .09); }
 .docx-import-dropzone input { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 .docx-import-dropzone h2 { margin: 5px 0 0; font: 700 27px Georgia, "Noto Serif SC", serif; }
 .docx-import-dropzone p { margin: 0; color: #4f574f; line-height: 1.7; }

@@ -53,6 +53,7 @@ const validationLabels: Record<string, string> = {
   IMPORT_WARNING_ERROR: "源文件包含阻断导入的问题。",
   ASSET_UPLOAD_MISSING: "有图片尚未完成临时上传，请重新导入原文件。",
   ASSET_REFERENCE_INVALID: "预览中的图片引用已失效，请重新导入原文件。",
+  AUTHOR_MAPPING_INVALID: "有 Word 作者关联已失效，请重新选择。",
 };
 
 export function DocxImportPreview({ preview, users, validation, onTitleChange, onMarkdownChange, onMappingChange }: {
@@ -103,7 +104,7 @@ export function DocxImportPreview({ preview, users, validation, onTitleChange, o
         此 DOCX 含正文批注。导入后正文将在 V6 AnnotationGuard 完成前暂时锁定编辑。
       </div>}
       <label className="field-label">正文</label>
-      <MarkdownEditor initialMarkdown={preview.markdown} onMarkdownChange={onMarkdownChange} />
+      <MarkdownEditor initialMarkdown={preview.markdown} onMarkdownChange={onMarkdownChange} allowImageUploads={false} />
     </section>
 
     <aside className="docx-import-rail" aria-label="导入检查信息">
@@ -117,13 +118,24 @@ export function DocxImportPreview({ preview, users, validation, onTitleChange, o
       <section className="docx-import-panel">
         <div className="section-heading"><h2>Word 作者关联</h2><span>{authors.length} 位</span></div>
         <p className="muted">关联只用于通知和说明，Word 原作者身份始终保留。</p>
-        <div className="docx-import-author-list">{authors.map((author) => <label key={author}>
+        <div className="docx-import-author-list">{authors.map((author, index) => <label key={author}>
           <span>{author} <small>Word 导入</small></span>
           {/* Native select is intentional: this small mapping list accepts the platform-owned popup. */}
-          <select value={preview.authorMappings[author] ?? ""} onChange={(event) => onMappingChange(author, event.target.value)}>
+          <select
+            value={preview.authorMappings[author] ?? ""}
+            aria-invalid={Boolean(preview.authorMappings[author] && !users.some((user) => user.id === preview.authorMappings[author]))}
+            aria-describedby={preview.authorMappings[author] && !users.some((user) => user.id === preview.authorMappings[author]) ? `docx-author-${index}-error` : undefined}
+            onChange={(event) => onMappingChange(author, event.target.value)}
+          >
             <option value="">不关联站内用户</option>
+            {preview.authorMappings[author] && !users.some((user) => user.id === preview.authorMappings[author])
+              ? <option value={preview.authorMappings[author]}>原关联用户已不可用</option>
+              : null}
             {users.map((user) => <option key={user.id} value={user.id}>{user.displayName}</option>)}
           </select>
+          {preview.authorMappings[author] && !users.some((user) => user.id === preview.authorMappings[author])
+            ? <small id={`docx-author-${index}-error`} className="form-error">原关联用户已不可用，请重新选择。</small>
+            : null}
         </label>)}</div>
       </section>
 

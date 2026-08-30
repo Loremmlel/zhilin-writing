@@ -6,7 +6,12 @@ import {
 import { DOCX_IMPORT_LIMITS } from "./limits.ts";
 import { DocxImportError, type DocxPreviewRecord } from "./types.ts";
 
-export async function saveImportPreview(preview: DocxPreviewRecord, now = Date.now()): Promise<void> {
+export async function saveImportPreview(
+  preview: DocxPreviewRecord,
+  now = Date.now(),
+  signal?: AbortSignal,
+): Promise<void> {
+  signal?.throwIfAborted();
   const persisted = normalizePreview(preview, now);
   assertPersistable(persisted);
   await withLocalStore<IDBValidKey>(
@@ -14,6 +19,10 @@ export async function saveImportPreview(preview: DocxPreviewRecord, now = Date.n
     "readwrite",
     (store) => store.put(persisted),
   );
+  if (signal?.aborted) {
+    await removeImportPreview(persisted.importBatchId);
+    signal.throwIfAborted();
+  }
 }
 
 export async function loadImportPreview(
