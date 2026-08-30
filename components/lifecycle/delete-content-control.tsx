@@ -16,11 +16,15 @@ export function DeleteContentControl({
   label,
   title,
   description,
+  confirmLabel = "确认删除",
+  pendingLabel = "正在删除…",
 }: {
   action: LifecycleFormAction;
   label: string;
   title: string;
   description: string;
+  confirmLabel?: string;
+  pendingLabel?: string;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -39,7 +43,7 @@ export function DeleteContentControl({
       <form action={formAction} className="dialog-actions" noValidate>
         {state.error && <p className="form-error" role="alert">{state.error}</p>}
         <button className="button button--ghost" type="button" disabled={pending} onClick={() => setOpen(false)}>取消</button>
-        <button className="button button--danger" type="submit" disabled={pending}>{pending ? "正在删除…" : "确认删除"}</button>
+        <button className="button button--danger" type="submit" disabled={pending} aria-busy={pending}>{pending ? pendingLabel : confirmLabel}</button>
       </form>
     </ModalDialog>
   </>;

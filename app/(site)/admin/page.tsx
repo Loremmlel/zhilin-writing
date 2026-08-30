@@ -10,6 +10,7 @@ import {
   type AdminContentStatus,
 } from "@/db/queries";
 import { listAdminAnnotationReplies, listAdminAnnotations } from "@/lib/annotations/queries";
+import { annotationSourceMetadata, type AnnotationAuthorView } from "@/lib/annotations/identity";
 import { requireAdministrator } from "@/lib/auth/access";
 import { formatDateTime } from "@/lib/format";
 import {
@@ -26,6 +27,10 @@ const statusLabels: Record<AdminContentStatus, string> = {
   deleted: "用户已删除",
   hidden: "管理员已隐藏",
 };
+
+function annotationAuthorLabel(author: AnnotationAuthorView): string {
+  return [author.displayName, annotationSourceMetadata(author)].filter(Boolean).join(" · ");
+}
 
 const auditLabels: Record<string, string> = {
   POST_HIDDEN: "隐藏帖子",
@@ -129,8 +134,8 @@ export default async function AdminPage({ searchParams }: {
                 {annotation.deletedAt && <span className="status-pill status-pill--deleted">用户已删除</span>}
                 {annotation.hiddenAt && <span className="status-pill status-pill--hidden">管理员已隐藏</span>}
               </div>
-              <strong>{author.displayName} 批注《{post.title}》</strong>
-              <span>{formatDateTime(annotation.createdAt)} · 原选文：{annotation.originalSelectedText}</span>
+              <strong>{annotationAuthorLabel(author)} 批注《{post.title}》</strong>
+              <span>{formatDateTime(annotation.sourceCreatedAt ?? annotation.createdAt)} · 原选文：{annotation.originalSelectedText}</span>
               {annotation.hiddenReason && <span>隐藏原因：{annotation.hiddenReason}</span>}
               <details className="admin-content-preview"><summary>查看原始 Markdown</summary><pre>{annotation.contentMarkdown}</pre></details>
             </div>
@@ -149,8 +154,8 @@ export default async function AdminPage({ searchParams }: {
                 {reply.deletedAt && <span className="status-pill status-pill--deleted">用户已删除</span>}
                 {reply.hiddenAt && <span className="status-pill status-pill--hidden">管理员已隐藏</span>}
               </div>
-              <strong>{author.displayName} 回复《{post.title}》中的批注</strong>
-              <span>{formatDateTime(reply.createdAt)} · 批注 {annotation.id}</span>
+              <strong>{annotationAuthorLabel(author)} 回复《{post.title}》中的批注</strong>
+              <span>{formatDateTime(reply.sourceCreatedAt ?? reply.createdAt)} · 批注 {annotation.id}</span>
               {reply.hiddenReason && <span>隐藏原因：{reply.hiddenReason}</span>}
               <details className="admin-content-preview"><summary>查看原始 Markdown</summary><pre>{reply.contentMarkdown}</pre></details>
             </div>

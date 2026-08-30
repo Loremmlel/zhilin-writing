@@ -36,6 +36,22 @@ export function planAnnotationAuthorDelete(
   return { changed: true as const, retainAnchor, patch: { deletedAt: now, deletedByUserId: actorUserId } };
 }
 
+export function planImportedAnnotationThreadRemoval(
+  annotation: { sourceType: "NATIVE" | "DOCX_IMPORT"; importedByUserId: string | null; deletedAt: Date | null },
+  replies: Array<{ id: string; sourceType: "NATIVE" | "DOCX_IMPORT"; deletedAt: Date | null }>,
+  context: { actorUserId: string; postAuthorId: string; now: Date },
+) {
+  if (annotation.sourceType !== "DOCX_IMPORT") throw new Error("这条批注不是 Word 导入内容");
+  if (context.actorUserId !== annotation.importedByUserId && context.actorUserId !== context.postAuthorId) throw new Error("你不能移除这条 Word 导入批注");
+  if (annotation.deletedAt) return { changed: false as const, retainAnchor: false, importedReplyIds: [] as string[], patch: {} };
+  return {
+    changed: true as const,
+    retainAnchor: replies.some((reply) => reply.sourceType === "NATIVE" && !reply.deletedAt),
+    importedReplyIds: replies.filter((reply) => reply.sourceType === "DOCX_IMPORT" && !reply.deletedAt).map((reply) => reply.id),
+    patch: { deletedAt: context.now, deletedByUserId: context.actorUserId },
+  };
+}
+
 type AdminTarget = {
   hiddenAt: Date | null;
 };

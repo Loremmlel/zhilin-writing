@@ -6,7 +6,7 @@ import type { PostActionState } from "@/components/editor/post-editor-form";
 import type { ReplyActionState } from "@/components/reply-form";
 import type { LifecycleActionState } from "@/components/lifecycle/delete-content-control";
 import { requireMember } from "@/lib/auth/access";
-import { createAnnotation, createAnnotationReply, deleteAnnotationByAuthor, deleteAnnotationReplyByAuthor } from "@/lib/annotations/service";
+import { createAnnotation, createAnnotationReply, deleteAnnotationByAuthor, deleteAnnotationReplyByAuthor, removeImportedAnnotationThread } from "@/lib/annotations/service";
 import type { AnnotationSelectionDescriptor } from "@/lib/annotations/types";
 import { deletePostByAuthor, deleteReplyByAuthor } from "@/lib/lifecycle/service";
 import { createReply, updatePost } from "@/lib/posts/service";
@@ -134,4 +134,14 @@ export async function deleteAnnotationReplyAction(postId: string, replyId: strin
     revalidatePath("/", "layout");
     return { success: true };
   } catch (error) { return { error: error instanceof Error ? error.message : "删除批注回复失败" }; }
+}
+
+export async function removeImportedAnnotationThreadAction(postId: string, annotationId: string, _state: LifecycleActionState): Promise<LifecycleActionState> {
+  void _state;
+  try {
+    const { member } = await requireMember(`/posts/${postId}`);
+    await removeImportedAnnotationThread(postId, annotationId, member.id);
+    revalidatePath("/", "layout");
+    return { success: true };
+  } catch (error) { return { error: error instanceof Error ? error.message : "移除 Word 导入批注失败" }; }
 }

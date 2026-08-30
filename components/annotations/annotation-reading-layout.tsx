@@ -5,7 +5,7 @@ import { useActionState, useCallback, useEffect, useLayoutEffect, useRef, useSta
 
 import type { AnnotationActionState } from "@/app/(site)/posts/[id]/actions";
 import { AnnotationSheet } from "@/components/annotations/annotation-sheet";
-import { AnnotationThread, type AnnotationCardView, type AnnotationDeleteAction, type AnnotationReplyAction, type AnnotationReplyDeleteAction } from "@/components/annotations/annotation-thread";
+import { AnnotationThread, type AnnotationCardView, type AnnotationDeleteAction, type AnnotationRemoveImportedAction, type AnnotationReplyAction, type AnnotationReplyDeleteAction } from "@/components/annotations/annotation-thread";
 import { MarkdownEditor } from "@/components/editor/markdown-editor";
 import { ModalDialog } from "@/components/modal-dialog";
 import { describeAnnotationDomRange } from "@/lib/annotations/dom-selection";
@@ -45,9 +45,9 @@ function AnnotationComposer({ action, baseRevisionId, selection, submissionKey, 
   </ModalDialog>;
 }
 
-export function AnnotationReadingLayout({ html, annotations, baseRevisionId, action, replyAction, deleteAction, deleteReplyAction, currentUserId, initialAnnotationId }: {
+export function AnnotationReadingLayout({ html, annotations, baseRevisionId, action, replyAction, deleteAction, deleteReplyAction, removeImportedAction, initialAnnotationId }: {
   html: string; annotations: AnnotationCardView[]; baseRevisionId: string; action: AnnotationAction; replyAction: AnnotationReplyAction;
-  deleteAction: AnnotationDeleteAction; deleteReplyAction: AnnotationReplyDeleteAction; currentUserId: string; initialAnnotationId?: string;
+  deleteAction: AnnotationDeleteAction; deleteReplyAction: AnnotationReplyDeleteAction; removeImportedAction: AnnotationRemoveImportedAction; initialAnnotationId?: string;
 }) {
   const layoutRef = useRef<HTMLDivElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
@@ -148,10 +148,10 @@ export function AnnotationReadingLayout({ html, annotations, baseRevisionId, act
     <svg className="annotation-connectors" aria-hidden="true">{connectors.map((connector) => <path key={connector.annotationId} d={connector.path} className={activeId === connector.annotationId ? "is-active" : ""} />)}</svg>
     <aside ref={sidebarRef} className="annotation-sidebar" aria-label={`正文批注，共 ${annotations.length} 条`} style={{ minHeight: sidebarHeight || undefined }}>
       {annotations.map((annotation) => <article id={`annotation-card-${annotation.id}`} key={annotation.id} ref={(element) => { if (element) cardRefs.current.set(annotation.id, element); else cardRefs.current.delete(annotation.id); }} className={`annotation-card${activeId === annotation.id ? " is-active" : ""}`} style={{ top: cardTops[annotation.id] ?? 0 }} tabIndex={-1} onFocusCapture={() => setActiveId(annotation.id)} onPointerEnter={() => setActiveId(annotation.id)}>
-        <AnnotationThread annotation={annotation} currentUserId={currentUserId} replyAction={replyAction} deleteAction={deleteAction} deleteReplyAction={deleteReplyAction} onLocate={() => { setActiveId(annotation.id); bodyRef.current?.querySelector<HTMLElement>(`.annotation-range[data-annotation-id="${CSS.escape(annotation.id)}"]`)?.scrollIntoView({ block: "center", behavior: "smooth" }); }} />
+        <AnnotationThread annotation={annotation} replyAction={replyAction} deleteAction={deleteAction} deleteReplyAction={deleteReplyAction} removeImportedAction={removeImportedAction} onLocate={() => { setActiveId(annotation.id); bodyRef.current?.querySelector<HTMLElement>(`.annotation-range[data-annotation-id="${CSS.escape(annotation.id)}"]`)?.scrollIntoView({ block: "center", behavior: "smooth" }); }} />
       </article>)}
     </aside>
-    <AnnotationSheet annotation={annotations.find((annotation) => annotation.id === sheetId) ?? null} open={Boolean(sheetId)} onClose={() => setSheetId((current) => nextAnnotationSheetState(current, { type: "close" }))} currentUserId={currentUserId} replyAction={replyAction} deleteAction={deleteAction} deleteReplyAction={deleteReplyAction} />
+    <AnnotationSheet annotation={annotations.find((annotation) => annotation.id === sheetId) ?? null} open={Boolean(sheetId)} onClose={() => setSheetId((current) => nextAnnotationSheetState(current, { type: "close" }))} replyAction={replyAction} deleteAction={deleteAction} deleteReplyAction={deleteReplyAction} removeImportedAction={removeImportedAction} />
     {floating && <button type="button" className="annotation-selection-menu" style={{ left: floating.left, top: floating.top }} onPointerDown={(event) => event.preventDefault()} onClick={() => { setComposer({ selection: floating.descriptor, submissionKey: crypto.randomUUID() }); setFloating(null); }}>添加批注</button>}
     {composer && <AnnotationComposer key={composer.submissionKey} action={action} baseRevisionId={baseRevisionId} selection={composer.selection} submissionKey={composer.submissionKey} onClose={() => setComposer(null)} />}
   </div>;

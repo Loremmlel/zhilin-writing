@@ -1,5 +1,5 @@
 import type { AnnotationId } from "./types.ts";
-import { hasAnnotationDirective, parseAnnotationMarkdown } from "./markdown.ts";
+import { collectAnnotationIds, hasAnnotationDirective, parseAnnotationMarkdown } from "./markdown.ts";
 
 const uuidV4Pattern = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const annotationIdPattern = /^ann_([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/;
@@ -48,6 +48,60 @@ export function validateAnnotationContent(value: string): string {
 }
 
 export const validateAnnotationReplyContent = validateAnnotationContent;
+
+export function getAnnotationMutationPermissions(
+  record: { sourceType: "NATIVE" | "DOCX_IMPORT"; authorId: string | null; importedByUserId: string | null },
+  context: { actorUserId: string; postAuthorId: string },
+) {
+  return {
+    canDelete: record.sourceType === "NATIVE" && record.authorId === context.actorUserId,
+    canRemoveImportedThread: record.sourceType === "DOCX_IMPORT"
+      && (record.importedByUserId === context.actorUserId || context.postAuthorId === context.actorUserId),
+  };
+}
+
+export function assertNativeAnnotationMutation(record: { sourceType: "NATIVE" | "DOCX_IMPORT" }): void {
+  if (record.sourceType === "DOCX_IMPORT") throw new Error("Word 导入内容不可作为站内原生内容编辑或删除");
+}
+
+export function sortAnnotationRowsByAnchorPosition<T extends { annotation: { id: string; createdAt: Date } }>(markdown: string, rows: T[]): T[] {
+  const position = new Map(collectAnnotationIds(parseAnnotationMarkdown(markdown)).map((id, index) => [id, index]));
+  return [...rows].sort((a, b) => {
+    const byPosition = (position.get(a.annotation.id) ?? Number.MAX_SAFE_INTEGER) - (position.get(b.annotation.id) ?? Number.MAX_SAFE_INTEGER);
+    return byPosition || a.annotation.createdAt.getTime() - b.annotation.createdAt.getTime() || compareOpaqueId(a.annotation.id, b.annotation.id);
+  });
+}
+
+function compareOpaqueId(left: string, right: string): number {
+  return left < right ? -1 : left > right ? 1 : 0;
+}
+
+type AnnotationReplySortRecord = {
+  id: string;
+  sourceType: "NATIVE" | "DOCX_IMPORT";
+  sourceCreatedAt: Date | null;
+  sourceDocumentOrder: number | null;
+  sourceCommentId: string | null;
+  createdAt: Date;
+};
+
+export function sortAnnotationReplyRows<T extends { reply: AnnotationReplySortRecord }>(rows: T[]): T[] {
+  return [...rows].sort((a, b) => {
+    const left = a.reply;
+    const right = b.reply;
+    if (left.sourceType === "DOCX_IMPORT" && right.sourceType === "DOCX_IMPORT") {
+      if (left.sourceCreatedAt && right.sourceCreatedAt) {
+        const bySourceTime = left.sourceCreatedAt.getTime() - right.sourceCreatedAt.getTime();
+        if (bySourceTime) return bySourceTime;
+      }
+      const byDocumentOrder = (left.sourceDocumentOrder ?? Number.MAX_SAFE_INTEGER) - (right.sourceDocumentOrder ?? Number.MAX_SAFE_INTEGER);
+      if (byDocumentOrder) return byDocumentOrder;
+      const bySourceId = compareOpaqueId(left.sourceCommentId ?? "", right.sourceCommentId ?? "");
+      if (bySourceId) return bySourceId;
+    }
+    return left.createdAt.getTime() - right.createdAt.getTime() || compareOpaqueId(left.id, right.id);
+  });
+}
 
 export function resolveAnnotationReplyRecipient(input: { actorUserId: string; annotationAuthorId: string | null; replyToUserId: string | null }): string | null {
   const recipientUserId = input.replyToUserId ?? input.annotationAuthorId;

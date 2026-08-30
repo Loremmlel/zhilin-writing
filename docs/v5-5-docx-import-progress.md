@@ -138,3 +138,15 @@
 - Rereview follow-up：raw commit body 改为按 `ReadableStream` 分块读取，按实际字节数在超过 6 MiB 时立即取消，不信任缺失或伪造的 `Content-Length`；新增确定性唯一键竞争测试，证明两个并发 precheck miss 时只有一个 durable commit，另一个精确回读同一结果。
 - GREEN：review hardening focused tests 40/40、最终完整 `npm test` 的 208/208 单测、生产构建与 7/7 rendered artifact assertions 均通过；`npx tsc --noEmit`、全量 ESLint、strict premium UI audit 与 `git diff --check` 退出 0。构建产物包含 `/api/docx-import`；仅保留仓库既有的 npm `http-proxy` 弃用提示、ESLint parser 提示与大 chunk warning。按当前授权未启动 browser/visual/E2E QA，也未部署站点。
 - 提交：本节将与 Task 9 schema、planner、service、endpoint、Confirm flow 和测试同一提交，消息为 `feat: commit DOCX imports atomically`；推送后暂停，等待确认再进入 Task 10。
+
+## 2026-08-30 — Task 10：来源身份展示与 imported thread 权限
+
+- 状态：实现与完整验证完成；Task 11 尚未开始。
+- RED：新增 `tests/docx-import-identity.test.ts`，并扩展 annotation replies/lifecycle 测试；先确认缺少统一 author view、Word 元数据格式、canonical anchor 排序、source-aware permission 与 imported thread removal planner 时按预期失败。
+- Identity/query：root、reply 与管理员查询分别对 native author、attributed user 使用 left join，`author_id=NULL` 的 imported rows 不再被丢弃；统一 author view 始终保留 Word 原作者，显示 `Word 导入`、可选 initials、`Word 中已解决` 与 `关联 {用户}`，关联用户不替换原身份或头像。
+- Ordering：root sidebar 顺序由当前 canonical Markdown AST 中的 annotation ID 顺序决定；同一 imported thread 的 Word replies 依次按 source time、document order、source comment ID 稳定排序，native replies 继续按站内创建时间与 ID 排序。
+- Permission：页面只消费服务端生成的 `canDelete` / `canRemoveImportedThread`；attributed user 不获得编辑、删除或所有权，native root/reply 仍仅作者可删除。普通 delete service 显式拒绝 `DOCX_IMPORT`，回复 imported root 或 imported reply 不生成普通收件人，只有明确回复 native reply 才通知其站内作者。
+- Removal：新增 importer/post author 专用原子移除事务。没有未删除 native replies 时，soft-delete imported root/replies 并从当前 Markdown unwrap anchor；存在 native replies 时保留 anchor 与 deleted imported placeholder，只 soft-delete imported rows，绝不级联 native replies。管理员既有 hide/unhide 路径继续适用于 imported root/reply。
+- UI：桌面 Annotation sidebar、移动端 Sheet 与管理员内容列表复用同一来源文案；importer/post author 在 imported root 上看到“移除导入批注”的现有应用内确认弹窗，导入 reply 本身不显示删除入口；`Word 中已解决` 只作为 metadata，不隐藏线程。
+- GREEN：Task 10 focused tests 13/13、完整单测 216/216、`npx tsc --noEmit`、全量 ESLint、strict premium UI audit、anti-pattern/permission 静态搜索、`git diff --check`、生产构建与 7/7 rendered artifact assertions 均通过。仅保留仓库既有的 npm `http-proxy`、ESLint parser 与大 chunk warning；按项目约定未启动 browser/visual/E2E QA，也未部署站点。
+- 提交：本节将与 Task 10 identity、query、permission、lifecycle、UI 和测试同一提交，消息为 `feat: distinguish imported DOCX annotation threads`；推送后暂停，等待确认再进入 Task 11。

@@ -9,11 +9,12 @@ import { ReplyForm } from "@/components/reply-form";
 import { ReplyList } from "@/components/reply-list";
 import { getPostDetail, listReplies } from "@/db/queries";
 import { listCurrentAnnotationThreads } from "@/lib/annotations/queries";
+import { getAnnotationMutationPermissions } from "@/lib/annotations/policy";
 import { requireMember } from "@/lib/auth/access";
 import { formatDateTime } from "@/lib/format";
 import { deletePostConfirmation } from "@/lib/lifecycle/policy";
 import { renderMarkdown } from "@/lib/markdown/render";
-import { createAnnotationAction, createAnnotationReplyAction, createReplyAction, deleteAnnotationAction, deleteAnnotationReplyAction, deletePostAction, deleteReplyAction } from "./actions";
+import { createAnnotationAction, createAnnotationReplyAction, createReplyAction, deleteAnnotationAction, deleteAnnotationReplyAction, deletePostAction, deleteReplyAction, removeImportedAnnotationThreadAction } from "./actions";
 
 export default async function PostPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ notice?: string; annotation?: string }> }) {
   const [{ id }, query] = await Promise.all([params, searchParams]);
@@ -29,21 +30,30 @@ export default async function PostPage({ params, searchParams }: { params: Promi
       id: row.annotation.id,
       originalSelectedText: row.annotation.originalSelectedText,
       contentHtml: row.lifecycle.contentVisible ? await renderMarkdown(row.annotation.contentMarkdown) : "",
-      createdAtLabel: formatDateTime(row.annotation.createdAt),
-      author: { id: row.author.id, displayName: row.author.displayName, avatarAssetId: row.author.avatarAssetId },
+      createdAtLabel: formatDateTime(row.annotation.sourceCreatedAt ?? row.annotation.createdAt),
+      author: row.author,
       lifecycle: row.lifecycle,
-      deleteDescription: row.retainsAnchorOnAuthorDelete
-        ? "删除后批注正文会变为占位，但其他成员的回复仍会保留。"
-        : "删除后这条批注会从当前正文撤下；历史版本仍可由管理员恢复。",
+      permissions: getAnnotationMutationPermissions(row.annotation, { actorUserId: member.id, postAuthorId: item.post.authorId }),
+      deleteDescription: row.annotation.sourceType === "DOCX_IMPORT"
+        ? row.retainsAnchorOnAuthorDelete
+          ? "移除后 Word 原批注会变为占位，后来发布的站内回复仍会保留。"
+          : "移除后这条 Word 批注会从当前正文撤下；历史版本仍可由管理员恢复。"
+        : row.retainsAnchorOnAuthorDelete
+          ? "删除后批注正文会变为占位，但其他成员的回复仍会保留。"
+          : "删除后这条批注会从当前正文撤下；历史版本仍可由管理员恢复。",
       replySubmissionKey: crypto.randomUUID(),
       replies: await Promise.all(row.replies.map(async (reply) => ({
         id: reply.reply.id,
         contentHtml: reply.lifecycle.contentVisible ? await renderMarkdown(reply.reply.contentMarkdown) : "",
-        createdAtLabel: formatDateTime(reply.reply.createdAt),
+        createdAtLabel: formatDateTime(reply.reply.sourceCreatedAt ?? reply.reply.createdAt),
         replySubmissionKey: crypto.randomUUID(),
-        author: { id: reply.author.id, displayName: reply.author.displayName, avatarAssetId: reply.author.avatarAssetId },
+        author: reply.author,
         replyTo: reply.replyTo ? { id: reply.replyTo.id, displayName: reply.replyTo.displayName } : null,
         lifecycle: { state: reply.lifecycle.state, contentVisible: reply.lifecycle.contentVisible, placeholder: reply.lifecycle.placeholder },
+        permissions: {
+          canDelete: getAnnotationMutationPermissions(reply.reply, { actorUserId: member.id, postAuthorId: item.post.authorId }).canDelete,
+          canRemoveImportedThread: false,
+        },
         deleteDescription: reply.lifecycle.visibleDependentCount > 0 ? "删除后内容会变为占位，明确回复它的其他内容仍会保留。" : "删除后这条回复会从普通页面撤下。",
       }))),
     }))),
@@ -78,7 +88,7 @@ export default async function PostPage({ params, searchParams }: { params: Promi
             replyAction={createAnnotationReplyAction.bind(null, id)}
             deleteAction={deleteAnnotationAction.bind(null, id)}
             deleteReplyAction={deleteAnnotationReplyAction.bind(null, id)}
-            currentUserId={member.id}
+            removeImportedAction={removeImportedAnnotationThreadAction.bind(null, id)}
             initialAnnotationId={query.annotation}
           /> : <div className="markdown-body" dangerouslySetInnerHTML={{ __html: postHtml }} />}
           {item.attachments.length > 0 && <section className="attachment-area">
@@ -98,7 +108,7 @@ export default async function PostPage({ params, searchParams }: { params: Promi
         <div className="section-heading"><h2>正文批注讨论</h2><span>{annotationViews.length} 条</span></div>
         <p className="muted">正文已经撤下；其他成员发布的批注与回复仍保留。</p>
         <div className="annotation-detached-list">{annotationViews.map((annotation) => <article id={`annotation-card-${annotation.id}`} key={annotation.id} className={`annotation-card annotation-card--flow${query.annotation === annotation.id ? " is-active" : ""}`}>
-          <AnnotationThread annotation={annotation} currentUserId={member.id} replyAction={createAnnotationReplyAction.bind(null, id)} deleteAction={deleteAnnotationAction.bind(null, id)} deleteReplyAction={deleteAnnotationReplyAction.bind(null, id)} allowReplies={false} />
+          <AnnotationThread annotation={annotation} replyAction={createAnnotationReplyAction.bind(null, id)} deleteAction={deleteAnnotationAction.bind(null, id)} deleteReplyAction={deleteAnnotationReplyAction.bind(null, id)} removeImportedAction={removeImportedAnnotationThreadAction.bind(null, id)} allowReplies={false} />
         </article>)}</div>
       </section>}
       {discussionVisible && <section className="replies-section" id="replies">
