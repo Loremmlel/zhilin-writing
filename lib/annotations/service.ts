@@ -13,7 +13,7 @@ import { collectAnnotationIds, parseAnnotationMarkdown, stringifyAnnotationMarkd
 import { planAnnotationAdminTransition, planAnnotationAuthorDelete, planImportedAnnotationThreadRemoval } from "./lifecycle";
 import { assertAnnotationBelongsToPost, assertAnchorInvariant, assertNativeAnnotationMutation, createAnnotationId, validateAnnotationContent, validateAnnotationReplyContent, validateAnnotationSubmissionKey } from "./policy";
 import { unwrapAnnotation } from "./selection";
-import { commitAnnotationMutation, planAnnotationCreation, planAnnotationReplyCreation } from "./transaction";
+import { buildImportedThreadRemovalPostGuard, commitAnnotationMutation, planAnnotationCreation, planAnnotationReplyCreation } from "./transaction";
 import type { AnnotationSelectionDescriptor } from "./types";
 
 function asBatch(items: BatchItem<"sqlite">[]) {
@@ -188,8 +188,13 @@ export async function removeImportedAnnotationThread(postId: string, annotationI
   assertAnchorInvariant(collectAnnotationIds(nextTree), nextStates.map((state) => state.annotationId));
   const lastActivityAt = await derivePostActivityAfterInteractionChange(postId, { kind: "annotation", id: annotationId, deletedAt: now, current: lifecyclePlan.retainAnchor });
   const revisionId = crypto.randomUUID();
+  const postGuard = buildImportedThreadRemovalPostGuard({
+    currentRevisionId: currentRevision.id,
+    annotationId,
+    retainAnchor: lifecyclePlan.retainAnchor,
+  });
   const operations: BatchItem<"sqlite">[] = [
-    db.update(posts).set({ title: sql<string>`CASE WHEN ${posts.currentRevisionId} = ${currentRevision.id} THEN ${posts.title} ELSE NULL END` }).where(eq(posts.id, postId)),
+    db.update(posts).set({ title: sql<string>`CASE WHEN ${postGuard} THEN ${posts.title} ELSE NULL END` }).where(eq(posts.id, postId)),
     db.insert(postRevisions).values({ id: revisionId, postId, revisionNumber: currentRevision.revisionNumber + 1, kind: "ANNOTATION_STATE", title: post.title, markdown: nextMarkdown, createdAt: now, createdByUserId: actorUserId, restoreSourceRevisionId: null }),
     db.update(annotations).set(lifecyclePlan.patch).where(and(eq(annotations.id, annotationId), eq(annotations.sourceType, "DOCX_IMPORT"), isNull(annotations.deletedAt))),
     db.update(annotationReplies).set(lifecyclePlan.patch).where(and(eq(annotationReplies.annotationId, annotationId), eq(annotationReplies.sourceType, "DOCX_IMPORT"), isNull(annotationReplies.deletedAt))),

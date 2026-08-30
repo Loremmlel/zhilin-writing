@@ -1,3 +1,6 @@
+import { sql } from "drizzle-orm";
+
+import { annotationReplies, posts } from "../../db/schema.ts";
 import { collectAnnotationIds, parseAnnotationMarkdown, stringifyAnnotationMarkdown, visiblePostText } from "./markdown.ts";
 import { assertAnchorInvariant, resolveAnnotationReplyRecipient, validateAnnotationId } from "./policy.ts";
 import { wrapAnnotationRange } from "./selection.ts";
@@ -31,6 +34,21 @@ export function planAnnotationCreation(current: CurrentAnnotationPostState, requ
 export async function commitAnnotationMutation<T>(batch: (items: T[]) => Promise<unknown>, items: T[]): Promise<void> {
   if (items.length === 0) throw new Error("批注事务不能为空");
   await batch(items);
+}
+
+export function buildImportedThreadRemovalPostGuard(input: {
+  currentRevisionId: string;
+  annotationId: string;
+  retainAnchor: boolean;
+}) {
+  const revisionGuard = sql`${posts.currentRevisionId} = ${input.currentRevisionId}`;
+  if (input.retainAnchor) return revisionGuard;
+  return sql`${revisionGuard} AND NOT EXISTS (
+    SELECT 1 FROM ${annotationReplies}
+    WHERE ${annotationReplies.annotationId} = ${input.annotationId}
+      AND ${annotationReplies.sourceType} = 'NATIVE'
+      AND ${annotationReplies.deletedAt} IS NULL
+  )`;
 }
 
 type ReplyTarget = { id: string; annotationId: string; authorId: string | null; deletedAt: Date | null; hiddenAt: Date | null };

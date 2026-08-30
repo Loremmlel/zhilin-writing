@@ -113,6 +113,37 @@ test("imported replies use Word time, document order, and source id while native
   );
 });
 
+test("mixed dated and undated Word replies have one deterministic total order", () => {
+  const imported = (id: string, sourceCreatedAt: Date | null, sourceDocumentOrder: number) => ({
+    reply: {
+      id,
+      sourceType: "DOCX_IMPORT" as const,
+      sourceCreatedAt,
+      sourceDocumentOrder,
+      sourceCommentId: id,
+      createdAt: new Date(100),
+    },
+  });
+  const later = imported("later", new Date(20), 1);
+  const earlier = imported("earlier", new Date(10), 3);
+  const undated = imported("undated", null, 2);
+  const permutations = [
+    [later, earlier, undated],
+    [later, undated, earlier],
+    [earlier, later, undated],
+    [earlier, undated, later],
+    [undated, later, earlier],
+    [undated, earlier, later],
+  ];
+
+  for (const rows of permutations) {
+    assert.deepEqual(
+      sortAnnotationReplyRows(rows).map((row) => row.reply.id),
+      ["earlier", "later", "undated"],
+    );
+  }
+});
+
 test("attribution grants no mutation permission while post author or importer may remove the imported thread", () => {
   const imported = { sourceType: "DOCX_IMPORT" as const, authorId: null, importedByUserId: "importer" };
   assert.deepEqual(getAnnotationMutationPermissions(imported, { actorUserId: "mapped", postAuthorId: "importer" }), {

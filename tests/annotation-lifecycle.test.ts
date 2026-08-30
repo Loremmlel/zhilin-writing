@@ -1,5 +1,10 @@
 import assert from "node:assert/strict";
+import { DatabaseSync } from "node:sqlite";
 import test from "node:test";
+import { eq, sql } from "drizzle-orm";
+import { drizzle } from "drizzle-orm/sqlite-proxy";
+
+import { posts } from "../db/schema.ts";
 import { buildAnnotationReplyLifecycleViews, planAnnotationAdminTransition, planAnnotationAuthorDelete, planImportedAnnotationThreadRemoval } from "../lib/annotations/lifecycle.ts";
 
 const root = { id: "a", postId: "p", authorId: "a", contentMarkdown: "root", originalSelectedText: "text", createdAt: new Date(), createdOnRevisionId: "r", submissionKey: "k", deletedAt: null, deletedByUserId: null, hiddenAt: null, hiddenByUserId: null, hiddenReason: null };
@@ -77,4 +82,49 @@ test("imported thread removal rejects attribution and native roots while admin m
   const hidden = planAnnotationAdminTransition({ targetType: "ANNOTATION", targetId: "a", record: importedRoot, administratorId: "admin", operation: "hide", operationId: "op", currentAnchor: true, now: new Date() });
   assert.equal(hidden.changed, true);
   assert.equal(hidden.createAnnotationStateRevision, true);
+});
+
+test("imported thread unwrapping aborts when a native reply appears after planning", async () => {
+  const transactionModule = await import("../lib/annotations/transaction.ts") as Record<string, unknown>;
+  const buildGuard = transactionModule.buildImportedThreadRemovalPostGuard;
+  assert.equal(typeof buildGuard, "function", "removal must expose its transaction-time native-reply guard");
+
+  const sqlite = new DatabaseSync(":memory:");
+  try {
+    sqlite.exec(`
+      CREATE TABLE posts (
+        id TEXT PRIMARY KEY,
+        title TEXT NOT NULL,
+        current_revision_id TEXT
+      );
+      CREATE TABLE annotation_replies (
+        id TEXT PRIMARY KEY,
+        annotation_id TEXT NOT NULL,
+        source_type TEXT NOT NULL,
+        deleted_at INTEGER
+      );
+      INSERT INTO posts (id, title, current_revision_id) VALUES ('post', '标题', 'revision');
+    `);
+
+    const proxy = drizzle(async () => ({ rows: [] }));
+    const guard = (buildGuard as (input: { currentRevisionId: string; annotationId: string; retainAnchor: boolean }) => ReturnType<typeof sql>)({
+      currentRevisionId: "revision",
+      annotationId: "annotation",
+      retainAnchor: false,
+    });
+    const guardedUpdate = proxy.update(posts)
+      .set({ title: sql<string>`CASE WHEN ${guard} THEN ${posts.title} ELSE NULL END` })
+      .where(eq(posts.id, "post"))
+      .toSQL();
+
+    sqlite.prepare("INSERT INTO annotation_replies (id, annotation_id, source_type, deleted_at) VALUES (?, ?, 'NATIVE', NULL)")
+      .run("native-reply", "annotation");
+    assert.throws(
+      () => sqlite.prepare(guardedUpdate.sql).run(...guardedUpdate.params as []),
+      /NOT NULL constraint failed/,
+    );
+    assert.equal((sqlite.prepare("SELECT title FROM posts WHERE id = 'post'").get() as { title: string }).title, "标题");
+  } finally {
+    sqlite.close();
+  }
 });

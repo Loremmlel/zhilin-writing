@@ -90,10 +90,9 @@ export function sortAnnotationReplyRows<T extends { reply: AnnotationReplySortRe
     const left = a.reply;
     const right = b.reply;
     if (left.sourceType === "DOCX_IMPORT" && right.sourceType === "DOCX_IMPORT") {
-      if (left.sourceCreatedAt && right.sourceCreatedAt) {
-        const bySourceTime = left.sourceCreatedAt.getTime() - right.sourceCreatedAt.getTime();
-        if (bySourceTime) return bySourceTime;
-      }
+      const bySourceTime = (left.sourceCreatedAt?.getTime() ?? Number.MAX_SAFE_INTEGER)
+        - (right.sourceCreatedAt?.getTime() ?? Number.MAX_SAFE_INTEGER);
+      if (bySourceTime) return bySourceTime;
       const byDocumentOrder = (left.sourceDocumentOrder ?? Number.MAX_SAFE_INTEGER) - (right.sourceDocumentOrder ?? Number.MAX_SAFE_INTEGER);
       if (byDocumentOrder) return byDocumentOrder;
       const bySourceId = compareOpaqueId(left.sourceCommentId ?? "", right.sourceCommentId ?? "");
