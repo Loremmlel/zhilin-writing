@@ -1,0 +1,79 @@
+{
+  "schemaVersion": 1,
+  "fixtures": [
+    {
+      "id": "word-desktop-comments",
+      "filename": "word-desktop-comments.docx",
+      "producer": "Microsoft Word Desktop",
+      "observedVersion": "Microsoft Office Word 14.0000",
+      "status": "available",
+      "downloadUrl": "https://raw.githubusercontent.com/mwilliamson/mammoth.js/master/test/test-data/comments.docx",
+      "sourceUrl": "https://github.com/mwilliamson/mammoth.js/blob/master/test/test-data/comments.docx",
+      "sha256": "adc9f524d176f562db830c346c1e9e21c6a6aa6768d9c09892a423f1257fe17c",
+      "license": "MIT",
+      "licenseUrl": "https://github.com/mwilliamson/mammoth.js/blob/master/LICENSE",
+      "sourceStatement": "Mammoth publishes this DOCX as its comments interoperability test data.",
+      "observedProducerEvidence": {
+        "part": "docProps/app.xml",
+        "contains": "Microsoft Office Word"
+      }
+    },
+    {
+      "id": "word-desktop-footnotes",
+      "filename": "word-desktop-footnotes.docx",
+      "producer": "Microsoft Word Desktop",
+      "observedVersion": "Microsoft Office Word 14.0000",
+      "status": "available",
+      "downloadUrl": "https://raw.githubusercontent.com/mwilliamson/mammoth.js/master/test/test-data/footnotes.docx",
+      "sourceUrl": "https://github.com/mwilliamson/mammoth.js/blob/master/test/test-data/footnotes.docx",
+      "sha256": "a3d786ba3ad53833dd3d5e01bd55e93b628c1287d8f9210eb94cb7533f270306",
+      "license": "MIT",
+      "licenseUrl": "https://github.com/mwilliamson/mammoth.js/blob/master/LICENSE",
+      "sourceStatement": "Mammoth publishes this DOCX as its footnotes interoperability test data.",
+      "observedProducerEvidence": {
+        "part": "docProps/app.xml",
+        "contains": "Microsoft Office Word"
+      }
+    },
+    {
+      "id": "google-docs-export",
+      "filename": "google-docs-export.docx",
+      "producer": "Google Docs",
+      "observedVersion": "Not declared in the DOCX package",
+      "status": "available",
+      "downloadUrl": "https://drive.usercontent.google.com/download?id=13VYmMbpzDUJuKloZY-vCmOdIZcafTcH1&export=download&authuser=0",
+      "sourceUrl": "https://docs.google.com/document/d/13VYmMbpzDUJuKloZY-vCmOdIZcafTcH1/export?format=docx",
+      "sha256": "c77c29900f24e7548b1298fb8ef74500e83f50e075ed9c8798edd637cb03b409",
+      "license": "Public interoperability test document; source author retains copyright",
+      "licenseUrl": "https://pdfa.org/googles-pdf-preview-fails-including-with-pdfs-made-by-google-docs/",
+      "provenanceUrl": "https://pdfa.org/googles-pdf-preview-fails-including-with-pdfs-made-by-google-docs/",
+      "sourceStatement": "The PDF Association states that this test document was created in Google Docs and exported to DOCX.",
+      "observedProducerEvidence": null,
+      "evidenceNote": "This Google Docs export contains no docProps producer metadata; the explicit PDF Association creation/export statement is the producer evidence."
+    },
+    {
+      "id": "libreoffice",
+      "filename": "libreoffice.docx",
+      "producer": "LibreOffice",
+      "observedVersion": "LibreOffice 5.4.5.1 (Linux x86-64)",
+      "status": "available",
+      "downloadUrl": "https://raw.githubusercontent.com/jvoisin/mat2/master/tests/data/dirty.docx",
+      "sourceUrl": "https://github.com/jvoisin/mat2/blob/master/tests/data/dirty.docx",
+      "sha256": "6c50f8f8284578a88ca19c1468ae467d98806c72d3dccf71245a583138b9a7e8",
+      "license": "LGPL-3.0-or-later",
+      "licenseUrl": "https://github.com/jvoisin/mat2/blob/master/LICENSE",
+      "sourceStatement": "mat2 publishes this dirty DOCX as a metadata-cleaning test fixture.",
+      "observedProducerEvidence": {
+        "part": "docProps/app.xml",
+        "contains": "LibreOffice"
+      }
+    },
+    {
+      "id": "word-online",
+      "producer": "Microsoft Word Online",
+      "observedVersion": "Unavailable",
+      "status": "unavailable",
+      "skipReason": "No publicly downloadable, redistributable DOCX with explicit Word Online creation/export provenance and matching internal producer evidence was verified."
+    }
+  ]
+}

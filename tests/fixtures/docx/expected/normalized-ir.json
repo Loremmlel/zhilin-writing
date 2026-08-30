@@ -1,0 +1,1128 @@
+{
+  "version": 1,
+  "importBatchId": "<batch-uuid>",
+  "source": {
+    "filename": "semantic-matrix.docx",
+    "sha256": "beeaa4e1f450f593fee46f9b4947ec23306974628cd94a2e577eaa5e6fcef559"
+  },
+  "suggestedTitle": "一级标题",
+  "blocks": [
+    {
+      "type": "heading",
+      "id": "block_000001",
+      "level": 1,
+      "segments": [
+        {
+          "text": "一级标题",
+          "marks": [],
+          "commentIds": []
+        }
+      ]
+    },
+    {
+      "type": "heading",
+      "id": "block_000002",
+      "level": 2,
+      "segments": [
+        {
+          "text": "二级标题",
+          "marks": [],
+          "commentIds": []
+        }
+      ]
+    },
+    {
+      "type": "heading",
+      "id": "block_000003",
+      "level": 3,
+      "segments": [
+        {
+          "text": "三级标题",
+          "marks": [],
+          "commentIds": []
+        }
+      ]
+    },
+    {
+      "type": "heading",
+      "id": "block_000004",
+      "level": 4,
+      "segments": [
+        {
+          "text": "四级标题",
+          "marks": [],
+          "commentIds": []
+        }
+      ]
+    },
+    {
+      "type": "heading",
+      "id": "block_000005",
+      "level": 4,
+      "segments": [
+        {
+          "text": "五级标题",
+          "marks": [],
+          "commentIds": []
+        }
+      ]
+    },
+    {
+      "type": "heading",
+      "id": "block_000006",
+      "level": 4,
+      "segments": [
+        {
+          "text": "六级标题",
+          "marks": [],
+          "commentIds": []
+        }
+      ]
+    },
+    {
+      "type": "heading",
+      "id": "block_000007",
+      "level": 4,
+      "segments": [
+        {
+          "text": "七级标题",
+          "marks": [],
+          "commentIds": []
+        }
+      ]
+    },
+    {
+      "type": "heading",
+      "id": "block_000008",
+      "level": 4,
+      "segments": [
+        {
+          "text": "八级标题",
+          "marks": [],
+          "commentIds": []
+        }
+      ]
+    },
+    {
+      "type": "heading",
+      "id": "block_000009",
+      "level": 4,
+      "segments": [
+        {
+          "text": "九级标题",
+          "marks": [],
+          "commentIds": []
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "id": "block_000010",
+      "segments": [
+        {
+          "text": "粗体",
+          "marks": [
+            "strong"
+          ],
+          "commentIds": []
+        },
+        {
+          "text": " ",
+          "marks": [],
+          "commentIds": []
+        },
+        {
+          "text": "斜体",
+          "marks": [
+            "em"
+          ],
+          "commentIds": []
+        },
+        {
+          "text": " ",
+          "marks": [],
+          "commentIds": []
+        },
+        {
+          "text": "删除线",
+          "marks": [
+            "strike"
+          ],
+          "commentIds": []
+        },
+        {
+          "text": " ",
+          "marks": [],
+          "commentIds": []
+        },
+        {
+          "text": "代码样式",
+          "marks": [
+            "code"
+          ],
+          "commentIds": []
+        },
+        {
+          "text": " ",
+          "marks": [],
+          "commentIds": []
+        },
+        {
+          "text": "继承粗体",
+          "marks": [
+            "strong"
+          ],
+          "commentIds": []
+        },
+        {
+          "text": " ",
+          "marks": [],
+          "commentIds": []
+        },
+        {
+          "text": "非代码样式",
+          "marks": [],
+          "commentIds": []
+        }
+      ]
+    },
+    {
+      "type": "quote",
+      "id": "block_000011",
+      "segments": [
+        {
+          "text": "普通引用",
+          "marks": [],
+          "commentIds": []
+        }
+      ]
+    },
+    {
+      "type": "quote",
+      "id": "block_000012",
+      "segments": [
+        {
+          "text": "强调引用",
+          "marks": [],
+          "commentIds": []
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "id": "block_000013",
+      "segments": [
+        {
+          "text": "安全链接",
+          "marks": [],
+          "link": "https://example.com/safe?q=1",
+          "commentIds": []
+        },
+        {
+          "text": " / ",
+          "marks": [],
+          "commentIds": []
+        },
+        {
+          "text": "不安全链接",
+          "marks": [],
+          "commentIds": []
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "id": "block_000014",
+      "segments": [
+        {
+          "text": "缓存字段",
+          "marks": [],
+          "commentIds": []
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "id": "block_000015",
+      "segments": [
+        {
+          "text": "保留插入",
+          "marks": [],
+          "commentIds": []
+        },
+        {
+          "text": "保留移动",
+          "marks": [],
+          "commentIds": []
+        }
+      ]
+    },
+    {
+      "type": "list",
+      "id": "block_000016",
+      "ordered": false,
+      "depth": 0,
+      "items": [
+        {
+          "id": "block_000016_item_1",
+          "segments": [
+            {
+              "text": "列表层级1",
+              "marks": [],
+              "commentIds": []
+            }
+          ],
+          "children": []
+        }
+      ]
+    },
+    {
+      "type": "list",
+      "id": "block_000017",
+      "ordered": true,
+      "depth": 1,
+      "items": [
+        {
+          "id": "block_000017_item_1",
+          "segments": [
+            {
+              "text": "列表层级2",
+              "marks": [],
+              "commentIds": []
+            }
+          ],
+          "children": []
+        }
+      ]
+    },
+    {
+      "type": "list",
+      "id": "block_000018",
+      "ordered": true,
+      "depth": 2,
+      "items": [
+        {
+          "id": "block_000018_item_1",
+          "segments": [
+            {
+              "text": "列表层级3",
+              "marks": [],
+              "commentIds": []
+            }
+          ],
+          "children": []
+        }
+      ]
+    },
+    {
+      "type": "list",
+      "id": "block_000019",
+      "ordered": true,
+      "depth": 2,
+      "items": [
+        {
+          "id": "block_000019_item_1",
+          "segments": [
+            {
+              "text": "列表层级4",
+              "marks": [],
+              "commentIds": []
+            }
+          ],
+          "children": []
+        }
+      ]
+    },
+    {
+      "type": "list",
+      "id": "block_000020",
+      "ordered": false,
+      "depth": 0,
+      "items": [
+        {
+          "id": "block_000020_item_1",
+          "segments": [
+            {
+              "text": "列表批注锚点",
+              "marks": [],
+              "commentIds": [
+                "25"
+              ]
+            }
+          ],
+          "children": []
+        }
+      ]
+    },
+    {
+      "type": "table",
+      "id": "block_000021",
+      "header": {
+        "cells": [
+          {
+            "segments": [
+              {
+                "text": "表头甲",
+                "marks": [],
+                "commentIds": []
+              }
+            ]
+          },
+          {
+            "segments": [
+              {
+                "text": "表头乙",
+                "marks": [],
+                "commentIds": []
+              }
+            ]
+          }
+        ]
+      },
+      "rows": [
+        {
+          "cells": [
+            {
+              "segments": [
+                {
+                  "text": "单元格甲",
+                  "marks": [],
+                  "commentIds": []
+                }
+              ]
+            },
+            {
+              "segments": [
+                {
+                  "text": "单元格乙",
+                  "marks": [],
+                  "commentIds": []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "table",
+      "id": "block_000022",
+      "header": {
+        "cells": [
+          {
+            "segments": []
+          },
+          {
+            "segments": []
+          }
+        ]
+      },
+      "rows": [
+        {
+          "cells": [
+            {
+              "segments": [
+                {
+                  "text": "无表头甲",
+                  "marks": [],
+                  "commentIds": []
+                }
+              ]
+            },
+            {
+              "segments": [
+                {
+                  "text": "无表头乙",
+                  "marks": [],
+                  "commentIds": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "cells": [
+            {
+              "segments": [
+                {
+                  "text": "单元格甲",
+                  "marks": [],
+                  "commentIds": []
+                }
+              ]
+            },
+            {
+              "segments": [
+                {
+                  "text": "单元格乙",
+                  "marks": [],
+                  "commentIds": []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "id": "block_000023",
+      "segments": [
+        {
+          "text": "合并单元格",
+          "marks": [],
+          "commentIds": []
+        },
+        {
+          "text": " | ",
+          "marks": [],
+          "commentIds": []
+        },
+        {
+          "text": "尾格",
+          "marks": [],
+          "commentIds": []
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "id": "block_000024",
+      "segments": []
+    },
+    {
+      "type": "image",
+      "id": "block_000025",
+      "assetId": "asset_000001",
+      "alt": "语义矩阵图片"
+    },
+    {
+      "type": "paragraph",
+      "id": "block_000026",
+      "segments": []
+    },
+    {
+      "type": "image",
+      "id": "block_000027",
+      "assetId": "asset_000002",
+      "alt": "语义矩阵图片"
+    },
+    {
+      "type": "paragraph",
+      "id": "block_000028",
+      "segments": [
+        {
+          "text": "文本框一 / 文本框二",
+          "marks": [],
+          "commentIds": []
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "id": "block_000029",
+      "segments": [
+        {
+          "text": "[公式]",
+          "marks": [],
+          "commentIds": [],
+          "synthetic": "equation"
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "id": "block_000030",
+      "segments": [
+        {
+          "text": "脚注",
+          "marks": [],
+          "commentIds": []
+        },
+        {
+          "text": "[1]",
+          "marks": [],
+          "commentIds": [],
+          "synthetic": "noteReference"
+        },
+        {
+          "text": "尾注",
+          "marks": [],
+          "commentIds": []
+        },
+        {
+          "text": "[2]",
+          "marks": [],
+          "commentIds": [],
+          "synthetic": "noteReference"
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "id": "block_000031",
+      "segments": [
+        {
+          "text": "中",
+          "marks": [
+            "strong"
+          ],
+          "commentIds": [
+            "1"
+          ]
+        },
+        {
+          "text": "😀",
+          "marks": [],
+          "commentIds": [
+            "1"
+          ]
+        },
+        {
+          "text": "é",
+          "marks": [],
+          "commentIds": [
+            "2"
+          ]
+        },
+        {
+          "text": "אב",
+          "marks": [],
+          "commentIds": [
+            "3"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "id": "block_000032",
+      "segments": [
+        {
+          "text": "AB",
+          "marks": [],
+          "commentIds": [
+            "4",
+            "5"
+          ]
+        },
+        {
+          "text": "CD",
+          "marks": [],
+          "commentIds": [
+            "4"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "id": "block_000033",
+      "segments": [
+        {
+          "text": "线程锚点",
+          "marks": [],
+          "commentIds": [
+            "10"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "id": "block_000034",
+      "segments": []
+    },
+    {
+      "type": "paragraph",
+      "id": "block_000035",
+      "segments": [
+        {
+          "text": "跨",
+          "marks": [],
+          "commentIds": [
+            "21"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "id": "block_000036",
+      "segments": [
+        {
+          "text": "段",
+          "marks": [],
+          "commentIds": [
+            "21"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "table",
+      "id": "block_000037",
+      "header": {
+        "cells": [
+          {
+            "segments": []
+          }
+        ]
+      },
+      "rows": [
+        {
+          "cells": [
+            {
+              "segments": [
+                {
+                  "text": "表格批注",
+                  "marks": [],
+                  "commentIds": []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "id": "block_000038",
+      "segments": [
+        {
+          "text": "孤儿定义",
+          "marks": [],
+          "commentIds": [
+            "23"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "id": "block_000039",
+      "segments": []
+    },
+    {
+      "type": "image",
+      "id": "block_000040",
+      "assetId": "asset_000003",
+      "alt": "语义矩阵图片"
+    },
+    {
+      "type": "paragraph",
+      "id": "block_000041",
+      "segments": [
+        {
+          "text": "缺少扩展",
+          "marks": [],
+          "commentIds": [
+            "26"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "id": "block_000042",
+      "segments": [
+        {
+          "text": "循环线程",
+          "marks": [],
+          "commentIds": [
+            "30"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "notesAppendix",
+      "id": "block_000043",
+      "title": "脚注（从 Word 导入）",
+      "notes": [
+        {
+          "number": 1,
+          "segments": [
+            {
+              "text": "脚注正文",
+              "marks": [],
+              "commentIds": []
+            }
+          ]
+        },
+        {
+          "number": 2,
+          "segments": [
+            {
+              "text": "尾注正文",
+              "marks": [],
+              "commentIds": []
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "assets": [
+    {
+      "id": "asset_000001",
+      "filename": "matrix.png",
+      "mimeType": "image/png",
+      "alt": "语义矩阵图片",
+      "sourceRelationshipId": "rImage",
+      "floating": false,
+      "byteLength": 8,
+      "sha256": "4c4b6a3be1314ab86138bef4314dde022e600960d8689a2c8f8631802d20dab6"
+    },
+    {
+      "id": "asset_000002",
+      "filename": "matrix.png",
+      "mimeType": "image/png",
+      "alt": "语义矩阵图片",
+      "sourceRelationshipId": "rImage",
+      "floating": true,
+      "byteLength": 8,
+      "sha256": "4c4b6a3be1314ab86138bef4314dde022e600960d8689a2c8f8631802d20dab6"
+    },
+    {
+      "id": "asset_000003",
+      "filename": "matrix.png",
+      "mimeType": "image/png",
+      "alt": "语义矩阵图片",
+      "sourceRelationshipId": "rImage",
+      "floating": false,
+      "byteLength": 8,
+      "sha256": "4c4b6a3be1314ab86138bef4314dde022e600960d8689a2c8f8631802d20dab6"
+    }
+  ],
+  "threads": [
+    {
+      "annotationId": "ann_<1>",
+      "sourceCommentId": "25",
+      "blockId": "block_000020_item_1",
+      "blockLocalStart": 0,
+      "blockLocalEnd": 6,
+      "sourceAuthorName": "列表",
+      "sourceInitials": "L",
+      "sourceCreatedAt": "2024-02-01T00:00:00Z",
+      "sourceDocumentOrder": 11,
+      "sourceResolved": false,
+      "bodyMarkdown": "列表批注",
+      "replies": []
+    },
+    {
+      "annotationId": "ann_<2>",
+      "sourceCommentId": "1",
+      "blockId": "block_000031",
+      "blockLocalStart": 0,
+      "blockLocalEnd": 3,
+      "sourceAuthorName": "甲",
+      "sourceInitials": "J",
+      "sourceCreatedAt": "2024-02-01T00:00:00Z",
+      "sourceDocumentOrder": 0,
+      "sourceResolved": false,
+      "bodyMarkdown": "相邻一",
+      "replies": []
+    },
+    {
+      "annotationId": "ann_<3>",
+      "sourceCommentId": "2",
+      "blockId": "block_000031",
+      "blockLocalStart": 3,
+      "blockLocalEnd": 5,
+      "sourceAuthorName": "乙",
+      "sourceInitials": "Y",
+      "sourceCreatedAt": "2024-02-01T00:00:00Z",
+      "sourceDocumentOrder": 1,
+      "sourceResolved": false,
+      "bodyMarkdown": "相邻二",
+      "replies": []
+    },
+    {
+      "annotationId": "ann_<4>",
+      "sourceCommentId": "3",
+      "blockId": "block_000031",
+      "blockLocalStart": 5,
+      "blockLocalEnd": 7,
+      "sourceAuthorName": "丙",
+      "sourceInitials": "B",
+      "sourceCreatedAt": "2024-02-01T00:00:00Z",
+      "sourceDocumentOrder": 2,
+      "sourceResolved": false,
+      "bodyMarkdown": "相邻三",
+      "replies": []
+    },
+    {
+      "annotationId": "ann_<5>",
+      "sourceCommentId": "4",
+      "blockId": "block_000032",
+      "blockLocalStart": 0,
+      "blockLocalEnd": 4,
+      "sourceAuthorName": "外层",
+      "sourceInitials": "O",
+      "sourceCreatedAt": "2024-02-01T00:00:00Z",
+      "sourceDocumentOrder": 3,
+      "sourceResolved": false,
+      "bodyMarkdown": "外层批注",
+      "replies": []
+    },
+    {
+      "annotationId": "ann_<6>",
+      "sourceCommentId": "10",
+      "blockId": "block_000033",
+      "blockLocalStart": 0,
+      "blockLocalEnd": 4,
+      "sourceAuthorName": "根作者",
+      "sourceInitials": "RA",
+      "sourceCreatedAt": "2024-02-01T00:00:00Z",
+      "sourceDocumentOrder": 5,
+      "sourceResolved": true,
+      "bodyMarkdown": "根批注",
+      "replies": [
+        {
+          "replyId": "reply_<6.1>",
+          "sourceCommentId": "11",
+          "parentSourceCommentId": "10",
+          "sourceAuthorName": "回复作者",
+          "sourceInitials": "RP",
+          "sourceCreatedAt": "2024-02-01T00:00:00Z",
+          "sourceDocumentOrder": 6,
+          "sourceResolved": false,
+          "bodyMarkdown": "回复正文"
+        }
+      ]
+    }
+  ],
+  "skippedThreads": [
+    {
+      "sourceCommentId": "5",
+      "sourceAuthorName": "内层",
+      "sourceDocumentOrder": 4,
+      "warning": {
+        "code": "ANNOTATION_OVERLAP_SKIPPED",
+        "severity": "warning",
+        "sourceRef": "5",
+        "payload": {
+          "replyCount": 0,
+          "conflictsWithSourceCommentId": "4"
+        }
+      }
+    },
+    {
+      "sourceCommentId": "20",
+      "sourceAuthorName": "空范围",
+      "sourceDocumentOrder": 7,
+      "warning": {
+        "code": "ANNOTATION_EMPTY_RANGE",
+        "severity": "warning",
+        "sourceRef": "20",
+        "payload": {
+          "replyCount": 0
+        }
+      }
+    },
+    {
+      "sourceCommentId": "21",
+      "sourceAuthorName": "跨段",
+      "sourceDocumentOrder": 8,
+      "warning": {
+        "code": "ANNOTATION_CROSS_BLOCK",
+        "severity": "warning",
+        "sourceRef": "21",
+        "payload": {
+          "replyCount": 0
+        }
+      }
+    },
+    {
+      "sourceCommentId": "22",
+      "sourceAuthorName": "表格",
+      "sourceDocumentOrder": 9,
+      "warning": {
+        "code": "ANNOTATION_TABLE_UNSUPPORTED",
+        "severity": "warning",
+        "sourceRef": "22",
+        "payload": {
+          "replyCount": 0
+        }
+      }
+    },
+    {
+      "sourceCommentId": "23",
+      "sourceDocumentOrder": 10,
+      "warning": {
+        "code": "ANNOTATION_ORPHAN_DEFINITION",
+        "severity": "warning",
+        "sourceRef": "23"
+      }
+    },
+    {
+      "sourceCommentId": "24",
+      "sourceAuthorName": "图片",
+      "sourceDocumentOrder": 10,
+      "warning": {
+        "code": "ANNOTATION_NON_TEXT_RANGE",
+        "severity": "warning",
+        "sourceRef": "24",
+        "payload": {
+          "replyCount": 0
+        }
+      }
+    },
+    {
+      "sourceCommentId": "26",
+      "sourceAuthorName": "无扩展",
+      "sourceDocumentOrder": 12,
+      "warning": {
+        "code": "ANNOTATION_THREAD_SKIPPED",
+        "severity": "warning",
+        "sourceRef": "26",
+        "payload": {
+          "replyCount": 0,
+          "reason": "UNBOUND_COMMENT_EX"
+        }
+      }
+    },
+    {
+      "sourceCommentId": "30",
+      "sourceAuthorName": "循环根",
+      "sourceDocumentOrder": 13,
+      "warning": {
+        "code": "ANNOTATION_THREAD_SKIPPED",
+        "severity": "warning",
+        "sourceRef": "30",
+        "payload": {
+          "replyCount": 1,
+          "reason": "CYCLE"
+        }
+      }
+    }
+  ],
+  "warnings": [
+    {
+      "code": "HEADING_LEVEL_CLAMPED",
+      "severity": "warning",
+      "count": 5
+    },
+    {
+      "code": "VISUAL_FORMATTING_DROPPED",
+      "severity": "warning",
+      "count": 1
+    },
+    {
+      "code": "HYPERLINK_UNSAFE_DROPPED",
+      "severity": "warning",
+      "count": 1
+    },
+    {
+      "code": "TOC_SKIPPED",
+      "severity": "warning",
+      "count": 1
+    },
+    {
+      "code": "TRACK_CHANGES_FLATTENED",
+      "severity": "info",
+      "count": 3
+    },
+    {
+      "code": "LIST_DEPTH_CLAMPED",
+      "severity": "warning",
+      "count": 1
+    },
+    {
+      "code": "TABLE_HEADER_SYNTHESIZED",
+      "severity": "info",
+      "count": 2
+    },
+    {
+      "code": "TABLE_MERGED_CELLS_FLATTENED",
+      "severity": "warning",
+      "count": 1
+    },
+    {
+      "code": "FLOATING_IMAGE_FLATTENED",
+      "severity": "info",
+      "count": 1
+    },
+    {
+      "code": "TEXTBOX_FLATTENED",
+      "severity": "warning",
+      "count": 1
+    },
+    {
+      "code": "EQUATION_SKIPPED",
+      "severity": "warning",
+      "count": 1
+    },
+    {
+      "code": "NOTES_FLATTENED_TO_APPENDIX",
+      "severity": "info",
+      "count": 1
+    },
+    {
+      "code": "ANNOTATION_OVERLAP_SKIPPED",
+      "severity": "warning",
+      "sourceRef": "5",
+      "payload": {
+        "replyCount": 0,
+        "conflictsWithSourceCommentId": "4"
+      }
+    },
+    {
+      "code": "ANNOTATION_EMPTY_RANGE",
+      "severity": "warning",
+      "sourceRef": "20",
+      "payload": {
+        "replyCount": 0
+      }
+    },
+    {
+      "code": "ANNOTATION_CROSS_BLOCK",
+      "severity": "warning",
+      "sourceRef": "21",
+      "payload": {
+        "replyCount": 0
+      }
+    },
+    {
+      "code": "ANNOTATION_TABLE_UNSUPPORTED",
+      "severity": "warning",
+      "sourceRef": "22",
+      "payload": {
+        "replyCount": 0
+      }
+    },
+    {
+      "code": "ANNOTATION_ORPHAN_DEFINITION",
+      "severity": "warning",
+      "sourceRef": "23"
+    },
+    {
+      "code": "ANNOTATION_NON_TEXT_RANGE",
+      "severity": "warning",
+      "sourceRef": "24",
+      "payload": {
+        "replyCount": 0
+      }
+    },
+    {
+      "code": "ANNOTATION_THREAD_SKIPPED",
+      "severity": "warning",
+      "sourceRef": "26",
+      "payload": {
+        "replyCount": 0,
+        "reason": "UNBOUND_COMMENT_EX"
+      }
+    },
+    {
+      "code": "ANNOTATION_THREAD_SKIPPED",
+      "severity": "warning",
+      "sourceRef": "30",
+      "payload": {
+        "replyCount": 1,
+        "reason": "CYCLE"
+      }
+    }
+  ],
+  "canonicalMarkdown": "# 一级标题\n\n## 二级标题\n\n### 三级标题\n\n#### 四级标题\n\n#### 五级标题\n\n#### 六级标题\n\n#### 七级标题\n\n#### 八级标题\n\n#### 九级标题\n\n**粗体** *斜体* ~~删除线~~ `代码样式` **继承粗体** 非代码样式\n\n> 普通引用\n\n> 强调引用\n\n[安全链接](https://example.com/safe?q=1) / 不安全链接\n\n缓存字段\n\n保留插入保留移动\n\n- 列表层级1\n\n  1. 列表层级2\n\n    1. 列表层级3\n\n    1. 列表层级4\n\n- :annotation[列表批注锚点]{#ann_<1>}\n\n| 表头甲 | 表头乙 |\n| --- | --- |\n| 单元格甲 | 单元格乙 |\n\n|  |  |\n| --- | --- |\n| 无表头甲 | 无表头乙 |\n| 单元格甲 | 单元格乙 |\n\n合并单元格 \\| 尾格\n\n\n\n![语义矩阵图片](docx-asset:asset_000001)\n\n\n\n![语义矩阵图片](docx-asset:asset_000002)\n\n文本框一 / 文本框二\n\n[公式]\n\n脚注[1]尾注[2]\n\n:annotation[**中**😀]{#ann_<2>}:annotation[é]{#ann_<3>}:annotation[אב]{#ann_<4>}\n\n:annotation[ABCD]{#ann_<5>}\n\n:annotation[线程锚点]{#ann_<6>}\n\n\n\n跨\n\n段\n\n|  |\n| --- |\n| 表格批注 |\n\n孤儿定义\n\n\n\n![语义矩阵图片](docx-asset:asset_000003)\n\n缺少扩展\n\n循环线程\n\n---\n\n脚注（从 Word 导入）\n\n[1] 脚注正文\n\n[2] 尾注正文"
+}

@@ -162,3 +162,22 @@
 - GREEN：Task 11 focused tests 20/20、revision/annotation regression 43/43、完整单测 222/222、`npx tsc --noEmit`、全量 ESLint、strict premium UI audit、anti-pattern 静态搜索、`git diff --check` 与生产构建均通过。仅保留仓库既有的 npm `http-proxy`、ESLint parser 与大 chunk warning；按项目约定未启动 browser/visual/E2E QA，也未部署站点。
 - 最小实现：本任务不新增 schema、migration 或依赖，不提前实现 Task 12；归属映射仍只是透明展示信息。
 - 提交：本节将与 Task 11 snapshot、notification policy、UI 和测试同一提交，消息为 `feat: snapshot DOCX replies and attribution notices`；推送后暂停，等待确认再进入 Task 12。
+
+## 2026-08-30 — Task 12：公开 producer fixtures 与端到端兼容性矩阵
+
+- 状态：实现与定向验证完成；按用户要求先提交推送，完整审查与全量回归在推送后继续；Task 13 尚未开始。
+- 可复现获取：新增机器可读 manifest、来源说明与失败关闭的 fetch/verify 脚本。脚本只访问 manifest 中的 HTTPS URL，下载后先校验固定 SHA-256，再原子替换本地 fixture；文件名、许可、来源陈述与可用的包内 producer 证据均受校验。
+- Producer matrix：
+
+| Producer / version | Fixture feature | Result |
+| --- | --- | --- |
+| Microsoft Office Word 14.0000 | Mammoth comments | PASS：正文批注可导入；孤儿定义稳定降级。 |
+| Microsoft Office Word 14.0000 | Mammoth footnotes | PASS：脚注/尾注进入统一附录。 |
+| Google Docs（包内未声明版本） | PDF Association 明确说明的 Google Docs DOCX export | PASS：标题与多级 heading 保持稳定；producer 仅依据明确来源陈述，不伪造包内证据。 |
+| LibreOffice 5.4.5.1 Linux x86-64 | mat2 dirty DOCX / floating image | PASS：正文与图片可读，floating image 使用 typed warning 降级。 |
+| Microsoft Word Online | 无合格公开 fixture | SKIP / deployment blocker：未找到同时具备明确创建/导出 provenance、再分发条件与匹配内部证据的文件；没有改名冒充。 |
+
+- Generated matrix：`semantic-matrix.docx` 固定字节覆盖普通段落、H1–H9、run-style inheritance、粗体/斜体/删除线、代码样式白名单、四层列表、Quote/Intense Quote、安全/不安全链接、缓存字段、TOC、显式/合成 header 与 merged table、inline/floating image、脚注/尾注、Track Changes、OMML、textbox、相邻/交叠/空/跨 block/table/image/orphan/missing-extended/cycle 批注、threaded/resolved reply、CJK、emoji/UTF-16 surrogate、combining character 与 mixed RTL。生成器 `--check` 对四个 generated fixtures 做 byte-for-byte 校验。
+- End-to-end：真实链路执行 package validation → Worker stages → finalized Preview → temporary asset stubs → commit schema/plan → reloaded canonical Markdown → V5 Annotation AST → Milkdown/ProseMirror document；两种独立 deterministic ID factory 得到相同 normalized IR、Markdown 与 warnings。初始 revision 的 root/reply snapshots、import batch、assets 与 imported identity 同步验证。
+- RED/GREEN：先确认 manifest、获取脚本、semantic matrix 与 expected normalized IR 缺失导致预期失败；实现后 producer + E2E focused tests 3 PASS / 1 explicit SKIP，`fetch --verify`、generator `--check` 与 `npx tsc --noEmit` 退出 0。完整单测/Lint/构建与代码审查按用户要求在首次推送后继续。
+- 提交：本节与 Task 12 fixtures、脚本、expected IR 和测试同一提交，消息为 `test: verify DOCX import producers end to end`；推送后立即进入审查，不开始 Task 13，也不部署站点。
