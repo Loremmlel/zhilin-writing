@@ -1,13 +1,10 @@
 import { getApiMemberAccess } from "@/lib/auth/access";
-import { DOCX_IMPORT_LIMITS } from "@/lib/docx-import/limits";
 import {
   DocxImportBodyError,
   parseDocxImportCommitBody,
+  readDocxImportCommitBody,
 } from "@/lib/docx-import/commit-schema";
-import {
-  commitDocxImport,
-  DocxImportCommitError,
-} from "@/lib/docx-import/commit-service";
+import { commitDocxImport, DocxImportCommitError } from "@/lib/docx-import/commit-service";
 
 export const dynamic = "force-dynamic";
 
@@ -32,14 +29,7 @@ export async function POST(request: Request) {
   }
   let input: unknown;
   try {
-    const contentLength = request.headers.get("content-length");
-    if (contentLength !== null) {
-      const length = Number(contentLength);
-      if (Number.isSafeInteger(length) && length > DOCX_IMPORT_LIMITS.commitBodyBytes) {
-        throw new DocxImportBodyError("COMMIT_BODY_SIZE_LIMIT");
-      }
-    }
-    input = parseDocxImportCommitBody(await request.text());
+    input = parseDocxImportCommitBody(await readDocxImportCommitBody(request));
   } catch (error) {
     if (error instanceof DocxImportBodyError && error.code === "COMMIT_BODY_SIZE_LIMIT") {
       return Response.json({ error: { code: error.code, message: errorMessages[error.code] } }, { status: 413 });

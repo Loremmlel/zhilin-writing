@@ -22,6 +22,48 @@ export class DocxImportBodyError extends Error {
   }
 }
 
+export async function readDocxImportCommitBody(request: Request): Promise<string> {
+  const contentLength = request.headers.get("content-length");
+  if (contentLength !== null) {
+    const length = Number(contentLength);
+    if (Number.isSafeInteger(length) && length > DOCX_IMPORT_LIMITS.commitBodyBytes) {
+      throw new DocxImportBodyError("COMMIT_BODY_SIZE_LIMIT");
+    }
+  }
+  if (!request.body) return "";
+
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let byteLength = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (!value) continue;
+      byteLength += value.byteLength;
+      if (byteLength > DOCX_IMPORT_LIMITS.commitBodyBytes) {
+        try { await reader.cancel(); } catch { /* The size error is authoritative. */ }
+        throw new DocxImportBodyError("COMMIT_BODY_SIZE_LIMIT");
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  const bytes = new Uint8Array(byteLength);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  try {
+    return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  } catch (error) {
+    throw new DocxImportBodyError("COMMIT_SCHEMA_INVALID", { cause: error });
+  }
+}
+
 export function parseDocxImportCommitBody(body: string): unknown {
   if (encoder.encode(body).byteLength > DOCX_IMPORT_LIMITS.commitBodyBytes) {
     throw new DocxImportBodyError("COMMIT_BODY_SIZE_LIMIT");

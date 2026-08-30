@@ -6,6 +6,7 @@ import test from "node:test";
 import {
   DocxImportCommitSchema,
   parseDocxImportCommitBody,
+  readDocxImportCommitBody,
   prepareDocxImportSubmission,
   toDocxImportCommitPayload,
   type DocxImportCommitInput,
@@ -21,6 +22,7 @@ import {
   type D1StatementPlan,
 } from "../lib/docx-import/commit-service.ts";
 import { beginDocxImportCommit } from "../lib/docx-import/commit-lock.ts";
+import { DOCX_IMPORT_LIMITS } from "../lib/docx-import/limits.ts";
 import type { CommitSafeImportPreview } from "../lib/docx-import/preview-validation.ts";
 import type { ListBlock } from "../lib/docx-import/types.ts";
 
@@ -166,6 +168,39 @@ test("the raw commit body is size-limited before JSON parsing", () => {
   assert.ok(new TextEncoder().encode(body).byteLength > 6 * 1024 * 1024);
   assert.throws(() => parseDocxImportCommitBody(body), /COMMIT_BODY_SIZE_LIMIT/);
   assert.throws(() => parseDocxImportCommitBody("{"), /COMMIT_SCHEMA_INVALID/);
+});
+
+test("the request body reader cancels oversized streams without trusting Content-Length", async () => {
+  let cancelled = false;
+  const oversizedChunk = new Uint8Array(DOCX_IMPORT_LIMITS.commitBodyBytes + 1);
+  const request = new Request("https://example.test/api/docx-import", {
+    method: "POST",
+    body: new ReadableStream<Uint8Array>({
+      pull(controller) {
+        controller.enqueue(oversizedChunk);
+      },
+      cancel() {
+        cancelled = true;
+      },
+    }),
+    duplex: "half",
+  } as RequestInit & { duplex: "half" });
+
+  await assert.rejects(readDocxImportCommitBody(request), /COMMIT_BODY_SIZE_LIMIT/);
+  assert.equal(cancelled, true);
+
+  const misleadingLengthRequest = new Request("https://example.test/api/docx-import", {
+    method: "POST",
+    headers: { "content-length": "1" },
+    body: new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(oversizedChunk);
+        controller.close();
+      },
+    }),
+    duplex: "half",
+  } as RequestInit & { duplex: "half" });
+  await assert.rejects(readDocxImportCommitBody(misleadingLengthRequest), /COMMIT_BODY_SIZE_LIMIT/);
 });
 
 test("the browser synchronously locks Confirm before its first durable checkpoint", () => {
@@ -388,6 +423,58 @@ test("same batch with another importer, source hash, or durable payload conflict
       commitDocxImport(IMPORTER_ID, { ...input, title: "另一篇标题" }, harness.adapter),
       /IMPORT_BATCH_CONFLICT/,
     );
+    assert.equal(count(harness.db, "posts"), 1);
+  } finally {
+    harness.db.close();
+  }
+});
+
+test("a concurrent unique-key race returns one commit and one exact idempotent retry", async () => {
+  const harness = await createHarness();
+  try {
+    let batchLookups = 0;
+    let releasePrecheck!: () => void;
+    let resolvePrecheck!: () => void;
+    const precheckReached = new Promise<void>((resolve) => { resolvePrecheck = resolve; });
+    const precheckGate = new Promise<void>((resolve) => { releasePrecheck = resolve; });
+    const adapter: DocxImportCommitDatabase = {
+      async first<T>(sql: string, params: readonly SqlValue[]) {
+        if (sql.includes("FROM import_batches") && batchLookups < 2) {
+          batchLookups += 1;
+          if (batchLookups === 2) resolvePrecheck();
+          await precheckGate;
+        }
+        return harness.adapter.first<T>(sql, params);
+      },
+      async all<T>(sql: string, params: readonly SqlValue[]) {
+        return harness.adapter.all<T>(sql, params);
+      },
+      async batch(statements: readonly D1StatementPlan[]) {
+        return harness.adapter.batch(statements);
+      },
+    };
+
+    const left = commitDocxImport(IMPORTER_ID, commitFixture(), adapter);
+    const right = commitDocxImport(IMPORTER_ID, commitFixture(), adapter);
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    try {
+      await Promise.race([
+        precheckReached,
+        new Promise<never>((_, reject) => {
+          timeoutId = setTimeout(() => reject(new Error("concurrent precheck did not rendezvous")), 2_000);
+        }),
+      ]);
+    } finally {
+      if (timeoutId) clearTimeout(timeoutId);
+    }
+    releasePrecheck();
+
+    const results = await Promise.all([left, right]);
+    assert.equal(results.filter((result) => !result.alreadyCommitted).length, 1);
+    assert.equal(results.filter((result) => result.alreadyCommitted).length, 1);
+    assert.equal(results[0]!.postId, results[1]!.postId);
+    assert.equal(results[0]!.revisionId, results[1]!.revisionId);
+    assert.equal(count(harness.db, "import_batches"), 1);
     assert.equal(count(harness.db, "posts"), 1);
   } finally {
     harness.db.close();
