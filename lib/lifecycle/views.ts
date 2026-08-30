@@ -7,7 +7,7 @@ type PostLifecycleInput = {
 };
 
 type PublicReplyInput = {
-  authorId: string;
+  authorId: string | null;
   deletedAt: Date | null;
   hiddenAt: Date | null;
 };
@@ -30,7 +30,7 @@ export function buildPostLifecycleView(post: PostLifecycleInput, replyRows: Publ
 
 type ReplyTreeInput = {
   id: string;
-  authorId: string;
+  authorId: string | null;
   rootReplyId: string | null;
   replyToReplyId: string | null;
   deletedAt: Date | null;

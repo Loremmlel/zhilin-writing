@@ -22,10 +22,11 @@ export function shouldRenderReplyPlaceholder(input: {
 
 export function isPostDiscussionReachable(
   postAuthorId: string,
-  replies: Array<{ authorId: string; deletedAt: Date | null; hiddenAt: Date | null }>,
+  replies: Array<{ authorId: string | null; deletedAt: Date | null; hiddenAt: Date | null }>,
 ) {
   return replies.some((reply) => (
-    reply.authorId !== postAuthorId
+    reply.authorId !== null
+    && reply.authorId !== postAuthorId
     && contentState(reply).state === "normal"
   ));
 }

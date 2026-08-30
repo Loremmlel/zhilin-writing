@@ -49,7 +49,7 @@ export function validateAnnotationContent(value: string): string {
 
 export const validateAnnotationReplyContent = validateAnnotationContent;
 
-export function resolveAnnotationReplyRecipient(input: { actorUserId: string; annotationAuthorId: string; replyToUserId: string | null }): string | null {
+export function resolveAnnotationReplyRecipient(input: { actorUserId: string; annotationAuthorId: string | null; replyToUserId: string | null }): string | null {
   const recipientUserId = input.replyToUserId ?? input.annotationAuthorId;
   return recipientUserId === input.actorUserId ? null : recipientUserId;
 }

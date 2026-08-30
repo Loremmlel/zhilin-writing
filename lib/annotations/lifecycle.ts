@@ -1,7 +1,14 @@
-import type { AnnotationRecord, AnnotationReplyRecord } from "../../db/schema.ts";
 import { adminAuditDedupeKey, contentState } from "../lifecycle/policy.ts";
 
-export function buildAnnotationReplyLifecycleViews(replies: AnnotationReplyRecord[]) {
+type AnnotationReplyLifecycleInput = {
+  id: string;
+  authorId: string | null;
+  replyToReplyId: string | null;
+  deletedAt: Date | null;
+  hiddenAt: Date | null;
+};
+
+export function buildAnnotationReplyLifecycleViews<T extends AnnotationReplyLifecycleInput>(replies: T[]) {
   return replies.flatMap((reply) => {
     const state = contentState(reply).state;
     const dependents = replies.filter((candidate) => candidate.replyToReplyId === reply.id && contentState(candidate).state === "normal");
@@ -17,14 +24,21 @@ export function buildAnnotationReplyLifecycleViews(replies: AnnotationReplyRecor
   });
 }
 
-export function planAnnotationAuthorDelete(annotation: AnnotationRecord, replies: AnnotationReplyRecord[], actorUserId: string, now: Date) {
+export function planAnnotationAuthorDelete(
+  annotation: { authorId: string | null; deletedAt: Date | null },
+  replies: Array<{ authorId: string | null; deletedAt: Date | null }>,
+  actorUserId: string,
+  now: Date,
+) {
   if (annotation.authorId !== actorUserId) throw new Error("你不能删除这条批注");
   if (annotation.deletedAt) return { changed: false as const, retainAnchor: false, patch: {} };
   const retainAnchor = replies.some((reply) => reply.authorId !== actorUserId && !reply.deletedAt);
   return { changed: true as const, retainAnchor, patch: { deletedAt: now, deletedByUserId: actorUserId } };
 }
 
-type AdminTarget = AnnotationRecord | AnnotationReplyRecord;
+type AdminTarget = {
+  hiddenAt: Date | null;
+};
 
 export function planAnnotationAdminTransition(input: {
   targetType: "ANNOTATION" | "ANNOTATION_REPLY"; targetId: string; record: AdminTarget; administratorId: string;

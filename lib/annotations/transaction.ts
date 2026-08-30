@@ -33,10 +33,10 @@ export async function commitAnnotationMutation<T>(batch: (items: T[]) => Promise
   await batch(items);
 }
 
-type ReplyTarget = { id: string; annotationId: string; authorId: string; deletedAt: Date | null; hiddenAt: Date | null };
+type ReplyTarget = { id: string; annotationId: string; authorId: string | null; deletedAt: Date | null; hiddenAt: Date | null };
 
 export function planAnnotationReplyCreation(annotation: {
-  id: string; postId: string; authorId: string; hiddenAt: Date | null; currentAnchorIds: string[];
+  id: string; postId: string; authorId: string | null; hiddenAt: Date | null; currentAnchorIds: string[];
 }, input: { actorUserId: string; targetReply: ReplyTarget | null }, now: Date) {
   if (annotation.hiddenAt) throw new Error("该批注当前不可回复");
   if (!annotation.currentAnchorIds.includes(annotation.id)) throw new Error("该批注不属于当前正文");

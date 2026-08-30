@@ -1,4 +1,5 @@
-import { index, integer, primaryKey, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { sql } from "drizzle-orm";
+import { check, index, integer, primaryKey, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 export const allowedUsers = sqliteTable(
   "allowed_users",
@@ -85,7 +86,7 @@ export const annotations = sqliteTable(
   {
     id: text("id").primaryKey(),
     postId: text("post_id").notNull().references(() => posts.id),
-    authorId: text("author_id").notNull().references(() => users.id),
+    authorId: text("author_id").references(() => users.id),
     contentMarkdown: text("content_markdown").notNull(),
     originalSelectedText: text("original_selected_text").notNull(),
     createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
@@ -96,11 +97,52 @@ export const annotations = sqliteTable(
     hiddenAt: integer("hidden_at", { mode: "timestamp_ms" }),
     hiddenByUserId: text("hidden_by_user_id").references(() => users.id),
     hiddenReason: text("hidden_reason"),
+    sourceType: text("source_type", { enum: ["NATIVE", "DOCX_IMPORT"] }).notNull().default("NATIVE"),
+    sourceAuthorName: text("source_author_name"),
+    sourceInitials: text("source_initials"),
+    sourceCreatedAt: integer("source_created_at", { mode: "timestamp_ms" }),
+    sourceCommentId: text("source_comment_id"),
+    sourceDocumentOrder: integer("source_document_order"),
+    sourceResolved: integer("source_resolved", { mode: "boolean" }),
+    importBatchId: text("import_batch_id").references(() => importBatches.id),
+    importedByUserId: text("imported_by_user_id").references(() => users.id),
+    attributedUserId: text("attributed_user_id").references(() => users.id),
   },
   (table) => [
     index("annotations_post_created_idx").on(table.postId, table.createdAt),
     index("annotations_author_created_idx").on(table.authorId, table.createdAt),
     uniqueIndex("annotations_author_submission_unique").on(table.authorId, table.submissionKey),
+    index("annotations_import_batch_idx").on(table.importBatchId),
+    index("annotations_post_source_order_idx").on(table.postId, table.sourceType, table.sourceDocumentOrder),
+    index("annotations_attributed_user_idx").on(table.attributedUserId),
+    uniqueIndex("annotations_import_source_unique").on(table.importBatchId, table.sourceCommentId)
+      .where(sql`${table.sourceType} = 'DOCX_IMPORT'`),
+    check("annotations_source_type_check", sql`${table.sourceType} in ('NATIVE', 'DOCX_IMPORT')`),
+    check("annotations_source_identity_check", sql`
+      (${table.sourceType} = 'NATIVE'
+        and ${table.authorId} is not null
+        and ${table.sourceAuthorName} is null
+        and ${table.sourceInitials} is null
+        and ${table.sourceCreatedAt} is null
+        and ${table.sourceCommentId} is null
+        and ${table.sourceDocumentOrder} is null
+        and ${table.sourceResolved} is null
+        and ${table.importBatchId} is null
+        and ${table.importedByUserId} is null
+        and ${table.attributedUserId} is null)
+      or
+      (${table.sourceType} = 'DOCX_IMPORT'
+        and ${table.authorId} is null
+        and ${table.sourceAuthorName} is not null
+        and ${table.sourceCommentId} is not null
+        and ${table.sourceDocumentOrder} is not null
+        and ${table.sourceDocumentOrder} >= 0
+        and ${table.sourceResolved} is not null
+        and ${table.sourceResolved} in (0, 1)
+        and ${table.importBatchId} is not null
+        and ${table.importedByUserId} is not null
+        and ${table.submissionKey} = 'docx:' || ${table.importBatchId} || ':' || ${table.sourceCommentId})
+    `),
   ],
 );
 
@@ -109,7 +151,7 @@ export const annotationReplies = sqliteTable(
   {
     id: text("id").primaryKey(),
     annotationId: text("annotation_id").notNull().references(() => annotations.id),
-    authorId: text("author_id").notNull().references(() => users.id),
+    authorId: text("author_id").references(() => users.id),
     replyToUserId: text("reply_to_user_id").references(() => users.id),
     replyToReplyId: text("reply_to_reply_id"),
     contentMarkdown: text("content_markdown").notNull(),
@@ -120,11 +162,52 @@ export const annotationReplies = sqliteTable(
     hiddenAt: integer("hidden_at", { mode: "timestamp_ms" }),
     hiddenByUserId: text("hidden_by_user_id").references(() => users.id),
     hiddenReason: text("hidden_reason"),
+    sourceType: text("source_type", { enum: ["NATIVE", "DOCX_IMPORT"] }).notNull().default("NATIVE"),
+    sourceAuthorName: text("source_author_name"),
+    sourceInitials: text("source_initials"),
+    sourceCreatedAt: integer("source_created_at", { mode: "timestamp_ms" }),
+    sourceCommentId: text("source_comment_id"),
+    sourceDocumentOrder: integer("source_document_order"),
+    sourceResolved: integer("source_resolved", { mode: "boolean" }),
+    importBatchId: text("import_batch_id").references(() => importBatches.id),
+    importedByUserId: text("imported_by_user_id").references(() => users.id),
+    attributedUserId: text("attributed_user_id").references(() => users.id),
   },
   (table) => [
     index("annotation_replies_annotation_created_idx").on(table.annotationId, table.createdAt),
     index("annotation_replies_reply_to_reply_idx").on(table.replyToReplyId),
     uniqueIndex("annotation_replies_author_submission_unique").on(table.authorId, table.submissionKey),
+    index("annotation_replies_import_batch_idx").on(table.importBatchId),
+    index("annotation_replies_annotation_source_order_idx").on(table.annotationId, table.sourceType, table.sourceDocumentOrder),
+    index("annotation_replies_attributed_user_idx").on(table.attributedUserId),
+    uniqueIndex("annotation_replies_import_source_unique").on(table.importBatchId, table.sourceCommentId)
+      .where(sql`${table.sourceType} = 'DOCX_IMPORT'`),
+    check("annotation_replies_source_type_check", sql`${table.sourceType} in ('NATIVE', 'DOCX_IMPORT')`),
+    check("annotation_replies_source_identity_check", sql`
+      (${table.sourceType} = 'NATIVE'
+        and ${table.authorId} is not null
+        and ${table.sourceAuthorName} is null
+        and ${table.sourceInitials} is null
+        and ${table.sourceCreatedAt} is null
+        and ${table.sourceCommentId} is null
+        and ${table.sourceDocumentOrder} is null
+        and ${table.sourceResolved} is null
+        and ${table.importBatchId} is null
+        and ${table.importedByUserId} is null
+        and ${table.attributedUserId} is null)
+      or
+      (${table.sourceType} = 'DOCX_IMPORT'
+        and ${table.authorId} is null
+        and ${table.sourceAuthorName} is not null
+        and ${table.sourceCommentId} is not null
+        and ${table.sourceDocumentOrder} is not null
+        and ${table.sourceDocumentOrder} >= 0
+        and ${table.sourceResolved} is not null
+        and ${table.sourceResolved} in (0, 1)
+        and ${table.importBatchId} is not null
+        and ${table.importedByUserId} is not null
+        and ${table.submissionKey} = 'docx:' || ${table.importBatchId} || ':' || ${table.sourceCommentId})
+    `),
   ],
 );
 
@@ -189,11 +272,13 @@ export const notifications = sqliteTable(
     recipientUserId: text("recipient_user_id").notNull().references(() => users.id),
     actorUserId: text("actor_user_id").notNull().references(() => users.id),
     eventId: text("event_id").notNull().references(() => activityEvents.id),
-    notificationType: text("notification_type", { enum: ["POST_REPLY_RECEIVED", "POST_ANNOTATION_RECEIVED", "ANNOTATION_REPLY_RECEIVED"] }).notNull(),
+    notificationType: text("notification_type", { enum: ["POST_REPLY_RECEIVED", "POST_ANNOTATION_RECEIVED", "ANNOTATION_REPLY_RECEIVED", "DOCX_ATTRIBUTION_NOTICE"] }).notNull(),
     postId: text("post_id").notNull().references(() => posts.id),
     replyId: text("reply_id").references(() => replies.id),
     annotationId: text("annotation_id").references(() => annotations.id),
     annotationReplyId: text("annotation_reply_id").references(() => annotationReplies.id),
+    metadataJson: text("metadata_json"),
+    importBatchId: text("import_batch_id").references(() => importBatches.id),
     createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
     readAt: integer("read_at", { mode: "timestamp_ms" }),
   },
@@ -201,7 +286,15 @@ export const notifications = sqliteTable(
     index("notifications_recipient_created_idx").on(table.recipientUserId, table.createdAt),
     index("notifications_recipient_read_created_idx").on(table.recipientUserId, table.readAt, table.createdAt),
     index("notifications_event_id_idx").on(table.eventId),
+    index("notifications_import_batch_idx").on(table.importBatchId),
     uniqueIndex("notifications_event_recipient_type_unique").on(table.eventId, table.recipientUserId, table.notificationType),
+    uniqueIndex("notifications_attribution_batch_unique").on(table.recipientUserId, table.importBatchId, table.notificationType)
+      .where(sql`${table.notificationType} = 'DOCX_ATTRIBUTION_NOTICE'`),
+    check("notifications_type_check", sql`${table.notificationType} in ('POST_REPLY_RECEIVED', 'POST_ANNOTATION_RECEIVED', 'ANNOTATION_REPLY_RECEIVED', 'DOCX_ATTRIBUTION_NOTICE')`),
+    check("notifications_import_batch_check", sql`
+      (${table.notificationType} = 'DOCX_ATTRIBUTION_NOTICE' and ${table.importBatchId} is not null and ${table.metadataJson} is not null)
+      or (${table.notificationType} <> 'DOCX_ATTRIBUTION_NOTICE' and ${table.importBatchId} is null)
+    `),
   ],
 );
 
@@ -269,6 +362,28 @@ export const postRevisions = sqliteTable(
   ],
 );
 
+export const importBatches = sqliteTable(
+  "import_batches",
+  {
+    id: text("id").primaryKey(),
+    importerUserId: text("importer_user_id").notNull().references(() => users.id),
+    sourceFilename: text("source_filename").notNull(),
+    sourceSha256: text("source_sha256").notNull(),
+    postId: text("post_id").notNull().references(() => posts.id),
+    revisionId: text("revision_id").notNull().references(() => postRevisions.id),
+    committedAt: integer("committed_at", { mode: "timestamp_ms" }).notNull(),
+  },
+  (table) => [
+    index("import_batches_importer_committed_idx").on(table.importerUserId, table.committedAt),
+    uniqueIndex("import_batches_post_unique").on(table.postId),
+    uniqueIndex("import_batches_revision_unique").on(table.revisionId),
+    check(
+      "import_batches_source_sha256_check",
+      sql`length(${table.sourceSha256}) = 64 and ${table.sourceSha256} not glob '*[^0-9a-f]*'`,
+    ),
+  ],
+);
+
 export const postAnnotationAnchors = sqliteTable(
   "post_annotation_anchors",
   {
@@ -294,6 +409,22 @@ export const revisionAnnotationStates = sqliteTable(
   (table) => [
     primaryKey({ columns: [table.revisionId, table.annotationId] }),
     index("revision_annotation_states_annotation_idx").on(table.annotationId),
+  ],
+);
+
+export const revisionImportedReplyStates = sqliteTable(
+  "revision_imported_reply_states",
+  {
+    revisionId: text("revision_id").notNull().references(() => postRevisions.id),
+    annotationReplyId: text("annotation_reply_id").notNull().references(() => annotationReplies.id),
+    deletedAt: integer("deleted_at", { mode: "timestamp_ms" }),
+    deletedByUserId: text("deleted_by_user_id").references(() => users.id),
+    hiddenAt: integer("hidden_at", { mode: "timestamp_ms" }),
+    hiddenByUserId: text("hidden_by_user_id").references(() => users.id),
+  },
+  (table) => [
+    primaryKey({ columns: [table.revisionId, table.annotationReplyId] }),
+    index("revision_imported_reply_states_reply_idx").on(table.annotationReplyId),
   ],
 );
 
@@ -334,6 +465,8 @@ export type AssetRecord = typeof assets.$inferSelect;
 export type PostRevisionRecord = typeof postRevisions.$inferSelect;
 export type PostAnnotationAnchorRecord = typeof postAnnotationAnchors.$inferSelect;
 export type RevisionAnnotationStateRecord = typeof revisionAnnotationStates.$inferSelect;
+export type ImportBatchRecord = typeof importBatches.$inferSelect;
+export type RevisionImportedReplyStateRecord = typeof revisionImportedReplyStates.$inferSelect;
 export type PostAssetRefRecord = typeof postAssetRefs.$inferSelect;
 export type RevisionAssetRefRecord = typeof revisionAssetRefs.$inferSelect;
 export type AdminAuditRecord = typeof adminAuditLog.$inferSelect;

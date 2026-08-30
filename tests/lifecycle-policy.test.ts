@@ -46,6 +46,12 @@ test("an unavailable post stays reachable only for another member's public discu
   ]), true);
 });
 
+test("imported Word identities do not masquerade as another member's discussion", () => {
+  assert.equal(isPostDiscussionReachable("author", [
+    { authorId: null, deletedAt: null, hiddenAt: null },
+  ]), false);
+});
+
 test("recent activity derives from publication times of currently public replies", () => {
   const postPublishedAt = new Date(10_000);
   const value = deriveLastActivityAt(postPublishedAt, [

@@ -112,3 +112,14 @@
 - RED/GREEN：Preview tests 先因 `preview-validation.ts` 缺失失败；恢复列表先因 `listImportPreviews` 缺失失败；标题持久化、临时图片缺失/篡改也分别观察到预期失败后实现。最终 Task 7 focused tests 13/13 通过；完整 `npm run test:unit` 178/178 通过；`npx tsc --noEmit`、定向 ESLint、strict premium UI audit、`git diff --check`、`npm run build` 与七项 rendered artifact assertions 均退出 0。构建产物包含 `/posts/import`；按当前 Sites 规则，用户未单独授权 browser/visual/E2E QA，因此未启动 Agent preview 或浏览器交互测试。
 - 最小实现：Task 7 不新增数据库表、不实现正式 Confirm endpoint、不伪造成功状态，也不提前实现 Task 8 imported identity schema 或 Task 9 atomic commit；Confirm 保持 disabled，Task 9 接入现有 validation payload 后再启用。
 - 提交：本节将与 Task 7 代码和测试同一提交，消息为 `feat: add DOCX import preview workspace`；推送后暂停，等待确认再进入 Task 8。
+
+## 2026-08-30 — Task 8：Imported identity 与完整初始快照模型
+
+- 状态：实现与完整验证完成；Task 9 尚未开始。
+- RED：新增真实 SQLite 迁移契约测试，从 0000–0004 构造包含 native root/reply、soft-delete、admin hide、revision state、activity 与 notification 的 V5 数据；测试按预期因缺少 `0005_` migration 失败。nullable imported author 暴露出的 lifecycle 语义另以失败测试确认：`author_id=NULL` 的 Word 历史身份不能被当作“其他站内成员讨论”。
+- Durable model：新增 `import_batches` 幂等主键，持久化 importer、source filename/64 位小写十六进制 SHA-256、post、initial revision 与 commit time；root/reply 增加 `NATIVE | DOCX_IMPORT` source identity、Word author/initials/time/comment/order/resolved、batch/importer/attribution 字段；native author 保持必填，imported author 强制为 `NULL`，imported order/resolved 强制非空，imported submission key 强制为 `docx:{batchId}:{sourceCommentId}`。
+- Snapshot/notification：新增 `revision_imported_reply_states` 保存 imported reply 的 deletion/hide state；notification 增加 `DOCX_ATTRIBUTION_NOTICE`、`metadata_json`、`import_batch_id`，并以 partial unique index 保证每个 recipient/batch/type 至多一条汇总通知。
+- Lossless migration：`0005_docx_import.sql` 以 `PRAGMA defer_foreign_keys=ON` 适配 D1 的隐式事务，对 `annotations`、`annotation_replies`、`notifications` 使用显式列清单重建，并在全部 FK 恢复后显式关闭 defer；V5 native rows 原样复制并仅补 `source_type='NATIVE'` 与新字段 `NULL`。契约测试在单一 `BEGIN/COMMIT` 中回放 0005，覆盖 anchor、revision state、activity 与 notification 的 root/reply 外键；迁移后 `PRAGMA foreign_key_check` 为空，原 lifecycle/history 状态逐字段一致。
+- Nullable compatibility：旧 lifecycle/annotation helper 改用实际需要的窄类型；imported `NULL` author 不获得删除权、不会生成原生回复收件人，也不会让已删除帖子因为历史 Word 内容被误判为其他成员讨论。
+- GREEN：Task 8 migration focused tests 5/5、完整 `npm run test:unit` 191/191、`npx tsc --noEmit`、`npx drizzle-kit check`、定向 ESLint、`git diff --check` 与 `npm run build` 均通过；Wrangler 4.92.0 临时本地 D1 顺序应用 0000–0005 全部成功。`npx` 仅输出仓库既有的 npm `http-proxy` 弃用提示，构建仅保留既有的大 chunk 警告。
+- 提交：本节与 Task 8 schema、migration、snapshot、兼容修复和测试同一提交，消息为 `feat: model imported DOCX annotation identity`；推送后暂停，等待确认再进入 Task 9。

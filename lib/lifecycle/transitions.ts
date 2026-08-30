@@ -1,7 +1,7 @@
 import { adminAuditDedupeKey } from "./policy.ts";
 
 export type LifecycleRecord = {
-  authorId: string;
+  authorId: string | null;
   deletedAt: Date | null;
   deletedByUserId: string | null;
   hiddenAt: Date | null;
