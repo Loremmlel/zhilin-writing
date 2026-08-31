@@ -279,11 +279,11 @@ Run `git diff --check`, commit as `feat: save annotated posts atomically`, and p
 - Returns `{ kind: "SAFE" }` or `{ kind: "ANNOTATION_IMPACT", affectedAnnotationIds, reasons, destructive: true }`.
 - Uses `Intl.Segmenter("zh-CN", { granularity: "grapheme" })` with a code-point fallback.
 
-- [ ] **Step 1: Add a real ProseMirror test builder**
+- [x] **Step 1: Add a real ProseMirror test builder**
 
 Use the existing Milkdown schema/Annotation Mark to construct documents and transactions, not hand-authored fake position objects. Add helpers that place a cursor or selection by marker syntax only in tests.
 
-- [ ] **Step 2: Write the failing core matrix**
+- [x] **Step 2: Write the failing core matrix**
 
 Cover:
 
@@ -317,17 +317,17 @@ test("aggregates two destroyed annotations into one impact", () => {
 });
 ```
 
-- [ ] **Step 3: Run RED**
+- [x] **Step 3: Run RED**
 
 Run: `npm run test:unit -- tests/annotation-guard-inspector.test.ts`
 
 Expected: FAIL because the range scanner and inspector do not exist.
 
-- [ ] **Step 4: Implement range comparison, not input-key branching**
+- [x] **Step 4: Implement range comparison, not input-key branching**
 
 For every `docChanged` transaction, scan before/after descriptors and classify by final structure plus protected-endpoint survival. Match retained anchors by ID and mapped endpoint content/positions. Report stable issue codes: `LEFT_ENDPOINT_REMOVED`, `RIGHT_ENDPOINT_REMOVED`, `EMPTY`, `REMOVED`, `MULTI_BLOCK`, `DUPLICATE`, `OVERLAP`, `NESTED`, and `INVALID_BLOCK`. Return SAFE for non-document changes and mark-only formatting transactions.
 
-- [ ] **Step 5: Run GREEN and focused performance checks**
+- [x] **Step 5: Run GREEN and focused performance checks**
 
 Run:
 
@@ -337,7 +337,7 @@ npm run test:unit -- tests/annotation-guard-inspector.test.ts tests/annotation-r
 
 Expected: the matrix passes. A 50,000-character synthetic document with 200 legal anchors inspects one local text transaction without an O(N²) pairwise connector/layout loop.
 
-- [ ] **Step 6: Commit and push**
+- [x] **Step 6: Commit and push**
 
 Run `git diff --check`, commit as `feat: inspect annotation editor transactions`, and push the V6 branch.
 
