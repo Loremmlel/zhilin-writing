@@ -50,7 +50,7 @@
 - `components/loading/route-progress.tsx`: root TopLoader integration after the compatibility gate.
 - `components/loading/skeletons.tsx`: shared route and section skeleton primitives.
 - `components/pending/pending-submit-button.tsx`: shared immediate mutation pending button/status behavior.
-- `db/schema.ts` and `drizzle/0006_annotation_guard_v6.sql`: anchor-retirement lifecycle columns and indexes/checks.
+- `db/schema.ts` and `drizzle/0006_mushy_smasher.sql`: anchor-retirement lifecycle columns and indexes/checks.
 - `lib/posts/service.ts`: authoritative annotated save transaction and conflict enforcement.
 - `lib/revisions/service.ts`: controlled restore of current anchors and retirement lifecycle.
 - `lib/drafts/indexed-db.ts`: optional `confirmedAnnotationDeletionIds` persistence.
@@ -128,7 +128,7 @@ Run `git diff --check`, commit as `feat: validate annotation document invariants
 
 **Files:**
 - Modify: `db/schema.ts`
-- Create: `drizzle/0006_annotation_guard_v6.sql`
+- Create: `drizzle/0006_mushy_smasher.sql`
 - Modify: `drizzle/meta/_journal.json`
 - Create: `drizzle/meta/0006_snapshot.json`
 - Create: `lib/annotations/save-plan.ts`
@@ -145,7 +145,7 @@ Run `git diff --check`, commit as `feat: validate annotation document invariants
 - Produces `planAnnotationRetirement(...)` and `planAnnotationRestore(...)` without database access.
 - Current thread queries exclude retired roots because `post_annotation_anchors` remains the current-membership relation; admin/history queries continue to see durable threads.
 
-- [ ] **Step 1: Write failing migration and lifecycle tests**
+- [x] **Step 1: Write failing migration and lifecycle tests**
 
 Assert migration SQL has all three columns, a reason check, and no destructive table replacement. Test exact delta behavior:
 
@@ -160,21 +160,21 @@ test("computes retained, removed, and unexpected annotation IDs", () => {
 
 Test that post-edit retirement does not populate `deletedAt`, and revision restore clears retirement for restored anchors while retiring anchors leaving the current revision with `REVISION_RESTORE`.
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 Run: `npm run test:unit -- tests/annotation-guard-migration.test.ts tests/annotation-save-plan.test.ts tests/annotation-revision.test.ts`
 
 Expected: FAIL on missing retirement fields and save-plan exports.
 
-- [ ] **Step 3: Generate and inspect the migration**
+- [x] **Step 3: Generate and inspect the migration**
 
 Modify `db/schema.ts`, run `npm run db:generate`, then inspect the generated SQL and Drizzle snapshot. The migration must add only the approved lifecycle fields/check/index support and preserve existing rows.
 
-- [ ] **Step 4: Implement pure lifecycle planning and controlled restore**
+- [x] **Step 4: Implement pure lifecycle planning and controlled restore**
 
 Update restore batching so source anchors clear retirement fields, exiting anchors receive retirement fields, source annotation/reply snapshot state is restored, and `post_annotation_anchors` exactly matches the restored revision. Restore bypasses the editor guard but still runs canonical server validation.
 
-- [ ] **Step 5: Run GREEN and focused regression**
+- [x] **Step 5: Run GREEN and focused regression**
 
 Run:
 
@@ -184,7 +184,7 @@ npm run test:unit -- tests/annotation-guard-migration.test.ts tests/annotation-s
 
 Expected: all pass; annotation-author deletion semantics and imported-thread lifecycle remain unchanged.
 
-- [ ] **Step 6: Commit and push**
+- [x] **Step 6: Commit and push**
 
 Run `git diff --check`, commit as `feat: model annotation anchor retirement`, and push the V6 branch.
 

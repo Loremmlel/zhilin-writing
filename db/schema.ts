@@ -97,6 +97,9 @@ export const annotations = sqliteTable(
     hiddenAt: integer("hidden_at", { mode: "timestamp_ms" }),
     hiddenByUserId: text("hidden_by_user_id").references(() => users.id),
     hiddenReason: text("hidden_reason"),
+    anchorRetiredAt: integer("anchor_retired_at", { mode: "timestamp_ms" }),
+    anchorRetiredByUserId: text("anchor_retired_by_user_id").references(() => users.id),
+    anchorRetiredReason: text("anchor_retired_reason", { enum: ["POST_EDIT", "REVISION_RESTORE"] }),
     sourceType: text("source_type", { enum: ["NATIVE", "DOCX_IMPORT"] }).notNull().default("NATIVE"),
     sourceAuthorName: text("source_author_name"),
     sourceInitials: text("source_initials"),
@@ -118,6 +121,12 @@ export const annotations = sqliteTable(
     uniqueIndex("annotations_import_source_unique").on(table.importBatchId, table.sourceCommentId)
       .where(sql`${table.sourceType} = 'DOCX_IMPORT'`),
     check("annotations_source_type_check", sql`${table.sourceType} in ('NATIVE', 'DOCX_IMPORT')`),
+    check("annotations_anchor_retirement_check", sql`
+      (${table.anchorRetiredAt} is null and ${table.anchorRetiredByUserId} is null and ${table.anchorRetiredReason} is null)
+      or
+      (${table.anchorRetiredAt} is not null and ${table.anchorRetiredByUserId} is not null
+        and ${table.anchorRetiredReason} in ('POST_EDIT', 'REVISION_RESTORE'))
+    `),
     check("annotations_source_identity_check", sql`
       (${table.sourceType} = 'NATIVE'
         and ${table.authorId} is not null

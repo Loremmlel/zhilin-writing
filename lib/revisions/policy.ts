@@ -1,4 +1,5 @@
-import { collectAnnotationIds, parseAnnotationMarkdown } from "../annotations/markdown.ts";
+import { validateCanonicalAnnotationDocument } from "../annotations/invariants.ts";
+import { planAnnotationRestoration, planAnnotationRetirement } from "../annotations/save-plan.ts";
 
 export type AssetUsage = "inline" | "attachment";
 
@@ -33,6 +34,12 @@ function assertMatchingAnnotationIds(label: string, left: string[], right: strin
   if (!consistent) throw new Error(`${label}批注状态不一致`);
 }
 
+function validatedAnnotationIds(label: string, markdown: string, knownIds: string[]): string[] {
+  const validation = validateCanonicalAnnotationDocument(markdown, knownIds);
+  if (!validation.ok) throw new Error(`${label}批注状态不一致`);
+  return validation.anchors.map((anchor) => anchor.annotationId);
+}
+
 export function planAnnotationRestore(input: {
   currentMarkdown: string;
   currentAnchorIds: string[];
@@ -41,24 +48,29 @@ export function planAnnotationRestore(input: {
   sourceMarkdown: string;
   sourceStates: AnnotationStateSnapshot[];
   sourceImportedReplyStates?: ImportedReplyStateSnapshot[];
+  actorUserId: string;
+  at: Date;
 }) {
-  const currentMarkdownIds = collectAnnotationIds(parseAnnotationMarkdown(input.currentMarkdown));
+  const currentMarkdownIds = validatedAnnotationIds("当前正文与锚点", input.currentMarkdown, input.currentAnchorIds);
   const currentStateIds = input.currentStates.map((state) => state.annotationId);
-  assertMatchingAnnotationIds("当前正文与锚点", currentMarkdownIds, input.currentAnchorIds);
   assertMatchingAnnotationIds("当前正文与快照", currentMarkdownIds, currentStateIds);
 
-  const sourceAnchorIds = collectAnnotationIds(parseAnnotationMarkdown(input.sourceMarkdown));
-  assertMatchingAnnotationIds("历史版本", sourceAnchorIds, input.sourceStates.map((state) => state.annotationId));
+  const sourceStateIds = input.sourceStates.map((state) => state.annotationId);
+  const sourceAnchorIds = validatedAnnotationIds("历史版本", input.sourceMarkdown, sourceStateIds);
+  assertMatchingAnnotationIds("历史版本", sourceAnchorIds, sourceStateIds);
   const currentImportedReplyStates = input.currentImportedReplyStates ?? [];
   const sourceImportedReplyStates = input.sourceImportedReplyStates ?? [];
   assertUniqueImportedReplyStates("当前版本", currentImportedReplyStates);
   assertUniqueImportedReplyStates("历史版本", sourceImportedReplyStates);
   const sourceSet = new Set(sourceAnchorIds);
+  const exitingAnnotationIds = currentMarkdownIds.filter((id) => !sourceSet.has(id));
   return {
     sourceAnchorIds,
-    exitingAnnotationIds: currentMarkdownIds.filter((id) => !sourceSet.has(id)),
+    exitingAnnotationIds,
     restoredStates: sourceAnchorIds.map((id) => input.sourceStates.find((state) => state.annotationId === id)!),
     restoredImportedReplyStates: sourceImportedReplyStates,
+    retirements: planAnnotationRetirement(exitingAnnotationIds, input.actorUserId, input.at, "REVISION_RESTORE"),
+    restorations: planAnnotationRestoration(sourceAnchorIds),
   };
 }
 

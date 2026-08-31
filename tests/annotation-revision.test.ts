@@ -8,34 +8,59 @@ const B = "ann_123e4567-e89b-42d3-a456-426614174000";
 const active = (annotationId: string): AnnotationStateSnapshot => ({ annotationId, deletedAt: null, deletedByUserId: null, hiddenAt: null, hiddenByUserId: null });
 
 test("restoring v2 from v3 retains A and exits B without changing thread history", () => {
+  const at = new Date("2026-08-31T10:00:00.000Z");
   const result = planAnnotationRestore({
     currentMarkdown: `:annotation[A]{#${A}} + :annotation[B]{#${B}}`,
     currentAnchorIds: [A, B],
     currentStates: [active(A), active(B)],
     sourceMarkdown: `:annotation[A]{#${A}}`,
     sourceStates: [active(A)],
+    actorUserId: "administrator",
+    at,
   });
   assert.deepEqual(result.sourceAnchorIds, [A]);
   assert.deepEqual(result.exitingAnnotationIds, [B]);
   assert.deepEqual(result.restoredStates, [active(A)]);
+  assert.deepEqual(result.retirements, [{
+    annotationId: B,
+    patch: {
+      anchorRetiredAt: at,
+      anchorRetiredByUserId: "administrator",
+      anchorRetiredReason: "REVISION_RESTORE",
+    },
+  }]);
+  assert.deepEqual(result.restorations, [{
+    annotationId: A,
+    patch: {
+      anchorRetiredAt: null,
+      anchorRetiredByUserId: null,
+      anchorRetiredReason: null,
+    },
+  }]);
 });
 
 test("pre-V5 revisions naturally restore an empty annotation snapshot", () => {
+  const at = new Date("2026-08-31T10:00:00.000Z");
   const result = planAnnotationRestore({
     currentMarkdown: `:annotation[A]{#${A}}`,
     currentAnchorIds: [A],
     currentStates: [active(A)],
     sourceMarkdown: "旧正文",
     sourceStates: [],
+    actorUserId: "administrator",
+    at,
   });
   assert.deepEqual(result.sourceAnchorIds, []);
   assert.deepEqual(result.exitingAnnotationIds, [A]);
+  assert.equal(result.retirements[0]?.patch.anchorRetiredReason, "REVISION_RESTORE");
+  assert.deepEqual(result.restorations, []);
 });
 
 test("restore rejects orphan marks, orphan rows, and inconsistent current state", () => {
   const base = {
     currentMarkdown: `:annotation[A]{#${A}}`, currentAnchorIds: [A], currentStates: [active(A)],
     sourceMarkdown: `:annotation[A]{#${A}}`, sourceStates: [active(A)],
+    actorUserId: "administrator", at: new Date("2026-08-31T10:00:00.000Z"),
   };
   assert.throws(() => planAnnotationRestore({ ...base, sourceStates: [] }), /历史版本.*不一致/);
   assert.throws(() => planAnnotationRestore({ ...base, sourceMarkdown: "无批注" }), /历史版本.*不一致/);

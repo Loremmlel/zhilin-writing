@@ -185,6 +185,7 @@ export async function restorePostRevision(postId: string, sourceRevisionId: stri
     .where(eq(postAnnotationAnchors.postId, postId))
     .orderBy(asc(postAnnotationAnchors.annotationId))
     .then((rows) => rows.map((row) => row.annotationId));
+  const now = new Date();
   const annotationRestore = planAnnotationRestore({
     currentMarkdown: current.revision.markdown,
     currentAnchorIds,
@@ -193,6 +194,8 @@ export async function restorePostRevision(postId: string, sourceRevisionId: stri
     sourceMarkdown: source.revision.markdown,
     sourceStates: source.annotationStates,
     sourceImportedReplyStates: source.importedReplyStates,
+    actorUserId: administratorId,
+    at: now,
   });
   if (annotationRestore.sourceAnchorIds.length > 0) {
     const sourceRows = await db.select({ id: annotations.id, postId: annotations.postId })
@@ -215,7 +218,6 @@ export async function restorePostRevision(postId: string, sourceRevisionId: stri
     }
   }
 
-  const now = new Date();
   const revisionId = crypto.randomUUID();
   const restorePlan = planRestore({
     revisionId: current.revision.id,
@@ -260,12 +262,17 @@ export async function restorePostRevision(postId: string, sourceRevisionId: stri
     ...restorePlan.assetRefs.map((ref) => db.insert(revisionAssetRefs).values({ revisionId, ...ref })),
     db.delete(postAnnotationAnchors).where(eq(postAnnotationAnchors.postId, postId)),
     ...annotationRestore.sourceAnchorIds.map((annotationId) => db.insert(postAnnotationAnchors).values({ postId, annotationId })),
+    ...annotationRestore.retirements.map(({ annotationId, patch }) => db.update(annotations).set(patch)
+      .where(and(eq(annotations.id, annotationId), eq(annotations.postId, postId)))),
     ...annotationRestore.restoredStates.map((state) => db.update(annotations).set({
       deletedAt: state.deletedAt,
       deletedByUserId: state.deletedByUserId,
       hiddenAt: state.hiddenAt,
       hiddenByUserId: state.hiddenByUserId,
       hiddenReason: null,
+      anchorRetiredAt: null,
+      anchorRetiredByUserId: null,
+      anchorRetiredReason: null,
     }).where(and(eq(annotations.id, state.annotationId), eq(annotations.postId, postId)))),
     ...annotationRestore.restoredStates.map((state) => db.insert(revisionAnnotationStates).values({ revisionId, ...state })),
     ...annotationRestore.restoredImportedReplyStates.map((state) => db.update(annotationReplies).set({
