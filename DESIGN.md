@@ -110,6 +110,8 @@ components:
 
 正文范围、右侧卡片、SVG connector 与移动端 Sheet 全部用稳定 `annotation_id` 联动。正文 mark 可聚焦，卡片可键盘访问；内部普通链接仍保持导航语义。桌面卡片按文档位置排列并避免重叠，resize/scroll 只重新测量几何，不重新解析 Markdown。删除或隐藏的根内容只显示占位，其他成员讨论不被连带移除。
 
+编辑页复用同一批注数据与卡片语言，但线程严格只读：只允许激活、定位、阅读根批注和回复，不显示回复、删除、移除或管理入口。锚点位置直接来自当前 ProseMirror DOM；输入变更只按 animation frame 合并测量，不逐字重新解析 Markdown 或请求线程。确认待撤下的批注暂时退出侧栏与连线，Undo 后随 live editor state 恢复。
+
 ### DOCX import workspace
 
 DOCX 导入是现有写作表面的受控入口，不是营销上传页。初始态使用清楚的文件选择区说明浏览器解析、20 MB 限制与原始文件不上传；解析态保持固定布局并显示分阶段进度、取消和 typed error；Preview 在桌面使用校刊正文纸面与批注/警告右栏，在移动端按现有 Annotation Sheet 语义堆叠。Word author mapping 明示“Word 导入”和可选站内关联，不能把关联用户渲染成原作者。warnings 使用既有 info/warning/danger 层级和可展开分类，不用装饰性仪表盘。包含正文批注时必须显示 V5 编辑锁提示。

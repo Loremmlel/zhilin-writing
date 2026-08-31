@@ -4,10 +4,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useRef, useState } from "react";
 
+import type { AnnotationCardView } from "@/components/annotations/annotation-thread";
 import { ModalDialog } from "@/components/modal-dialog";
 import { loadDraft, removeDraft, saveDraft, type LocalDraft } from "@/lib/drafts/indexed-db";
 import { availableConflictChoices, chooseConflictResolution, hasRecoverablePublishedDraft } from "@/lib/editor/conflict";
 import type { EditConflictSnapshot } from "@/lib/revisions/service";
+import { AnnotatedEditorLayout } from "./annotated-editor-layout";
 import { MarkdownEditor, type AnnotationEditingOptions, type UploadedAsset } from "./markdown-editor";
 
 export type PostActionState = {
@@ -35,6 +37,7 @@ type PostEditorFormProps = {
   submitLabel?: string;
   cancelHref?: string;
   annotationEditing?: Omit<AnnotationEditingOptions, "initialConfirmedAnnotationDeletionIds" | "onConfirmedAnnotationDeletionIdsChange">;
+  annotationThreads?: AnnotationCardView[];
 };
 
 function normalizedDraft(draft: LocalDraft): LocalDraft {
@@ -46,7 +49,7 @@ function normalizedDraft(draft: LocalDraft): LocalDraft {
   };
 }
 
-export function PostEditorForm({ userId, draftId, action, initial, submitLabel = "发布帖子", cancelHref = "/", annotationEditing }: PostEditorFormProps) {
+export function PostEditorForm({ userId, draftId, action, initial, submitLabel = "发布帖子", cancelHref = "/", annotationEditing, annotationThreads = [] }: PostEditorFormProps) {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const [title, setTitle] = useState(initial?.title ?? "");
@@ -68,6 +71,7 @@ export function PostEditorForm({ userId, draftId, action, initial, submitLabel =
   const [saveBlocked, setSaveBlocked] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [confirmedAnnotationDeletionIds, setConfirmedAnnotationDeletionIds] = useState<string[]>([]);
+  const [editorRoot, setEditorRoot] = useState<HTMLElement | null>(null);
   const [state, formAction, pending] = useActionState(async (previous: PostActionState, formData: FormData) => {
     const result = await action(previous, formData);
     if (result.conflict) {
@@ -211,6 +215,15 @@ export function PostEditorForm({ userId, draftId, action, initial, submitLabel =
     window.setTimeout(() => formRef.current?.requestSubmit(), 0);
   }
 
+  const editor = <MarkdownEditor key={editorKey} initialMarkdown={markdown} resetRevision={editorResetRevision} annotationEditing={annotationEditing ? {
+    ...annotationEditing,
+    initialConfirmedAnnotationDeletionIds: confirmedAnnotationDeletionIds,
+    onConfirmedAnnotationDeletionIdsChange: setConfirmedAnnotationDeletionIds,
+  } : undefined} onEditorRootChange={annotationThreads.length > 0 ? setEditorRoot : undefined} onMarkdownChange={(value) => {
+    setMarkdown(value);
+    setDirty(true);
+  }} />;
+
   return (
     <>
       <form ref={formRef} action={formAction} className="editor-form" noValidate>
@@ -248,14 +261,10 @@ export function PostEditorForm({ userId, draftId, action, initial, submitLabel =
           setDirty(true);
         }} maxLength={120} placeholder="给这篇文字起一个标题" aria-invalid={Boolean(state.error && !conflict)} />
         <label className="field-label">正文</label>
-        <MarkdownEditor key={editorKey} initialMarkdown={markdown} resetRevision={editorResetRevision} annotationEditing={annotationEditing ? {
-          ...annotationEditing,
-          initialConfirmedAnnotationDeletionIds: confirmedAnnotationDeletionIds,
-          onConfirmedAnnotationDeletionIdsChange: setConfirmedAnnotationDeletionIds,
-        } : undefined} onMarkdownChange={(value) => {
-          setMarkdown(value);
-          setDirty(true);
-        }} />
+        {confirmedAnnotationDeletionIds.length > 0 && <p className="annotation-editor-pending" role="status">保存后将撤下 {confirmedAnnotationDeletionIds.length} 条批注；撤销正文修改可恢复。</p>}
+        {annotationThreads.length > 0
+          ? <AnnotatedEditorLayout editorRoot={editorRoot} annotations={annotationThreads} pendingRetiredAnnotationIds={confirmedAnnotationDeletionIds}>{editor}</AnnotatedEditorLayout>
+          : editor}
         <div className="editor-subgrid">
           <label>
             <span className="field-label">标签（最多 5 个，用逗号分隔）</span>

@@ -122,6 +122,7 @@ button, summary, input[type="file"] { cursor: pointer; }
 .avatar--large { width: 92px; height: 92px; font-size: 28px; }
 
 .editor-page { width: min(1080px, calc(100% - 40px)); }
+.editor-page--annotated { width: min(1320px, calc(100% - 40px)); }
 .editor-form, .settings-form { padding: 28px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper-strong); box-shadow: var(--shadow); }
 .editor-topline { display: flex; justify-content: space-between; gap: 20px; color: var(--muted); font-size: 12px; margin-bottom: 21px; }
 .draft-status { color: var(--green-dark); }
@@ -139,6 +140,12 @@ button, summary, input[type="file"] { cursor: pointer; }
 .markdown-editor--compact { min-height: 145px; margin: 0; }
 .markdown-editor--compact .milkdown, .markdown-editor--compact .milkdown .ProseMirror { min-height: 120px; }
 .markdown-editor--compact .milkdown .ProseMirror { padding: 16px 18px; font: 14px/1.75 inherit; }
+.annotation-editor-pending { width: fit-content; margin: 0 0 10px; padding: 7px 10px; border-left: 2px solid var(--annotation-ink); background: var(--annotation); color: #704943; font-size: 12px; line-height: 1.55; }
+.annotated-editor-layout { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 320px); gap: 54px; align-items: start; margin-bottom: 22px; }
+.annotated-editor-main { min-width: 0; }
+.annotated-editor-main .markdown-editor { margin-bottom: 0; }
+.annotation-editor-sidebar { position: relative; min-width: 0; }
+.annotation-editor-sheet-trigger { display: none; }
 .editor-subgrid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 22px; margin-top: 2px; }
 .attachment-upload { padding: 12px 14px; border-radius: 9px; background: var(--green-pale); }
 .attachment-upload input { width: 100%; margin-bottom: 6px; font-size: 13px; }
@@ -455,7 +462,10 @@ button, summary, input[type="file"] { cursor: pointer; }
   .reading-page--annotated { width: min(920px, calc(100% - 40px)); }
   .post-article--annotated { padding-inline: clamp(22px, 6vw, 42px); }
   .annotation-reading-layout { display: block; }
+  .annotated-editor-layout { display: block; }
   .annotation-sidebar, .annotation-connectors { display: none; }
+  .annotation-editor-sheet-trigger { width: 100%; min-height: 42px; margin-top: 10px; border: 1px solid #d7aaa5; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; background: #fffaf8; color: var(--annotation-ink); font-size: 13px; font-weight: 700; }
+  .annotation-editor-sheet-trigger:hover, .annotation-editor-sheet-trigger:focus-visible { background: var(--annotation); outline: 2px solid rgba(125, 57, 52, .25); outline-offset: 2px; }
   .dialog-backdrop.annotation-sheet-backdrop { padding: 0; place-items: end center; }
   .dialog-surface.annotation-sheet-surface { width: min(100%, 680px); max-height: min(82dvh, 760px); padding: 20px 20px calc(20px + env(safe-area-inset-bottom)); border-radius: 18px 18px 0 0; border-bottom: 0; overscroll-behavior: contain; }
   .annotation-sheet-surface .dialog-header { padding-right: 70px; }
@@ -518,7 +528,7 @@ button, summary, input[type="file"] { cursor: pointer; }
 
 @media (forced-colors: active) {
   * { scrollbar-color: auto; }
-  .button, .account-menu-trigger, .revision-list-item { border: 1px solid ButtonText; }
+  .button, .account-menu-trigger, .revision-list-item, .annotation-editor-sheet-trigger { border: 1px solid ButtonText; }
   .annotation-range { border: 1px solid LinkText; background: Canvas; color: CanvasText; }
   .annotation-card, .annotation-sheet-surface, .docx-import-dropzone, .docx-import-panel { border: 1px solid ButtonText; }
   .annotation-connectors path { stroke: LinkText; }

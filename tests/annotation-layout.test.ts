@@ -12,3 +12,12 @@ test("sidebar cards follow document order and do not overlap", () => {
   assert.deepEqual(result.cards, [{ annotationId: "a", top: 10 }, { annotationId: "b", top: 142 }, { annotationId: "c", top: 234 }]);
   assert.equal(result.height, 294);
 });
+
+test("sidebar placement ignores anchors that are not present in the live editor document", () => {
+  const heights = new Map([["present", 80], ["retired", 120]]);
+  const result = layoutAnnotationCards([
+    { annotationId: "present", top: 24, right: 100, height: 20 },
+  ], heights, 12);
+  assert.deepEqual(result.cards, [{ annotationId: "present", top: 24 }]);
+  assert.equal(result.height, 104);
+});

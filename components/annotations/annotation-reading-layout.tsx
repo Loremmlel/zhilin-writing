@@ -9,7 +9,7 @@ import { AnnotationThread, type AnnotationCardView, type AnnotationDeleteAction,
 import { MarkdownEditor } from "@/components/editor/markdown-editor";
 import { ModalDialog } from "@/components/modal-dialog";
 import { describeAnnotationDomRange } from "@/lib/annotations/dom-selection";
-import { layoutAnnotationCards } from "@/lib/annotations/layout";
+import { createAnnotationLayoutScheduler, layoutAnnotationCards } from "@/lib/annotations/layout";
 import { nextAnnotationSheetState, shouldUseAnnotationSheet } from "@/lib/annotations/responsive";
 import type { AnnotationSelectionDescriptor } from "@/lib/annotations/types";
 
@@ -91,10 +91,11 @@ export function AnnotationReadingLayout({ html, annotations, baseRevisionId, act
   }, [annotations]);
 
   useLayoutEffect(() => {
-    const frame = window.requestAnimationFrame(measure); const observer = new ResizeObserver(measure);
+    const scheduler = createAnnotationLayoutScheduler(measure); const observer = new ResizeObserver(() => scheduler.schedule());
     if (layoutRef.current) observer.observe(layoutRef.current); if (bodyRef.current) observer.observe(bodyRef.current); cardRefs.current.forEach((card) => observer.observe(card));
-    window.addEventListener("resize", measure);
-    return () => { window.cancelAnimationFrame(frame); observer.disconnect(); window.removeEventListener("resize", measure); };
+    const schedule = () => scheduler.schedule();
+    window.addEventListener("resize", schedule); scheduler.schedule();
+    return () => { scheduler.destroy(); observer.disconnect(); window.removeEventListener("resize", schedule); };
   }, [measure]);
 
   useEffect(() => {

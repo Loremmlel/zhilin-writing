@@ -5,6 +5,7 @@ import { AnnotationReplyForm } from "@/components/annotations/annotation-reply-f
 import { Avatar } from "@/components/avatar";
 import { DeleteContentControl, type LifecycleActionState } from "@/components/lifecycle/delete-content-control";
 import { annotationSourceMetadata, type AnnotationAuthorView } from "@/lib/annotations/identity";
+import { annotationThreadCapabilities } from "@/lib/annotations/layout";
 
 export type AnnotationCardView = {
   id: string; originalSelectedText: string; contentHtml: string; createdAtLabel: string;
@@ -45,9 +46,29 @@ function AnnotationReplyIdentity({ author, createdAtLabel, replyTo }: {
   return <div><strong>{author.displayName}</strong><span>{sourceMetadata ? `${sourceMetadata} · ` : ""}{replyTo ? `回复 ${replyTo.displayName}` : "回复批注"} · {createdAtLabel}</span></div>;
 }
 
-export function AnnotationThread({ annotation, replyAction, deleteAction, deleteReplyAction, removeImportedAction, onLocate, allowReplies = true }: {
-  annotation: AnnotationCardView; replyAction: AnnotationReplyAction; deleteAction: AnnotationDeleteAction; deleteReplyAction: AnnotationReplyDeleteAction; removeImportedAction: AnnotationRemoveImportedAction; onLocate?: () => void; allowReplies?: boolean;
-}) {
+type AnnotationThreadProps = {
+  annotation: AnnotationCardView;
+  onLocate?: () => void;
+} & ({
+  readOnly: true;
+  replyAction?: never;
+  deleteAction?: never;
+  deleteReplyAction?: never;
+  removeImportedAction?: never;
+  allowReplies?: never;
+} | {
+  readOnly?: false;
+  replyAction: AnnotationReplyAction;
+  deleteAction: AnnotationDeleteAction;
+  deleteReplyAction: AnnotationReplyDeleteAction;
+  removeImportedAction: AnnotationRemoveImportedAction;
+  allowReplies?: boolean;
+});
+
+export function AnnotationThread(props: AnnotationThreadProps) {
+  const { annotation, onLocate } = props;
+  const capabilities = annotationThreadCapabilities(props.readOnly === true ? "readonly" : "interactive");
+  const allowReplies = props.readOnly === true ? false : props.allowReplies ?? true;
   return <>
     <header className="annotation-card-header">
       <Avatar name={annotation.author.displayName} assetId={annotation.author.avatarAssetId} size="small" />
@@ -56,14 +77,14 @@ export function AnnotationThread({ annotation, replyAction, deleteAction, delete
     </header>
     <blockquote className="annotation-card-excerpt">{annotation.originalSelectedText}</blockquote>
     {annotation.lifecycle.contentVisible ? <div className="markdown-body markdown-body--annotation" dangerouslySetInnerHTML={{ __html: annotation.contentHtml }} /> : <p className="annotation-placeholder">{annotation.lifecycle.placeholder}</p>}
-    {annotation.lifecycle.contentVisible && annotation.permissions.canDelete && <DeleteContentControl action={deleteAction.bind(null, annotation.id)} label="删除批注" title="删除这条批注？" description={annotation.deleteDescription} />}
-    {annotation.lifecycle.contentVisible && annotation.permissions.canRemoveImportedThread && <DeleteContentControl action={removeImportedAction.bind(null, annotation.id)} label="移除导入批注" title="移除这条 Word 导入批注？" description={annotation.deleteDescription} confirmLabel="确认移除" pendingLabel="正在移除…" />}
+    {capabilities.delete && props.deleteAction && annotation.lifecycle.contentVisible && annotation.permissions.canDelete && <DeleteContentControl action={props.deleteAction.bind(null, annotation.id)} label="删除批注" title="删除这条批注？" description={annotation.deleteDescription} />}
+    {capabilities.remove && props.removeImportedAction && annotation.lifecycle.contentVisible && annotation.permissions.canRemoveImportedThread && <DeleteContentControl action={props.removeImportedAction.bind(null, annotation.id)} label="移除导入批注" title="移除这条 Word 导入批注？" description={annotation.deleteDescription} confirmLabel="确认移除" pendingLabel="正在移除…" />}
     {annotation.replies.length > 0 && <div className="annotation-reply-list">{annotation.replies.map((reply) => <section className="annotation-reply" key={reply.id}>
       <header><Avatar name={reply.author.displayName} assetId={reply.author.avatarAssetId} size="small" /><AnnotationReplyIdentity author={reply.author} createdAtLabel={reply.createdAtLabel} replyTo={reply.replyTo} /></header>
       {reply.lifecycle.contentVisible ? <div className="markdown-body markdown-body--annotation" dangerouslySetInnerHTML={{ __html: reply.contentHtml }} /> : <p className="annotation-placeholder">{reply.lifecycle.placeholder}</p>}
-      {reply.lifecycle.contentVisible && reply.permissions.canDelete && <DeleteContentControl action={deleteReplyAction.bind(null, reply.id)} label="删除回复" title="删除这条批注回复？" description={reply.deleteDescription} />}
-      {allowReplies && reply.lifecycle.contentVisible && annotation.lifecycle.state !== "hidden" && <details className="annotation-inline-reply"><summary>回复 {reply.author.displayName}</summary><AnnotationReplyForm action={replyAction.bind(null, annotation.id, reply.id)} initialSubmissionKey={reply.replySubmissionKey} label="发布回复" /></details>}
+      {capabilities.delete && props.deleteReplyAction && reply.lifecycle.contentVisible && reply.permissions.canDelete && <DeleteContentControl action={props.deleteReplyAction.bind(null, reply.id)} label="删除回复" title="删除这条批注回复？" description={reply.deleteDescription} />}
+      {capabilities.reply && props.replyAction && allowReplies && reply.lifecycle.contentVisible && annotation.lifecycle.state !== "hidden" && <details className="annotation-inline-reply"><summary>回复 {reply.author.displayName}</summary><AnnotationReplyForm action={props.replyAction.bind(null, annotation.id, reply.id)} initialSubmissionKey={reply.replySubmissionKey} label="发布回复" /></details>}
     </section>)}</div>}
-    {allowReplies && annotation.lifecycle.state !== "hidden" && <details className="annotation-inline-reply annotation-inline-reply--root"><summary>回复这条批注</summary><AnnotationReplyForm action={replyAction.bind(null, annotation.id, null)} initialSubmissionKey={annotation.replySubmissionKey} /></details>}
+    {capabilities.reply && props.replyAction && allowReplies && annotation.lifecycle.state !== "hidden" && <details className="annotation-inline-reply annotation-inline-reply--root"><summary>回复这条批注</summary><AnnotationReplyForm action={props.replyAction.bind(null, annotation.id, null)} initialSubmissionKey={annotation.replySubmissionKey} /></details>}
   </>;
 }

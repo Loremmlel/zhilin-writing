@@ -440,25 +440,25 @@ Run `git diff --check`, commit as `feat: protect annotation editing interactions
 - Confirmed local retirement hides the current card/connector; Undo restores both.
 - Mobile uses the existing bottom-sheet mechanism in read-only mode.
 
-- [ ] **Step 1: Write failing read-only and live-layout tests**
+- [x] **Step 1: Write failing read-only and live-layout tests**
 
 Assert edit mode contains no Reply/Delete/Remove/Admin controls, still supports activation/location, hides pending-retired threads, restores them after Undo, and schedules connector measurement through one animation frame/observer pass rather than reparsing Markdown or refetching threads per keystroke.
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 Run: `npm run test:unit -- tests/annotation-editor-sidebar.test.ts tests/annotation-layout.test.ts tests/annotation-sheet.test.ts`
 
 Expected: FAIL because no annotated editor layout exists.
 
-- [ ] **Step 3: Reuse reader thread data and rendering**
+- [x] **Step 3: Reuse reader thread data and rendering**
 
 Load current threads once on the edit route. Pass immutable discussion data to the client editor layout. Read anchor positions from the editor document and existing `data-annotation-id` DOM mapping. Keep the current active-card behavior and use requestAnimationFrame, ResizeObserver, and the existing connector planner for layout updates.
 
-- [ ] **Step 4: Add desktop Sidebar and mobile sheet**
+- [x] **Step 4: Add desktop Sidebar and mobile sheet**
 
 Desktop keeps the editor as the main column and a read-only Annotation rail as the secondary column. Mobile exposes the existing sheet with read-only thread cards. Show a compact pending-removal count in the edit UI and preserve current context while typing.
 
-- [ ] **Step 5: Run GREEN and focused regression**
+- [x] **Step 5: Run GREEN and focused regression**
 
 Run:
 
@@ -468,7 +468,7 @@ npm run test:unit -- tests/annotation-editor-sidebar.test.ts tests/annotation-la
 
 Expected: all pass; no editor test observes a network request or Markdown reparse for every local keystroke.
 
-- [ ] **Step 6: Commit and push**
+- [x] **Step 6: Commit and push**
 
 Run `git diff --check`, commit as `feat: show read-only annotations while editing`, and push the V6 branch.
 

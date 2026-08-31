@@ -34,6 +34,7 @@ type MarkdownEditorProps = {
   allowImageUploads?: boolean;
   resetRevision?: number;
   annotationEditing?: AnnotationEditingOptions;
+  onEditorRootChange?: (root: HTMLElement | null) => void;
 };
 
 async function uploadImage(file: File, onAssetUploaded?: (asset: UploadedAsset) => void) {
@@ -47,12 +48,14 @@ async function uploadImage(file: File, onAssetUploaded?: (asset: UploadedAsset) 
   return asset.url;
 }
 
-function MarkdownEditorSession({ initialMarkdown, onMarkdownChange, onAssetUploaded, compact = false, allowImageUploads = true, annotationEditing }: MarkdownEditorProps) {
+function MarkdownEditorSession({ initialMarkdown, onMarkdownChange, onAssetUploaded, compact = false, allowImageUploads = true, annotationEditing, onEditorRootChange }: MarkdownEditorProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const initialMarkdownRef = useRef(initialMarkdown);
   const onChangeRef = useRef(onMarkdownChange);
   const uploadRef = useRef(onAssetUploaded);
   const annotationEditingRef = useRef(annotationEditing);
+  const onEditorRootChangeRef = useRef(onEditorRootChange);
+  const emittedConfirmedDeletionIdsRef = useRef(annotationEditing?.initialConfirmedAnnotationDeletionIds ?? []);
   const guardRef = useRef<ReturnType<typeof createAnnotationGuardPlugin> | null>(null);
   const [pendingImpact, setPendingImpact] = useState<PendingAnnotationImpact | null>(null);
   const [guardMessage, setGuardMessage] = useState<string | null>(null);
@@ -60,9 +63,11 @@ function MarkdownEditorSession({ initialMarkdown, onMarkdownChange, onAssetUploa
   useEffect(() => { onChangeRef.current = onMarkdownChange; }, [onMarkdownChange]);
   useEffect(() => { uploadRef.current = onAssetUploaded; }, [onAssetUploaded]);
   useEffect(() => { annotationEditingRef.current = annotationEditing; }, [annotationEditing]);
+  useEffect(() => { onEditorRootChangeRef.current = onEditorRootChange; }, [onEditorRootChange]);
 
   useEffect(() => {
     if (!rootRef.current) return;
+    onEditorRootChangeRef.current?.(rootRef.current);
     let disposed = false;
     const crepe = new Crepe({
       root: rootRef.current,
@@ -102,7 +107,11 @@ function MarkdownEditorSession({ initialMarkdown, onMarkdownChange, onAssetUploa
         onStateChange: ({ pending, confirmedAnnotationDeletionIds }) => {
           if (disposed) return;
           setPendingImpact(pending);
-          annotationEditingRef.current?.onConfirmedAnnotationDeletionIdsChange(confirmedAnnotationDeletionIds);
+          const previous = emittedConfirmedDeletionIdsRef.current;
+          if (previous.length !== confirmedAnnotationDeletionIds.length || previous.some((id, index) => id !== confirmedAnnotationDeletionIds[index])) {
+            emittedConfirmedDeletionIdsRef.current = confirmedAnnotationDeletionIds;
+            annotationEditingRef.current?.onConfirmedAnnotationDeletionIdsChange(confirmedAnnotationDeletionIds);
+          }
         },
       });
       guardRef.current = guard;
@@ -116,6 +125,7 @@ function MarkdownEditorSession({ initialMarkdown, onMarkdownChange, onAssetUploa
     void crepe.create();
     return () => {
       disposed = true;
+      onEditorRootChangeRef.current?.(null);
       guardRef.current?.discard();
       guardRef.current = null;
       window.setTimeout(() => void crepe.destroy(), 0);
