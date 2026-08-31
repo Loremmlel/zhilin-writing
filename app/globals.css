@@ -161,6 +161,12 @@ button, summary, input[type="file"] { cursor: pointer; }
 .dialog-actions--spread > div { display: flex; gap: 10px; }
 .dialog-confirm-copy { margin-top: 22px; padding: 18px; border-radius: 10px; background: #f6f4ee; }
 .dialog-confirm-copy p { margin: 6px 0 0; color: var(--muted); line-height: 1.65; }
+.annotation-guard-list { display: grid; gap: 10px; margin: 20px 0 0; padding: 0; list-style: none; }
+.annotation-guard-list li { padding: 12px 14px; border: 1px solid #ead6d3; border-radius: 9px; background: #fffaf8; }
+.annotation-guard-list blockquote { margin: 0 0 7px; color: var(--ink); font: 14px/1.65 Georgia, "Noto Serif SC", serif; }
+.annotation-guard-list span { color: var(--muted); font-size: 12px; }
+.annotation-guard-local-note { margin: 16px 0 0; color: var(--muted); font-size: 13px; line-height: 1.65; }
+.annotation-guard-status { margin: -10px 0 18px; color: var(--annotation-ink); font-size: 13px; font-weight: 700; }
 .conflict-comparison { margin-top: 22px; display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .conflict-comparison section { min-width: 0; padding: 17px; border: 1px solid var(--line); border-radius: 10px; background: #fbfbf7; }
 .conflict-comparison h3 { margin: 8px 0 10px; font: 700 18px Georgia, "Noto Serif SC", serif; }

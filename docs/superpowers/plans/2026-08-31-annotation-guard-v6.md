@@ -365,19 +365,19 @@ Run `git diff --check`, commit as `feat: inspect annotation editor transactions`
 - `stripAnnotationMarksFromSlice(slice, annotationMarkType)` recursively removes only Annotation Marks.
 - `confirmedAnnotationDeletionIds` is derived from the current editor document and confirmed history state, persisted in IndexedDB, and submitted as JSON.
 
-- [ ] **Step 1: Write failing session/history tests**
+- [x] **Step 1: Write failing session/history tests**
 
 Test confirm/cancel, stale confirmation, multiple IDs, Undo restoring text/Mark/ID, Redo removing them without a second prompt, Undo before Save removing pending IDs, Redo re-adding them, and discard clearing all local pending state.
 
-- [ ] **Step 2: Write failing clipboard and drag/drop tests**
+- [x] **Step 2: Write failing clipboard and drag/drop tests**
 
 Assert rich formatting remains but Annotation Marks disappear on copied and pasted Slices. Test two copied adjacent anchors pasted into plain text produce no duplicate IDs. Test paste inside an existing anchor inherits the destination mark through ProseMirror stored-mark semantics. Test move-drop source deletion goes through the same impact confirmation.
 
-- [ ] **Step 3: Write failing IME state-machine tests**
+- [x] **Step 3: Write failing IME state-machine tests**
 
 Model `compositionstart`, internal composition, destructive boundary composition, cancel, fresh authorized re-entry, state change before re-entry, and Undo. Assert no dialog appears during intermediate composition updates and no operating-system candidate text is replayed.
 
-- [ ] **Step 4: Run RED**
+- [x] **Step 4: Run RED**
 
 Run:
 
@@ -387,19 +387,19 @@ npm run test:unit -- tests/annotation-guard-session.test.ts tests/annotation-cli
 
 Expected: FAIL on missing plugin/session/clipboard interfaces and draft field.
 
-- [ ] **Step 5: Implement one composite history operation**
+- [x] **Step 5: Implement one composite history operation**
 
 When confirmed, start from the original transaction's current compatible state, remove all affected Annotation Marks, map and append the original steps, set one `addToHistory` event, and attach guard metadata. Recompute confirmed IDs from the resulting current anchor set instead of mutating D1. Store a bounded confirmed transition signature so ProseMirror Redo is accepted without a dialog only for the exact known before/after pair.
 
-- [ ] **Step 6: Integrate clipboard and drag/drop props**
+- [x] **Step 6: Integrate clipboard and drag/drop props**
 
 Use ProseMirror `transformCopied`, `transformPasted`, and controlled drop/cut handling. Preserve text, bold, italic, strike, and link marks. Sanitize internal editor Slices and DOM clipboard HTML. Copy remains non-destructive; Cut writes the sanitized clipboard only after the destructive edit is allowed.
 
-- [ ] **Step 7: Integrate safe IME and the accessible dialog**
+- [x] **Step 7: Integrate safe IME and the accessible dialog**
 
 During composition, allow legal internal changes. For a destructive selection, prevent the first replacement, end/cancel the pending browser composition safely, open one dialog with root author/excerpt/reply counts, default focus the Cancel button, make Escape cancel, and require a fresh composition after exact-state authorization. Do not bind Enter to the destructive action.
 
-- [ ] **Step 8: Persist local pending state and run GREEN**
+- [x] **Step 8: Persist local pending state and run GREEN**
 
 Extend `LocalDraft` with optional normalized `confirmedAnnotationDeletionIds`. Preserve it across autosave, recovery, conflict, and server failure; clear it on successful Save or explicit discard.
 
@@ -411,7 +411,7 @@ npm run test:unit -- tests/annotation-guard-session.test.ts tests/annotation-cli
 
 Expected: all deterministic tests pass. Record browser automation coverage separately from true Windows/macOS IME hardware acceptance.
 
-- [ ] **Step 9: Commit and push**
+- [x] **Step 9: Commit and push**
 
 Run `git diff --check`, commit as `feat: protect annotation editing interactions`, and push the V6 branch.
 

@@ -14,8 +14,17 @@ export type LocalDraft = {
     markdown: string;
   }>;
   baseRevisionId: string | null;
+  confirmedAnnotationDeletionIds?: string[];
   updatedAt: number;
 };
+
+function normalizeDraft(draft: LocalDraft): LocalDraft {
+  if (!Array.isArray(draft.confirmedAnnotationDeletionIds)) return draft;
+  return {
+    ...draft,
+    confirmedAnnotationDeletionIds: [...new Set(draft.confirmedAnnotationDeletionIds.filter((id) => typeof id === "string" && id.length > 0))].sort(),
+  };
+}
 
 export async function loadDraft(userId: string, postId: string): Promise<LocalDraft | null> {
   const value = await withLocalStore<LocalDraft | undefined>(
@@ -23,14 +32,14 @@ export async function loadDraft(userId: string, postId: string): Promise<LocalDr
     "readonly",
     (store) => store.get(draftKey(userId, postId)),
   );
-  return value ?? null;
+  return value ? normalizeDraft(value) : null;
 }
 
 export async function saveDraft(userId: string, postId: string, draft: LocalDraft): Promise<void> {
   await withLocalStore<IDBValidKey>(
     DRAFT_STORE_NAME,
     "readwrite",
-    (store) => store.put(draft, draftKey(userId, postId)),
+    (store) => store.put(normalizeDraft(draft), draftKey(userId, postId)),
   );
 }
 

@@ -8,7 +8,7 @@ import { ModalDialog } from "@/components/modal-dialog";
 import { loadDraft, removeDraft, saveDraft, type LocalDraft } from "@/lib/drafts/indexed-db";
 import { availableConflictChoices, chooseConflictResolution, hasRecoverablePublishedDraft } from "@/lib/editor/conflict";
 import type { EditConflictSnapshot } from "@/lib/revisions/service";
-import { MarkdownEditor, type UploadedAsset } from "./markdown-editor";
+import { MarkdownEditor, type AnnotationEditingOptions, type UploadedAsset } from "./markdown-editor";
 
 export type PostActionState = {
   error?: string;
@@ -34,6 +34,7 @@ type PostEditorFormProps = {
   initial?: InitialEditorState;
   submitLabel?: string;
   cancelHref?: string;
+  annotationEditing?: Omit<AnnotationEditingOptions, "initialConfirmedAnnotationDeletionIds" | "onConfirmedAnnotationDeletionIdsChange">;
 };
 
 function normalizedDraft(draft: LocalDraft): LocalDraft {
@@ -45,7 +46,7 @@ function normalizedDraft(draft: LocalDraft): LocalDraft {
   };
 }
 
-export function PostEditorForm({ userId, draftId, action, initial, submitLabel = "发布帖子", cancelHref = "/" }: PostEditorFormProps) {
+export function PostEditorForm({ userId, draftId, action, initial, submitLabel = "发布帖子", cancelHref = "/", annotationEditing }: PostEditorFormProps) {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const [title, setTitle] = useState(initial?.title ?? "");
@@ -66,6 +67,7 @@ export function PostEditorForm({ userId, draftId, action, initial, submitLabel =
   const [confirmChoice, setConfirmChoice] = useState<"online" | "overwrite" | null>(null);
   const [saveBlocked, setSaveBlocked] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [confirmedAnnotationDeletionIds, setConfirmedAnnotationDeletionIds] = useState<string[]>([]);
   const [state, formAction, pending] = useActionState(async (previous: PostActionState, formData: FormData) => {
     const result = await action(previous, formData);
     if (result.conflict) {
@@ -115,7 +117,7 @@ export function PostEditorForm({ userId, draftId, action, initial, submitLabel =
     if (!hydrated || !dirty || state.postId) return;
     const statusTimer = window.setTimeout(() => setDraftStatus("saving"), 0);
     const timer = window.setTimeout(() => {
-      const draft: LocalDraft = { title, markdown, tags, attachmentIds, attachments, baseRevisionId, updatedAt: Date.now() };
+      const draft: LocalDraft = { title, markdown, tags, attachmentIds, attachments, baseRevisionId, confirmedAnnotationDeletionIds, updatedAt: Date.now() };
       void saveDraft(userId, draftId, draft)
         .then(() => setDraftStatus("saved"))
         .catch(() => setDraftStatus("failed"));
@@ -124,7 +126,7 @@ export function PostEditorForm({ userId, draftId, action, initial, submitLabel =
       window.clearTimeout(statusTimer);
       window.clearTimeout(timer);
     };
-  }, [attachmentIds, attachments, baseRevisionId, dirty, draftId, hydrated, markdown, state.postId, tags, title, userId]);
+  }, [attachmentIds, attachments, baseRevisionId, confirmedAnnotationDeletionIds, dirty, draftId, hydrated, markdown, state.postId, tags, title, userId]);
 
   useEffect(() => {
     if (!state.postId) return;
@@ -138,6 +140,7 @@ export function PostEditorForm({ userId, draftId, action, initial, submitLabel =
     setAttachmentIds(draft.attachmentIds);
     if (draft.attachments) setAttachments(draft.attachments);
     setBaseRevisionId(draft.baseRevisionId ?? initial?.baseRevisionId ?? null);
+    setConfirmedAnnotationDeletionIds(draft.confirmedAnnotationDeletionIds ?? []);
     setEditorResetRevision((current) => current + 1);
     setDirty(true);
   }
@@ -180,6 +183,7 @@ export function PostEditorForm({ userId, draftId, action, initial, submitLabel =
     })));
     setBaseRevisionId(next.baseRevisionId);
     setOverwriteBaseRevisionId(null);
+    setConfirmedAnnotationDeletionIds([]);
     setConflictOpen(false);
     setConfirmChoice(null);
     setSaveBlocked(false);
@@ -214,6 +218,7 @@ export function PostEditorForm({ userId, draftId, action, initial, submitLabel =
         <input type="hidden" name="attachmentIds" value={JSON.stringify(attachmentIds)} />
         <input type="hidden" name="baseRevisionId" value={baseRevisionId ?? ""} />
         <input type="hidden" name="overwriteBaseRevisionId" value={overwriteBaseRevisionId ?? ""} />
+        <input type="hidden" name="confirmedAnnotationDeletionIds" value={JSON.stringify(confirmedAnnotationDeletionIds)} />
         <div className="editor-topline">
           <span className={`draft-status draft-status--${draftStatus}`} role="status">
             {draftStatus === "loading" && "检查本地修改…"}
@@ -243,7 +248,11 @@ export function PostEditorForm({ userId, draftId, action, initial, submitLabel =
           setDirty(true);
         }} maxLength={120} placeholder="给这篇文字起一个标题" aria-invalid={Boolean(state.error && !conflict)} />
         <label className="field-label">正文</label>
-        <MarkdownEditor key={editorKey} initialMarkdown={markdown} resetRevision={editorResetRevision} onMarkdownChange={(value) => {
+        <MarkdownEditor key={editorKey} initialMarkdown={markdown} resetRevision={editorResetRevision} annotationEditing={annotationEditing ? {
+          ...annotationEditing,
+          initialConfirmedAnnotationDeletionIds: confirmedAnnotationDeletionIds,
+          onConfirmedAnnotationDeletionIdsChange: setConfirmedAnnotationDeletionIds,
+        } : undefined} onMarkdownChange={(value) => {
           setMarkdown(value);
           setDirty(true);
         }} />

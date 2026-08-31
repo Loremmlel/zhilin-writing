@@ -3,7 +3,7 @@ import test, { afterEach, beforeEach } from "node:test";
 import "fake-indexeddb/auto";
 
 import { draftKey } from "../lib/domain/rules.ts";
-import { loadDraft, type LocalDraft } from "../lib/drafts/indexed-db.ts";
+import { loadDraft, saveDraft, type LocalDraft } from "../lib/drafts/indexed-db.ts";
 import {
   IMPORT_PREVIEW_STORE_NAME,
   LOCAL_DB_NAME,
@@ -43,6 +43,21 @@ test("reports a blocked upgrade and succeeds after the old connection closes", a
   const upgraded = await openLocalDatabase();
   assert.equal(upgraded.version, LOCAL_DB_VERSION);
   upgraded.close();
+});
+
+test("normalizes and persists confirmed annotation removals with the same local draft", async () => {
+  const draft: LocalDraft = {
+    title: "Annotated draft",
+    markdown: "正文",
+    tags: "tag",
+    attachmentIds: [],
+    baseRevisionId: "revision-1",
+    confirmedAnnotationDeletionIds: ["b", "a", "b", "", "a"],
+    updatedAt: 2,
+  };
+
+  await saveDraft("user-1", "post-1", draft);
+  assert.deepEqual((await loadDraft("user-1", "post-1"))?.confirmedAnnotationDeletionIds, ["a", "b"]);
 });
 
 function openVersionOneDatabase(): Promise<IDBDatabase> {
