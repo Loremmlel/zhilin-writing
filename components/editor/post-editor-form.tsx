@@ -6,12 +6,13 @@ import { useActionState, useEffect, useRef, useState } from "react";
 
 import { ModalDialog } from "@/components/modal-dialog";
 import { loadDraft, removeDraft, saveDraft, type LocalDraft } from "@/lib/drafts/indexed-db";
-import { chooseConflictResolution, hasRecoverablePublishedDraft } from "@/lib/editor/conflict";
+import { availableConflictChoices, chooseConflictResolution, hasRecoverablePublishedDraft } from "@/lib/editor/conflict";
 import type { EditConflictSnapshot } from "@/lib/revisions/service";
 import { MarkdownEditor, type UploadedAsset } from "./markdown-editor";
 
 export type PostActionState = {
   error?: string;
+  code?: "ANNOTATION_INTEGRITY_ERROR";
   postId?: string;
   currentRevisionId?: string;
   conflict?: EditConflictSnapshot;
@@ -188,13 +189,15 @@ export function PostEditorForm({ userId, draftId, action, initial, submitLabel =
   }
 
   function useMineAndOverwrite() {
-    if (!conflict) return;
+    if (!conflict || !availableConflictChoices(conflict).includes("overwrite")) return;
     const next = chooseConflictResolution("overwrite", localEditorState(), {
       revisionId: conflict.revisionId,
       title: conflict.title,
       markdown: conflict.markdown,
       tags: conflict.tags.join("，"),
       attachmentIds: conflict.attachments.map((asset) => asset.id),
+      forceOverwriteAllowed: conflict.forceOverwriteAllowed,
+      annotationStateChanged: conflict.annotationStateChanged,
     });
     setBaseRevisionId(next.baseRevisionId);
     setOverwriteBaseRevisionId(next.overwriteBaseRevisionId);
@@ -309,6 +312,10 @@ export function PostEditorForm({ userId, draftId, action, initial, submitLabel =
             <section><span className="version-label">当前线上版本 · v{conflict.revisionNumber}</span><h3>{conflict.title}</h3><pre>{conflict.markdown}</pre></section>
             <section><span className="version-label">我的版本</span><h3>{title || "（无标题）"}</h3><pre>{markdown}</pre></section>
           </div>
+          {conflict.annotationStateChanged && !conflict.forceOverwriteAllowed && <div className="dialog-confirm-copy" role="status">
+            <strong>线上批注状态已经变化，不能直接覆盖</strong>
+            <p>为避免抹掉编辑期间新增、删除或变化的批注，请保留本地修改，载入线上最新版后再重新应用。</p>
+          </div>}
           <div className="dialog-actions dialog-actions--spread">
             <button type="button" className="button button--ghost" onClick={() => {
               setConflictOpen(false);
@@ -316,7 +323,7 @@ export function PostEditorForm({ userId, draftId, action, initial, submitLabel =
             }}>返回编辑手动处理</button>
             <div>
               <button type="button" className="button button--ghost" onClick={() => setConfirmChoice("online")}>使用线上版本</button>
-              <button type="button" className="button button--danger" onClick={() => setConfirmChoice("overwrite")}>使用我的版本覆盖</button>
+              {availableConflictChoices(conflict).includes("overwrite") && <button type="button" className="button button--danger" onClick={() => setConfirmChoice("overwrite")}>使用我的版本覆盖</button>}
             </div>
           </div>
         </>}
@@ -324,7 +331,7 @@ export function PostEditorForm({ userId, draftId, action, initial, submitLabel =
           <div className="dialog-confirm-copy"><strong>放弃本地修改并载入线上 v{conflict.revisionNumber}？</strong><p>你的标题、正文、标签和附件选择将替换为当前线上内容。</p></div>
           <div className="dialog-actions"><button type="button" className="button button--ghost" onClick={() => setConfirmChoice(null)}>返回比较</button><button type="button" className="button button--danger" onClick={useOnlineVersion}>放弃本地修改</button></div>
         </>}
-        {conflict && confirmChoice === "overwrite" && <>
+        {conflict && confirmChoice === "overwrite" && availableConflictChoices(conflict).includes("overwrite") && <>
           <div className="dialog-confirm-copy"><strong>用我的内容覆盖线上 v{conflict.revisionNumber}？</strong><p>不会删除线上版本；系统会基于它创建一个新的 revision。</p></div>
           <div className="dialog-actions"><button type="button" className="button button--ghost" onClick={() => setConfirmChoice(null)}>返回比较</button><button type="button" className="button button--danger" onClick={useMineAndOverwrite}>确认覆盖并保存</button></div>
         </>}

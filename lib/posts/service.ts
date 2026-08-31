@@ -2,16 +2,18 @@ import type { BatchItem } from "drizzle-orm/batch";
 import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 
 import { getDb } from "@/db";
-import { activityEvents, assets, notifications, postAssetRefs, postRevisions, posts, postTags, replies, revisionAssetRefs, tags } from "@/db/schema";
+import { activityEvents, annotations, assets, notifications, postAnnotationAnchors, postAssetRefs, postRevisions, posts, postTags, replies, revisionAnnotationStates, revisionAssetRefs, revisionImportedReplyStates, tags } from "@/db/schema";
 import { findReply, findReplyBySubmissionKey, getPost } from "@/db/queries";
 import { activityEventId, notificationId, resolveReplyRecipient, validateSubmissionKey } from "@/lib/activity/policy";
 import { assertOrdinaryPostMarkdown, ANNOTATED_POST_EDIT_MESSAGE } from "@/lib/annotations/policy";
-import { postHasCurrentAnnotationAnchors } from "@/lib/annotations/queries";
+import { getCurrentAnnotationSaveStates, postHasCurrentAnnotationAnchors } from "@/lib/annotations/queries";
+import { AnnotationIntegrityError, planAnnotatedPostSave } from "@/lib/annotations/save-plan";
+import { validateCanonicalAnnotationDocument } from "@/lib/annotations/invariants";
 import { canEditPost, normalizeReplyTarget, validatePostInput, validateReplyMarkdown } from "@/lib/domain/rules";
 import { markdownToPlainText } from "@/lib/markdown/render";
 import { buildAssetSnapshot, resolveSaveBase, type AssetSnapshotRef } from "@/lib/revisions/policy";
 import { planContentSave } from "@/lib/revisions/save-plan";
-import { EditConflictError, getConflictSnapshot, getCurrentAssetRefs } from "@/lib/revisions/service";
+import { EditConflictError, getConflictSnapshot, getCurrentAssetRefs, getCurrentImportedReplySaveStates } from "@/lib/revisions/service";
 import { commitPostSave, planPostTags } from "./save-transaction";
 
 type SavePostInput = {
@@ -21,6 +23,7 @@ type SavePostInput = {
   attachmentIds?: string[];
   baseRevisionId?: string;
   overwriteBaseRevisionId?: string;
+  confirmedAnnotationDeletionIds?: string[];
 };
 
 async function buildPostTagOperations(postId: string, names: string[], now: Date): Promise<BatchItem<"sqlite">[]> {
@@ -128,18 +131,42 @@ export async function updatePost(postId: string, currentUserId: string, input: S
   if (!existing.post.currentRevisionId) throw new Error("帖子当前版本不存在");
   if (!input.baseRevisionId) throw new Error("缺少编辑基础版本，请刷新后重试");
   const base = resolveSaveBase(existing.post.currentRevisionId, input.baseRevisionId, input.overwriteBaseRevisionId);
-  if (!base.ok) throw new EditConflictError(await getConflictSnapshot(postId, base.currentRevisionId));
+  if (!base.ok) throw new EditConflictError(await getConflictSnapshot(postId, base.currentRevisionId, input.baseRevisionId));
+  if (input.overwriteBaseRevisionId) {
+    const conflict = await getConflictSnapshot(postId, existing.post.currentRevisionId, input.baseRevisionId);
+    if (!conflict.forceOverwriteAllowed) throw new EditConflictError(conflict);
+  }
   const clean = validatePostInput(input);
-  assertOrdinaryPostMarkdown(clean.markdown);
   const db = getDb();
   const currentRevision = (await db.select().from(postRevisions).where(eq(postRevisions.id, existing.post.currentRevisionId)).limit(1))[0];
   if (!currentRevision) throw new Error("帖子当前版本不存在");
-  const [currentAssetRefs, nextAssetRefs] = await Promise.all([
+  const [currentAssetRefs, nextAssetRefs, currentAnnotationRows, currentImportedReplyStates] = await Promise.all([
     getCurrentAssetRefs(postId),
     Promise.resolve(buildAssetSnapshot(clean.markdown, input.attachmentIds ?? [])),
+    getCurrentAnnotationSaveStates(postId),
+    getCurrentImportedReplySaveStates(postId),
   ]);
   await validateSnapshotAssets(currentUserId, nextAssetRefs);
   const now = new Date();
+  if (currentAnnotationRows.some((state) => state.annotationPostId !== postId)) throw new AnnotationIntegrityError();
+  const currentStates = currentAnnotationRows.map((state) => ({
+    annotationId: state.annotationId,
+    deletedAt: state.deletedAt,
+    deletedByUserId: state.deletedByUserId,
+    hiddenAt: state.hiddenAt,
+    hiddenByUserId: state.hiddenByUserId,
+  }));
+  const currentAnchorIds = currentStates.map((state) => state.annotationId);
+  if (!validateCanonicalAnnotationDocument(existing.post.markdown, currentAnchorIds).ok) throw new AnnotationIntegrityError();
+  const annotationPlan = planAnnotatedPostSave({
+    baseIds: currentAnchorIds,
+    submittedMarkdown: clean.markdown,
+    confirmedDeletionIds: input.confirmedAnnotationDeletionIds ?? [],
+    currentStates,
+    currentImportedReplyStates,
+    actorUserId: currentUserId,
+    at: now,
+  });
   const savePlan = planContentSave({
     revisionId: currentRevision.id,
     revisionNumber: currentRevision.revisionNumber,
@@ -163,13 +190,14 @@ export async function updatePost(postId: string, currentUserId: string, input: S
       await commitPostSave((items) => db.batch(asBatch(items)), {
         guard: revisionGuard,
         content: [],
+        annotations: [],
         assets: [],
         tags: tagOperations,
       });
     } catch (error) {
       const latest = (await db.select({ currentRevisionId: posts.currentRevisionId }).from(posts).where(eq(posts.id, postId)).limit(1))[0];
       if (latest?.currentRevisionId && latest.currentRevisionId !== base.acceptedBaseRevisionId) {
-        throw new EditConflictError(await getConflictSnapshot(postId, latest.currentRevisionId));
+        throw new EditConflictError(await getConflictSnapshot(postId, latest.currentRevisionId, base.acceptedBaseRevisionId));
       }
       throw error;
     }
@@ -208,18 +236,38 @@ export async function updatePost(postId: string, currentUserId: string, input: S
       expiresAt: null,
     }).where(and(eq(assets.id, ref.assetId), eq(assets.ownerId, currentUserId)))),
   ];
+  const annotationOperations: BatchItem<"sqlite">[] = [
+    ...annotationPlan.delta.removed.map((annotationId) => db.delete(postAnnotationAnchors).where(and(
+      eq(postAnnotationAnchors.postId, postId),
+      eq(postAnnotationAnchors.annotationId, annotationId),
+    ))),
+    ...annotationPlan.retirements.map(({ annotationId, patch }) => db.update(annotations).set(patch).where(and(
+      eq(annotations.id, annotationId),
+      eq(annotations.postId, postId),
+    ))),
+    ...annotationPlan.retainedStates.map((state) => db.insert(revisionAnnotationStates).values({ revisionId, ...state })),
+    ...annotationPlan.retainedImportedReplyStates.map((state) => db.insert(revisionImportedReplyStates).values({
+      revisionId,
+      annotationReplyId: state.annotationReplyId,
+      deletedAt: state.deletedAt,
+      deletedByUserId: state.deletedByUserId,
+      hiddenAt: state.hiddenAt,
+      hiddenByUserId: state.hiddenByUserId,
+    })),
+  ];
 
   try {
     await commitPostSave((items) => db.batch(asBatch(items)), {
       guard: revisionGuard,
       content: contentOperations,
+      annotations: annotationOperations,
       assets: assetOperations,
       tags: tagOperations,
     });
   } catch (error) {
     const latest = (await db.select({ currentRevisionId: posts.currentRevisionId }).from(posts).where(eq(posts.id, postId)).limit(1))[0];
     if (latest?.currentRevisionId && latest.currentRevisionId !== base.acceptedBaseRevisionId) {
-      throw new EditConflictError(await getConflictSnapshot(postId, latest.currentRevisionId));
+      throw new EditConflictError(await getConflictSnapshot(postId, latest.currentRevisionId, base.acceptedBaseRevisionId));
     }
     throw error;
   }

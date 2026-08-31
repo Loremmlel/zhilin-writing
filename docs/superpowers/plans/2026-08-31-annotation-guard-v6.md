@@ -210,7 +210,7 @@ Run `git diff --check`, commit as `feat: model annotation anchor retirement`, an
 - Extends `EditConflictSnapshot` with `annotationStateChanged: boolean` and `forceOverwriteAllowed: boolean`.
 - Preserves the service-level V5 lock behind a temporary internal feature gate until Task 10.
 
-- [ ] **Step 1: Write failing save-delta and transaction tests**
+- [x] **Step 1: Write failing save-delta and transaction tests**
 
 Cover retained internal edits, confirmed removal, unconfirmed removal, unknown submitted IDs, stale base revision, annotation-state transition during the conflict interval, metadata-only save, D1 batch failure, and unchanged `lastActivityAt`/`originalSelectedText`.
 
@@ -224,13 +224,13 @@ test("rejects an anchor loss the client did not confirm", () => {
 });
 ```
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 Run: `npm run test:unit -- tests/annotation-save-transaction.test.ts tests/post-save-transaction.test.ts tests/editor-conflict.test.ts`
 
 Expected: FAIL on missing annotated-save API and conflict fields.
 
-- [ ] **Step 3: Implement the authoritative save planner**
+- [x] **Step 3: Implement the authoritative save planner**
 
 Before creating batch operations:
 
@@ -242,15 +242,15 @@ Before creating batch operations:
 6. Detect annotation transitions since the base revision and set force-overwrite policy.
 7. Preserve `original_selected_text` for retained anchors.
 
-- [ ] **Step 4: Build one guarded D1 batch**
+- [x] **Step 4: Build one guarded D1 batch**
 
 The batch order must be: CAS sentinel → new post revision → post Markdown/title/search/current revision/edited timestamp → current anchor deletes/inserts → retirement patches → revision Annotation/imported-reply snapshots → asset refs → tags. Use the existing save-transaction abstraction. Any guarded row miss or post-batch revision mismatch returns conflict without claiming success.
 
-- [ ] **Step 5: Wire action input and safe conflict UI data**
+- [x] **Step 5: Wire action input and safe conflict UI data**
 
 Parse `confirmedAnnotationDeletionIds` as a JSON string array, normalize/dedupe it, and return typed integrity/conflict states. Never expose stack traces. When `forceOverwriteAllowed` is false, omit the overwrite action and explain that annotation state changed while preserving the local draft.
 
-- [ ] **Step 6: Run GREEN and focused regression**
+- [x] **Step 6: Run GREEN and focused regression**
 
 Run:
 
@@ -260,7 +260,7 @@ npm run test:unit -- tests/annotation-save-transaction.test.ts tests/post-save-t
 
 Expected: all pass while the public edit page remains locked for annotated posts.
 
-- [ ] **Step 7: Commit and push**
+- [x] **Step 7: Commit and push**
 
 Run `git diff --check`, commit as `feat: save annotated posts atomically`, and push the V6 branch.
 

@@ -4,6 +4,10 @@ import test from "node:test";
 import { planAnnotationRestore } from "../lib/revisions/policy.ts";
 
 const ROOT_ID = "ann_00000000-0000-4000-8000-000000000001";
+const restoreAudit = {
+  actorUserId: "administrator",
+  at: new Date("2026-08-31T10:00:00.000Z"),
+};
 
 test("restoring a DOCX revision restores every imported reply state without touching native replies", () => {
   const sourceReplyStates = [
@@ -31,6 +35,7 @@ test("restoring a DOCX revision restores every imported reply state without touc
   }));
 
   const result = planAnnotationRestore({
+    ...restoreAudit,
     currentMarkdown: `:annotation[正文]{#${ROOT_ID}}`,
     currentAnchorIds: [ROOT_ID],
     currentStates: [activeRoot()],
@@ -61,6 +66,7 @@ test("duplicate imported reply snapshot rows are rejected instead of being synth
   };
 
   assert.throws(() => planAnnotationRestore({
+    ...restoreAudit,
     currentMarkdown: `:annotation[正文]{#${ROOT_ID}}`,
     currentAnchorIds: [ROOT_ID],
     currentStates: [activeRoot()],

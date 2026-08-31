@@ -118,9 +118,14 @@ export function scanCanonicalAnnotationAnchors(markdown: string): CanonicalAnnot
   return scan(markdown).anchors;
 }
 
-export function validateCanonicalAnnotationDocument(markdown: string, knownIds: Iterable<string>): AnnotationDocumentValidation {
+export function validateCanonicalAnnotationDocument(
+  markdown: string,
+  knownIds: Iterable<string>,
+  requiredIds: Iterable<string> = knownIds,
+): AnnotationDocumentValidation {
   const { anchors, issues, seenIds } = scan(markdown);
   const known = new Set(knownIds);
+  const required = new Set(requiredIds);
   const counts = new Map<string, number>();
   for (const id of seenIds) counts.set(id, (counts.get(id) ?? 0) + 1);
 
@@ -128,7 +133,7 @@ export function validateCanonicalAnnotationDocument(markdown: string, knownIds: 
     if (count > 1) issues.push({ code: "DUPLICATE", annotationId: id });
     if (!known.has(id)) issues.push({ code: "UNKNOWN_ID", annotationId: id });
   }
-  for (const id of known) {
+  for (const id of required) {
     if (!counts.has(id)) issues.push({ code: "MISSING_ACTIVE_ID", annotationId: id });
   }
 

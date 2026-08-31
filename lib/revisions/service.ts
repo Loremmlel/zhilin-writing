@@ -1,5 +1,5 @@
 import type { BatchItem } from "drizzle-orm/batch";
-import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, isNull, lte, sql } from "drizzle-orm";
 
 import { getDb } from "@/db";
 import {
@@ -19,6 +19,7 @@ import {
   users,
 } from "@/db/schema";
 import { markdownToPlainText } from "@/lib/markdown/render";
+import { hasAnnotationTransition } from "@/lib/annotations/save-plan";
 import { planAnnotationRestore, type AnnotationStateSnapshot, type AssetSnapshotRef, type ImportedReplyStateSnapshot } from "./policy";
 import { planRestore } from "./save-plan";
 
@@ -38,6 +39,8 @@ export type EditConflictSnapshot = {
   tags: string[];
   assetRefs: AssetSnapshotRef[];
   attachments: Array<{ id: string; filename: string; mimeType: string; byteSize: number }>;
+  annotationStateChanged: boolean;
+  forceOverwriteAllowed: boolean;
 };
 
 export class EditConflictError extends Error {
@@ -102,9 +105,25 @@ export async function getCurrentImportedReplyStates(postId: string): Promise<Imp
       hiddenAt: annotationReplies.hiddenAt,
       hiddenByUserId: annotationReplies.hiddenByUserId,
     })
-    .from(annotationReplies)
-    .innerJoin(annotations, eq(annotationReplies.annotationId, annotations.id))
-    .where(and(eq(annotations.postId, postId), eq(annotationReplies.sourceType, "DOCX_IMPORT")))
+    .from(postAnnotationAnchors)
+    .innerJoin(annotationReplies, eq(postAnnotationAnchors.annotationId, annotationReplies.annotationId))
+    .where(and(eq(postAnnotationAnchors.postId, postId), eq(annotationReplies.sourceType, "DOCX_IMPORT")))
+    .orderBy(asc(annotationReplies.id));
+}
+
+export async function getCurrentImportedReplySaveStates(postId: string) {
+  return getDb()
+    .select({
+      annotationId: annotationReplies.annotationId,
+      annotationReplyId: annotationReplies.id,
+      deletedAt: annotationReplies.deletedAt,
+      deletedByUserId: annotationReplies.deletedByUserId,
+      hiddenAt: annotationReplies.hiddenAt,
+      hiddenByUserId: annotationReplies.hiddenByUserId,
+    })
+    .from(postAnnotationAnchors)
+    .innerJoin(annotationReplies, eq(postAnnotationAnchors.annotationId, annotationReplies.annotationId))
+    .where(and(eq(postAnnotationAnchors.postId, postId), eq(annotationReplies.sourceType, "DOCX_IMPORT")))
     .orderBy(asc(annotationReplies.id));
 }
 
@@ -126,15 +145,73 @@ export async function getRevisionSnapshot(postId: string, revisionId: string): P
   return { revision, assetRefs, assets: rows, annotationStates, importedReplyStates };
 }
 
-export async function getConflictSnapshot(postId: string, revisionId: string): Promise<EditConflictSnapshot> {
+export async function hasAnnotationTransitionBetweenRevisions(postId: string, baseRevisionId: string, currentRevisionId: string): Promise<boolean> {
+  const db = getDb();
+  const bounds = await db.select({
+    id: postRevisions.id,
+    revisionNumber: postRevisions.revisionNumber,
+  }).from(postRevisions).where(and(
+    eq(postRevisions.postId, postId),
+    inArray(postRevisions.id, [baseRevisionId, currentRevisionId]),
+  ));
+  const base = bounds.find((revision) => revision.id === baseRevisionId);
+  const current = bounds.find((revision) => revision.id === currentRevisionId);
+  if (!base || !current || base.revisionNumber > current.revisionNumber) return true;
+  const [revisions, states] = await Promise.all([
+    db.select({
+      id: postRevisions.id,
+      markdown: postRevisions.markdown,
+      revisionNumber: postRevisions.revisionNumber,
+    }).from(postRevisions).where(and(
+      eq(postRevisions.postId, postId),
+      gte(postRevisions.revisionNumber, base.revisionNumber),
+      lte(postRevisions.revisionNumber, current.revisionNumber),
+    )).orderBy(asc(postRevisions.revisionNumber)),
+    db.select({
+      revisionId: revisionAnnotationStates.revisionId,
+      annotationId: revisionAnnotationStates.annotationId,
+      deletedAt: revisionAnnotationStates.deletedAt,
+      deletedByUserId: revisionAnnotationStates.deletedByUserId,
+      hiddenAt: revisionAnnotationStates.hiddenAt,
+      hiddenByUserId: revisionAnnotationStates.hiddenByUserId,
+    }).from(revisionAnnotationStates)
+      .innerJoin(postRevisions, eq(revisionAnnotationStates.revisionId, postRevisions.id))
+      .where(and(
+        eq(postRevisions.postId, postId),
+        gte(postRevisions.revisionNumber, base.revisionNumber),
+        lte(postRevisions.revisionNumber, current.revisionNumber),
+      )),
+  ]);
+  const statesByRevision = new Map<string, typeof states>();
+  for (const state of states) {
+    const list = statesByRevision.get(state.revisionId) ?? [];
+    list.push(state);
+    statesByRevision.set(state.revisionId, list);
+  }
+  return hasAnnotationTransition(revisions.map((revision) => ({
+    markdown: revision.markdown,
+    states: (statesByRevision.get(revision.id) ?? []).map((state) => ({
+      annotationId: state.annotationId,
+      deletedAt: state.deletedAt,
+      deletedByUserId: state.deletedByUserId,
+      hiddenAt: state.hiddenAt,
+      hiddenByUserId: state.hiddenByUserId,
+    })),
+  })));
+}
+
+export async function getConflictSnapshot(postId: string, revisionId: string, baseRevisionId = revisionId): Promise<EditConflictSnapshot> {
   const snapshot = await getRevisionSnapshot(postId, revisionId);
   if (!snapshot) throw new Error("当前帖子版本不存在");
-  const currentTags = await getDb()
-    .select({ name: tags.name })
-    .from(postTags)
-    .innerJoin(tags, eq(postTags.tagId, tags.id))
-    .where(eq(postTags.postId, postId))
-    .orderBy(asc(tags.name));
+  const [currentTags, annotationStateChanged] = await Promise.all([
+    getDb()
+      .select({ name: tags.name })
+      .from(postTags)
+      .innerJoin(tags, eq(postTags.tagId, tags.id))
+      .where(eq(postTags.postId, postId))
+      .orderBy(asc(tags.name)),
+    hasAnnotationTransitionBetweenRevisions(postId, baseRevisionId, revisionId),
+  ]);
   const attachmentIds = new Set(snapshot.assetRefs.filter((ref) => ref.usage === "attachment").map((ref) => ref.assetId));
   return {
     revisionId: snapshot.revision.id,
@@ -146,6 +223,8 @@ export async function getConflictSnapshot(postId: string, revisionId: string): P
     attachments: snapshot.assets
       .filter((asset) => attachmentIds.has(asset.id))
       .map((asset) => ({ id: asset.id, filename: asset.filename, mimeType: asset.mimeType, byteSize: asset.byteSize })),
+    annotationStateChanged,
+    forceOverwriteAllowed: !annotationStateChanged,
   };
 }
 

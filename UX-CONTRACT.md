@@ -78,7 +78,8 @@
 | Publish | 发布帖子 | disabled submit | new post | post page | editor retains draft/error | route heading | V1 spec |
 | Edit | 保存修改 | disabled submit | post page | edited time | IndexedDB + conflict UI | post heading | V3 spec |
 | Use online | conflict choice + confirm | local state replacement | editor | conflict clears | confirmation can cancel | editor | V3 spec |
-| Overwrite | conflict choice + confirm | disabled submit | post page | new revision | refreshed conflict if race repeats | post heading | V3 spec |
+| Overwrite | conflict choice + confirm；仅基础区间无批注变化时提供 | disabled submit | post page | new revision | refreshed conflict if race repeats | post heading | V3 + V6 spec |
+| Annotation-change conflict | conflict dialog | local draft remains available | current editor | explains why overwrite is unavailable | load latest and manually reapply | safe/manual choice | V6 spec |
 | Restore | 恢复此版本 + confirm | form pending | new revision preview | status notice | history remains unchanged | page heading | V3 spec |
 | Delete post | 删除帖子 + confirm | disabled confirm | same URL with controlled placeholder | body removed; surviving discussion retained | retry is a no-op | refreshed article | V4 spec |
 | Delete reply | 删除这条回复 + confirm | disabled confirm | same discussion | reply disappears or becomes a placeholder | retry is a no-op | refreshed thread | V4 spec |
@@ -124,7 +125,7 @@
 - Idempotency: replies use submission keys; lifecycle retries are no-ops; audit transitions use dedupe keys; revision restore uses a per-confirmation operation ID in addition to revision uniqueness.
 - Auto-save/draft recovery: 700ms IndexedDB debounce, explicit continue/discard prompt for published posts.
 - Offline behavior: drafts may continue locally; server writes require connection.
-- Version conflict: exact base revision check; no automatic merge; online/manual/explicit overwrite choices.
+- Version conflict: exact base revision check; no automatic merge。普通正文冲突提供 online/manual/explicit overwrite；若基础版本到当前版本之间发生任何 Annotation membership、anchor text 或 lifecycle 变化，服务端与界面都禁用 force overwrite，IndexedDB 本地草稿继续保留。
 - Stale-request handling: component effects use live flags/cleanup; file upload errors remain local.
 - Mutation failure: editor state and draft remain intact.
 - DOCX parsing runs in a browser Worker with a 20-second hard timeout. Import Preview persists in IndexedDB for 24 hours without the original binary; successful commit deletes the Preview record.
@@ -150,7 +151,7 @@
 - Deleted/hidden Markdown and historical-only assets are returned only through administrator-checked paths; public detail queries return placeholders with nullable content fields.
 - Ordinary server actions enforce ownership for delete. Hide, unhide, restore, raw lifecycle lists, and audit history require `requireAdministrator()`.
 - Current annotation membership is the `post_annotation_anchors` relation, not a nullable row heuristic. Notification/activity readers redact root or reply Markdown unless the target is visible and its root anchor belongs to the current revision.
-- V5 temporarily blocks ordinary正文 editing whenever current anchors exist; V6 may lift the lock only by adding AnnotationGuard at the ProseMirror transaction boundary.
+- V5 temporary正文 edit lock remains until the V6 AnnotationGuard transaction boundary、server annotation delta validation and regression gate all pass；只有最终安全门通过后才能解除。
 - Imported Annotation/Reply is immutable and always identifies its Word source. Attribution grants no ownership or lifecycle permission; the Post author may remove an imported thread without cascading to later native replies.
 - Clipboard copy is not part of V3.
 

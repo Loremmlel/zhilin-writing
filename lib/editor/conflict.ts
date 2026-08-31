@@ -12,7 +12,19 @@ type OnlineConflict = {
   markdown: string;
   tags: string;
   attachmentIds: string[];
+  forceOverwriteAllowed?: boolean;
+  annotationStateChanged?: boolean;
 };
+
+export type ConflictChoice = "online" | "manual" | "overwrite";
+
+export function availableConflictChoices(
+  online: Pick<OnlineConflict, "revisionId" | "forceOverwriteAllowed" | "annotationStateChanged">,
+): ConflictChoice[] {
+  return online.forceOverwriteAllowed === false
+    ? ["online", "manual"]
+    : ["online", "manual", "overwrite"];
+}
 
 function stableIds(ids: string[]): string {
   return [...new Set(ids)].sort().join("\n");
@@ -27,7 +39,7 @@ export function hasRecoverablePublishedDraft(local: EditorDraft, server: EditorD
 }
 
 export function chooseConflictResolution(
-  choice: "online" | "manual" | "overwrite",
+  choice: ConflictChoice,
   local: EditorDraft,
   online: OnlineConflict,
 ) {
@@ -44,6 +56,7 @@ export function chooseConflictResolution(
     };
   }
   if (choice === "overwrite") {
+    if (online.forceOverwriteAllowed === false) throw new Error("线上批注状态已经变化，不能使用旧正文覆盖");
     return {
       mode: "overwrite" as const,
       ...local,

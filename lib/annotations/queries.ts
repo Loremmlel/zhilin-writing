@@ -39,6 +39,20 @@ export async function getCurrentAnnotationStates(postId: string) {
     .orderBy(asc(annotations.createdAt), asc(annotations.id));
 }
 
+export async function getCurrentAnnotationSaveStates(postId: string) {
+  return getDb().select({
+    annotationId: annotations.id,
+    annotationPostId: annotations.postId,
+    deletedAt: annotations.deletedAt,
+    deletedByUserId: annotations.deletedByUserId,
+    hiddenAt: annotations.hiddenAt,
+    hiddenByUserId: annotations.hiddenByUserId,
+  }).from(postAnnotationAnchors)
+    .innerJoin(annotations, eq(postAnnotationAnchors.annotationId, annotations.id))
+    .where(eq(postAnnotationAnchors.postId, postId))
+    .orderBy(asc(annotations.id));
+}
+
 export async function getCurrentAnnotationAnchorIds(postId: string): Promise<string[]> {
   const rows = await getDb().select({ annotationId: postAnnotationAnchors.annotationId }).from(postAnnotationAnchors)
     .where(eq(postAnnotationAnchors.postId, postId)).orderBy(asc(postAnnotationAnchors.annotationId));

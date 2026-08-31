@@ -32,6 +32,7 @@ export async function commitPostSave<T>(
   sections: {
     guard?: T;
     content: T[];
+    annotations?: T[];
     assets: T[];
     tags: T[];
   },
@@ -39,6 +40,7 @@ export async function commitPostSave<T>(
   const items = [
     ...(sections.guard ? [sections.guard] : []),
     ...sections.content,
+    ...(sections.annotations ?? []),
     ...sections.assets,
     ...sections.tags,
   ];

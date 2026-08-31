@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { chooseConflictResolution, hasRecoverablePublishedDraft } from "../lib/editor/conflict.ts";
+import { availableConflictChoices, chooseConflictResolution, hasRecoverablePublishedDraft } from "../lib/editor/conflict.ts";
 
 const local = {
   title: "我的标题",
@@ -61,4 +61,21 @@ test("explicit overwrite keeps local content and resubmits against the latest re
     conflictOpen: false,
     saveBlocked: false,
   });
+});
+
+test("annotation transitions prohibit force overwrite while preserving the local draft", () => {
+  assert.throws(() => chooseConflictResolution("overwrite", local, {
+    ...online,
+    forceOverwriteAllowed: false,
+    annotationStateChanged: true,
+  }), /批注状态/);
+});
+
+test("annotation transitions remove the force-overwrite choice from the conflict dialog", () => {
+  assert.deepEqual(availableConflictChoices(online), ["online", "manual", "overwrite"]);
+  assert.deepEqual(availableConflictChoices({
+    ...online,
+    forceOverwriteAllowed: false,
+    annotationStateChanged: true,
+  }), ["online", "manual"]);
 });

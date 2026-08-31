@@ -7,6 +7,7 @@ import type { ReplyActionState } from "@/components/reply-form";
 import type { LifecycleActionState } from "@/components/lifecycle/delete-content-control";
 import { requireMember } from "@/lib/auth/access";
 import { createAnnotation, createAnnotationReply, deleteAnnotationByAuthor, deleteAnnotationReplyByAuthor, removeImportedAnnotationThread } from "@/lib/annotations/service";
+import { AnnotationIntegrityError } from "@/lib/annotations/save-plan";
 import type { AnnotationSelectionDescriptor } from "@/lib/annotations/types";
 import { deletePostByAuthor, deleteReplyByAuthor } from "@/lib/lifecycle/service";
 import { createReply, updatePost } from "@/lib/posts/service";
@@ -35,6 +36,13 @@ function parseAttachmentIds(value: FormDataEntryValue | null): string[] {
   } catch { return []; }
 }
 
+function parseConfirmedAnnotationDeletionIds(value: FormDataEntryValue | null): string[] {
+  let parsed: unknown;
+  try { parsed = JSON.parse(String(value ?? "[]")); } catch { throw new Error("已确认删除的批注标识无效"); }
+  if (!Array.isArray(parsed) || parsed.some((id) => typeof id !== "string")) throw new Error("已确认删除的批注标识无效");
+  return [...new Set(parsed)];
+}
+
 export async function updatePostAction(postId: string, _state: PostActionState, formData: FormData): Promise<PostActionState> {
   try {
     const { member } = await requireMember(`/posts/${postId}/edit`);
@@ -45,6 +53,7 @@ export async function updatePostAction(postId: string, _state: PostActionState, 
       attachmentIds: parseAttachmentIds(formData.get("attachmentIds")),
       baseRevisionId: String(formData.get("baseRevisionId") ?? ""),
       overwriteBaseRevisionId: String(formData.get("overwriteBaseRevisionId") ?? "") || undefined,
+      confirmedAnnotationDeletionIds: parseConfirmedAnnotationDeletionIds(formData.get("confirmedAnnotationDeletionIds")),
     });
     revalidatePath(`/posts/${postId}`);
     return { postId, currentRevisionId: result.currentRevisionId };
@@ -52,6 +61,7 @@ export async function updatePostAction(postId: string, _state: PostActionState, 
     if (error instanceof EditConflictError) {
       return { error: error.message, conflict: error.current };
     }
+    if (error instanceof AnnotationIntegrityError) return { error: error.message, code: error.code };
     return { error: error instanceof Error ? error.message : "保存失败" };
   }
 }

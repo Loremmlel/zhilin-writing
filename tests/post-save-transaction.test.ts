@@ -16,13 +16,14 @@ test("tag bindings reuse existing rows and assign stable IDs to new tags", () =>
   assert.equal(first.newTags[0]?.normalizedName, "阅读");
 });
 
-test("one post save commits guard, content, assets, and tags in one batch", async () => {
+test("one post save commits guard content annotations assets and tags in one batch", async () => {
   const calls: string[][] = [];
   await commitPostSave(async (items) => {
     calls.push(items);
   }, {
     guard: "revision-guard",
     content: ["post", "revision"],
+    annotations: ["anchor", "retirement", "annotation-snapshot"],
     assets: ["asset-ref"],
     tags: ["tag", "post-tag"],
   });
@@ -31,6 +32,9 @@ test("one post save commits guard, content, assets, and tags in one batch", asyn
     "revision-guard",
     "post",
     "revision",
+    "anchor",
+    "retirement",
+    "annotation-snapshot",
     "asset-ref",
     "tag",
     "post-tag",
