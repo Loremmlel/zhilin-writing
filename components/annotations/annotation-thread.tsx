@@ -1,11 +1,19 @@
 "use client";
 
+import { useState, type ReactNode } from "react";
+
 import type { AnnotationReplyActionState } from "@/app/(site)/posts/[id]/actions";
 import { AnnotationReplyForm } from "@/components/annotations/annotation-reply-form";
 import { Avatar } from "@/components/avatar";
 import { DeleteContentControl, type LifecycleActionState } from "@/components/lifecycle/delete-content-control";
 import { annotationSourceMetadata, type AnnotationAuthorView } from "@/lib/annotations/identity";
 import { annotationThreadCapabilities } from "@/lib/annotations/layout";
+import {
+  annotationReplyComposerLabel,
+  buildAnnotationDiscussionItems,
+  initialAnnotationReplyComposerState,
+  nextAnnotationReplyComposerState,
+} from "@/lib/annotations/reply-composer";
 
 export type AnnotationCardView = {
   id: string; originalSelectedText: string; contentHtml: string; createdAtLabel: string;
@@ -27,6 +35,7 @@ export type AnnotationReplyAction = (annotationId: string, targetReplyId: string
 export type AnnotationDeleteAction = (annotationId: string, state: LifecycleActionState, formData: FormData) => Promise<LifecycleActionState>;
 export type AnnotationReplyDeleteAction = (replyId: string, state: LifecycleActionState, formData: FormData) => Promise<LifecycleActionState>;
 export type AnnotationRemoveImportedAction = AnnotationDeleteAction;
+type AnnotationReplyView = AnnotationCardView["replies"][number];
 
 function AnnotationIdentity({ author, createdAtLabel }: { author: AnnotationAuthorView; createdAtLabel: string }) {
   const sourceMetadata = annotationSourceMetadata(author);
@@ -65,10 +74,7 @@ type AnnotationThreadProps = {
   allowReplies?: boolean;
 });
 
-export function AnnotationThread(props: AnnotationThreadProps) {
-  const { annotation, onLocate } = props;
-  const capabilities = annotationThreadCapabilities(props.readOnly === true ? "readonly" : "interactive");
-  const allowReplies = props.readOnly === true ? false : props.allowReplies ?? true;
+function AnnotationRoot({ annotation, onLocate }: { annotation: AnnotationCardView; onLocate?: () => void }) {
   return <>
     <header className="annotation-card-header">
       <Avatar name={annotation.author.displayName} assetId={annotation.author.avatarAssetId} size="small" />
@@ -77,14 +83,94 @@ export function AnnotationThread(props: AnnotationThreadProps) {
     </header>
     <blockquote className="annotation-card-excerpt">{annotation.originalSelectedText}</blockquote>
     {annotation.lifecycle.contentVisible ? <div className="markdown-body markdown-body--annotation" dangerouslySetInnerHTML={{ __html: annotation.contentHtml }} /> : <p className="annotation-placeholder">{annotation.lifecycle.placeholder}</p>}
-    {capabilities.delete && props.deleteAction && annotation.lifecycle.contentVisible && annotation.permissions.canDelete && <DeleteContentControl action={props.deleteAction.bind(null, annotation.id)} label="删除批注" title="删除这条批注？" description={annotation.deleteDescription} />}
-    {capabilities.remove && props.removeImportedAction && annotation.lifecycle.contentVisible && annotation.permissions.canRemoveImportedThread && <DeleteContentControl action={props.removeImportedAction.bind(null, annotation.id)} label="移除导入批注" title="移除这条 Word 导入批注？" description={annotation.deleteDescription} confirmLabel="确认移除" pendingLabel="正在移除…" />}
-    {annotation.replies.length > 0 && <div className="annotation-reply-list">{annotation.replies.map((reply) => <section className="annotation-reply" key={reply.id}>
+  </>;
+}
+
+function AnnotationReplyContent({ reply, children }: { reply: AnnotationReplyView; children?: ReactNode }) {
+  return <section className="annotation-reply">
       <header><Avatar name={reply.author.displayName} assetId={reply.author.avatarAssetId} size="small" /><AnnotationReplyIdentity author={reply.author} createdAtLabel={reply.createdAtLabel} replyTo={reply.replyTo} /></header>
       {reply.lifecycle.contentVisible ? <div className="markdown-body markdown-body--annotation" dangerouslySetInnerHTML={{ __html: reply.contentHtml }} /> : <p className="annotation-placeholder">{reply.lifecycle.placeholder}</p>}
-      {capabilities.delete && props.deleteReplyAction && reply.lifecycle.contentVisible && reply.permissions.canDelete && <DeleteContentControl action={props.deleteReplyAction.bind(null, reply.id)} label="删除回复" title="删除这条批注回复？" description={reply.deleteDescription} />}
-      {capabilities.reply && props.replyAction && allowReplies && reply.lifecycle.contentVisible && annotation.lifecycle.state !== "hidden" && <details className="annotation-inline-reply"><summary>回复 {reply.author.displayName}</summary><AnnotationReplyForm action={props.replyAction.bind(null, annotation.id, reply.id)} initialSubmissionKey={reply.replySubmissionKey} label="发布回复" /></details>}
-    </section>)}</div>}
-    {capabilities.reply && props.replyAction && allowReplies && annotation.lifecycle.state !== "hidden" && <details className="annotation-inline-reply annotation-inline-reply--root"><summary>回复这条批注</summary><AnnotationReplyForm action={props.replyAction.bind(null, annotation.id, null)} initialSubmissionKey={annotation.replySubmissionKey} /></details>}
+      {children}
+    </section>;
+}
+
+function AnnotationReplyList({ replies, renderActions }: {
+  replies: AnnotationReplyView[];
+  renderActions?: (reply: AnnotationReplyView) => ReactNode;
+}) {
+  if (replies.length === 0) return null;
+  return <>
+    <div className="annotation-reply-heading"><span>已有回复</span><strong>{replies.length}</strong></div>
+    <div className="annotation-reply-list">{replies.map((reply) => <AnnotationReplyContent reply={reply} key={reply.id}>{renderActions?.(reply)}</AnnotationReplyContent>)}</div>
+  </>;
+}
+
+function InteractiveAnnotationDiscussion({ annotation, replyAction, deleteAction, deleteReplyAction, removeImportedAction, allowReplies }: {
+  annotation: AnnotationCardView;
+  replyAction: AnnotationReplyAction;
+  deleteAction: AnnotationDeleteAction;
+  deleteReplyAction: AnnotationReplyDeleteAction;
+  removeImportedAction: AnnotationRemoveImportedAction;
+  allowReplies: boolean;
+}) {
+  const capabilities = annotationThreadCapabilities("interactive");
+  const [composer, setComposer] = useState(initialAnnotationReplyComposerState);
+  const [focusRequest, setFocusRequest] = useState(0);
+  const canReply = capabilities.reply && allowReplies && annotation.lifecycle.state !== "hidden";
+  const openComposer = (event: { type: "root" } | { type: "reply"; replyId: string; displayName: string }) => {
+    setComposer((current) => nextAnnotationReplyComposerState(current, event));
+    setFocusRequest((current) => current + 1);
+  };
+  const items = buildAnnotationDiscussionItems(annotation.replies);
+  const composerItem = items.find((item) => item.kind === "composer");
+  const replyCountItem = items.find((item) => item.kind === "reply-count");
+  const replyItems = items.filter((item) => item.kind === "reply");
+
+  return <>
+    {composerItem && <div className="annotation-shared-reply">
+      {canReply && <button type="button" className="annotation-reply-cta" onClick={() => openComposer({ type: "root" })}>回复批注</button>}
+      {canReply && composer.open && <div className="annotation-shared-reply-panel">
+        <div className="annotation-shared-reply-header">
+          <strong>{annotationReplyComposerLabel(composer)}</strong>
+          <button type="button" className="text-button" onClick={() => setComposer((current) => nextAnnotationReplyComposerState(current, { type: "close" }))}>收起</button>
+        </div>
+        {composer.target && <button type="button" className="annotation-reply-root-target" onClick={() => openComposer({ type: "root" })}>改为回复批注</button>}
+        <AnnotationReplyForm
+          action={replyAction.bind(null, annotation.id, composer.target?.replyId ?? null)}
+          initialSubmissionKey={annotation.replySubmissionKey}
+          label="发送回复"
+          focusRequest={focusRequest}
+          onSuccess={() => setComposer((current) => nextAnnotationReplyComposerState(current, { type: "success" }))}
+        />
+      </div>}
+      {capabilities.delete && annotation.lifecycle.contentVisible && annotation.permissions.canDelete && <DeleteContentControl action={deleteAction.bind(null, annotation.id)} label="删除批注" title="删除这条批注？" description={annotation.deleteDescription} />}
+      {capabilities.remove && annotation.lifecycle.contentVisible && annotation.permissions.canRemoveImportedThread && <DeleteContentControl action={removeImportedAction.bind(null, annotation.id)} label="移除导入批注" title="移除这条 Word 导入批注？" description={annotation.deleteDescription} confirmLabel="确认移除" pendingLabel="正在移除…" />}
+    </div>}
+    {replyCountItem?.kind === "reply-count" && replyCountItem.count > 0 && <div className="annotation-reply-heading"><span>已有回复</span><strong>{replyCountItem.count}</strong></div>}
+    {replyItems.length > 0 && <div className="annotation-reply-list">{replyItems.map((item) => {
+      if (item.kind !== "reply") return null;
+      const reply = item.reply;
+      return <AnnotationReplyContent reply={reply} key={reply.id}>
+        {capabilities.delete && reply.lifecycle.contentVisible && reply.permissions.canDelete && <DeleteContentControl action={deleteReplyAction.bind(null, reply.id)} label="删除回复" title="删除这条批注回复？" description={reply.deleteDescription} />}
+        {canReply && reply.lifecycle.contentVisible && <button type="button" className="annotation-reply-action" onClick={() => openComposer({ type: "reply", replyId: reply.id, displayName: reply.author.displayName })}>回复</button>}
+      </AnnotationReplyContent>;
+    })}</div>}
+  </>;
+}
+
+export function AnnotationThread(props: AnnotationThreadProps) {
+  const { annotation, onLocate } = props;
+  return <>
+    <AnnotationRoot annotation={annotation} onLocate={onLocate} />
+    {props.readOnly === true
+      ? <AnnotationReplyList replies={annotation.replies} />
+      : <InteractiveAnnotationDiscussion
+        annotation={annotation}
+        replyAction={props.replyAction}
+        deleteAction={props.deleteAction}
+        deleteReplyAction={props.deleteReplyAction}
+        removeImportedAction={props.removeImportedAction}
+        allowReplies={props.allowReplies ?? true}
+      />}
   </>;
 }

@@ -1,6 +1,55 @@
 import type { AnnotationSelectionDescriptor } from "./types.ts";
 
 type TextSegment = { node: Text; from: number; to: number };
+export type SerializedDomBoundary = { path: number[]; offset: number };
+export type SerializedDomRange = { start: SerializedDomBoundary; end: SerializedDomBoundary };
+
+function serializeDomBoundary(root: Element, node: Node, offset: number): SerializedDomBoundary {
+  if (node !== root && !root.contains(node)) throw new Error("批注选区已失效，请重新选择文字");
+  const path: number[] = [];
+  let current: Node = node;
+  while (current !== root) {
+    const parent = current.parentNode;
+    if (!parent) throw new Error("批注选区已失效，请重新选择文字");
+    const index = Array.prototype.indexOf.call(parent.childNodes, current) as number;
+    if (index < 0) throw new Error("批注选区已失效，请重新选择文字");
+    path.unshift(index);
+    current = parent;
+  }
+  return { path, offset };
+}
+
+function restoreDomBoundary(root: Element, boundary: SerializedDomBoundary): { node: Node; offset: number } | null {
+  let node: Node = root;
+  for (const index of boundary.path) {
+    if (!Number.isInteger(index) || index < 0 || index >= node.childNodes.length) return null;
+    node = node.childNodes[index]!;
+  }
+  const maximumOffset = node.nodeType === 3 ? (node as Text).data.length : node.childNodes.length;
+  if (!Number.isInteger(boundary.offset) || boundary.offset < 0 || boundary.offset > maximumOffset) return null;
+  return { node, offset: boundary.offset };
+}
+
+export function serializeDomRange(root: Element, range: Range): SerializedDomRange {
+  return {
+    start: serializeDomBoundary(root, range.startContainer, range.startOffset),
+    end: serializeDomBoundary(root, range.endContainer, range.endOffset),
+  };
+}
+
+export function restoreSerializedDomRange(root: Element, serialized: SerializedDomRange): Range | null {
+  const start = restoreDomBoundary(root, serialized.start);
+  const end = restoreDomBoundary(root, serialized.end);
+  if (!start || !end) return null;
+  try {
+    const range = root.ownerDocument.createRange();
+    range.setStart(start.node, start.offset);
+    range.setEnd(end.node, end.offset);
+    return range;
+  } catch {
+    return null;
+  }
+}
 
 function directChildWithTag(element: Element, tagName: string): boolean {
   return Array.from(element.children).some((child) => child.tagName === tagName);

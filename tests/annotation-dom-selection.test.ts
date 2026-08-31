@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { Window } from "happy-dom";
 
-import { describeAnnotationDomRange } from "../lib/annotations/dom-selection.ts";
+import { describeAnnotationDomRange, restoreSerializedDomRange, serializeDomRange } from "../lib/annotations/dom-selection.ts";
 import { renderMarkdown } from "../lib/markdown/render.ts";
 
 async function bodyFor(markdown: string) {
@@ -39,4 +39,19 @@ test("readonly selection rejects cross-block, code, tables, blanks, and overlap"
   assert.throws(() => describeAnnotationDomRange(body, rangeAround(window, cell, 0, cell, 1)), /暂不支持/);
   const overlap = body.querySelector(".annotation-range")!.firstChild!;
   assert.throws(() => describeAnnotationDomRange(body, rangeAround(window, overlap, 0, overlap, 1)), /重叠/);
+});
+
+test("DOM range endpoints serialize relative to the readonly body and restore exactly", async () => {
+  const { window, body } = await bodyFor("我 **非常喜欢** 你");
+  const text = body.querySelector("strong")?.firstChild;
+  assert.ok(text);
+  const range = rangeAround(window, text, 0, text, 4);
+  const serialized = serializeDomRange(body, range);
+  assert.deepEqual(serialized, {
+    start: { path: [0, 1, 0], offset: 0 },
+    end: { path: [0, 1, 0], offset: 4 },
+  });
+  assert.equal(restoreSerializedDomRange(body, serialized)?.toString(), "非常喜欢");
+  text.parentElement?.remove();
+  assert.equal(restoreSerializedDomRange(body, serialized), null);
 });

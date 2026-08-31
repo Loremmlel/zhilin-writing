@@ -1,5 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import {
+  annotationReplyComposerLabel,
+  buildAnnotationDiscussionItems,
+  initialAnnotationReplyComposerState,
+  nextAnnotationReplyComposerState,
+  replyMarkdownAfterResult,
+} from "../lib/annotations/reply-composer.ts";
 import { planAnnotationReplyCreation } from "../lib/annotations/transaction.ts";
 
 test("annotation replies stay one visual layer and notify the actual target", () => {
@@ -28,4 +35,26 @@ test("replying to imported content creates no native recipient unless a native r
 
   const nativeReply = planAnnotationReplyCreation(importedRoot, { actorUserId: "member", targetReply: { id: "native-reply", annotationId: "a", authorId: "native-author", deletedAt: null, hiddenAt: null } }, new Date());
   assert.equal(nativeReply.notificationRecipientUserId, "native-author");
+});
+
+test("one shared composer stays before reply 1 even with 100 replies", () => {
+  const replies = Array.from({ length: 100 }, (_, index) => ({ id: `reply-${index + 1}` }));
+  const items = buildAnnotationDiscussionItems(replies);
+  assert.deepEqual(items.slice(0, 3), [
+    { kind: "composer" },
+    { kind: "reply-count", count: 100 },
+    { kind: "reply", reply: { id: "reply-1" } },
+  ]);
+  assert.deepEqual(items.at(-1), { kind: "reply", reply: { id: "reply-100" } });
+});
+
+test("reply 37 retargets the single composer and only success clears its draft", () => {
+  let state = initialAnnotationReplyComposerState();
+  state = nextAnnotationReplyComposerState(state, { type: "reply", replyId: "reply-37", displayName: "林柚子" });
+  assert.equal(state.open, true);
+  assert.equal(annotationReplyComposerLabel(state), "回复 林柚子");
+  assert.equal(replyMarkdownAfterResult("写到一半", { error: "网络失败" }), "写到一半");
+  assert.equal(replyMarkdownAfterResult("写完了", { annotationReplyId: "created" }), "");
+  state = nextAnnotationReplyComposerState(state, { type: "success" });
+  assert.equal(annotationReplyComposerLabel(state), "回复这条批注");
 });

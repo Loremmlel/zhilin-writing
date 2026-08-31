@@ -492,15 +492,15 @@ Run `git diff --check`, commit as `feat: show read-only annotations while editin
 - CSS Custom Highlight API is preferred; an overlay made from `Range.getClientRects()` is the fallback.
 - One root reply composer sits immediately after root content and before the replies list; reply-to-reply actions retarget that same composer.
 
-- [ ] **Step 1: Write failing preview-lifecycle tests**
+- [x] **Step 1: Write failing preview-lifecycle tests**
 
 Cover Bubble open, composer focus, pending, failure/retry, success, cancel, body click, invalidation, revision change, and unmount. Assert the saved selection—not a newly read DOM Selection—is authoritative for create submission.
 
-- [ ] **Step 2: Write failing reply-structure tests**
+- [x] **Step 2: Write failing reply-structure tests**
 
 Assert rendered order is root metadata → root body → Reply CTA/shared composer → reply count/list. With 100 replies, the root CTA is still before reply 1. Clicking reply 37 changes the single composer label to `回复 林柚子`; success clears only after the action succeeds, while failure preserves text.
 
-- [ ] **Step 3: Run RED**
+- [x] **Step 3: Run RED**
 
 Run:
 
@@ -510,15 +510,15 @@ npm run test:unit -- tests/annotation-selection-preview.test.ts tests/annotation
 
 Expected: FAIL on missing selection preview and current nested/bottom composers.
 
-- [ ] **Step 4: Implement stable preview decoration**
+- [x] **Step 4: Implement stable preview decoration**
 
 Capture and validate the range before showing the Bubble. Paint it independently of native focus. Keep it through composer and pending/failure. On cancel, remove the preview then restore the selection/focus only if the document/revision/range still validates. On success, remove the preview after the new Annotation range and Sidebar state are present.
 
-- [ ] **Step 5: Refactor to one thread composer**
+- [x] **Step 5: Refactor to one thread composer**
 
 Move root Reply CTA and composer above the list. Store one reply target in thread state. Per-reply buttons set that target and focus the shared composer; they never instantiate nested composers. Keep input until successful action resolution and prevent duplicate submission while pending.
 
-- [ ] **Step 6: Run GREEN and focused regression**
+- [x] **Step 6: Run GREEN and focused regression**
 
 Run:
 
@@ -528,7 +528,7 @@ npm run test:unit -- tests/annotation-selection-preview.test.ts tests/annotation
 
 Expected: all pass; failed Annotation create preserves both composer text and visible selection preview.
 
-- [ ] **Step 7: Commit and push**
+- [x] **Step 7: Commit and push**
 
 Run `git diff --check`, commit as `fix: preserve annotation context while composing`, and push the V6 branch.
 

@@ -81,6 +81,7 @@ export default async function PostPage({ params, searchParams }: { params: Promi
             </div>
           </header>
           {item.post.currentRevisionId ? <AnnotationReadingLayout
+            postId={id}
             html={postHtml}
             annotations={annotationViews}
             baseRevisionId={item.post.currentRevisionId}

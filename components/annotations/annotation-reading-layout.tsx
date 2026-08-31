@@ -11,11 +11,19 @@ import { ModalDialog } from "@/components/modal-dialog";
 import { describeAnnotationDomRange } from "@/lib/annotations/dom-selection";
 import { createAnnotationLayoutScheduler, layoutAnnotationCards } from "@/lib/annotations/layout";
 import { nextAnnotationSheetState, shouldUseAnnotationSheet } from "@/lib/annotations/responsive";
-import type { AnnotationSelectionDescriptor } from "@/lib/annotations/types";
+import {
+  captureSavedAnnotationSelection,
+  nextSelectionPreviewPhase,
+  paintAnnotationSelectionPreview,
+  validateSavedAnnotationSelection,
+  type SavedAnnotationSelection,
+  type SelectionPreviewEvent,
+  type SelectionPreviewPhase,
+} from "@/lib/annotations/selection-preview";
 
 type AnnotationAction = (state: AnnotationActionState, formData: FormData) => Promise<AnnotationActionState>;
 export type { AnnotationCardView } from "./annotation-thread";
-type FloatingSelection = { descriptor: AnnotationSelectionDescriptor; left: number; top: number };
+type SelectionContext = { saved: SavedAnnotationSelection; left: number; top: number; phase: SelectionPreviewPhase; submissionKey: string };
 type Connector = { annotationId: string; path: string };
 const nestedInteractiveSelector = "a[href], button, input, textarea, select, summary, [contenteditable='true']";
 
@@ -24,42 +32,99 @@ function isNestedInteractiveTarget(target: Element, anchor: HTMLElement): boolea
   return Boolean(interactive && interactive !== anchor);
 }
 
-function AnnotationComposer({ action, baseRevisionId, selection, submissionKey, onClose }: {
-  action: AnnotationAction; baseRevisionId: string; selection: AnnotationSelectionDescriptor; submissionKey: string; onClose: () => void;
+function AnnotationComposer({ action, savedSelection, submissionKey, validateSelection, onPhaseChange, onClose, onSuccess }: {
+  action: AnnotationAction;
+  savedSelection: SavedAnnotationSelection;
+  submissionKey: string;
+  validateSelection: () => boolean;
+  onPhaseChange: (event: SelectionPreviewEvent) => void;
+  onClose: () => void;
+  onSuccess: () => void;
 }) {
-  const router = useRouter();
   const [state, formAction, pending] = useActionState(action, {});
   const [markdown, setMarkdown] = useState("");
-  useEffect(() => { if (state.annotationId) { onClose(); router.refresh(); } }, [onClose, router, state.annotationId]);
-  return <ModalDialog open title="添加正文批注" description="批注发布后不能编辑；写错时可以删除或回复补充。" onClose={onClose}>
-    <form action={formAction} className="annotation-composer" noValidate>
-      <input type="hidden" name="baseRevisionId" value={baseRevisionId} />
-      <input type="hidden" name="selection" value={JSON.stringify(selection)} />
+  const [clientError, setClientError] = useState<string | null>(null);
+  const handledSuccessRef = useRef<string | null>(null);
+  const onPhaseChangeRef = useRef(onPhaseChange);
+  const onSuccessRef = useRef(onSuccess);
+  useEffect(() => {
+    onPhaseChangeRef.current = onPhaseChange;
+    onSuccessRef.current = onSuccess;
+  }, [onPhaseChange, onSuccess]);
+  useEffect(() => {
+    if (pending) return;
+    if (state.annotationId && handledSuccessRef.current !== state.annotationId) {
+      handledSuccessRef.current = state.annotationId;
+      onPhaseChangeRef.current("submit-succeeded");
+      onSuccessRef.current();
+    } else if (state.error) {
+      onPhaseChangeRef.current("failure");
+    }
+  }, [pending, state.annotationId, state.error]);
+  return <ModalDialog open title="添加正文批注" description="批注发布后不能编辑；写错时可以删除或回复补充。" onClose={() => { if (!pending) onClose(); }}>
+    <form action={formAction} className="annotation-composer" noValidate onSubmit={(event) => {
+      if (!validateSelection()) {
+        event.preventDefault();
+        setClientError("正文或选区已经变化，请重新选择文字");
+        onPhaseChange("invalidate");
+        return;
+      }
+      setClientError(null);
+      onPhaseChange(state.error ? "retry" : "submit");
+    }}>
+      <input type="hidden" name="baseRevisionId" value={savedSelection.baseRevisionId} />
+      <input type="hidden" name="selection" value={JSON.stringify(savedSelection.descriptor)} />
       <input type="hidden" name="contentMarkdown" value={markdown} />
       <input type="hidden" name="submissionKey" value={submissionKey} />
-      <blockquote className="annotation-selection-preview">{selection.selectedText}</blockquote>
+      <blockquote className="annotation-selection-preview">{savedSelection.selectedText}</blockquote>
       <MarkdownEditor initialMarkdown="" onMarkdownChange={setMarkdown} compact />
-      {state.error && <p className="form-error" role="alert">{state.error}</p>}
+      {(clientError || state.error) && <p className="form-error" role="alert">{clientError ?? state.error}</p>}
       <div className="dialog-actions"><button type="button" className="button button--ghost" onClick={onClose} disabled={pending}>取消</button><button className="button button--primary" disabled={pending || !markdown.trim()} aria-busy={pending}>{pending ? "发布中…" : "发布批注"}</button></div>
     </form>
   </ModalDialog>;
 }
 
-export function AnnotationReadingLayout({ html, annotations, baseRevisionId, action, replyAction, deleteAction, deleteReplyAction, removeImportedAction, initialAnnotationId }: {
-  html: string; annotations: AnnotationCardView[]; baseRevisionId: string; action: AnnotationAction; replyAction: AnnotationReplyAction;
+export function AnnotationReadingLayout({ postId, html, annotations, baseRevisionId, action, replyAction, deleteAction, deleteReplyAction, removeImportedAction, initialAnnotationId }: {
+  postId: string; html: string; annotations: AnnotationCardView[]; baseRevisionId: string; action: AnnotationAction; replyAction: AnnotationReplyAction;
   deleteAction: AnnotationDeleteAction; deleteReplyAction: AnnotationReplyDeleteAction; removeImportedAction: AnnotationRemoveImportedAction; initialAnnotationId?: string;
 }) {
+  const router = useRouter();
   const layoutRef = useRef<HTMLDivElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
   const sidebarRef = useRef<HTMLElement>(null);
   const cardRefs = useRef(new Map<string, HTMLElement>());
+  const documentEpochRef = useRef(0);
   const [activeId, setActiveId] = useState<string | null>(initialAnnotationId ?? null);
-  const [floating, setFloating] = useState<FloatingSelection | null>(null);
-  const [composer, setComposer] = useState<{ selection: AnnotationSelectionDescriptor; submissionKey: string } | null>(null);
+  const [selectionContext, setSelectionContext] = useState<SelectionContext | null>(null);
   const [cardTops, setCardTops] = useState<Record<string, number>>({});
   const [connectors, setConnectors] = useState<Connector[]>([]);
   const [sidebarHeight, setSidebarHeight] = useState(0);
   const [sheetId, setSheetId] = useState<string | null>(null);
+  const currentSelectionContext = selectionContext?.saved.postId === postId && selectionContext.saved.baseRevisionId === baseRevisionId ? selectionContext : null;
+  const previewSelection = currentSelectionContext && currentSelectionContext.phase !== "hidden" ? currentSelectionContext.saved : null;
+
+  const transitionSelectionPreview = useCallback((event: SelectionPreviewEvent) => {
+    setSelectionContext((current) => current ? { ...current, phase: nextSelectionPreviewPhase(current.phase, event) } : current);
+  }, []);
+
+  useLayoutEffect(() => {
+    const root = bodyRef.current;
+    if (!root || !previewSelection) return;
+    const range = validateSavedAnnotationSelection(previewSelection, { postId, baseRevisionId, root, epoch: documentEpochRef.current });
+    if (!range) return;
+    return paintAnnotationSelectionPreview(range);
+  }, [baseRevisionId, postId, previewSelection]);
+
+  useEffect(() => {
+    const root = bodyRef.current;
+    if (!root || typeof MutationObserver === "undefined") return;
+    const observer = new MutationObserver(() => {
+      documentEpochRef.current += 1;
+      setSelectionContext(null);
+    });
+    observer.observe(root, { childList: true, characterData: true, subtree: true });
+    return () => observer.disconnect();
+  }, []);
 
   const measure = useCallback(() => {
     const layout = layoutRef.current; const body = bodyRef.current; const sidebar = sidebarRef.current;
@@ -115,22 +180,49 @@ export function AnnotationReadingLayout({ html, annotations, baseRevisionId, act
     if (activeId) body.querySelector<HTMLElement>(`.annotation-range[data-annotation-id="${CSS.escape(activeId)}"]`)?.classList.add("is-active");
   }, [activeId]);
 
-  const inspectSelection = useCallback(() => {
+  const inspectSelection = useCallback((eventTarget?: EventTarget | null) => {
     const root = bodyRef.current; const selection = window.getSelection();
-    if (!root || !selection || selection.rangeCount === 0 || selection.isCollapsed) { setFloating(null); return; }
+    if (!root) return;
+    if (eventTarget instanceof Node && !root.contains(eventTarget)) return;
+    if (!selection || selection.rangeCount === 0 || selection.isCollapsed) { setSelectionContext(null); return; }
     const range = selection.getRangeAt(0);
-    if (!root.contains(range.commonAncestorContainer)) { setFloating(null); return; }
+    if (!root.contains(range.commonAncestorContainer)) return;
     const existing = (range.startContainer.nodeType === Node.ELEMENT_NODE ? range.startContainer as Element : range.startContainer.parentElement)?.closest<HTMLElement>(".annotation-range");
     if (existing?.dataset.annotationId) {
-      setActiveId(existing.dataset.annotationId); setSheetId((current) => nextAnnotationSheetState(current, { type: "activate", annotationId: existing.dataset.annotationId!, compact: shouldUseAnnotationSheet(window.innerWidth) })); setFloating(null); return;
+      setActiveId(existing.dataset.annotationId); setSheetId((current) => nextAnnotationSheetState(current, { type: "activate", annotationId: existing.dataset.annotationId!, compact: shouldUseAnnotationSheet(window.innerWidth) })); setSelectionContext(null); return;
     }
     try {
       const descriptor = describeAnnotationDomRange(root, range); const rect = range.getBoundingClientRect();
-      setFloating({ descriptor, left: Math.min(window.innerWidth - 118, Math.max(12, rect.left + rect.width / 2 - 50)), top: Math.max(12, rect.top - 44) });
-    } catch { setFloating(null); }
-  }, []);
+      const saved = captureSavedAnnotationSelection({ postId, baseRevisionId, descriptor, root, range, epoch: documentEpochRef.current });
+      setSelectionContext({ saved, left: Math.min(window.innerWidth - 118, Math.max(12, rect.left + rect.width / 2 - 50)), top: Math.max(12, rect.top - 44), phase: nextSelectionPreviewPhase("hidden", "capture"), submissionKey: crypto.randomUUID() });
+    } catch { setSelectionContext(null); }
+  }, [baseRevisionId, postId]);
 
-  useEffect(() => { const schedule = () => window.setTimeout(inspectSelection, 0); document.addEventListener("pointerup", schedule); document.addEventListener("keyup", schedule); return () => { document.removeEventListener("pointerup", schedule); document.removeEventListener("keyup", schedule); }; }, [inspectSelection]);
+  useEffect(() => {
+    const schedule = (event: Event) => { const target = event.target; window.setTimeout(() => inspectSelection(target), 0); };
+    document.addEventListener("pointerup", schedule); document.addEventListener("keyup", schedule);
+    return () => { document.removeEventListener("pointerup", schedule); document.removeEventListener("keyup", schedule); };
+  }, [inspectSelection]);
+
+  const validateCurrentSelection = useCallback((saved: SavedAnnotationSelection) => {
+    const root = bodyRef.current;
+    return Boolean(root && validateSavedAnnotationSelection(saved, { postId, baseRevisionId, root, epoch: documentEpochRef.current }));
+  }, [baseRevisionId, postId]);
+
+  const cancelSelectionContext = useCallback(() => {
+    const root = bodyRef.current;
+    const saved = currentSelectionContext?.saved;
+    const range = root && saved ? validateSavedAnnotationSelection(saved, { postId, baseRevisionId, root, epoch: documentEpochRef.current }) : null;
+    transitionSelectionPreview("cancel");
+    setSelectionContext(null);
+    if (!root || !range) return;
+    window.requestAnimationFrame(() => {
+      root.focus({ preventScroll: true });
+      const selection = window.getSelection();
+      selection?.removeAllRanges();
+      selection?.addRange(range);
+    });
+  }, [baseRevisionId, currentSelectionContext?.saved, postId, transitionSelectionPreview]);
 
   const activateFromBody = (target: EventTarget | null, openSheet = false) => {
     if (!(target instanceof Element)) return;
@@ -141,7 +233,7 @@ export function AnnotationReadingLayout({ html, annotations, baseRevisionId, act
   };
 
   return <div className={`annotation-reading-layout${annotations.length === 0 ? " annotation-reading-layout--empty" : ""}`} ref={layoutRef}>
-    <div ref={bodyRef} className="markdown-body annotation-document-body"
+    <div ref={bodyRef} className="markdown-body annotation-document-body" tabIndex={-1}
       onClick={(event) => { const target = event.target instanceof Element ? event.target : null; const anchor = target?.closest<HTMLElement>(".annotation-range"); if (target && anchor && !isNestedInteractiveTarget(target, anchor) && shouldUseAnnotationSheet(window.innerWidth)) event.preventDefault(); activateFromBody(event.target, true); }}
       onFocus={(event) => activateFromBody(event.target)} onPointerOver={(event) => activateFromBody(event.target)}
       onKeyDown={(event) => { const target = event.target instanceof Element ? event.target : null; const anchor = target?.closest<HTMLElement>(".annotation-range"); if (target === anchor && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); activateFromBody(event.target, true); } }}
@@ -153,7 +245,16 @@ export function AnnotationReadingLayout({ html, annotations, baseRevisionId, act
       </article>)}
     </aside>
     <AnnotationSheet annotation={annotations.find((annotation) => annotation.id === sheetId) ?? null} open={Boolean(sheetId)} onClose={() => setSheetId((current) => nextAnnotationSheetState(current, { type: "close" }))} replyAction={replyAction} deleteAction={deleteAction} deleteReplyAction={deleteReplyAction} removeImportedAction={removeImportedAction} />
-    {floating && <button type="button" className="annotation-selection-menu" style={{ left: floating.left, top: floating.top }} onPointerDown={(event) => event.preventDefault()} onClick={() => { setComposer({ selection: floating.descriptor, submissionKey: crypto.randomUUID() }); setFloating(null); }}>添加批注</button>}
-    {composer && <AnnotationComposer key={composer.submissionKey} action={action} baseRevisionId={baseRevisionId} selection={composer.selection} submissionKey={composer.submissionKey} onClose={() => setComposer(null)} />}
+    {currentSelectionContext?.phase === "bubble" && <button type="button" className="annotation-selection-menu" style={{ left: currentSelectionContext.left, top: currentSelectionContext.top }} onPointerDown={(event) => event.preventDefault()} onClick={() => transitionSelectionPreview("open-composer")}>添加批注</button>}
+    {currentSelectionContext && ["composer", "pending", "failed"].includes(currentSelectionContext.phase) && <AnnotationComposer
+      key={currentSelectionContext.submissionKey}
+      action={action}
+      savedSelection={currentSelectionContext.saved}
+      submissionKey={currentSelectionContext.submissionKey}
+      validateSelection={() => validateCurrentSelection(currentSelectionContext.saved)}
+      onPhaseChange={transitionSelectionPreview}
+      onClose={cancelSelectionContext}
+      onSuccess={() => router.refresh()}
+    />}
   </div>;
 }

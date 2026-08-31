@@ -223,23 +223,29 @@ button, summary, input[type="file"] { cursor: pointer; }
 .markdown-body--annotation { font: 13px/1.75 inherit; }
 .markdown-body--annotation p { margin: .55em 0; }
 .markdown-body--annotation > :last-child { margin-bottom: 0; }
-.annotation-reply-list { display: grid; gap: 0; margin: 14px -16px 0; border-top: 1px solid #eadeda; }
+.annotation-reply-heading { display: flex; align-items: center; justify-content: space-between; margin: 14px -16px 0; padding: 9px 16px; border-top: 1px solid #eadeda; border-bottom: 1px solid #eadeda; color: var(--muted); font-size: 11px; }
+.annotation-reply-heading strong { color: var(--annotation-ink); font-size: 11px; }
+.annotation-reply-list { display: grid; gap: 0; margin: 0 -16px; }
 .annotation-reply { padding: 13px 16px; border-bottom: 1px solid #eadeda; background: rgba(251, 250, 247, .66); }
 .annotation-reply header { display: flex; align-items: center; gap: 8px; }
 .annotation-reply header > div { min-width: 0; display: grid; gap: 1px; }
 .annotation-reply header strong { font-size: 12px; }
 .annotation-reply header span { color: var(--muted); font-size: 10px; }
-.annotation-inline-reply { margin-top: 8px; }
-.annotation-inline-reply summary { width: fit-content; color: var(--annotation-ink); font-size: 11px; font-weight: 700; list-style: none; }
-.annotation-inline-reply summary:hover, .annotation-inline-reply summary:focus-visible { text-decoration: underline; outline: none; }
-.annotation-inline-reply--root { margin-top: 13px; }
+.annotation-shared-reply { margin-top: 12px; }
+.annotation-reply-cta, .annotation-reply-action, .annotation-reply-root-target { min-height: 30px; padding: 0 8px; border: 0; border-radius: 6px; background: transparent; color: var(--annotation-ink); font-size: 11px; font-weight: 700; }
+.annotation-reply-cta { padding-inline: 10px; background: var(--annotation); }
+.annotation-reply-action { margin-top: 7px; }
+.annotation-reply-root-target { min-height: 26px; padding-inline: 0; }
+.annotation-reply-cta:hover, .annotation-reply-cta:focus-visible, .annotation-reply-action:hover, .annotation-reply-action:focus-visible, .annotation-reply-root-target:hover, .annotation-reply-root-target:focus-visible { text-decoration: underline; outline: 2px solid rgba(125, 57, 52, .2); outline-offset: 1px; }
+.annotation-shared-reply-panel { margin-top: 9px; padding: 10px; border: 1px solid #ead6d3; border-radius: 8px; background: #fffefd; }
+.annotation-shared-reply-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; color: var(--annotation-ink); font-size: 12px; }
 .annotation-reply-form { margin-top: 9px; }
 .annotation-reply-form .markdown-editor--compact { min-height: 115px; }
 .annotation-reply-form .markdown-editor--compact .milkdown, .annotation-reply-form .markdown-editor--compact .milkdown .ProseMirror { min-height: 92px; }
 .annotation-reply-form .markdown-editor--compact .milkdown .ProseMirror { padding: 12px; }
 .annotation-reply-form-actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 8px; }
 .annotation-placeholder { margin: 11px 0; color: var(--warning); font-size: 12px; font-weight: 700; line-height: 1.65; }
-.annotation-card > .text-button--danger, .annotation-reply > .text-button--danger { margin-top: 7px; font-size: 11px; }
+.annotation-card > .text-button--danger, .annotation-shared-reply > .text-button--danger, .annotation-reply > .text-button--danger { margin-top: 7px; font-size: 11px; }
 .annotation-sheet-actions { display: flex; justify-content: flex-end; margin: -8px 0 8px; }
 .annotation-sheet-thread { padding-bottom: 4px; }
 .annotation-connectors { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
@@ -247,6 +253,9 @@ button, summary, input[type="file"] { cursor: pointer; }
 .annotation-connectors path.is-active { stroke: var(--annotation-ink); stroke-width: 1.8; stroke-dasharray: none; }
 .annotation-selection-menu { position: fixed; z-index: var(--z-popover); min-height: 34px; padding: 0 13px; border: 1px solid #d7aaa5; border-radius: 8px; background: #fffaf8; color: var(--annotation-ink); box-shadow: 0 9px 28px rgba(63, 42, 39, .14); font-size: 13px; font-weight: 700; }
 .annotation-selection-menu:hover, .annotation-selection-menu:focus-visible { background: var(--annotation); outline: 2px solid rgba(125, 57, 52, .25); outline-offset: 2px; }
+.annotation-document-body:focus { outline: none; }
+.annotation-selection-overlay { position: fixed; inset: 0; z-index: calc(var(--z-popover) - 1); pointer-events: none; }
+.annotation-selection-overlay-rect { position: fixed; border-bottom: 1px dotted var(--annotation-ink); border-radius: 2px; background: rgba(239, 203, 198, .78); box-shadow: 0 0 0 1px rgba(125, 57, 52, .12); }
 .annotation-composer { margin-top: 20px; }
 .annotation-selection-preview { max-height: 105px; overflow: auto; margin: 0 0 15px; padding: 11px 13px; border-left: 3px solid #d8aaa5; background: var(--annotation); color: #76504c; font: 14px/1.7 Georgia, "Noto Serif SC", serif; }
 .annotation-detached-discussions { margin-top: 28px; padding: 24px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper-strong); }
@@ -530,6 +539,7 @@ button, summary, input[type="file"] { cursor: pointer; }
   * { scrollbar-color: auto; }
   .button, .account-menu-trigger, .revision-list-item, .annotation-editor-sheet-trigger { border: 1px solid ButtonText; }
   .annotation-range { border: 1px solid LinkText; background: Canvas; color: CanvasText; }
+  .annotation-selection-overlay-rect { border: 1px solid Highlight; background: Highlight; }
   .annotation-card, .annotation-sheet-surface, .docx-import-dropzone, .docx-import-panel { border: 1px solid ButtonText; }
   .annotation-connectors path { stroke: LinkText; }
 }
