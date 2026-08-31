@@ -71,7 +71,7 @@
 - Produces stable issue codes `DUPLICATE`, `EMPTY`, `MULTI_BLOCK`, `OVERLAP`, `NESTED`, `UNKNOWN_ID`, and `MISSING_ACTIVE_ID`.
 - Uses the existing Annotation directive/Mark parser rather than a second Markdown grammar.
 
-- [ ] **Step 1: Write failing canonical-invariant tests**
+- [x] **Step 1: Write failing canonical-invariant tests**
 
 Add table-driven cases for one anchor, adjacent anchors, duplicate ID, empty content, cross-block content, overlap/nesting input, unknown IDs, and missing active IDs. Include this exact success/failure contract:
 
@@ -98,17 +98,17 @@ test("rejects one annotation ID at two anchors", () => {
 });
 ```
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 Run: `npm run test:unit -- tests/annotation-invariants.test.ts`
 
 Expected: FAIL because `lib/annotations/invariants.ts` does not exist.
 
-- [ ] **Step 3: Implement the minimum canonical scanner and validator**
+- [x] **Step 3: Implement the minimum canonical scanner and validator**
 
 Reuse the existing remark extension to walk block children in source order. Return one immutable descriptor per Annotation and one deterministic issue list sorted by block and source position. Keep parsing and validation pure; do not access D1 or React.
 
-- [ ] **Step 4: Run GREEN and focused regression**
+- [x] **Step 4: Run GREEN and focused regression**
 
 Run:
 
@@ -118,7 +118,7 @@ npm run test:unit -- tests/annotation-invariants.test.ts tests/annotation-roundt
 
 Expected: all pass; DOCX-generated adjacent annotations remain valid.
 
-- [ ] **Step 5: Commit and push**
+- [x] **Step 5: Commit and push**
 
 Run `git diff --check`, commit as `feat: validate annotation document invariants`, and push the V6 branch.
 
