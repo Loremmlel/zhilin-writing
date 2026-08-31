@@ -1,4 +1,5 @@
 import type { AnnotationId, AnnotationMarkdownRoot, AnnotationSelectionDescriptor } from "./types.ts";
+import { isAttachmentAssetHref } from "./inline-policy.ts";
 
 type InlineNode = {
   type: string;
@@ -40,7 +41,7 @@ function inlineText(node: InlineNode): string {
 }
 
 function nodeTextLength(node: InlineNode): number { return inlineText(node).length; }
-function isAttachmentLink(node: InlineNode): boolean { return node.type === "link" && typeof node.url === "string" && node.url.startsWith("/api/assets/"); }
+function isAttachmentLink(node: InlineNode): boolean { return node.type === "link" && isAttachmentAssetHref(node.url); }
 
 function assertSupportedBlock(block: AnnotationBlock) {
   const visit = (node: InlineNode, annotationDepth: number) => {

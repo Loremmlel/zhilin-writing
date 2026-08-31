@@ -314,6 +314,38 @@ test("classifies nested, overlapping, empty, and invalid-block anchors", () => {
   assert.deepEqual(inspectAnnotationTransaction(base.doc, replacementTransaction(base, invalid)), impact(["a"], [{ annotationId: "a", code: "INVALID_BLOCK" }]));
 });
 
+test("rejects annotation ranges formatted as attachment links", () => {
+  const base = stateFrom("普⌁通正文");
+  const linkedAttachment = markedDocument([{
+    text: "附件",
+    marks: [
+      annotationMark("a"),
+      schema.marks.link.create({ href: "/api/assets/file-a", title: null }),
+    ],
+  }]);
+
+  assert.deepEqual(
+    inspectAnnotationTransaction(base.doc, replacementTransaction(base, linkedAttachment)),
+    impact(["a"], [{ annotationId: "a", code: "INVALID_BLOCK" }]),
+  );
+});
+
+test("rejects marked expansion from either external annotation boundary", () => {
+  const state = stateFrom(":annotation[AA]{#a}");
+  const [range] = scanAnnotationRanges(state.doc);
+  const leftExpansion = state.tr.insert(range.from, schema.text("X", [annotationMark("a")]));
+  const rightExpansion = state.tr.insert(range.to, schema.text("X", [annotationMark("a")]));
+
+  assert.deepEqual(
+    inspectAnnotationTransaction(state.doc, leftExpansion),
+    impact(["a"], [{ annotationId: "a", code: "LEFT_ENDPOINT_REMOVED" }]),
+  );
+  assert.deepEqual(
+    inspectAnnotationTransaction(state.doc, rightExpansion),
+    impact(["a"], [{ annotationId: "a", code: "RIGHT_ENDPOINT_REMOVED" }]),
+  );
+});
+
 test("inspects a 50,000-character document with 200 anchors without pairwise work", () => {
   const content: ProseMirrorNode[] = [];
   for (let index = 0; index < 200; index += 1) {

@@ -1,4 +1,4 @@
-import { scanCanonicalAnnotationAnchors, validateCanonicalAnnotationDocument } from "./invariants.ts";
+import { scanCanonicalAnnotationAnchorStates, validateCanonicalAnnotationDocument } from "./invariants.ts";
 
 export type AnnotationDelta = {
   retained: string[];
@@ -46,6 +46,7 @@ type AnnotationRevisionState = {
 type AnnotationRevisionSnapshot = {
   markdown: string;
   states: AnnotationRevisionState[];
+  importedReplyStates?: ImportedReplyRevisionState[];
 };
 
 type ImportedReplyRevisionState = {
@@ -122,9 +123,8 @@ function time(value: Date | null): number | null {
 }
 
 function annotationSignature(snapshot: AnnotationRevisionSnapshot): string {
-  const anchors = scanCanonicalAnnotationAnchors(snapshot.markdown)
-    .map((anchor) => [anchor.annotationId, anchor.text])
-    .sort(([left], [right]) => left.localeCompare(right));
+  const anchors = scanCanonicalAnnotationAnchorStates(snapshot.markdown)
+    .sort((left, right) => left.annotationId.localeCompare(right.annotationId));
   const states = snapshot.states.map((state) => ({
     annotationId: state.annotationId,
     deletedAt: time(state.deletedAt),
@@ -132,7 +132,15 @@ function annotationSignature(snapshot: AnnotationRevisionSnapshot): string {
     hiddenAt: time(state.hiddenAt),
     hiddenByUserId: state.hiddenByUserId,
   })).sort((left, right) => left.annotationId.localeCompare(right.annotationId));
-  return JSON.stringify({ anchors, states });
+  const importedReplyStates = (snapshot.importedReplyStates ?? []).map((state) => ({
+    annotationId: state.annotationId,
+    annotationReplyId: state.annotationReplyId,
+    deletedAt: time(state.deletedAt),
+    deletedByUserId: state.deletedByUserId,
+    hiddenAt: time(state.hiddenAt),
+    hiddenByUserId: state.hiddenByUserId,
+  })).sort((left, right) => left.annotationReplyId.localeCompare(right.annotationReplyId));
+  return JSON.stringify({ anchors, states, importedReplyStates });
 }
 
 export function hasAnnotationTransition(snapshots: AnnotationRevisionSnapshot[]): boolean {
@@ -176,3 +184,5 @@ export function planAnnotatedPostSave(input: {
     retainedImportedReplyStates: input.currentImportedReplyStates.filter((state) => retained.has(state.annotationId)),
   };
 }
+
+export type AnnotatedPostSavePlan = ReturnType<typeof planAnnotatedPostSave>;

@@ -1,5 +1,7 @@
 import type { Node as ProseMirrorNode } from "@milkdown/kit/prose/model";
 
+import { isAttachmentAssetHref } from "../annotations/inline-policy.ts";
+
 export type EditorAnnotationEndpoint = {
   from: number;
   to: number;
@@ -134,7 +136,8 @@ export function analyzeAnnotationRanges(doc: ProseMirrorNode): {
       .filter((id): id is string => typeof id === "string" && id.length > 0))];
     if (annotationIds.length === 0) return;
     const block = blockAt(doc, pos);
-    const validInline = node.isText && node.marks.every((mark) => allowedFormattingMarks.has(mark.type.name));
+    const validInline = node.isText && node.marks.every((mark) => allowedFormattingMarks.has(mark.type.name)
+      && !(mark.type.name === "link" && isAttachmentAssetHref(mark.attrs.href)));
     for (const annotationId of annotationIds) {
       fragments.push({
         annotationId,

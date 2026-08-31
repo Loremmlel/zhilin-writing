@@ -47,6 +47,16 @@ function endpointSurvives(endpoint: EditorAnnotationEndpoint, after: EditorAnnot
   return transaction.doc.textBetween(from.pos, to.pos, "", "") === endpoint.text;
 }
 
+function boundarySurvives(
+  position: number,
+  association: -1 | 1,
+  expectedPosition: number,
+  transaction: Transaction,
+): boolean {
+  const mapped = transaction.mapping.mapResult(position, association);
+  return !mapped.deleted && mapped.pos === expectedPosition;
+}
+
 export function inspectAnnotationTransaction(
   beforeDoc: ProseMirrorNode,
   transaction: Transaction,
@@ -72,10 +82,12 @@ export function inspectAnnotationTransaction(
     if (structuralIds.has(annotationId) || beforeRanges.length !== 1 || afterRanges.length !== 1) continue;
     const [previous] = beforeRanges;
     const [next] = afterRanges;
-    if (!endpointSurvives(previous.firstEndpoint, next, transaction)) {
+    if (!boundarySurvives(previous.from, 1, next.from, transaction)
+      || !endpointSurvives(previous.firstEndpoint, next, transaction)) {
       reasons.push({ annotationId, code: "LEFT_ENDPOINT_REMOVED" });
     }
-    if (!endpointSurvives(previous.lastEndpoint, next, transaction)) {
+    if (!boundarySurvives(previous.to, -1, next.to, transaction)
+      || !endpointSurvives(previous.lastEndpoint, next, transaction)) {
       reasons.push({ annotationId, code: "RIGHT_ENDPOINT_REMOVED" });
     }
   }
@@ -110,4 +122,3 @@ export function inspectAnnotationTransaction(
   const affectedAnnotationIds = [...new Set(uniqueReasons.map((reason) => reason.annotationId))];
   return { kind: "ANNOTATION_IMPACT", affectedAnnotationIds, destructive: true, reasons: uniqueReasons };
 }
-

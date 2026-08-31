@@ -2,7 +2,7 @@ import type { BatchItem } from "drizzle-orm/batch";
 import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 
 import { getDb } from "@/db";
-import { activityEvents, annotations, assets, notifications, postAnnotationAnchors, postAssetRefs, postRevisions, posts, postTags, replies, revisionAnnotationStates, revisionAssetRefs, revisionImportedReplyStates, tags } from "@/db/schema";
+import { activityEvents, assets, notifications, postAssetRefs, postRevisions, posts, postTags, replies, revisionAssetRefs, tags } from "@/db/schema";
 import { findReply, findReplyBySubmissionKey, getPost } from "@/db/queries";
 import { activityEventId, notificationId, resolveReplyRecipient, validateSubmissionKey } from "@/lib/activity/policy";
 import { assertOrdinaryPostMarkdown, ANNOTATED_POST_EDIT_MESSAGE } from "@/lib/annotations/policy";
@@ -14,7 +14,7 @@ import { markdownToPlainText } from "@/lib/markdown/render";
 import { buildAssetSnapshot, resolveSaveBase, type AssetSnapshotRef } from "@/lib/revisions/policy";
 import { planContentSave } from "@/lib/revisions/save-plan";
 import { EditConflictError, getConflictSnapshot, getCurrentAssetRefs, getCurrentImportedReplySaveStates } from "@/lib/revisions/service";
-import { commitPostSave, planPostTags } from "./save-transaction";
+import { buildAnnotatedPostSaveOperations, commitPostSave, planPostTags } from "./save-transaction";
 
 type SavePostInput = {
   title: string;
@@ -205,65 +205,22 @@ export async function updatePost(postId: string, currentUserId: string, input: S
   }
 
   const revisionId = crypto.randomUUID();
-  const contentOperations: BatchItem<"sqlite">[] = [
-    db.insert(postRevisions).values({
-      id: revisionId,
-      postId,
-      revisionNumber: savePlan.revisionNumber,
-      kind: "CONTENT_EDIT",
-      title: clean.title,
-      markdown: clean.markdown,
-      createdAt: now,
-      createdByUserId: currentUserId,
-      restoreSourceRevisionId: null,
-    }),
-    db.update(posts).set({
-      title: clean.title,
-      markdown: clean.markdown,
-      searchText: markdownToPlainText(clean.markdown),
-      currentRevisionId: revisionId,
-      editedAt: now,
-    }).where(and(eq(posts.id, postId), eq(posts.currentRevisionId, base.acceptedBaseRevisionId))),
-  ];
-  const assetOperations: BatchItem<"sqlite">[] = [
-    db.delete(postAssetRefs).where(eq(postAssetRefs.postId, postId)),
-    ...nextAssetRefs.map((ref) => db.insert(postAssetRefs).values({ postId, ...ref })),
-    ...nextAssetRefs.map((ref) => db.insert(revisionAssetRefs).values({ revisionId, ...ref })),
-    ...nextAssetRefs.map((ref) => db.update(assets).set({
-      postId,
-      status: "permanent",
-      boundAt: now,
-      expiresAt: null,
-    }).where(and(eq(assets.id, ref.assetId), eq(assets.ownerId, currentUserId)))),
-  ];
-  const annotationOperations: BatchItem<"sqlite">[] = [
-    ...annotationPlan.delta.removed.map((annotationId) => db.delete(postAnnotationAnchors).where(and(
-      eq(postAnnotationAnchors.postId, postId),
-      eq(postAnnotationAnchors.annotationId, annotationId),
-    ))),
-    ...annotationPlan.retirements.map(({ annotationId, patch }) => db.update(annotations).set(patch).where(and(
-      eq(annotations.id, annotationId),
-      eq(annotations.postId, postId),
-    ))),
-    ...annotationPlan.retainedStates.map((state) => db.insert(revisionAnnotationStates).values({ revisionId, ...state })),
-    ...annotationPlan.retainedImportedReplyStates.map((state) => db.insert(revisionImportedReplyStates).values({
-      revisionId,
-      annotationReplyId: state.annotationReplyId,
-      deletedAt: state.deletedAt,
-      deletedByUserId: state.deletedByUserId,
-      hiddenAt: state.hiddenAt,
-      hiddenByUserId: state.hiddenByUserId,
-    })),
-  ];
+  const operations = buildAnnotatedPostSaveOperations(db, {
+    postId,
+    currentUserId,
+    revisionId,
+    revisionNumber: savePlan.revisionNumber,
+    acceptedBaseRevisionId: base.acceptedBaseRevisionId,
+    title: clean.title,
+    markdown: clean.markdown,
+    now,
+    nextAssetRefs,
+    annotationPlan,
+    tagOperations,
+  });
 
   try {
-    await commitPostSave((items) => db.batch(asBatch(items)), {
-      guard: revisionGuard,
-      content: contentOperations,
-      annotations: annotationOperations,
-      assets: assetOperations,
-      tags: tagOperations,
-    });
+    await commitPostSave((items) => db.batch(asBatch(items)), operations);
   } catch (error) {
     const latest = (await db.select({ currentRevisionId: posts.currentRevisionId }).from(posts).where(eq(posts.id, postId)).limit(1))[0];
     if (latest?.currentRevisionId && latest.currentRevisionId !== base.acceptedBaseRevisionId) {

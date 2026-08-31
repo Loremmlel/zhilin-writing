@@ -157,7 +157,7 @@ export async function hasAnnotationTransitionBetweenRevisions(postId: string, ba
   const base = bounds.find((revision) => revision.id === baseRevisionId);
   const current = bounds.find((revision) => revision.id === currentRevisionId);
   if (!base || !current || base.revisionNumber > current.revisionNumber) return true;
-  const [revisions, states] = await Promise.all([
+  const [revisions, states, importedReplyStates] = await Promise.all([
     db.select({
       id: postRevisions.id,
       markdown: postRevisions.markdown,
@@ -181,6 +181,22 @@ export async function hasAnnotationTransitionBetweenRevisions(postId: string, ba
         gte(postRevisions.revisionNumber, base.revisionNumber),
         lte(postRevisions.revisionNumber, current.revisionNumber),
       )),
+    db.select({
+      revisionId: revisionImportedReplyStates.revisionId,
+      annotationReplyId: revisionImportedReplyStates.annotationReplyId,
+      annotationId: annotationReplies.annotationId,
+      deletedAt: revisionImportedReplyStates.deletedAt,
+      deletedByUserId: revisionImportedReplyStates.deletedByUserId,
+      hiddenAt: revisionImportedReplyStates.hiddenAt,
+      hiddenByUserId: revisionImportedReplyStates.hiddenByUserId,
+    }).from(revisionImportedReplyStates)
+      .innerJoin(postRevisions, eq(revisionImportedReplyStates.revisionId, postRevisions.id))
+      .innerJoin(annotationReplies, eq(revisionImportedReplyStates.annotationReplyId, annotationReplies.id))
+      .where(and(
+        eq(postRevisions.postId, postId),
+        gte(postRevisions.revisionNumber, base.revisionNumber),
+        lte(postRevisions.revisionNumber, current.revisionNumber),
+      )),
   ]);
   const statesByRevision = new Map<string, typeof states>();
   for (const state of states) {
@@ -188,10 +204,24 @@ export async function hasAnnotationTransitionBetweenRevisions(postId: string, ba
     list.push(state);
     statesByRevision.set(state.revisionId, list);
   }
+  const importedRepliesByRevision = new Map<string, typeof importedReplyStates>();
+  for (const state of importedReplyStates) {
+    const list = importedRepliesByRevision.get(state.revisionId) ?? [];
+    list.push(state);
+    importedRepliesByRevision.set(state.revisionId, list);
+  }
   return hasAnnotationTransition(revisions.map((revision) => ({
     markdown: revision.markdown,
     states: (statesByRevision.get(revision.id) ?? []).map((state) => ({
       annotationId: state.annotationId,
+      deletedAt: state.deletedAt,
+      deletedByUserId: state.deletedByUserId,
+      hiddenAt: state.hiddenAt,
+      hiddenByUserId: state.hiddenByUserId,
+    })),
+    importedReplyStates: (importedRepliesByRevision.get(revision.id) ?? []).map((state) => ({
+      annotationId: state.annotationId,
+      annotationReplyId: state.annotationReplyId,
       deletedAt: state.deletedAt,
       deletedByUserId: state.deletedByUserId,
       hiddenAt: state.hiddenAt,

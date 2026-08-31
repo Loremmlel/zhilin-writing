@@ -1,6 +1,7 @@
 import type { Nodes, Root } from "mdast";
 
 import { parseAnnotationMarkdown } from "./markdown.ts";
+import { isAttachmentAssetHref } from "./inline-policy.ts";
 
 export type AnnotationInvariantIssueCode =
   | "DUPLICATE"
@@ -16,6 +17,11 @@ export type CanonicalAnnotationAnchor = {
   annotationId: string;
   text: string;
   blockIndex: number;
+};
+
+export type CanonicalAnnotationAnchorState = CanonicalAnnotationAnchor & {
+  blockType: string;
+  inlineStructure: string;
 };
 
 export type AnnotationInvariantIssue = {
@@ -34,6 +40,8 @@ type MarkdownNode = Nodes & {
   attributes?: Record<string, string | null | undefined> | null;
   children?: MarkdownNode[];
   value?: string;
+  url?: string;
+  title?: string | null;
 };
 
 const allowedParagraphParents = new Set(["root", "listItem", "blockquote"]);
@@ -53,9 +61,16 @@ function inlineText(node: MarkdownNode): string {
   return node.children?.map(inlineText).join("") ?? "";
 }
 
+function inlineShape(node: MarkdownNode): unknown {
+  if (node.type === "text") return [node.type, node.value ?? ""];
+  const attributes = node.type === "link" ? [node.url ?? "", node.title ?? null] : null;
+  return [node.type, attributes, node.children?.map(inlineShape) ?? []];
+}
+
 function hasUnsupportedInline(node: MarkdownNode): boolean {
   if (node.type === "text") return false;
   if (isAnnotationDirective(node)) return node.children?.some(hasUnsupportedInline) ?? false;
+  if (node.type === "link" && isAttachmentAssetHref(node.url)) return true;
   if (!allowedInlineContainers.has(node.type)) return true;
   return node.children?.some(hasUnsupportedInline) ?? false;
 }
@@ -68,6 +83,7 @@ function supportedBlock(node: MarkdownNode, parentType: string | null): boolean 
 function scan(markdown: string) {
   const tree = parseAnnotationMarkdown(markdown) as Root as MarkdownNode;
   const anchors: CanonicalAnnotationAnchor[] = [];
+  const anchorStates: CanonicalAnnotationAnchorState[] = [];
   const issues: AnnotationInvariantIssue[] = [];
   const seenIds: string[] = [];
   let blockIndex = -1;
@@ -77,11 +93,19 @@ function scan(markdown: string) {
     if (!issues.some((issue) => issue.code === code && issue.annotationId === id)) issues.push({ code, annotationId: id });
   };
 
-  const visit = (node: MarkdownNode, parentType: string | null, currentBlock: number | null, annotationDepth: number) => {
+  const visit = (
+    node: MarkdownNode,
+    parentType: string | null,
+    currentBlock: number | null,
+    currentBlockType: string | null,
+    annotationDepth: number,
+  ) => {
     let nextBlock = currentBlock;
+    let nextBlockType = currentBlockType;
     if (supportedBlock(node, parentType)) {
       blockIndex += 1;
       nextBlock = blockIndex;
+      nextBlockType = node.type;
     }
 
     if (isAnnotationDirective(node)) {
@@ -101,21 +125,33 @@ function scan(markdown: string) {
       const text = inlineText(node);
       if (node.type !== "textDirective" || nextBlock === null || hasUnsupportedInline(node)) addIssue("INVALID_BLOCK", id);
       else if (!text.trim()) addIssue("EMPTY", id);
-      else if (id) anchors.push({ annotationId: id, text, blockIndex: nextBlock });
+      else if (id) {
+        const anchor = { annotationId: id, text, blockIndex: nextBlock };
+        anchors.push(anchor);
+        anchorStates.push({
+          ...anchor,
+          blockType: nextBlockType ?? "unknown",
+          inlineStructure: JSON.stringify(node.children?.map(inlineShape) ?? []),
+        });
+      }
 
-      node.children?.forEach((child) => visit(child, node.type, nextBlock, annotationDepth + 1));
+      node.children?.forEach((child) => visit(child, node.type, nextBlock, nextBlockType, annotationDepth + 1));
       return;
     }
 
-    node.children?.forEach((child) => visit(child, node.type, nextBlock, annotationDepth));
+    node.children?.forEach((child) => visit(child, node.type, nextBlock, nextBlockType, annotationDepth));
   };
 
-  visit(tree, null, null, 0);
-  return { anchors, issues, seenIds };
+  visit(tree, null, null, null, 0);
+  return { anchors, anchorStates, issues, seenIds };
 }
 
 export function scanCanonicalAnnotationAnchors(markdown: string): CanonicalAnnotationAnchor[] {
   return scan(markdown).anchors;
+}
+
+export function scanCanonicalAnnotationAnchorStates(markdown: string): CanonicalAnnotationAnchorState[] {
+  return scan(markdown).anchorStates;
 }
 
 export function validateCanonicalAnnotationDocument(

@@ -67,6 +67,37 @@ test("distinguishes ordinary body edits from anchor text or lifecycle changes", 
   ]), true);
 });
 
+test("treats anchor block position type and inline structure as conflict transitions", () => {
+  const base = { markdown: `:annotation[同文]{#${A}}`, states: [active(A)] };
+  for (const changed of [
+    { markdown: `前文\n\n:annotation[同文]{#${A}}`, states: [active(A)] },
+    { markdown: `# :annotation[同文]{#${A}}`, states: [active(A)] },
+    { markdown: `:annotation[**同文**]{#${A}}`, states: [active(A)] },
+  ]) {
+    assert.equal(hasAnnotationTransition([base, changed]), true);
+  }
+});
+
+test("treats imported reply lifecycle changes as annotation conflict transitions", () => {
+  const reply = {
+    annotationReplyId: "reply-imported",
+    deletedAt: null,
+    deletedByUserId: null,
+    hiddenAt: null,
+    hiddenByUserId: null,
+  };
+  const snapshots = [
+    { markdown: `:annotation[A]{#${A}}`, states: [active(A)], importedReplyStates: [reply] },
+    {
+      markdown: `:annotation[A]{#${A}}`,
+      states: [active(A)],
+      importedReplyStates: [{ ...reply, hiddenAt: new Date(100), hiddenByUserId: "administrator" }],
+    },
+  ] as Parameters<typeof hasAnnotationTransition>[0];
+
+  assert.equal(hasAnnotationTransition(snapshots), true);
+});
+
 test("plans retained snapshots and post-edit retirement without mutating retained thread payload", () => {
   const at = new Date("2026-08-31T12:00:00.000Z");
   const result = planAnnotatedPostSave({
