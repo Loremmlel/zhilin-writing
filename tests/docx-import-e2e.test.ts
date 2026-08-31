@@ -28,6 +28,17 @@ const batchId = "00000000-0000-4000-8000-000000000100";
 const importerId = "00000000-0000-4000-8000-000000000101";
 const attributedId = "00000000-0000-4000-8000-000000000102";
 
+test("generated DOCX bytes do not depend on the host timezone", () => {
+  for (const timezone of ["UTC", "Asia/Tokyo"]) {
+    const check = spawnSync(process.execPath, ["scripts/fixtures/generate-docx-fixtures.mjs", "--check"], {
+      cwd: resolve("."),
+      encoding: "utf8",
+      env: { ...process.env, TZ: timezone },
+    });
+    assert.equal(check.status, 0, `${timezone}\n${check.stdout}\n${check.stderr}`);
+  }
+});
+
 test("the generated semantic matrix is deterministic across the complete import pipeline", async () => {
   const check = spawnSync(process.execPath, ["scripts/fixtures/generate-docx-fixtures.mjs", "--check"], {
     cwd: resolve("."),

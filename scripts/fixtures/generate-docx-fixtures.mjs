@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { TextReader, Uint8ArrayReader, Uint8ArrayWriter, ZipWriter } from "@zip.js/zip.js";
 
 const FIXED_ZIP_DATE = new Date("2000-01-01T00:00:00.000Z");
+const FIXED_ZIP_DOS_DATE = 0x28210000;
 const GENERATED_DIRECTORY = resolve("tests/fixtures/docx/generated");
 
 const CONTENT_TYPES = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -74,6 +75,7 @@ export async function createDocxFixtureBytes(parts) {
     await writer.add(name, typeof value === "string" ? new TextReader(value) : new Uint8ArrayReader(value), {
       dataDescriptor: false,
       lastModDate: FIXED_ZIP_DATE,
+      rawLastModDate: FIXED_ZIP_DOS_DATE,
       level: 0,
       useWebWorkers: false,
     });

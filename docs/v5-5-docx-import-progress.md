@@ -182,3 +182,14 @@
 - RED/GREEN：先确认 manifest、获取脚本、semantic matrix 与 expected normalized IR 缺失导致预期失败；实现后 producer + E2E focused tests 3 PASS / 1 explicit SKIP。首次提交按用户要求先推送，随后审查发现 E2E 测试的 dot-all 正则标志高于项目 TypeScript target，已改为等价的 target-compatible 字符类并重新验证。
 - 最终验证：完整 `npm test` 的 225/225 available 单测通过、Word Online 1 项 explicit SKIP、生产构建与 7/7 rendered artifact assertions 通过；`npx tsc --noEmit`、全量 ESLint、`fetch --verify`、generator `--check` 与 `git diff --check` 均退出 0。仅保留仓库既有的 npm `http-proxy`、ESLint parser 与大 chunk warning。
 - 提交：Task 12 主提交为 `test: verify DOCX import producers end to end`（`6342acf`），已先推送；审查修复与最终验证记录随后追加提交并推送。不开始 Task 13，也不部署站点。
+
+## 2026-08-31 — Task 13：最终审计、实施报告与私有部署
+
+- 状态：最终审计、缺陷修复、完整验证与实施报告已完成；用户已明确接受 Microsoft Word Online fixture 缺口并授权 owner-only 私有部署，部署流程进行中。
+- 权威同步：使用 Sites 短期凭据从 `origin/feature/v5.5-docx-import` fetch，并确认本地 `676a863` 与远端一致、工作树在 Task 13 开始前干净。GitHub 辅助镜像落后于 Sites origin，未被误用为权威源。
+- 不变量审计：确认没有 selected-text/source-offset 反向重建、officeparser production import、Worker/XML 网络访问、原始 DOCX 持久化、imported native author assignment 或伪造历史 Annotation activity。合法命中及其安全用途已记录在 `docs/v5-5-docx-import-report.md`。
+- 发现并修复：首次全量单测发现 generated DOCX 的 ZIP extended timestamp 固定，但 MS-DOS header timestamp 仍由 Zip.js 按主机本地时区编码，导致 UTC-7 生成的提交 fixture 在 Asia/Tokyo 环境 byte-for-byte check 失败。现在显式固定 `rawLastModDate=0x28210000`，并新增 UTC / Asia-Tokyo 双时区回归；四个 generated fixture 与 normalized IR source SHA 同步更新。
+- 新 generated SHA-256：`probe-adjacent.docx` `7745bbeecaf37a2a382d09ccb9a1940483e0c537bea6f86eee8c6900bc750958`；`probe-overlap-nested.docx` `c95799dcebcc6088817e02bbcd4f4d21216c543cfed845e61372c7e2aa81e40a`；`probe-threaded-resolved.docx` `0edc426a12b45a5694c9db4753a1ae15aeb96edb0dca82c8d946d41df1792308`；`semantic-matrix.docx` `3b965570e33e570d9ee8f4ae3ef893a48e2afdc7e6a60153215aba61e6ba2085`。
+- 验证：`npm run test:unit` 为 227 total / 226 pass / 1 explicit Word Online skip / 0 fail；`npx tsc --noEmit`、全量 ESLint、`npm test`、生产构建、7/7 rendered artifact assertions、`git diff --check`、`npx drizzle-kit check`、公开 fixture `--verify` 与 generated fixture `--check` 全部退出 0。仅保留既有 npm proxy、ESLint parser、Vinext route classification 与大 chunk 提示。
+- 报告：17 项实施结论、producer matrix、不变量审计、迁移、提交、验证结果与 remaining limitations 已写入 `docs/v5-5-docx-import-report.md`。
+- 已接受限制：没有找到同时满足公开下载、允许再分发、明确 Word Online 创建/导出 provenance 与匹配内部 producer evidence 的 fixture。用户已于 2026-08-31 明确接受该兼容性缺口，并授权立即进行 owner-only 私有部署；限制记录保留，待未来获得合格 fixture 后补充验证。
