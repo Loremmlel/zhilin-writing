@@ -1,8 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useActionState, useState } from "react";
 
 import { ModalDialog } from "@/components/modal-dialog";
+import { PendingSubmitButton } from "@/components/pending/pending-submit-button";
+
+type RestoreRevisionActionState = { error?: string };
 
 export function RestoreRevisionForm({
   revisionNumber,
@@ -12,13 +15,14 @@ export function RestoreRevisionForm({
   exitingAnnotationCount = 0,
 }: {
   revisionNumber: number;
-  action: (formData: FormData) => Promise<void>;
+  action: (state: RestoreRevisionActionState, formData: FormData) => Promise<RestoreRevisionActionState>;
   restoresDeletedPost?: boolean;
   annotationCount?: number;
   exitingAnnotationCount?: number;
 }) {
   const [open, setOpen] = useState(false);
   const [operationId] = useState(() => crypto.randomUUID());
+  const [state, formAction, pending] = useActionState(action, {});
   return (
     <>
       <button type="button" className="button button--ghost" onClick={() => setOpen(true)}>恢复此版本</button>
@@ -28,13 +32,14 @@ export function RestoreRevisionForm({
         description={`${restoresDeletedPost
           ? "恢复会把这份历史内容复制成新的当前版本，并清除作者删除状态；若仍被管理员隐藏，普通成员仍不可见。"
           : "恢复会把这份历史内容复制成一个新的当前版本；现有版本不会被删除。"} 此版本包含 ${annotationCount} 条批注。${exitingAnnotationCount > 0 ? `恢复后，当前正文中的 ${exitingAnnotationCount} 条批注将不再属于当前版本。` : ""} 帖子不会被顶到最近活跃。`}
-        onClose={() => setOpen(false)}
+        onClose={() => { if (!pending) setOpen(false); }}
         alert
       >
-        <form action={action} className="dialog-actions" noValidate>
+        <form action={formAction} className={`dialog-actions${state.error ? " dialog-actions--with-error" : ""}`} noValidate aria-busy={pending}>
           <input type="hidden" name="operationId" value={operationId} />
-          <button type="button" className="button button--ghost" onClick={() => setOpen(false)}>取消</button>
-          <button type="submit" className="button button--danger">确认恢复</button>
+          {state.error && <p className="form-error dialog-form-error" role="alert">{state.error}</p>}
+          <button type="button" className="button button--ghost" disabled={pending} onClick={() => setOpen(false)}>取消</button>
+          <PendingSubmitButton className="button button--danger" pendingLabel="正在恢复…">确认恢复</PendingSubmitButton>
         </form>
       </ModalDialog>
     </>

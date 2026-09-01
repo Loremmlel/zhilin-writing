@@ -3,6 +3,7 @@ import { Suspense } from "react";
 
 import { NotificationsListSkeleton } from "@/components/loading/skeletons";
 import { NotificationList } from "@/components/notification-list";
+import { MarkAllNotificationsForm } from "@/components/notifications/mark-all-notifications-form";
 import { listNotifications } from "@/db/queries";
 import { requireMember } from "@/lib/auth/access";
 import { markAllNotificationsReadAction } from "./actions";
@@ -13,7 +14,7 @@ export default async function NotificationsPage({ searchParams }: { searchParams
   return <div className="page-column notifications-page">
     <header className="page-header notification-header">
       <div><span className="eyebrow">只属于你的消息</span><h1>通知</h1><p>这里显示别人对你的内容作出的直接回应，以及 DOCX 导入时与你关联的 Word 批注。</p></div>
-      <form action={markAllNotificationsReadAction} noValidate><button className="button button--ghost button--small">全部标记已读</button></form>
+      <MarkAllNotificationsForm action={markAllNotificationsReadAction} />
     </header>
     <nav className="list-tabs" aria-label="通知筛选">
       <Link href="/notifications" className={!unreadOnly ? "is-active" : ""}>全部</Link>

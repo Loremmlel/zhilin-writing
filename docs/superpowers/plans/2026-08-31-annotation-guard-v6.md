@@ -638,21 +638,21 @@ Run `git diff --check`, commit as `feat: add route loading and error feedback`, 
 - Every named mutation changes visible state in the same event turn, disables duplicate submission, preserves composer content until success, and exposes `aria-busy`/status text.
 - Image/attachment upload reports real byte progress where the endpoint supports it; DOCX retains Parsing/Extracting images/Building preview/Uploading assets/Ready stages and only adopts shared visual tokens.
 
-- [ ] **Step 1: Write failing pending-state coverage tests**
+- [x] **Step 1: Write failing pending-state coverage tests**
 
 Cover Publish, Save, Annotation create, Post Reply, Annotation Reply, delete, admin hide/restore, revision restore, mark-all-notifications-read, Profile save, image upload, attachment upload, and DOCX import. Assert mutation content is cleared only on success and preserved on failure.
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 Run: `npm run test:unit -- tests/mutation-pending.test.ts`
 
 Expected: FAIL for Profile, mark-all-read, and upload feedback gaps.
 
-- [ ] **Step 3: Add the shared pending primitive and fill gaps**
+- [x] **Step 3: Add the shared pending primitive and fill gaps**
 
 Reuse existing `useActionState` pending implementations where already correct. Add the shared button only where it removes duplication. Convert Profile and mark-all-read to client wrappers with immediate labels. Add upload progress without replacing the existing server endpoint or DOCX pipeline. Keep ordinary mutations inline; do not add a full-screen spinner.
 
-- [ ] **Step 4: Run GREEN and focused regression**
+- [x] **Step 4: Run GREEN and focused regression**
 
 Run:
 
@@ -662,7 +662,7 @@ npm run test:unit -- tests/mutation-pending.test.ts tests/annotation-create.test
 
 Expected: all pass; failure retains typed post/annotation reply and Annotation composer content.
 
-- [ ] **Step 5: Commit and push**
+- [x] **Step 5: Commit and push**
 
 Run `git diff --check`, commit as `feat: finish immediate mutation feedback`, and push the V6 branch.
 

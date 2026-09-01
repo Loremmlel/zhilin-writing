@@ -77,7 +77,7 @@ function AnnotationComposer({ action, savedSelection, submissionKey, validateSel
       <input type="hidden" name="contentMarkdown" value={markdown} />
       <input type="hidden" name="submissionKey" value={submissionKey} />
       <blockquote className="annotation-selection-preview">{savedSelection.selectedText}</blockquote>
-      <MarkdownEditor initialMarkdown="" onMarkdownChange={setMarkdown} compact />
+      <MarkdownEditor initialMarkdown="" onMarkdownChange={setMarkdown} compact disabled={pending} />
       {(clientError || state.error) && <p className="form-error" role="alert">{clientError ?? state.error}</p>}
       <div className="dialog-actions"><button type="button" className="button button--ghost" onClick={onClose} disabled={pending}>取消</button><button className="button button--primary" disabled={pending || !markdown.trim()} aria-busy={pending}>{pending ? "发布中…" : "发布批注"}</button></div>
     </form>

@@ -6,6 +6,7 @@ import { useActionState, useEffect, useRef, useState } from "react";
 
 import type { AnnotationCardView } from "@/components/annotations/annotation-thread";
 import { ModalDialog } from "@/components/modal-dialog";
+import { uploadAsset } from "@/lib/assets/browser-upload";
 import { loadDraft, removeDraft, saveDraft, type LocalDraft } from "@/lib/drafts/indexed-db";
 import { availableConflictChoices, chooseConflictResolution, hasRecoverablePublishedDraft } from "@/lib/editor/conflict";
 import type { EditConflictSnapshot } from "@/lib/revisions/service";
@@ -70,6 +71,8 @@ export function PostEditorForm({ userId, draftId, action, initial, submitLabel =
   const [confirmChoice, setConfirmChoice] = useState<"online" | "overwrite" | null>(null);
   const [saveBlocked, setSaveBlocked] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<{ filename: string; percent: number } | null>(null);
+  const [imageUploadPending, setImageUploadPending] = useState(false);
   const [confirmedAnnotationDeletionIds, setConfirmedAnnotationDeletionIds] = useState<string[]>([]);
   const [editorRoot, setEditorRoot] = useState<HTMLElement | null>(null);
   const [state, formAction, pending] = useActionState(async (previous: PostActionState, formData: FormData) => {
@@ -83,6 +86,7 @@ export function PostEditorForm({ userId, draftId, action, initial, submitLabel =
     return result;
   }, {});
   const editorKey = `${draftId}:${hydrated ? "ready" : "initial"}`;
+  const uploadPending = uploadProgress !== null || imageUploadPending;
 
   useEffect(() => {
     let live = true;
@@ -155,15 +159,16 @@ export function PostEditorForm({ userId, draftId, action, initial, submitLabel =
 
   async function uploadAttachment(file: File) {
     setUploadError(null);
-    const formData = new FormData();
-    formData.set("file", file);
-    const response = await fetch("/api/assets", { method: "POST", body: formData });
-    const data = await response.json() as { error?: string; asset?: UploadedAsset; markdown?: string };
-    if (!response.ok || !data.asset) throw new Error(data.error ?? "上传失败");
-    const asset = { ...data.asset, markdown: data.markdown ?? "" } as UploadedAsset;
-    setAttachments((current) => [...current.filter((item) => item.id !== asset.id), asset]);
-    setAttachmentIds((current) => [...new Set([...current, asset.id])]);
-    setDirty(true);
+    setUploadProgress({ filename: file.name, percent: 0 });
+    try {
+      const data = await uploadAsset(file, (percent) => setUploadProgress({ filename: file.name, percent }));
+      const asset = { ...data.asset, markdown: data.markdown ?? "" } as UploadedAsset;
+      setAttachments((current) => [...current.filter((item) => item.id !== asset.id), asset]);
+      setAttachmentIds((current) => [...new Set([...current, asset.id])]);
+      setDirty(true);
+    } finally {
+      setUploadProgress(null);
+    }
   }
 
   function useOnlineVersion() {
@@ -219,14 +224,14 @@ export function PostEditorForm({ userId, draftId, action, initial, submitLabel =
     ...annotationEditing,
     initialConfirmedAnnotationDeletionIds: confirmedAnnotationDeletionIds,
     onConfirmedAnnotationDeletionIdsChange: setConfirmedAnnotationDeletionIds,
-  } : undefined} onEditorRootChange={annotationThreads.length > 0 ? setEditorRoot : undefined} onMarkdownChange={(value) => {
+  } : undefined} onEditorRootChange={annotationThreads.length > 0 ? setEditorRoot : undefined} onUploadStateChange={setImageUploadPending} disabled={pending} onMarkdownChange={(value) => {
     setMarkdown(value);
     setDirty(true);
   }} />;
 
   return (
     <>
-      <form ref={formRef} action={formAction} className="editor-form" noValidate>
+      <form ref={formRef} action={formAction} className="editor-form" noValidate aria-busy={pending || uploadPending}>
         <input type="hidden" name="markdown" value={markdown} />
         <input type="hidden" name="attachmentIds" value={JSON.stringify(attachmentIds)} />
         <input type="hidden" name="baseRevisionId" value={baseRevisionId ?? ""} />
@@ -259,7 +264,7 @@ export function PostEditorForm({ userId, draftId, action, initial, submitLabel =
         <input id="post-title" className="title-input" name="title" value={title} onChange={(event) => {
           setTitle(event.target.value);
           setDirty(true);
-        }} maxLength={120} placeholder="给这篇文字起一个标题" aria-invalid={Boolean(state.error && !conflict)} />
+        }} maxLength={120} placeholder="给这篇文字起一个标题" aria-invalid={Boolean(state.error && !conflict)} disabled={pending} />
         <label className="field-label">正文</label>
         {confirmedAnnotationDeletionIds.length > 0 && <p className="annotation-editor-pending" role="status">保存后将撤下 {confirmedAnnotationDeletionIds.length} 条批注；撤销正文修改可恢复。</p>}
         {annotationThreads.length > 0
@@ -271,11 +276,11 @@ export function PostEditorForm({ userId, draftId, action, initial, submitLabel =
             <input className="text-input" name="tags" value={tags} onChange={(event) => {
               setTags(event.target.value);
               setDirty(true);
-            }} placeholder="随笔，生活" />
+            }} placeholder="随笔，生活" disabled={pending} />
           </label>
-          <label className="attachment-upload">
+          <label className="attachment-upload" aria-busy={uploadProgress !== null}>
             <span className="field-label">附件</span>
-            <input type="file" onChange={(event) => {
+            <input type="file" disabled={pending || uploadProgress !== null} onChange={(event) => {
               const file = event.target.files?.[0];
               if (file) void uploadAttachment(file).catch((error) => setUploadError(error instanceof Error ? error.message : "上传失败"));
               event.currentTarget.value = "";
@@ -283,6 +288,10 @@ export function PostEditorForm({ userId, draftId, action, initial, submitLabel =
             <span className="muted">上传到文件区；可插入正文链接。</span>
           </label>
         </div>
+        {uploadProgress && <div className="upload-progress" role="status" aria-live="polite">
+          <div><span>附件上传进度 · {uploadProgress.filename}</span><strong>{uploadProgress.percent}%</strong></div>
+          <progress max={100} value={uploadProgress.percent} aria-label="附件上传进度" />
+        </div>}
         {uploadError && <p className="form-error" role="alert">{uploadError}</p>}
         {attachments.length > 0 && <div className="asset-list" aria-label="帖子附件">
           {attachments.filter((asset) => attachmentIds.includes(asset.id)).map((asset) => <div key={asset.id} className="asset-row">
@@ -292,19 +301,19 @@ export function PostEditorForm({ userId, draftId, action, initial, submitLabel =
                 setMarkdown((current) => `${current.trimEnd()}\n\n${asset.markdown}\n`);
                 setEditorResetRevision((current) => current + 1);
                 setDirty(true);
-              }}>插入正文</button>
+              }} disabled={pending}>插入正文</button>
               <button type="button" className="text-button text-button--danger" onClick={() => {
                 setAttachmentIds((current) => current.filter((id) => id !== asset.id));
                 setDirty(true);
-              }}>移除附件</button>
+              }} disabled={pending}>移除附件</button>
             </span>
           </div>)}
         </div>}
         {state.error && !state.conflict && <p className="form-error" role="alert">{state.error}</p>}
         <div className="form-actions">
           <Link href={cancelHref} className="button button--ghost">取消</Link>
-          <button type="submit" className="button button--primary" disabled={pending || saveBlocked || !hydrated}>
-            {pending ? "保存中…" : saveBlocked ? "请先处理冲突" : submitLabel}
+          <button type="submit" className="button button--primary" disabled={pending || saveBlocked || !hydrated || uploadPending} aria-busy={pending}>
+            {pending ? "保存中…" : uploadPending ? "等待上传完成" : saveBlocked ? "请先处理冲突" : submitLabel}
           </button>
         </div>
       </form>

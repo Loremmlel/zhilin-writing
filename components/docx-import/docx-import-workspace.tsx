@@ -327,7 +327,7 @@ export function DocxImportWorkspace({ users }: { users: SiteUser[] }) {
         })} />
       <div className="docx-import-actions">
         <button type="button" className="button button--ghost" onClick={() => setDiscardBatchId(preview.importBatchId)}>取消导入</button>
-        <div><span>{validation.ok ? "预览已通过本地校验" : `还有 ${validation.errors.length} 项需要修正`}</span><button type="button" className="button button--primary" disabled={!validation.ok} aria-disabled={!validation.ok} onClick={() => void confirmImport()}>确认导入</button></div>
+        <div><span>{validation.ok ? "预览就绪，可以保存" : `还有 ${validation.errors.length} 项需要修正`}</span><button type="button" className="button button--primary" disabled={!validation.ok} aria-disabled={!validation.ok} onClick={() => void confirmImport()}>确认导入</button></div>
       </div>
     </>}
 

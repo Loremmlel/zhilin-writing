@@ -28,11 +28,11 @@ export function ReplyForm({ action, initialSubmissionKey, label = "写回复", c
     <form action={formAction} className={compact ? "reply-form reply-form--nested" : "reply-form"} noValidate>
       <input type="hidden" name="markdown" value={markdown} />
       <input type="hidden" name="submissionKey" value={submissionKey} />
-      <MarkdownEditor key={editorKey} initialMarkdown="" onMarkdownChange={setMarkdown} compact />
-      {state.error && <p className="form-error">{state.error}</p>}
+      <MarkdownEditor key={editorKey} initialMarkdown="" onMarkdownChange={setMarkdown} compact disabled={pending} />
+      {state.error && <p className="form-error" role="alert">{state.error}</p>}
       <div className="reply-form-actions">
         <span className="muted">回复发布后不能编辑</span>
-        <button className="button button--small button--primary" disabled={pending || !markdown.trim() || !submissionKey}>{pending ? "发布中…" : label}</button>
+        <button className="button button--small button--primary" disabled={pending || !markdown.trim() || !submissionKey} aria-busy={pending}>{pending ? "发布中…" : label}</button>
       </div>
     </form>
   );

@@ -42,7 +42,7 @@ export function AnnotationReplyForm({ action, initialSubmissionKey, label = "回
   return <form action={formAction} className="annotation-reply-form" noValidate>
     <input type="hidden" name="contentMarkdown" value={markdown} />
     <input type="hidden" name="submissionKey" value={submissionKey} />
-    <MarkdownEditor initialMarkdown="" onMarkdownChange={setMarkdown} onEditorRootChange={(root) => { editorRootRef.current = root; }} compact resetRevision={resetRevision} />
+    <MarkdownEditor initialMarkdown="" onMarkdownChange={setMarkdown} onEditorRootChange={(root) => { editorRootRef.current = root; }} compact resetRevision={resetRevision} disabled={pending} />
     {state.error && <p className="form-error" role="alert">{state.error}</p>}
     <div className="annotation-reply-form-actions"><span className="muted">发布后不可编辑</span><button className="button button--primary button--small" disabled={pending || !markdown.trim()} aria-busy={pending}>{pending ? "发布中…" : label}</button></div>
   </form>;

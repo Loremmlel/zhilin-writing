@@ -17,11 +17,13 @@ export function ContentLifecycleControl({
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [reason, setReason] = useState("");
   const [operationId] = useState(() => crypto.randomUUID());
   const [state, formAction, pending] = useActionState(async (previous: LifecycleActionState, formData: FormData) => {
     const result = await action(previous, formData);
     if (result.success) {
       setOpen(false);
+      setReason("");
       router.refresh();
     }
     return result;
@@ -37,11 +39,11 @@ export function ContentLifecycleControl({
     <ModalDialog open={open} title={copy.title} description={copy.description} onClose={() => !pending && setOpen(false)} alert>
       <form action={formAction} className="moderation-form" noValidate>
         <input type="hidden" name="operationId" value={operationId} />
-        {operation === "hide" && <label className="field-label">原因（可选）<textarea className="text-area" name="reason" rows={3} maxLength={300} /></label>}
+        {operation === "hide" && <label className="field-label">原因（可选）<textarea className="text-area" name="reason" rows={3} maxLength={300} value={reason} disabled={pending} onChange={(event) => setReason(event.target.value)} /></label>}
         {state.error && <p className="form-error" role="alert">{state.error}</p>}
         <div className="dialog-actions">
           <button className="button button--ghost" type="button" disabled={pending} onClick={() => setOpen(false)}>取消</button>
-          <button className={operation === "hide" ? "button button--danger" : "button button--primary"} type="submit" disabled={pending}>{pending ? "正在更新…" : copy.label}</button>
+          <button className={operation === "hide" ? "button button--danger" : "button button--primary"} type="submit" disabled={pending} aria-busy={pending}>{pending ? "正在更新…" : copy.label}</button>
         </div>
       </form>
     </ModalDialog>

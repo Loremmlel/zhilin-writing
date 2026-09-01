@@ -10,21 +10,27 @@ import { storeTemporaryAsset } from "@/lib/assets/storage";
 import { requireMember } from "@/lib/auth/access";
 import { validateDisplayName } from "@/lib/domain/rules";
 
-export async function updateProfileAction(formData: FormData) {
+export type ProfileActionState = { error?: string };
+
+export async function updateProfileAction(_previous: ProfileActionState, formData: FormData): Promise<ProfileActionState> {
   const { member } = await requireMember("/settings/profile");
   const displayName = String(formData.get("displayName") ?? "").trim();
   const bio = String(formData.get("bio") ?? "").trim().slice(0, 300);
   const error = validateDisplayName(displayName);
-  if (error) redirect(`/settings/profile?error=${encodeURIComponent(error)}`);
-  if (await isDisplayNameTaken(displayName, member.id)) redirect(`/settings/profile?error=${encodeURIComponent("这个显示名称已经被使用")}`);
+  if (error) return { error };
   let avatarAssetId = member.avatarAssetId;
   const avatar = formData.get("avatar");
-  if (avatar instanceof File && avatar.size > 0) {
-    if (!avatar.type.startsWith("image/")) redirect(`/settings/profile?error=${encodeURIComponent("头像必须是图片")}`);
-    const asset = await storeTemporaryAsset(member.id, avatar, "avatar");
-    avatarAssetId = asset.id;
-    await getDb().update(assets).set({ status: "permanent", boundAt: new Date(), expiresAt: null }).where(and(eq(assets.id, asset.id), eq(assets.ownerId, member.id)));
+  if (avatar instanceof File && avatar.size > 0 && !avatar.type.startsWith("image/")) return { error: "头像必须是图片" };
+  try {
+    if (await isDisplayNameTaken(displayName, member.id)) return { error: "这个显示名称已经被使用" };
+    if (avatar instanceof File && avatar.size > 0) {
+      const asset = await storeTemporaryAsset(member.id, avatar, "avatar");
+      avatarAssetId = asset.id;
+      await getDb().update(assets).set({ status: "permanent", boundAt: new Date(), expiresAt: null }).where(and(eq(assets.id, asset.id), eq(assets.ownerId, member.id)));
+    }
+    await updateUserProfile(member.id, { displayName, bio, avatarAssetId });
+  } catch {
+    return { error: "资料保存失败，请稍后重试" };
   }
-  await updateUserProfile(member.id, { displayName, bio, avatarAssetId });
   redirect(`/users/${member.id}`);
 }
