@@ -38,6 +38,48 @@ body { margin: 0; background: radial-gradient(circle at 85% 0%, rgba(125, 157, 1
 a { color: inherit; text-decoration: none; }
 button, input, textarea { font: inherit; }
 button, summary, input[type="file"] { cursor: pointer; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+
+#nprogress { pointer-events: none; }
+#nprogress .bar { background: var(--green); }
+
+.loading-shell { min-height: 420px; }
+.skeleton-block, .skeleton-card, .skeleton-tabs > span { position: relative; display: block; overflow: hidden; border-radius: 7px; background: #e8e9e2; }
+.skeleton-block::after, .skeleton-card::after, .skeleton-tabs > span::after { content: ""; position: absolute; inset: 0; transform: translateX(-100%); background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .58), transparent); animation: skeleton-shimmer 1.4s .18s ease-in-out infinite; }
+@keyframes skeleton-shimmer { to { transform: translateX(100%); } }
+.skeleton-page-heading { display: grid; gap: 12px; padding: 4px 4px 30px; border-bottom: 1px solid var(--line); margin-bottom: 18px; }
+.skeleton-block--eyebrow { width: 84px; height: 12px; }
+.skeleton-block--title { width: min(360px, 68%); height: 38px; }
+.skeleton-block--hero-title { width: min(560px, 82%); height: 52px; }
+.skeleton-block--copy { width: min(610px, 88%); height: 16px; }
+.skeleton-block--meta { width: min(390px, 70%); height: 14px; }
+.skeleton-block--section-title { width: 150px; height: 23px; }
+.skeleton-block--avatar { width: 92px; height: 92px; border-radius: 50%; }
+.skeleton-lines { display: grid; gap: 16px; }
+.skeleton-lines .skeleton-block { height: 14px; }
+.skeleton-lines .skeleton-block:nth-child(3n + 2) { width: 92%; }
+.skeleton-lines .skeleton-block:nth-child(3n) { width: 72%; }
+.skeleton-tabs { height: 52px; display: flex; align-items: center; gap: 36px; border-bottom: 1px solid var(--line-strong); margin-bottom: 14px; }
+.skeleton-tabs > span { width: 64px; height: 13px; }
+.skeleton-card-list { display: grid; gap: 10px; }
+.skeleton-card { min-height: 126px; padding: 22px 24px; border: 1px solid var(--line); background: rgba(255, 254, 250, .78); }
+.skeleton-card .skeleton-lines { position: relative; z-index: 1; }
+.skeleton-card .skeleton-block { background: #dedfd8; }
+.skeleton-post { min-height: 640px; }
+.skeleton-post-header { padding: 28px 0 30px; border-bottom: 1px solid var(--line); margin-bottom: 34px; display: grid; gap: 16px; }
+.skeleton-reading-layout { display: grid; grid-template-columns: minmax(0, 720px) minmax(240px, 310px); gap: 70px; }
+.skeleton-annotation-rail { display: grid; align-content: start; gap: 14px; }
+.skeleton-discussion { margin-top: 34px; display: grid; gap: 18px; }
+.skeleton-profile-header { display: grid; grid-template-columns: auto 1fr; gap: 24px; padding: 10px 4px 34px; margin-bottom: 14px; border-bottom: 1px solid var(--line); }
+.skeleton-profile-header .skeleton-page-heading { padding: 0; margin: 0; border: 0; }
+.skeleton-region { min-height: 260px; }
+.skeleton-search-bar { width: 100%; height: 46px; margin: 0 0 22px; border: 1px solid var(--line); }
+.skeleton-admin-section { min-height: 280px; }
+.skeleton-admin-section .skeleton-card { min-height: 72px; padding: 16px; }
+.skeleton-revision-preview { min-height: 620px; display: grid; align-content: start; gap: 30px; }
+.route-error-page { min-height: min(72vh, 680px); padding: 40px 20px; display: grid; place-items: center; }
+.route-error-card { width: min(560px, 100%); }
+.route-error-actions { margin-top: 24px; display: flex; flex-wrap: wrap; gap: 10px; }
 
 .site-shell { min-height: 100vh; display: flex; flex-direction: column; }
 .site-header { position: sticky; top: 0; z-index: var(--z-header); border-bottom: 1px solid var(--line); background: rgba(251, 250, 247, .94); backdrop-filter: blur(16px); }
@@ -471,6 +513,8 @@ button, summary, input[type="file"] { cursor: pointer; }
   .reading-page--annotated { width: min(920px, calc(100% - 40px)); }
   .post-article--annotated { padding-inline: clamp(22px, 6vw, 42px); }
   .annotation-reading-layout { display: block; }
+  .skeleton-reading-layout { grid-template-columns: 1fr; }
+  .skeleton-annotation-rail { display: none; }
   .annotated-editor-layout { display: block; }
   .annotation-sidebar, .annotation-connectors { display: none; }
   .annotation-editor-sheet-trigger { width: 100%; min-height: 42px; margin-top: 10px; border: 1px solid #d7aaa5; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; background: #fffaf8; color: var(--annotation-ink); font-size: 13px; font-weight: 700; }
@@ -504,6 +548,7 @@ button, summary, input[type="file"] { cursor: pointer; }
   .reply { padding: 16px 14px; }
   .reply--nested { margin-left: 22px; }
   .profile-header { grid-template-columns: 1fr; }
+  .skeleton-profile-header { grid-template-columns: 1fr; }
   .notification-header { align-items: flex-start; flex-direction: column; }
   .notification-item { padding: 16px 14px; }
   .site-footer { align-items: flex-start; flex-direction: column; }
@@ -540,11 +585,13 @@ button, summary, input[type="file"] { cursor: pointer; }
   .button, .account-menu-trigger, .revision-list-item, .annotation-editor-sheet-trigger { border: 1px solid ButtonText; }
   .annotation-range { border: 1px solid LinkText; background: Canvas; color: CanvasText; }
   .annotation-selection-overlay-rect { border: 1px solid Highlight; background: Highlight; }
-  .annotation-card, .annotation-sheet-surface, .docx-import-dropzone, .docx-import-panel { border: 1px solid ButtonText; }
+  .annotation-card, .annotation-sheet-surface, .docx-import-dropzone, .docx-import-panel, .skeleton-block, .skeleton-card { border: 1px solid ButtonText; }
   .annotation-connectors path { stroke: LinkText; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   /* Accessibility override must win over component-level transitions and keyframes. */
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+  .skeleton-block::after { animation: none !important; }
+  #nprogress .bar { transition: none !important; }
 }

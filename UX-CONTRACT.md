@@ -48,6 +48,7 @@
 | Annotation AST/selection | annotation Markdown and structural selection | `lib/annotations/markdown.ts`, `lib/annotations/selection.ts` | parse / wrap / unwrap / validate | round-trip + selection unit |
 | Annotation reading | `AnnotationReadingLayout` | `components/annotations/annotation-reading-layout.tsx` | desktop sidebar / mobile sheet | unit + build + browser |
 | Annotation lifecycle | annotation service and shared moderation | `lib/annotations/service.ts`, `components/admin/content-lifecycle-control.tsx` | create / reply / delete / hide / unhide / restore | unit + transaction review |
+| Route loading and recovery | shared loading/error surfaces | `components/loading/*`, `components/error-state.tsx`, App Router `loading.tsx` / `error.tsx` | route / independent region / global recovery / not-found | static contract + build + rendered smoke |
 
 ## Component behavior
 
@@ -60,6 +61,7 @@
 | List/timeline | readable rows | border/tone change | link focus | selected green surface | n/a | stable footprint | empty explanatory copy |
 | Annotation range | pale red mark + dotted underline | stronger tint | visible ring | linked card/range highlight | creation menu withheld on overlap | composer submit disabled | explicit conflict/selection copy |
 | Annotation card/sheet | author, time, content, replies | linked range highlight | visible card focus | stable ID selected | unavailable content uses placeholder | fixed-size publish action | input retained with inline error |
+| Skeleton | final-layout geometry | n/a | n/a | static paper-tone surface | n/a | delayed subtle shimmer + `aria-busy` | replaced by safe recovery card |
 
 ## Dataset navigation
 
@@ -68,7 +70,7 @@
 - URL state: selected revision lives in `?revision=`; search query remains `?q=`.
 - Admin content filters live in `?type=posts|replies|annotations|annotation-replies&status=normal|deleted|hidden`; deleted and hidden filters may each include an item when both flags are present.
 - Annotation notification/deep-link state lives in `?annotation=<opaque-id>`; unavailable historical targets use `?notice=annotation-unavailable` and never text search.
-- Empty/no-results/error/loading: stable card or inline notice; no skeletons.
+- Empty/no-results: stable explanatory card or inline notice. Route and independently streamed data loading: geometry-matched shared Skeleton; error: safe recovery card with retry and home action.
 - Back/scroll restoration: browser history and URL-selected revision.
 
 ## Flow ledger
@@ -120,6 +122,10 @@
 
 ## Async and resilience
 
+- Route navigation starts a non-blocking 2px accent TopLoader immediately; hash-only navigation does not start it. App Router segment `loading.tsx` remains the authoritative route fallback.
+- Post body/annotation rail, post replies, notifications, profile activity/posts, administrator lists, and revision preview use local Suspense fallbacks so the shared layout or already-resolved region stays available.
+- Skeletons keep stable geometry, expose `aria-busy` plus readable status, delay shimmer, and become static under `prefers-reduced-motion`.
+- Route, site, and global error boundaries never render exception messages, stack traces, database identifiers, or raw causes; recovery is retry plus return-home, with a dedicated missing/expired-login explanation at the site boundary.
 - Mutation default: pessimistic UI with disabled duplicate submit.
 - Annotation create/reply mutations use per-submit UUID keys; server-generated annotation IDs, revision CAS and one D1 batch prevent partial anchors/events/notifications.
 - Idempotency: replies use submission keys; lifecycle retries are no-ops; audit transitions use dedupe keys; revision restore uses a per-confirmation operation ID in addition to revision uniqueness.

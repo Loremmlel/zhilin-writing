@@ -1,6 +1,8 @@
 import Link from "next/link";
+import { Suspense } from "react";
 
 import { ContentLifecycleControl } from "@/components/admin/content-lifecycle-control";
+import { AdminListSkeleton } from "@/components/loading/skeletons";
 import {
   listAdminAuditLog,
   listAdminPosts,
@@ -47,11 +49,23 @@ const auditLabels: Record<string, string> = {
 };
 
 type AdminContentType = "posts" | "replies" | "annotations" | "annotation-replies";
+type AdminQuery = { error?: string; type?: string; status?: string };
 
 export default async function AdminPage({ searchParams }: {
-  searchParams: Promise<{ error?: string; type?: string; status?: string }>;
+  searchParams: Promise<AdminQuery>;
 }) {
   const [, query] = await Promise.all([requireAdministrator("/admin"), searchParams]);
+  return (
+    <div className="page-column admin-page">
+      <header className="page-header"><span className="eyebrow">管理员</span><h1>管理后台</h1><p>检查内容状态、恢复误删内容，并管理受邀成员。所有原文查看与状态操作都经过服务端管理员校验。</p></header>
+      <Suspense fallback={<AdminListSkeleton />}>
+        <AdminContent query={query} />
+      </Suspense>
+    </div>
+  );
+}
+
+async function AdminContent({ query }: { query: AdminQuery }) {
   const contentType: AdminContentType = query.type === "replies" || query.type === "annotations" || query.type === "annotation-replies" ? query.type : "posts";
   const status: AdminContentStatus = query.status === "deleted" || query.status === "hidden" ? query.status : "normal";
   const [allowed, users, content, audit] = await Promise.all([
@@ -69,9 +83,7 @@ export default async function AdminPage({ searchParams }: {
   const contentHref = (nextType: AdminContentType, nextStatus: AdminContentStatus) => `/admin?type=${nextType}&status=${nextStatus}`;
 
   return (
-    <div className="page-column admin-page">
-      <header className="page-header"><span className="eyebrow">管理员</span><h1>管理后台</h1><p>检查内容状态、恢复误删内容，并管理受邀成员。所有原文查看与状态操作都经过服务端管理员校验。</p></header>
-
+    <>
       <section className="admin-section">
         <div className="section-heading"><h2>内容管理</h2><span>{content.length} 条</span></div>
         <nav className="list-tabs" aria-label="内容类型">
@@ -181,6 +193,6 @@ export default async function AdminPage({ searchParams }: {
         <div className="admin-list">{allowed.map((entry) => <div className="admin-row" key={entry.id}><div><strong>{entry.email}</strong><span>{entry.isAdmin ? "唯一管理员" : `添加于 ${formatDateTime(entry.addedAt)}`}</span></div>{!entry.isAdmin && <form action={removeAllowlistAction} noValidate><input type="hidden" name="id" value={entry.id} /><button className="text-button text-button--danger">移除</button></form>}</div>)}</div>
       </section>
       <section className="admin-section"><div className="section-heading"><h2>已注册成员</h2><span>{users.length} 位</span></div><div className="admin-list">{users.map((user) => <div className="admin-row" key={user.id}><div><strong>{user.displayName}</strong><span>{formatDateTime(user.joinedAt)} 加入</span></div></div>)}</div></section>
-    </div>
+    </>
   );
 }

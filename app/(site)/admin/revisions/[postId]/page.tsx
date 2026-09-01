@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 
 import { RestoreRevisionForm } from "@/components/admin/restore-revision-form";
+import { RevisionPreviewSkeleton } from "@/components/loading/skeletons";
 import { getPostForAdministration } from "@/db/queries";
 import { requireAdministrator } from "@/lib/auth/access";
 import { formatDateTime } from "@/lib/format";
@@ -33,17 +35,8 @@ export default async function PostRevisionsPage({
   ]);
   if (!post) notFound();
   const selectedId = query.revision ?? post.post.currentRevisionId ?? revisions[0]?.revision.id;
-  const selected = selectedId ? await getRevisionSnapshot(postId, selectedId) : null;
-  if (!selected) notFound();
   const revisionNumbers = new Map(revisions.map((item) => [item.revision.id, item.revision.revisionNumber]));
-  const attachmentIds = new Set(selected.assetRefs.filter((ref) => ref.usage === "attachment").map((ref) => ref.assetId));
-  const selectedAttachments = selected.assets.filter((asset) => attachmentIds.has(asset.id));
-  const selectedIsCurrent = selected.revision.id === post.post.currentRevisionId;
-  const currentSnapshot = selectedIsCurrent || !post.post.currentRevisionId
-    ? selected
-    : await getRevisionSnapshot(postId, post.post.currentRevisionId);
-  const selectedAnnotationIds = new Set(selected.annotationStates.map((state) => state.annotationId));
-  const exitingAnnotationCount = currentSnapshot?.annotationStates.filter((state) => !selectedAnnotationIds.has(state.annotationId)).length ?? 0;
+  if (!selectedId) notFound();
 
   return (
     <div className="page-column revision-admin-page">
@@ -63,7 +56,7 @@ export default async function PostRevisionsPage({
               return <Link
                 key={revision.id}
                 href={`/admin/revisions/${postId}?revision=${encodeURIComponent(revision.id)}`}
-                className={`revision-list-item${revision.id === selected.revision.id ? " is-selected" : ""}`}
+                className={`revision-list-item${revision.id === selectedId ? " is-selected" : ""}`}
               >
                 <span className="revision-number">v{revision.revisionNumber}</span>
                 <strong>{revision.title}</strong>
@@ -77,12 +70,43 @@ export default async function PostRevisionsPage({
             })}
           </div>
         </aside>
-        <main className="revision-preview">
+        <Suspense fallback={<RevisionPreviewSkeleton />}>
+          <RevisionPreview postId={postId} selectedId={selectedId} currentRevisionId={post.post.currentRevisionId} postDeleted={Boolean(post.post.deletedAt)} />
+        </Suspense>
+      </div>
+    </div>
+  );
+}
+
+async function RevisionPreview({
+  postId,
+  selectedId,
+  currentRevisionId,
+  postDeleted,
+}: {
+  postId: string;
+  selectedId: string;
+  currentRevisionId: string | null;
+  postDeleted: boolean;
+}) {
+  const selected = await getRevisionSnapshot(postId, selectedId);
+  if (!selected) notFound();
+  const attachmentIds = new Set(selected.assetRefs.filter((ref) => ref.usage === "attachment").map((ref) => ref.assetId));
+  const selectedAttachments = selected.assets.filter((asset) => attachmentIds.has(asset.id));
+  const selectedIsCurrent = selected.revision.id === currentRevisionId;
+  const currentSnapshot = selectedIsCurrent || !currentRevisionId
+    ? selected
+    : await getRevisionSnapshot(postId, currentRevisionId);
+  const selectedAnnotationIds = new Set(selected.annotationStates.map((state) => state.annotationId));
+  const exitingAnnotationCount = currentSnapshot?.annotationStates.filter((state) => !selectedAnnotationIds.has(state.annotationId)).length ?? 0;
+
+  return (
+    <main className="revision-preview">
           <div className="revision-preview-header">
             <div><span className="version-label">历史版本预览 · v{selected.revision.revisionNumber}</span><h2>{selected.revision.title}</h2></div>
             {!selectedIsCurrent && <RestoreRevisionForm
               revisionNumber={selected.revision.revisionNumber}
-              restoresDeletedPost={Boolean(post.post.deletedAt)}
+              restoresDeletedPost={postDeleted}
               annotationCount={selected.annotationStates.length}
               exitingAnnotationCount={exitingAnnotationCount}
               action={restoreRevisionAction.bind(null, postId, selected.revision.id)}
@@ -101,8 +125,6 @@ export default async function PostRevisionsPage({
               ? <p className="muted">这个版本没有帖子附件。</p>
               : selectedAttachments.map((asset) => <a className="attachment-link" href={`/api/assets/${asset.id}`} key={asset.id}><span>{asset.filename}</span><small>{Math.ceil(asset.byteSize / 1024)} KB</small></a>)}
           </section>
-        </main>
-      </div>
-    </div>
+    </main>
   );
 }

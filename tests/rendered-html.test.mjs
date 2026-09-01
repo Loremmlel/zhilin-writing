@@ -84,3 +84,15 @@ test("production artifact contains the V5.5 DOCX import entry and Preview worksp
   assert.match(styles, /docx-import-workspace/);
   assert.match(styles, /docx-import-warning-summary/);
 });
+
+test("production artifact contains V6 route loading and safe error recovery", async () => {
+  const [source, styles] = await Promise.all([builtServerSource(), builtCssSource()]);
+  assert.match(source, /页面暂时无法显示/);
+  assert.match(source, /重新加载/);
+  assert.match(source, /返回首页/);
+  assert.match(source, /页面不存在/);
+  assert.doesNotMatch(source, /错误堆栈|数据库查询失败|D1_ERROR/);
+  assert.match(styles, /skeleton-block/);
+  assert.match(styles, /route-error-card/);
+  assert.match(styles, /#nprogress/);
+});

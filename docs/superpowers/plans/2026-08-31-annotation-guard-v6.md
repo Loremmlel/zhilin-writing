@@ -567,17 +567,17 @@ Run `git diff --check`, commit as `fix: preserve annotation context while compos
 - Top bar is 2px, uses the existing accent token, has no spinner or shadow, never blocks interaction, and respects reduced motion.
 - Shared skeletons approximate post list, post detail, profile/activity, notifications, search, admin list, tags, revisions, and Annotation Sidebar structures.
 
-- [ ] **Step 1: Write failing static/loading tests**
+- [x] **Step 1: Write failing static/loading tests**
 
 Assert every approved route segment exports a skeleton layout, all error boundaries expose Retry and Home where valid, errors contain no stack renderer, progress is non-blocking, and reduced-motion CSS disables shimmer/highlight/scroll animation.
 
-- [ ] **Step 2: Run RED**
+- [x] **Step 2: Run RED**
 
 Run: `npm run test:unit -- tests/loading-ui.test.ts`
 
 Expected: FAIL because loading/error files and shared components do not exist.
 
-- [ ] **Step 3: Run the TopLoader compatibility gate**
+- [x] **Step 3: Run the TopLoader compatibility gate**
 
 Install exact dependency:
 
@@ -587,15 +587,15 @@ npm install --save-exact nextjs-toploader@3.9.17
 
 Add it to the root layout through `RouteProgress`, then run `npm run build` and open preview navigation for normal routes and hash-only links. If Vinext cannot compile it or it hangs on hash navigation, revert only this dependency/integration and implement the same UX with a maintained App Router-compatible package verified at implementation time; do not monkey-patch router methods.
 
-- [ ] **Step 4: Add segment skeletons and targeted Suspense**
+- [x] **Step 4: Add segment skeletons and targeted Suspense**
 
 Keep shared layout/header interactive. Add Suspense boundaries only around independent data regions: post body/Annotation rail, reply list, notification list, user activity, admin lists, and revision preview. Use stable dimensions and delayed shimmer so very fast loads do not flash.
 
-- [ ] **Step 5: Add global and site error states**
+- [x] **Step 5: Add global and site error states**
 
 Provide Retry, Home, and dedicated access/session copy. `global-error.tsx` renders its own `<html>`/`<body>`. Do not include raw error messages, stack traces, D1 details, or request internals.
 
-- [ ] **Step 6: Run GREEN and compatibility regression**
+- [x] **Step 6: Run GREEN and compatibility regression**
 
 Run:
 
@@ -607,7 +607,9 @@ node --test tests/rendered-html.test.mjs
 
 Expected: all pass; page navigation and hash navigation finish without a persistent progress bar.
 
-- [ ] **Step 7: Commit and push**
+Compatibility note: the exact TopLoader package passed TypeScript and the full Vinext production build, and hash-only navigation is disabled through the package's supported `showForHashAnchor={false}` contract. The local preview service was healthy, but the cloud-browser channel rejected the preview address, so browser navigation could not be exercised in this environment.
+
+- [x] **Step 7: Commit and push**
 
 Run `git diff --check`, commit as `feat: add route loading and error feedback`, and push the V6 branch.
 

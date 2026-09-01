@@ -1,5 +1,7 @@
 import Link from "next/link";
+import { Suspense } from "react";
 
+import { NotificationsListSkeleton } from "@/components/loading/skeletons";
 import { NotificationList } from "@/components/notification-list";
 import { listNotifications } from "@/db/queries";
 import { requireMember } from "@/lib/auth/access";
@@ -8,7 +10,6 @@ import { markAllNotificationsReadAction } from "./actions";
 export default async function NotificationsPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
   const [{ member }, params] = await Promise.all([requireMember("/notifications"), searchParams]);
   const unreadOnly = params.tab === "unread";
-  const items = await listNotifications(member.id, { unreadOnly });
   return <div className="page-column notifications-page">
     <header className="page-header notification-header">
       <div><span className="eyebrow">只属于你的消息</span><h1>通知</h1><p>这里显示别人对你的内容作出的直接回应，以及 DOCX 导入时与你关联的 Word 批注。</p></div>
@@ -18,6 +19,13 @@ export default async function NotificationsPage({ searchParams }: { searchParams
       <Link href="/notifications" className={!unreadOnly ? "is-active" : ""}>全部</Link>
       <Link href="/notifications?tab=unread" className={unreadOnly ? "is-active" : ""}>未读</Link>
     </nav>
-    <NotificationList items={items} />
+    <Suspense fallback={<NotificationsListSkeleton />}>
+      <NotificationsRegion memberId={member.id} unreadOnly={unreadOnly} />
+    </Suspense>
   </div>;
+}
+
+async function NotificationsRegion({ memberId, unreadOnly }: { memberId: string; unreadOnly: boolean }) {
+  const items = await listNotifications(memberId, { unreadOnly });
+  return <NotificationList items={items} />;
 }
