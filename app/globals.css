@@ -40,8 +40,9 @@ button, input, textarea { font: inherit; }
 button, summary, input[type="file"] { cursor: pointer; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 
-#nprogress { pointer-events: none; }
-#nprogress .bar { background: var(--green); }
+#route-progress { position: fixed; z-index: 700; top: 0; left: 0; right: 0; height: 2px; pointer-events: none; opacity: 0; transition: opacity 160ms ease; }
+#route-progress[data-state="loading"], #route-progress[data-state="complete"] { opacity: 1; }
+#route-progress .route-progress__bar { width: 100%; height: 100%; transform-origin: left center; background: var(--green); transition: transform 180ms ease, opacity 160ms ease; }
 
 .loading-shell { min-height: 420px; }
 .skeleton-block, .skeleton-card, .skeleton-tabs > span { position: relative; display: block; overflow: hidden; border-radius: 7px; background: #e8e9e2; }
@@ -612,5 +613,5 @@ button, summary, input[type="file"] { cursor: pointer; }
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
   .skeleton-block::after { animation: none !important; }
   .button--pending::before { animation: none !important; border-right-color: currentColor; }
-  #nprogress .bar { transition: none !important; }
+  #route-progress, #route-progress .route-progress__bar { transition: none !important; }
 }

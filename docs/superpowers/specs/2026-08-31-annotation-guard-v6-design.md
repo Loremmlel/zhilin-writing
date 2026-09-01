@@ -68,7 +68,7 @@ V6 必须正视以下基线：
 - 编辑页只读实时 Annotation Sidebar。
 - 阅读页 selection preview。
 - Annotation Reply 共用顶部 composer。
-- TopLoader、route skeleton、Suspense、mutation pending、错误页和 reduced motion。
+- 路由 progress bridge、route skeleton、Suspense、mutation pending、错误页和 reduced motion。
 - 完整自动化测试、浏览器交互检查和真机 IME 验收清单。
 
 ### 明确不实现
@@ -125,7 +125,7 @@ V6 必须正视以下基线：
 | Server validator | 重新解析 Markdown、验证 ID 与结构、计算 delta | 信任客户端 Guard |
 | Save planner/service | 构建一个 D1 batch 并处理 CAS conflict | 自动 rebase |
 | Reading selection preview | 保留只读 DOM selection 的视觉反馈 | 写入 Markdown |
-| Loading primitives | TopLoader、Skeleton、Pending 和 Error UI | 改变业务语义 |
+| Loading primitives | Route progress bridge、Skeleton、Pending 和 Error UI | 改变业务语义 |
 
 实现应沿用现有 lib/annotations、lib/editor、lib/posts、lib/revisions 和现有 UI primitives。不得建立第二套编辑器或第二套 Annotation 数据模型。
 
@@ -600,15 +600,15 @@ annotationConflict 为 false 且只是普通 Post content conflict：
 
 ## Global Navigation Progress
 
-根 layout 使用 nextjs-toploader，要求：
+根 layout 使用一个由 Vinext 导航生命周期驱动的原生 2px progress bridge，要求：
 
 - 2px 高度。
 - 使用现有 accent token。
-- showSpinner = false。
-- shadow = false。
-- showForHashAnchor = false。
+- 不渲染 spinner 或 shadow。
+- hash-only navigation 不创建 loading token。
 - 不阻挡 pointer interaction。
-- route ready 后结束。
+- RSC response / navigation promise 完成后结束。
+- 新导航会使旧 token 失效，异常、页面卸载和超时都会复位。
 
 项目由 Vinext 构建，因此实现时必须通过：
 
@@ -619,7 +619,9 @@ annotationConflict 为 false 且只是普通 Post content conflict：
 - query navigation。
 - hash navigation不触发长 loading。
 
-若包与当前 Vinext 不兼容，不允许用脆弱 Router monkey patch 冒充完成；应保持 loading.tsx 可用并把 TopLoader 兼容问题作为未完成阻塞处理。
+不监听浏览器点击或 monkey-patch history；若第三方包与当前 Vinext 不兼容，应改用 Vinext 的
+`onRouterTransitionStart` 和 `__VINEXT_RSC_NAVIGATE__` promise bridge，而不是用固定 trickle
+动画冒充完成状态。
 
 ## Route Loading、Skeleton 与 Suspense
 
@@ -728,7 +730,7 @@ global-error 必须自带 html/body；segment error 复用站点样式和语言�
 - 每个 pending button 使用 aria-busy。
 - 保存成功、失败、pending removal count 使用合适 live region。
 - Skeleton 使用 aria-hidden，真实 loading container 使用 aria-busy。
-- TopLoader 不是唯一反馈；route skeleton 提供语义 loading。
+- Route progress 不是唯一反馈；route skeleton 提供语义 loading。
 - Selection Preview 除背景色外增加可见边缘或下划线，满足对比度。
 - Sidebar card 与 anchor 的键盘激活、定位顺序保持一致。
 - shared reply composer 打开后把 focus 放到编辑器，并提供明确 target label。
@@ -738,7 +740,7 @@ global-error 必须自带 html/body；segment error 复用站点样式和语言�
 
 prefers-reduced-motion: reduce 时：
 
-- TopLoader 取消平滑 trickle 和长 transition。
+- Route progress 不使用固定 trickle；仅在真实阶段切换时过渡。
 - Skeleton 取消 shimmer，仅保留静态占位。
 - highlight 不闪烁。
 - connector 和 card 不做动画追随。
@@ -861,7 +863,7 @@ prefers-reduced-motion: reduce 时：
 
 通过开发延迟和网络 throttling 检查：
 
-- Link 导航立即有 TopLoader / Skeleton。
+- Link 导航立即有 route progress / Skeleton。
 - Post detail 无长时间白屏。
 - Save、Annotation Create、Reply、Delete、Admin、Profile 和 mark-all-read 立即 pending。
 - mutation 失败保留输入。
@@ -928,7 +930,7 @@ prefers-reduced-motion: reduce 时：
 ### Task 5：Reply composer 与 Loading / Error 收尾
 
 - 单一顶部 Annotation Reply composer。
-- TopLoader。
+- Route progress bridge。
 - route Skeleton / Suspense。
 - mutation pending 补缺。
 - error / global-error / not-found。
@@ -963,7 +965,7 @@ prefers-reduced-motion: reduce 时：
 15. Selection Preview。
 16. 编辑页只读 Sidebar。
 17. Reply composer。
-18. TopLoader。
+18. Route progress bridge。
 19. loading.tsx / Suspense / Skeleton。
 20. mutation pending。
 21. error UI、accessibility 和 reduced motion。
@@ -977,7 +979,7 @@ prefers-reduced-motion: reduce 时：
 - 并发冲突不自动 rebase。
 - 破坏性 IME selection 确认后需要用户重新输入。
 - 真机 Windows/macOS IME 是否通过必须按实际可用环境报告。
-- nextjs-toploader 必须通过当前 Vinext compatibility gate。
+- 路由 progress bridge 必须通过当前 Vinext navigation compatibility gate。
 - Word Online fixture 仍是 V5.5 的独立已知缺口，不属于 V6 AnnotationGuard 范围。
 
 ## 最终验收定义
@@ -1013,7 +1015,7 @@ Conflict
 → 不静默覆盖任何并发批注变化
 
 明显等待
-→ 立即出现 TopLoader、Skeleton 或局部 Pending
+→ 立即出现 route progress、Skeleton 或局部 Pending
 ~~~
 
 V6 不以“能打开 annotated Post 编辑页”为成功，而以普通写作无感、真正破坏才介入、保存绝不失去批注语义为成功。

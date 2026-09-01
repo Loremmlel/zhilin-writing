@@ -25,30 +25,41 @@ test("approved route segments render shared geometry-matched loading states", as
   }
 });
 
-test("route progress is a non-blocking two-pixel accent bar without a spinner", async () => {
-  const [component, layout, packageJson, styles] = await Promise.all([
+test("route progress is driven by Vinext navigation state instead of a trickle timer", async () => {
+  const [component, layout, instrumentation, packageJson, styles] = await Promise.all([
     source("../components/loading/route-progress.tsx"),
     source("../app/layout.tsx"),
+    source("../instrumentation-client.ts"),
     source("../package.json"),
     source("../app/globals.css"),
   ]);
 
-  assert.match(packageJson, /"nextjs-toploader": "3\.9\.17"/);
-  assert.match(component, /height=\{2\}/);
-  assert.match(component, /showSpinner=\{false\}/);
-  assert.match(component, /shadow=\{false\}/);
-  assert.match(component, /showForHashAnchor=\{false\}/);
-  assert.match(component, /color="var\(--green\)"/);
+  assert.doesNotMatch(packageJson, /"nextjs-toploader"/);
+  assert.match(component, /__VINEXT_RSC_NAVIGATE__/);
+  assert.match(component, /finally/);
+  assert.match(component, /createRouteProgressController/);
+  assert.match(component, /markResponse/);
+  assert.doesNotMatch(component, /addEventListener\(["']click|history\.(?:pushState|replaceState)/);
+  assert.match(instrumentation, /onRouterTransitionStart/);
+  assert.match(instrumentation, /ROUTE_PROGRESS_START_EVENT/);
   assert.match(layout, /<RouteProgress\s*\/>/);
-  assert.match(styles, /#nprogress[^}]*pointer-events:\s*none/);
+  assert.match(styles, /#route-progress[^}]*pointer-events:\s*none/);
+  assert.doesNotMatch(styles, /#nprogress/);
 });
 
-test("route progress unwraps the CommonJS component for Vinext SSR", async () => {
-  const component = await source("../components/loading/route-progress.tsx");
+test("route progress ignores stale completions and always resets after a new request", async () => {
+  const controller = await import("../lib/loading/route-progress.ts");
+  const events: Array<{ phase: string; progress: number }> = [];
+  const progress = controller.createRouteProgressController(
+    (snapshot) => events.push({ phase: snapshot.phase, progress: snapshot.progress }),
+    { completeDelayMs: 0, timeoutMs: 1000 },
+  );
 
-  assert.match(component, /import \* as NextTopLoaderModule from ["']nextjs-toploader["']/);
-  assert.match(component, /typeof topLoaderExport === "function"/);
-  assert.match(component, /topLoaderExport as \{ default\?: unknown \}\)\.default/);
+  const stale = progress.start();
+  const current = progress.start();
+  assert.equal(progress.complete(stale), false);
+  assert.equal(progress.complete(current), true);
+  assert.deepEqual(events.map(({ phase }) => phase), ["loading", "loading", "complete", "idle"]);
 });
 
 test("targeted Suspense boundaries keep the shared shell and independent regions available", async () => {
@@ -97,7 +108,7 @@ test("loading motion has an explicit reduced-motion fallback", async () => {
   const styles = await source("../app/globals.css");
   assert.match(styles, /@keyframes\s+skeleton-shimmer/);
   assert.match(styles, /@media\s*\(prefers-reduced-motion:\s*reduce\)[\s\S]*?\.skeleton-block::after\s*\{[^}]*animation:\s*none/);
-  assert.match(styles, /@media\s*\(prefers-reduced-motion:\s*reduce\)[\s\S]*?#nprogress\s+\.bar\s*\{[^}]*transition:\s*none/);
+  assert.match(styles, /@media\s*\(prefers-reduced-motion:\s*reduce\)[\s\S]*?#route-progress[^}]*transition:\s*none/);
   assert.match(styles, /scroll-behavior:\s*auto\s*!important/);
 });
 

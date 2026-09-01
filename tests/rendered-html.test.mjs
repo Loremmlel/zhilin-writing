@@ -95,5 +95,6 @@ test("production artifact contains V6 route loading and safe error recovery", as
   assert.doesNotMatch(source, /错误堆栈|数据库查询失败|D1_ERROR/);
   assert.match(styles, /skeleton-block/);
   assert.match(styles, /route-error-card/);
-  assert.match(styles, /#nprogress/);
+  assert.match(styles, /#route-progress/);
+  assert.doesNotMatch(styles, /#nprogress/);
 });

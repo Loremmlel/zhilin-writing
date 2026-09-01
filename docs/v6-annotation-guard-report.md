@@ -77,9 +77,13 @@ Inspector 一次收集所有受影响 ID，去重并按正文位置排序。Sess
 
 Root 的“回复批注”及唯一共享 composer 现在紧跟批注正文，位于 reply count / list 之前，所以 5 条或 100 条回复都无需滚到末尾。点击某条 reply 的“回复”仍打开同一顶部 composer，并显示目标作者；thread 不会在第 N 条回复下生成第二个输入区。编辑页 Sidebar / Sheet 继续只读。
 
-## 17. Route TopLoader 如何实现
+## 17. Route progress 如何实现
 
-`components/loading/route-progress.tsx` 在 root layout 使用 `nextjs-toploader`：2px、主题 `--green`、无 spinner / shadow、不阻挡交互，并关闭 hash anchor loader。它使用维护中的 App Router 兼容库，没有 router monkey patch。全局 CSS 在 `prefers-reduced-motion` 下停用非必要动画。
+`components/loading/route-progress.tsx` 在 root layout 提供 2px、主题 `--green`、不阻挡交互的
+原生 progress bridge。`instrumentation-client.ts` 在真实路由转换开始时发出事件，bridge 包装
+Vinext 的 `__VINEXT_RSC_NAVIGATE__` promise，并在 RSC response 到达时推进阶段、promise settle
+时完成；hash-only 导航不触发长 loading。没有固定 trickle 动画，页面卸载、异常、重复导航和
+30 秒 watchdog 都会清理状态。全局 CSS 在 `prefers-reduced-motion` 下停用过渡。
 
 ## 18. loading.tsx / Suspense / Skeleton 覆盖
 

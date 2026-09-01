@@ -125,7 +125,9 @@
 
 ## Async and resilience
 
-- Route navigation starts a non-blocking 2px accent TopLoader immediately; hash-only navigation does not start it. App Router segment `loading.tsx` remains the authoritative route fallback.
+- Route navigation starts a non-blocking 2px accent progress bridge immediately; it follows Vinext's
+  RSC response and navigation promise, resets on failure/cancel/unload/timeout, and ignores hash-only
+  navigation. App Router segment `loading.tsx` remains the authoritative route fallback.
 - Post body/annotation rail, post replies, notifications, profile activity/posts, administrator lists, and revision preview use local Suspense fallbacks so the shared layout or already-resolved region stays available.
 - Skeletons keep stable geometry, expose `aria-busy` plus readable status, delay shimmer, and become static under `prefers-reduced-motion`.
 - Route, site, and global error boundaries never render exception messages, stack traces, database identifiers, or raw causes; recovery is retry plus return-home, with a dedicated missing/expired-login explanation at the site boundary.

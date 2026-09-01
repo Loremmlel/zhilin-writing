@@ -6,7 +6,7 @@
 
 **Architecture:** A pure ProseMirror transaction inspector scans Annotation Mark ranges before and after every proposed document change, classifies safe changes or one aggregated impact, and is wrapped by one editor plugin/controller for confirmation, history, clipboard, drag/drop, and IME behavior. The browser keeps confirmed removals only in the editor session and IndexedDB draft; the server reparses submitted canonical Markdown, computes an annotation delta from the current revision, rejects unconfirmed loss or stale annotation state, and commits post, revision, anchors, lifecycle, assets, and tags in one guarded D1 batch. Existing read rendering and thread components are reused for the edit-page read-only Sidebar and for selection/reply UI refinements.
 
-**Tech Stack:** TypeScript 5.9, React 19, Next.js 16 App Router through Vinext 0.0.50, Milkdown/Crepe 7.22.1, ProseMirror through `@milkdown/kit`, unified/remark, Drizzle ORM 0.45.2, Cloudflare D1/R2, IndexedDB, Node 22 test runner, happy-dom 18, `nextjs-toploader@3.9.17` subject to a Vinext compatibility gate.
+**Tech Stack:** TypeScript 5.9, React 19, Next.js 16 App Router through Vinext 0.0.50, Milkdown/Crepe 7.22.1, ProseMirror through `@milkdown/kit`, unified/remark, Drizzle ORM 0.45.2, Cloudflare D1/R2, IndexedDB, Node 22 test runner, happy-dom 18, and a native Vinext navigation progress bridge.
 
 **Spec:** `docs/superpowers/specs/2026-08-31-annotation-guard-v6-design.md`
 
@@ -47,7 +47,7 @@
 - `components/editor/annotation-guard-dialog.tsx`: one accessible multi-Annotation destructive confirmation dialog.
 - `components/editor/annotated-editor-layout.tsx`: editor plus read-only live Annotation Sidebar/sheet.
 - `components/annotations/annotation-readonly-thread.tsx`: reuse wrapper that exposes no mutation controls.
-- `components/loading/route-progress.tsx`: root TopLoader integration after the compatibility gate.
+- `components/loading/route-progress.tsx`: root Vinext navigation progress bridge.
 - `components/loading/skeletons.tsx`: shared route and section skeleton primitives.
 - `components/pending/pending-submit-button.tsx`: shared immediate mutation pending button/status behavior.
 - `db/schema.ts` and `drizzle/0006_mushy_smasher.sql`: anchor-retirement lifecycle columns and indexes/checks.
@@ -563,8 +563,9 @@ Run `git diff --check`, commit as `fix: preserve annotation context while compos
 - Modify: `tests/rendered-html.test.mjs`
 
 **Interfaces:**
-- Pins `nextjs-toploader@3.9.17` only if install, build, and route-event behavior pass under Vinext.
-- Top bar is 2px, uses the existing accent token, has no spinner or shadow, never blocks interaction, and respects reduced motion.
+- Uses Vinext's instrumentation hook and navigation promise bridge; no third-party trickle loader.
+- Top bar is 2px, uses the existing accent token, never blocks interaction, follows real navigation
+  response/settle phases, and respects reduced motion.
 - Shared skeletons approximate post list, post detail, profile/activity, notifications, search, admin list, tags, revisions, and Annotation Sidebar structures.
 
 - [x] **Step 1: Write failing static/loading tests**
@@ -577,15 +578,13 @@ Run: `npm run test:unit -- tests/loading-ui.test.ts`
 
 Expected: FAIL because loading/error files and shared components do not exist.
 
-- [x] **Step 3: Run the TopLoader compatibility gate**
+- [x] **Step 3: Run the Vinext navigation progress compatibility gate**
 
-Install exact dependency:
-
-```bash
-npm install --save-exact nextjs-toploader@3.9.17
-```
-
-Add it to the root layout through `RouteProgress`, then run `npm run build` and open preview navigation for normal routes and hash-only links. If Vinext cannot compile it or it hangs on hash navigation, revert only this dependency/integration and implement the same UX with a maintained App Router-compatible package verified at implementation time; do not monkey-patch router methods.
+Add `RouteProgress` to the root layout through Vinext's `onRouterTransitionStart` and
+`__VINEXT_RSC_NAVIGATE__` promise bridge, then run `npm run build` and verify normal, query,
+router.push, and hash-only navigation. The bridge must never rely on a fixed trickle timer or
+history monkey patch; failed, cancelled, repeated, and unloaded navigations must reset through
+their promise, error, and watchdog paths.
 
 - [x] **Step 4: Add segment skeletons and targeted Suspense**
 
@@ -607,7 +606,11 @@ node --test tests/rendered-html.test.mjs
 
 Expected: all pass; page navigation and hash navigation finish without a persistent progress bar.
 
-Compatibility note: the exact TopLoader package passed TypeScript and the full Vinext production build, and hash-only navigation is disabled through the package's supported `showForHashAnchor={false}` contract. The local preview service was healthy, but the cloud-browser channel rejected the preview address, so browser navigation could not be exercised in this environment.
+Compatibility note: the native bridge passed TypeScript and the full Vinext production build. It uses
+Vinext's `onRouterTransitionStart`, RSC response headers, and navigation promise; hash-only navigation
+is excluded before a progress token is created. The local preview service was healthy, but the
+cloud-browser channel rejected the preview address, so browser navigation could not be exercised in
+that earlier environment.
 
 - [x] **Step 7: Commit and push**
 
@@ -763,7 +766,7 @@ Run browser-level composition-event automation and document results. If Windows 
 
 - [x] **Step 8: Write the completion report**
 
-`docs/v6-annotation-guard-report.md` must answer all 20 requested report items: architecture, inspector, non-keydown design, internal mark inheritance, endpoint and structural detection, multi-ID confirmation, clipboard, history, IME, local pending state, delta, server integrity, conflict, selection preview, reply placement, TopLoader, loading/Suspense coverage, mutation coverage, and known limitations. Include exact commands and observed counts.
+`docs/v6-annotation-guard-report.md` must answer all 20 requested report items: architecture, inspector, non-keydown design, internal mark inheritance, endpoint and structural detection, multi-ID confirmation, clipboard, history, IME, local pending state, delta, server integrity, conflict, selection preview, reply placement, route progress, loading/Suspense coverage, mutation coverage, and known limitations. Include exact commands and observed counts.
 
 - [ ] **Step 9: Commit, push, deploy, and verify**
 
@@ -782,6 +785,6 @@ Before execution begins:
 - [x] Force overwrite is disabled only when an Annotation transition occurred; V3 content-only conflict behavior remains available.
 - [x] Edit Sidebar remains read-only on desktop and mobile.
 - [x] Safe-mode IME never replays captured OS candidate text.
-- [x] TopLoader has a Vinext compatibility gate and no router monkey patch fallback.
+- [x] Route progress uses Vinext lifecycle hooks and has no click/history monkey-patch fallback.
 - [x] True-device IME results are never inferred from synthetic tests.
 - [x] The plan contains no placeholder implementation steps or unresolved product choices.
