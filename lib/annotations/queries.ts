@@ -59,12 +59,6 @@ export async function getCurrentAnnotationAnchorIds(postId: string): Promise<str
   return rows.map((row) => row.annotationId);
 }
 
-export async function postHasCurrentAnnotationAnchors(postId: string): Promise<boolean> {
-  const row = (await getDb().select({ annotationId: postAnnotationAnchors.annotationId }).from(postAnnotationAnchors)
-    .where(eq(postAnnotationAnchors.postId, postId)).limit(1))[0];
-  return Boolean(row);
-}
-
 export async function listCurrentAnnotations(postId: string) {
   const rows = await getDb().select({ annotation: annotations, nativeAuthor: annotationAuthor, attributedUser: annotationAttributedUser }).from(postAnnotationAnchors)
     .innerJoin(annotations, eq(postAnnotationAnchors.annotationId, annotations.id))

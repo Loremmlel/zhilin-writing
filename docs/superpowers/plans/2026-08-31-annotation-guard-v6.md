@@ -684,7 +684,7 @@ Run `git diff --check`, commit as `feat: finish immediate mutation feedback`, an
 - Annotated edit route loads current threads, base revision identity, and the read-only edit Sidebar.
 - Final report records automated evidence and explicitly labels unavailable true-device IME checks as pending manual acceptance.
 
-- [ ] **Step 1: Prove the pre-unlock gate**
+- [x] **Step 1: Prove the pre-unlock gate**
 
 Run all focused V6 tests from Tasks 1–9 plus:
 
@@ -695,11 +695,11 @@ npm run build
 
 Expected: all pass with the edit lock still present. If any test fails, do not remove the lock.
 
-- [ ] **Step 2: Replace lock tests with annotated-edit integration tests**
+- [x] **Step 2: Replace lock tests with annotated-edit integration tests**
 
 Require the route/service to accept an annotated author's valid internal edit, reject unconfirmed endpoint loss, accept confirmed loss atomically, preserve draft state on conflict/failure, forbid force overwrite after annotation-state change, and retain ordinary unannotated edit behavior.
 
-- [ ] **Step 3: Run RED for the final unlock**
+- [x] **Step 3: Run RED for the final unlock**
 
 Run:
 
@@ -709,11 +709,11 @@ npm run test:unit -- tests/annotation-edit-lock.test.ts tests/annotation-guard-i
 
 Expected: FAIL because the V5 UI/service guard still blocks annotated editing.
 
-- [ ] **Step 4: Remove only the temporary V5 restrictions**
+- [x] **Step 4: Remove only the temporary V5 restrictions**
 
 Delete the annotated-post early return in the edit page and the matching service rejection. Keep all AnnotationGuard, server invariant, confirmation, conflict, ownership, and base-revision checks. Do not weaken `assertOrdinaryPostMarkdown` for new unannotated posts; use the new annotated-save validator only on the controlled update path.
 
-- [ ] **Step 5: Run the complete automated regression**
+- [x] **Step 5: Run the complete automated regression**
 
 Run:
 
@@ -737,7 +737,7 @@ npm run lint
 
 Expected: unit tests, production build, and rendered HTML tests pass. The existing explicit unsupported Word Online fixture may remain skipped only with its documented provenance and reason.
 
-- [ ] **Step 6: Run browser acceptance with development latency**
+- [x] **Step 6: Run browser acceptance with development latency**
 
 Start the Sites preview and verify desktop plus mobile widths for:
 
@@ -755,11 +755,13 @@ Start the Sites preview and verify desktop plus mobile widths for:
 
 Expected: no 1–2 second silent interaction, no duplicated Annotation ID, no orphan current thread, no stale replay, and no destructive dialog for ordinary edits.
 
-- [ ] **Step 7: Record true-device IME limitation honestly**
+Execution note (2026-09-01): `sites-preview` reached healthy state, but the cloud browser rejected the exact internal preview address with `net::ERR_BLOCKED_BY_CLIENT`. Per the Sites preview troubleshooting contract, no alternate host/port was substituted. Browser acceptance therefore remains an explicitly reported environment limitation rather than a claimed pass; deterministic interaction contracts and the production build passed.
+
+- [x] **Step 7: Record true-device IME limitation honestly**
 
 Run browser-level composition-event automation and document results. If Windows Microsoft Pinyin and macOS native IME are unavailable in the execution environment, mark both as `待真机验收`; do not claim they passed. The edit lock may be removed only because deterministic transaction/composition safety tests pass and the approved safe mode prevents unconfirmed destructive composition.
 
-- [ ] **Step 8: Write the completion report**
+- [x] **Step 8: Write the completion report**
 
 `docs/v6-annotation-guard-report.md` must answer all 20 requested report items: architecture, inspector, non-keydown design, internal mark inheritance, endpoint and structural detection, multi-ID confirmation, clipboard, history, IME, local pending state, delta, server integrity, conflict, selection preview, reply placement, TopLoader, loading/Suspense coverage, mutation coverage, and known limitations. Include exact commands and observed counts.
 

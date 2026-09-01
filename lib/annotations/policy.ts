@@ -5,10 +5,6 @@ const uuidV4Pattern = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[
 const annotationIdPattern = /^ann_([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/;
 const allowedContentNodes = new Set(["root", "paragraph", "blockquote", "list", "listItem", "code", "text", "strong", "emphasis", "delete", "inlineCode", "link"]);
 
-export const ANNOTATED_POST_EDIT_MESSAGE = "此帖子已有正文批注。批注正文编辑保护将在下一版本完成，因此当前暂时不能编辑已批注正文。";
-
-export function canOpenPostEditor(currentAnchorCount: number): boolean { return currentAnchorCount === 0; }
-
 export function assertOrdinaryPostMarkdown(markdown: string): string {
   if (hasAnnotationDirective(parseAnnotationMarkdown(markdown))) throw new Error("不能直接写入正文批注标记");
   return markdown;

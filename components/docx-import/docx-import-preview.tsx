@@ -102,7 +102,7 @@ export function DocxImportPreview({ preview, users, validation, onTitleChange, o
         onChange={(event) => onTitleChange(event.target.value)} />
       {titleError && <p id="docx-import-title-error" className="form-error" role="alert">{validationLabels[titleError.code]}</p>}
       {preview.ir.threads.length > 0 && <div className="docx-import-lock-notice" role="status">
-        此 DOCX 含正文批注。导入后正文将在 V6 AnnotationGuard 完成前暂时锁定编辑。
+        此 DOCX 含正文批注。导入后可继续编辑正文；修改批注端点时系统会先要求确认。
       </div>}
       <label className="field-label">正文</label>
       <MarkdownEditor initialMarkdown={preview.markdown} onMarkdownChange={onMarkdownChange} allowImageUploads={false} />

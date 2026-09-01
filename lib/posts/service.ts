@@ -5,8 +5,8 @@ import { getDb } from "@/db";
 import { activityEvents, assets, notifications, postAssetRefs, postRevisions, posts, postTags, replies, revisionAssetRefs, tags } from "@/db/schema";
 import { findReply, findReplyBySubmissionKey, getPost } from "@/db/queries";
 import { activityEventId, notificationId, resolveReplyRecipient, validateSubmissionKey } from "@/lib/activity/policy";
-import { assertOrdinaryPostMarkdown, ANNOTATED_POST_EDIT_MESSAGE } from "@/lib/annotations/policy";
-import { getCurrentAnnotationSaveStates, postHasCurrentAnnotationAnchors } from "@/lib/annotations/queries";
+import { assertOrdinaryPostMarkdown } from "@/lib/annotations/policy";
+import { getCurrentAnnotationSaveStates } from "@/lib/annotations/queries";
 import { AnnotationIntegrityError, planAnnotatedPostSave } from "@/lib/annotations/save-plan";
 import { validateCanonicalAnnotationDocument } from "@/lib/annotations/invariants";
 import { canEditPost, normalizeReplyTarget, validatePostInput, validateReplyMarkdown } from "@/lib/domain/rules";
@@ -127,7 +127,6 @@ export async function updatePost(postId: string, currentUserId: string, input: S
   const existing = await getPost(postId);
   if (!existing) throw new Error("帖子不存在");
   if (!canEditPost(existing.post.authorId, currentUserId)) throw new Error("你不能编辑这篇帖子");
-  if (await postHasCurrentAnnotationAnchors(postId)) throw new Error(ANNOTATED_POST_EDIT_MESSAGE);
   if (!existing.post.currentRevisionId) throw new Error("帖子当前版本不存在");
   if (!input.baseRevisionId) throw new Error("缺少编辑基础版本，请刷新后重试");
   const base = resolveSaveBase(existing.post.currentRevisionId, input.baseRevisionId, input.overwriteBaseRevisionId);

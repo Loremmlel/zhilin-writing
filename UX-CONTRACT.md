@@ -19,6 +19,7 @@
 | V3 revision、冲突与恢复 | `docs/superpowers/specs/2026-08-25-post-revisions-v3-design.md` | Product/design spec | 2026-08-25 |
 | V4 内容生命周期与资源回收 | `docs/superpowers/specs/2026-08-26-content-lifecycle-v4-design.md` | Product/design spec | 2026-08-26 |
 | V5 Annotation AST、正文批注与讨论 | `docs/superpowers/specs/2026-08-27-annotation-v5-design.md` | Product/design spec | 2026-08-27 |
+| V6 AnnotationGuard、批注编辑与 Loading | `docs/superpowers/specs/2026-08-31-annotation-guard-v6-design.md` | Product/design spec | 2026-08-31 |
 | 服务器权限边界 | `lib/auth/access.ts` | Verified domain invariant | 2026-08-25 |
 | 保存、删除、隐藏与恢复状态机 | `lib/posts/service.ts`, `lib/lifecycle/service.ts`, `lib/revisions/service.ts`, `lib/annotations/service.ts` | Verified API/domain contract | 2026-08-27 |
 
@@ -48,6 +49,7 @@
 | Annotation AST/selection | annotation Markdown and structural selection | `lib/annotations/markdown.ts`, `lib/annotations/selection.ts` | parse / wrap / unwrap / validate | round-trip + selection unit |
 | Annotation reading | `AnnotationReadingLayout` | `components/annotations/annotation-reading-layout.tsx` | desktop sidebar / mobile sheet | unit + build + browser |
 | Annotation lifecycle | annotation service and shared moderation | `lib/annotations/service.ts`, `components/admin/content-lifecycle-control.tsx` | create / reply / delete / hide / unhide / restore | unit + transaction review |
+| Annotated editing | `AnnotationGuard` + authoritative post save | `lib/editor/annotation-guard.ts`, `lib/editor/annotation-session.ts`, `lib/posts/service.ts` | safe edit / confirmed retirement / conflict | inspector + integration + transaction tests |
 | Route loading and recovery | shared loading/error surfaces | `components/loading/*`, `components/error-state.tsx`, App Router `loading.tsx` / `error.tsx` | route / independent region / global recovery / not-found | static contract + build + rendered smoke |
 
 ## Component behavior
@@ -78,7 +80,8 @@
 | Operation | Trigger | Pending | Success destination | Success feedback | Failure recovery | Focus outcome | Source ref |
 |---|---|---|---|---|---|---|---|
 | Publish | 发布帖子 | disabled submit | new post | post page | editor retains draft/error | route heading | V1 spec |
-| Edit | 保存修改 | disabled submit | post page | edited time | IndexedDB + conflict UI | post heading | V3 spec |
+| Edit | 保存修改 | disabled submit | post page | edited time | IndexedDB + conflict UI | post heading | V3 + V6 spec |
+| Retire annotation by editing | 破坏受保护端点 → 确认 → 保存修改 | 本地待撤下，保存时 disabled submit | post page | anchor/thread 退出当前版本，revision 保留历史 | Undo/放弃草稿恢复；失败保留 IndexedDB | 安全取消按钮 / post heading | V6 spec |
 | Use online | conflict choice + confirm | local state replacement | editor | conflict clears | confirmation can cancel | editor | V3 spec |
 | Overwrite | conflict choice + confirm；仅基础区间无批注变化时提供 | disabled submit | post page | new revision | refreshed conflict if race repeats | post heading | V3 + V6 spec |
 | Annotation-change conflict | conflict dialog | local draft remains available | current editor | explains why overwrite is unavailable | load latest and manually reapply | safe/manual choice | V6 spec |
@@ -157,9 +160,9 @@
 - Deleted/hidden Markdown and historical-only assets are returned only through administrator-checked paths; public detail queries return placeholders with nullable content fields.
 - Ordinary server actions enforce ownership for delete. Hide, unhide, restore, raw lifecycle lists, and audit history require `requireAdministrator()`.
 - Current annotation membership is the `post_annotation_anchors` relation, not a nullable row heuristic. Notification/activity readers redact root or reply Markdown unless the target is visible and its root anchor belongs to the current revision.
-- V5 temporary正文 edit lock remains until the V6 AnnotationGuard transaction boundary、server annotation delta validation and regression gate all pass；只有最终安全门通过后才能解除。
+- 带批注正文只允许帖子作者从受控编辑页修改；客户端 AnnotationGuard 负责交互保护，服务端仍重新验证 canonical AST、ownership、confirmed delta、base revision 与 conflict interval。
 - Imported Annotation/Reply is immutable and always identifies its Word source. Attribution grants no ownership or lifecycle permission; the Post author may remove an imported thread without cascading to later native replies.
-- Clipboard copy is not part of V3.
+- Copy/Paste/Cut/Drop 的富文本 Slice 必须剥离 Annotation Mark 与 ID；普通文本和受支持格式保留，新的 Annotation 只能由受控创建、DOCX Import 或 Revision Restore 产生。
 
 ## Verification
 

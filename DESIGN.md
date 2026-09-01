@@ -116,7 +116,7 @@ components:
 
 ### DOCX import workspace
 
-DOCX 导入是现有写作表面的受控入口，不是营销上传页。初始态使用清楚的文件选择区说明浏览器解析、20 MB 限制与原始文件不上传；解析态保持固定布局并显示分阶段进度、取消和 typed error；Preview 在桌面使用校刊正文纸面与批注/警告右栏，在移动端按现有 Annotation Sheet 语义堆叠。Word author mapping 明示“Word 导入”和可选站内关联，不能把关联用户渲染成原作者。warnings 使用既有 info/warning/danger 层级和可展开分类，不用装饰性仪表盘。包含正文批注时必须显示 V5 编辑锁提示。
+DOCX 导入是现有写作表面的受控入口，不是营销上传页。初始态使用清楚的文件选择区说明浏览器解析、20 MB 限制与原始文件不上传；解析态保持固定布局并显示分阶段进度、取消和 typed error；Preview 在桌面使用校刊正文纸面与批注/警告右栏，在移动端按现有 Annotation Sheet 语义堆叠。Word author mapping 明示“Word 导入”和可选站内关联，不能把关联用户渲染成原作者。warnings 使用既有 info/warning/danger 层级和可展开分类，不用装饰性仪表盘。包含正文批注时必须说明导入后仍可继续编辑；只有修改受保护端点或破坏 anchor 结构时才会要求确认。
 
 ### Iconography
 

@@ -4,7 +4,6 @@ import type { AnnotationCardView } from "@/components/annotations/annotation-thr
 import { PostEditorForm } from "@/components/editor/post-editor-form";
 import { getPost } from "@/db/queries";
 import { listCurrentAnnotationThreads } from "@/lib/annotations/queries";
-import { ANNOTATED_POST_EDIT_MESSAGE } from "@/lib/annotations/policy";
 import { requireMember } from "@/lib/auth/access";
 import { assetMarkdown } from "@/lib/domain/rules";
 import { formatDateTime } from "@/lib/format";
@@ -16,7 +15,6 @@ export default async function EditPostPage({ params }: { params: Promise<{ id: s
   const [{ member }, item, rawAnnotations] = await Promise.all([requireMember(`/posts/${id}/edit`), getPost(id), listCurrentAnnotationThreads(id)]);
   if (!item) notFound();
   if (item.post.authorId !== member.id) redirect(`/posts/${id}`);
-  if (rawAnnotations.length > 0) return <div className="page-column"><article className="unavailable-card"><span className="eyebrow">正文编辑保护</span><h1>暂时不能编辑这篇帖子</h1><p>{ANNOTATED_POST_EDIT_MESSAGE}</p><p><a className="text-link" href={`/posts/${id}`}>返回帖子</a></p></article></div>;
   const annotationViews = await Promise.all(rawAnnotations.map(async (row): Promise<AnnotationCardView> => ({
     id: row.annotation.id,
     originalSelectedText: row.annotation.originalSelectedText,
