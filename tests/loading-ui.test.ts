@@ -43,6 +43,14 @@ test("route progress is a non-blocking two-pixel accent bar without a spinner", 
   assert.match(styles, /#nprogress[^}]*pointer-events:\s*none/);
 });
 
+test("route progress unwraps the CommonJS component for Vinext SSR", async () => {
+  const component = await source("../components/loading/route-progress.tsx");
+
+  assert.match(component, /import \* as NextTopLoaderModule from ["']nextjs-toploader["']/);
+  assert.match(component, /typeof topLoaderExport === "function"/);
+  assert.match(component, /topLoaderExport as \{ default\?: unknown \}\)\.default/);
+});
+
 test("targeted Suspense boundaries keep the shared shell and independent regions available", async () => {
   const pages = await Promise.all([
     source("../app/(site)/posts/[id]/page.tsx"),
