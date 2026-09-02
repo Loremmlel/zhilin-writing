@@ -24,6 +24,8 @@ test("replaces only generated DOCX image destinations", () => {
     mimeType: "image/png",
   };
   const markdown = [
+    "Meeting time stays escaped: 5\\:00.",
+    "",
     "Literal docx-asset:asset_000001 stays.",
     "",
     "[ordinary link](docx-asset:asset_000001)",
@@ -33,6 +35,7 @@ test("replaces only generated DOCX image destinations", () => {
 
   const result = replaceDocxAssetReferences(markdown, [{ source, uploaded }]);
 
+  assert.match(result, /Meeting time stays escaped: 5\\:00\./);
   assert.match(result, /Literal docx-asset:asset_000001 stays\./);
   assert.match(result, /\[ordinary link\]\(docx-asset\\?:asset_000001\)/);
   assert.match(result, /!\[image\]\(\/api\/assets\/stored-1\)/);

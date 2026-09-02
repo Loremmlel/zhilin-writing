@@ -1,30 +1,19 @@
-import {
-  parseAnnotationMarkdown,
-  stringifyAnnotationMarkdown,
-} from "../annotations/markdown.ts";
+import { escapeMarkdownLiteral } from "./markdown.ts";
 import type { DocxPreviewAsset, ImportAsset } from "./types.ts";
-
-type ImageNode = {
-  type: string;
-  url?: string;
-  children?: ImageNode[];
-};
 
 export function replaceDocxAssetReferences(
   markdown: string,
   assets: ReadonlyArray<{ source: ImportAsset; uploaded: DocxPreviewAsset }>,
 ): string {
-  const replacements = new Map(assets.map(({ source, uploaded }) => [
-    `docx-asset:${source.id}`,
-    uploaded.temporaryUrl,
-  ]));
-  const tree = parseAnnotationMarkdown(markdown) as ImageNode;
-  visit(tree, (node) => {
-    if (node.type === "image" && node.url && replacements.has(node.url)) {
-      node.url = replacements.get(node.url);
-    }
-  });
-  return stringifyAnnotationMarkdown(tree as never).trimEnd();
+  let result = markdown;
+  for (const { source, uploaded } of assets) {
+    const alt = escapeMarkdownLiteral(source.alt);
+    result = result.replaceAll(
+      `![${alt}](docx-asset:${source.id})`,
+      `![${alt}](${uploaded.temporaryUrl})`,
+    );
+  }
+  return result;
 }
 
 export async function uploadDocxAssetsSequentially(
@@ -42,9 +31,4 @@ export async function uploadDocxAssetsSequentially(
     onUploaded(index + 1);
   }
   return uploadedAssets;
-}
-
-function visit(node: ImageNode, callback: (node: ImageNode) => void) {
-  callback(node);
-  node.children?.forEach((child) => visit(child, callback));
 }

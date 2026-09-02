@@ -7,6 +7,7 @@ import {
   type EditedImportPreview,
   type ImportPreviewValidationResult,
 } from "@/lib/docx-import/preview-validation";
+import { warningsWithoutSkippedThreadDuplicates } from "@/lib/docx-import/preview-warnings";
 import type { ImportWarning, ImportedThread } from "@/lib/docx-import/types";
 
 type SiteUser = { id: string; displayName: string };
@@ -65,8 +66,9 @@ export function DocxImportPreview({ preview, users, validation, onTitleChange, o
   onMarkdownChange: (markdown: string) => void;
   onMappingChange: (sourceAuthorName: string, userId: string) => void;
 }) {
+  const summaryWarnings = warningsWithoutSkippedThreadDuplicates(preview.ir.warnings, preview.ir.skippedThreads);
   const warningDetails = [
-    ...preview.ir.warnings.map((warning) => ({
+    ...summaryWarnings.map((warning) => ({
       key: `${warning.code}:${warning.sourceRef ?? ""}`,
       label: warningLabels[warning.code],
       detail: warning.sourceRef,

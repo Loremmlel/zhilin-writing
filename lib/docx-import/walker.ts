@@ -889,7 +889,9 @@ class WarningCollector {
   add(code: ImportWarningCode): void {
     const existing = this.#warnings.find((warning) => warning.code === code && !warning.sourceRef);
     if (existing) {
-      existing.count = (existing.count ?? 1) + 1;
+      if (!PRESENCE_ONLY_WARNING_CODES.has(code)) {
+        existing.count = (existing.count ?? 1) + 1;
+      }
     } else {
       this.#warnings.push({ code, severity: INFO_WARNING_CODES.has(code) ? "info" : "warning", count: 1 });
     }
@@ -899,6 +901,10 @@ class WarningCollector {
     return this.#warnings.map((warning) => ({ ...warning }));
   }
 }
+
+const PRESENCE_ONLY_WARNING_CODES = new Set<ImportWarningCode>([
+  "VISUAL_FORMATTING_DROPPED",
+]);
 
 const INFO_WARNING_CODES = new Set<ImportWarningCode>([
   "TABLE_HEADER_SYNTHESIZED",

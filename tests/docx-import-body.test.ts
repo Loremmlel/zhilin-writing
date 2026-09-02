@@ -49,6 +49,10 @@ test("uses semantic styles and accepted revision text without visual guessing", 
     "TRACK_CHANGES_FLATTENED",
     "TOC_SKIPPED",
   ]);
+  assert.equal(
+    parsed.warnings.find((warning) => warning.code === "VISUAL_FORMATTING_DROPPED")?.count,
+    1,
+  );
   assert.deepEqual(parsed.assets, []);
   assert.equal(parsed.threads.length, 1);
   assert.equal(parsed.threads[0]?.sourceCommentId, "7");
