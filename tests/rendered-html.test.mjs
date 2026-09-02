@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile, readdir } from "node:fs/promises";
 import test from "node:test";
+import { Worker } from "node:worker_threads";
 
 async function builtServerSource() {
   const root = new URL("../dist/server/", import.meta.url);
@@ -18,6 +19,14 @@ async function builtCssSource() {
     files.filter((file) => file.endsWith(".css")).map((file) => readFile(new URL(file, root), "utf8")),
   );
   return chunks.join("\n");
+}
+
+async function builtDocxWorkerUrl() {
+  const root = new URL("../dist/client/assets/", import.meta.url);
+  const files = await readdir(root);
+  const filename = files.find((file) => /^docx-import\.worker-.*\.js$/.test(file));
+  assert.ok(filename, "production build did not emit the DOCX worker");
+  return new URL(filename, root);
 }
 
 test("production artifact contains private-community metadata and denial copy", async () => {
@@ -84,6 +93,17 @@ test("production artifact contains the V5.5 DOCX import entry and Preview worksp
   assert.match(source, /确认导入/);
   assert.match(styles, /docx-import-workspace/);
   assert.match(styles, /docx-import-warning-summary/);
+});
+
+test("production DOCX worker loads without DOM globals", async () => {
+  const worker = new Worker(await builtDocxWorkerUrl());
+  await new Promise((resolve, reject) => {
+    worker.once("error", reject);
+    worker.once("exit", (code) => {
+      if (code === 0) resolve();
+      else reject(new Error(`DOCX worker exited with code ${code}`));
+    });
+  });
 });
 
 test("production artifact contains V6 route loading and safe error recovery", async () => {

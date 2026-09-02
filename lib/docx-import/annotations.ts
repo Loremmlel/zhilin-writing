@@ -1,4 +1,3 @@
-import { createAnnotationId as createNativeAnnotationId } from "../annotations/policy.ts";
 import { DOCX_IMPORT_LIMITS } from "./limits.ts";
 import { escapeMarkdownLiteral } from "./markdown.ts";
 import { DocxImportError } from "./types.ts";
@@ -250,7 +249,7 @@ export function resolveAnnotationThreads(
   factories: AnnotationIdFactories = {},
 ): ResolvedAnnotationThreads {
   const createAnnotationId = factories.createAnnotationId
-    ?? (() => createNativeAnnotationId());
+    ?? (() => `ann_${crypto.randomUUID()}`);
   const createReplyId = factories.createReplyId
     ?? (() => crypto.randomUUID());
   const traces = new Map(walked.commentRanges.map((range) => [range.sourceCommentId, range]));
