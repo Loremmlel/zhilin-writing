@@ -33,7 +33,7 @@ function ReplyItem({ item, nested, currentUserId, replyActionFor, deleteActionFo
   deleteActionFor: ReplyListProps["deleteActionFor"];
 }) {
   return (
-    <article className={nested ? "reply reply--nested" : "reply"} id={`reply-${item.reply.id}`}>
+    <article className={nested ? "reply reply--nested" : "reply"} id={`reply-${item.reply.id}`} tabIndex={-1}>
       <div className="reply-author"><Avatar name={item.author.displayName} assetId={item.author.avatarAssetId} size="small" /></div>
       <div className="reply-body">
         <div className="reply-meta">

@@ -6,6 +6,7 @@ import { canExposeActivitySnapshot, contentState } from "@/lib/lifecycle/policy"
 import { buildPostLifecycleView, buildReplyLifecycleViews } from "@/lib/lifecycle/views";
 import { canExposeAnnotationActivitySnapshot } from "@/lib/activity/policy";
 import { parseDocxAttributionNoticeMetadata } from "@/lib/notifications/policy";
+import { resolveNotificationTarget } from "@/lib/notifications/target-resolution";
 
 export type PostSort = "latest" | "active";
 
@@ -272,14 +273,16 @@ export async function getReplyCount(postId: string): Promise<number> {
   return row?.value ?? 0;
 }
 
-export async function listReplies(postId: string) {
+export async function listReplies(postId: string, options: { includeUnavailableReplyId?: string } = {}) {
   const rows = await getDb()
     .select({ reply: replies, author: users })
     .from(replies)
     .innerJoin(users, eq(replies.authorId, users.id))
     .where(eq(replies.postId, postId))
     .orderBy(asc(replies.publishedAt));
-  const lifecycleRows = buildReplyLifecycleViews(rows.map((row) => row.reply));
+  const lifecycleRows = buildReplyLifecycleViews(rows.map((row) => row.reply), {
+    requiredPlaceholderIds: options.includeUnavailableReplyId ? [options.includeUnavailableReplyId] : [],
+  });
   const included = new Set(lifecycleRows.map((row) => row.id));
   const lifecycleById = new Map(lifecycleRows.map((row) => [row.id, row]));
   const replyById = new Map(rows.map((row) => [row.reply.id, row.reply]));
@@ -422,9 +425,27 @@ async function lifecycleNotificationRow<T extends {
   const docxAttribution = row.notification.notificationType === "DOCX_ATTRIBUTION_NOTICE"
     ? parseDocxAttributionNoticeMetadata(row.notification.metadataJson)
     : null;
+  const targetResolution = row.notification.notificationType === "DOCX_ATTRIBUTION_NOTICE"
+    ? null
+    : resolveNotificationTarget({
+      kind: row.notification.notificationType === "POST_REPLY_RECEIVED"
+        ? "POST_REPLY"
+        : row.notification.notificationType === "POST_ANNOTATION_RECEIVED"
+          ? "ANNOTATION"
+          : "ANNOTATION_REPLY",
+      postExists: Boolean(row.post),
+      postReachable,
+      targetState: row.notification.notificationType === "POST_REPLY_RECEIVED"
+        ? row.reply ? replyState : null
+        : row.notification.notificationType === "POST_ANNOTATION_RECEIVED"
+          ? row.annotation ? annotationState : null
+          : row.annotationReply ? annotationReplyState : null,
+      annotationCurrent,
+    });
   return {
     ...row,
     docxAttribution: docxAttribution?.postId === row.notification.postId ? docxAttribution : null,
+    targetResolution,
     event: { ...row.event, metadataJson: eventMetadataVisible ? row.event.metadataJson : null },
     post: row.post ? { ...row.post, title: postState === "normal" ? row.post.title : "", markdown: "", searchText: "" } : null,
     reply: row.reply ? { ...row.reply, markdown: replyState === "normal" ? row.reply.markdown : "" } : null,

@@ -8,11 +8,15 @@ type AnnotationReplyLifecycleInput = {
   hiddenAt: Date | null;
 };
 
-export function buildAnnotationReplyLifecycleViews<T extends AnnotationReplyLifecycleInput>(replies: T[]) {
+export function buildAnnotationReplyLifecycleViews<T extends AnnotationReplyLifecycleInput>(
+  replies: T[],
+  options: { requiredPlaceholderIds?: readonly string[] } = {},
+) {
+  const requiredPlaceholderIds = new Set(options.requiredPlaceholderIds ?? []);
   return replies.flatMap((reply) => {
     const state = contentState(reply).state;
     const dependents = replies.filter((candidate) => candidate.replyToReplyId === reply.id && contentState(candidate).state === "normal");
-    if (state !== "normal" && dependents.length === 0) return [];
+    if (state !== "normal" && dependents.length === 0 && !requiredPlaceholderIds.has(reply.id)) return [];
     return [{
       ...reply,
       state,

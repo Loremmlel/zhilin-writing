@@ -32,6 +32,14 @@ test("deleted replies remain only when a visible direct reply depends on them", 
   assert.equal(views.length, 2);
 });
 
+test("a notification deep link can retain an unavailable annotation reply placeholder", () => {
+  const deleted = reply({ id: "target", deletedAt: new Date(), deletedByUserId: "b" });
+  const views = buildAnnotationReplyLifecycleViews([deleted], { requiredPlaceholderIds: ["target"] });
+  assert.equal(views.length, 1);
+  assert.equal(views[0]?.contentVisible, false);
+  assert.equal(views[0]?.placeholder, "该回复已被作者删除。");
+});
+
 test("administrator moderation snapshots current roots but not reply-only visibility", () => {
   const hiddenRoot = planAnnotationAdminTransition({ targetType: "ANNOTATION", targetId: "a", record: root, administratorId: "admin", operation: "hide", operationId: "op-a", reason: "越界", currentAnchor: true, now: new Date(10) });
   assert.equal(hiddenRoot.createAnnotationStateRevision, true);

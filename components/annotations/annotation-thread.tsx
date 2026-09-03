@@ -58,6 +58,7 @@ function AnnotationReplyIdentity({ author, createdAtLabel, replyTo }: {
 type AnnotationThreadProps = {
   annotation: AnnotationCardView;
   onLocate?: () => void;
+  highlightReplyId?: string | null;
 } & ({
   readOnly: true;
   replyAction?: never;
@@ -86,32 +87,34 @@ function AnnotationRoot({ annotation, onLocate }: { annotation: AnnotationCardVi
   </>;
 }
 
-function AnnotationReplyContent({ reply, children }: { reply: AnnotationReplyView; children?: ReactNode }) {
-  return <section className="annotation-reply">
+function AnnotationReplyContent({ reply, children, highlighted = false }: { reply: AnnotationReplyView; children?: ReactNode; highlighted?: boolean }) {
+  return <section className={`annotation-reply${highlighted ? " is-deep-linked" : ""}`} id={`annotation-reply-${reply.id}`} tabIndex={-1}>
       <header><Avatar name={reply.author.displayName} assetId={reply.author.avatarAssetId} size="small" /><AnnotationReplyIdentity author={reply.author} createdAtLabel={reply.createdAtLabel} replyTo={reply.replyTo} /></header>
       {reply.lifecycle.contentVisible ? <div className="markdown-body markdown-body--annotation" dangerouslySetInnerHTML={{ __html: reply.contentHtml }} /> : <p className="annotation-placeholder">{reply.lifecycle.placeholder}</p>}
       {children}
     </section>;
 }
 
-function AnnotationReplyList({ replies, renderActions }: {
+function AnnotationReplyList({ replies, renderActions, highlightReplyId }: {
   replies: AnnotationReplyView[];
   renderActions?: (reply: AnnotationReplyView) => ReactNode;
+  highlightReplyId?: string | null;
 }) {
   if (replies.length === 0) return null;
   return <>
     <div className="annotation-reply-heading"><span>已有回复</span><strong>{replies.length}</strong></div>
-    <div className="annotation-reply-list">{replies.map((reply) => <AnnotationReplyContent reply={reply} key={reply.id}>{renderActions?.(reply)}</AnnotationReplyContent>)}</div>
+    <div className="annotation-reply-list">{replies.map((reply) => <AnnotationReplyContent reply={reply} highlighted={highlightReplyId === reply.id} key={reply.id}>{renderActions?.(reply)}</AnnotationReplyContent>)}</div>
   </>;
 }
 
-function InteractiveAnnotationDiscussion({ annotation, replyAction, deleteAction, deleteReplyAction, removeImportedAction, allowReplies }: {
+function InteractiveAnnotationDiscussion({ annotation, replyAction, deleteAction, deleteReplyAction, removeImportedAction, allowReplies, highlightReplyId }: {
   annotation: AnnotationCardView;
   replyAction: AnnotationReplyAction;
   deleteAction: AnnotationDeleteAction;
   deleteReplyAction: AnnotationReplyDeleteAction;
   removeImportedAction: AnnotationRemoveImportedAction;
   allowReplies: boolean;
+  highlightReplyId?: string | null;
 }) {
   const capabilities = annotationThreadCapabilities("interactive");
   const [composer, setComposer] = useState(initialAnnotationReplyComposerState);
@@ -150,7 +153,7 @@ function InteractiveAnnotationDiscussion({ annotation, replyAction, deleteAction
     {replyItems.length > 0 && <div className="annotation-reply-list">{replyItems.map((item) => {
       if (item.kind !== "reply") return null;
       const reply = item.reply;
-      return <AnnotationReplyContent reply={reply} key={reply.id}>
+      return <AnnotationReplyContent reply={reply} highlighted={highlightReplyId === reply.id} key={reply.id}>
         {capabilities.delete && reply.lifecycle.contentVisible && reply.permissions.canDelete && <DeleteContentControl action={deleteReplyAction.bind(null, reply.id)} label="删除回复" title="删除这条批注回复？" description={reply.deleteDescription} />}
         {canReply && reply.lifecycle.contentVisible && <button type="button" className="annotation-reply-action" onClick={() => openComposer({ type: "reply", replyId: reply.id, displayName: reply.author.displayName })}>回复</button>}
       </AnnotationReplyContent>;
@@ -159,11 +162,11 @@ function InteractiveAnnotationDiscussion({ annotation, replyAction, deleteAction
 }
 
 export function AnnotationThread(props: AnnotationThreadProps) {
-  const { annotation, onLocate } = props;
+  const { annotation, onLocate, highlightReplyId } = props;
   return <>
     <AnnotationRoot annotation={annotation} onLocate={onLocate} />
     {props.readOnly === true
-      ? <AnnotationReplyList replies={annotation.replies} />
+      ? <AnnotationReplyList replies={annotation.replies} highlightReplyId={highlightReplyId} />
       : <InteractiveAnnotationDiscussion
         annotation={annotation}
         replyAction={props.replyAction}
@@ -171,6 +174,7 @@ export function AnnotationThread(props: AnnotationThreadProps) {
         deleteReplyAction={props.deleteReplyAction}
         removeImportedAction={props.removeImportedAction}
         allowReplies={props.allowReplies ?? true}
+        highlightReplyId={highlightReplyId}
       />}
   </>;
 }

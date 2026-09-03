@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   activityEventId,
   annotationTargetHref,
+  annotationReplyTargetHref,
   canExposeAnnotationActivitySnapshot,
   notificationId,
   replyTargetHref,
@@ -34,11 +35,12 @@ test("activity previews are whitespace-normalized and truncated by Unicode chara
 });
 
 test("reply targets use a stable DOM anchor instead of text matching", () => {
-  assert.equal(replyTargetHref("post-a", "reply-b"), "/posts/post-a#reply-reply-b");
+  assert.equal(replyTargetHref("post-a", "reply-b"), "/posts/post-a?target=post-reply&reply=reply-b#reply-reply-b");
 });
 
 test("annotation targets use the stable annotation id and redact unavailable snapshots", () => {
-  assert.equal(annotationTargetHref("post-a", "ann-a"), "/posts/post-a?annotation=ann-a#annotation-card-ann-a");
+  assert.equal(annotationTargetHref("post-a", "ann-a"), "/posts/post-a?target=annotation&annotation=ann-a#annotation-card-ann-a");
+  assert.equal(annotationReplyTargetHref("post-a", "ann-a", "reply-b"), "/posts/post-a?target=annotation-reply&annotation=ann-a&annotationReply=reply-b#annotation-reply-reply-b");
   assert.equal(canExposeAnnotationActivitySnapshot("normal", "normal", true), true);
   assert.equal(canExposeAnnotationActivitySnapshot("normal", "deleted", true), false);
   assert.equal(canExposeAnnotationActivitySnapshot("normal", "normal", false), false);

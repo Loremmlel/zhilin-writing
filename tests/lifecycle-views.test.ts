@@ -64,3 +64,12 @@ test("hidden reply placeholder never reuses stored Markdown", () => {
   assert.equal(view.contentVisible, false);
   assert.equal(view.placeholder, "该回复已被管理员隐藏。");
 });
+
+test("a notification deep link can retain its unavailable reply placeholder", () => {
+  const views = buildReplyLifecycleViews([
+    { id: "deleted-target", authorId: "a", rootReplyId: null, replyToReplyId: null, deletedAt: new Date(1_000), hiddenAt: null },
+  ], { requiredPlaceholderIds: ["deleted-target"] });
+  assert.equal(views.length, 1);
+  assert.equal(views[0]?.contentVisible, false);
+  assert.equal(views[0]?.placeholder, "该回复已被作者删除。");
+});

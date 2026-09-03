@@ -6,6 +6,7 @@ import { Avatar } from "@/components/avatar";
 import { AnnotationReadingLayout, type AnnotationCardView } from "@/components/annotations/annotation-reading-layout";
 import { AnnotationThread } from "@/components/annotations/annotation-thread";
 import { DeleteContentControl } from "@/components/lifecycle/delete-content-control";
+import { DeepLinkHighlighter } from "@/components/deep-link-highlighter";
 import { DiscussionSkeleton, PostBodySkeleton } from "@/components/loading/skeletons";
 import { ReplyForm } from "@/components/reply-form";
 import { ReplyList } from "@/components/reply-list";
@@ -16,18 +17,26 @@ import { requireMember } from "@/lib/auth/access";
 import { formatDateTime } from "@/lib/format";
 import { deletePostConfirmation } from "@/lib/lifecycle/policy";
 import { renderMarkdown } from "@/lib/markdown/render";
+import { notificationTargetNotice, parseNotificationTargetState, type NotificationTargetKind } from "@/lib/notifications/target-resolution";
 import { createAnnotationAction, createAnnotationReplyAction, createReplyAction, deleteAnnotationAction, deleteAnnotationReplyAction, deletePostAction, deleteReplyAction, removeImportedAnnotationThreadAction } from "./actions";
 
 type PostDetail = NonNullable<Awaited<ReturnType<typeof getPostDetail>>>;
 type AnnotationRows = Awaited<ReturnType<typeof listCurrentAnnotationThreads>>;
-type PostQuery = { notice?: string; annotation?: string };
+type PostQuery = { notice?: string; target?: string; reply?: string; annotation?: string; annotationReply?: string };
+
+function targetKindFromQuery(target: string | undefined): NotificationTargetKind | null {
+  if (target === "post-reply") return "POST_REPLY";
+  if (target === "annotation") return "ANNOTATION";
+  if (target === "annotation-reply") return "ANNOTATION_REPLY";
+  return null;
+}
 
 export default async function PostPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<PostQuery> }) {
   const [{ id }, query] = await Promise.all([params, searchParams]);
   const [{ member }, item, rawAnnotations] = await Promise.all([
     requireMember(`/posts/${id}`),
     getPostDetail(id),
-    listCurrentAnnotationThreads(id),
+    listCurrentAnnotationThreads(id, { includeUnavailableReplyId: query.target === "annotation-reply" ? query.annotationReply : undefined }),
   ]);
   if (!item) notFound();
   const discussionVisible = item.lifecycle.contentVisible || item.lifecycle.discussionReachable;
@@ -110,6 +119,7 @@ async function PostBodyRegion({ id, query, item, rawAnnotations, memberId }: {
         deleteReplyAction={deleteAnnotationReplyAction.bind(null, id)}
         removeImportedAction={removeImportedAnnotationThreadAction.bind(null, id)}
         initialAnnotationId={query.annotation}
+        initialAnnotationReplyId={query.target === "annotation-reply" ? query.annotationReply : undefined}
       /> : <div className="markdown-body" dangerouslySetInnerHTML={{ __html: postHtml }} />}
       {item.attachments.length > 0 && <section className="attachment-area">
         <h2>附件</h2>
@@ -124,24 +134,30 @@ async function PostBodyRegion({ id, query, item, rawAnnotations, memberId }: {
     {!item.lifecycle.contentVisible && item.lifecycle.discussionReachable && annotationViews.length > 0 && <section className="annotation-detached-discussions" aria-label="保留的正文批注讨论">
       <div className="section-heading"><h2>正文批注讨论</h2><span>{annotationViews.length} 条</span></div>
       <p className="muted">正文已经撤下；其他成员发布的批注与回复仍保留。</p>
-      <div className="annotation-detached-list">{annotationViews.map((annotation) => <article id={`annotation-card-${annotation.id}`} key={annotation.id} className={`annotation-card annotation-card--flow${query.annotation === annotation.id ? " is-active" : ""}`}>
-        <AnnotationThread annotation={annotation} replyAction={createAnnotationReplyAction.bind(null, id)} deleteAction={deleteAnnotationAction.bind(null, id)} deleteReplyAction={deleteAnnotationReplyAction.bind(null, id)} removeImportedAction={removeImportedAnnotationThreadAction.bind(null, id)} allowReplies={false} />
+      <DeepLinkHighlighter targetId={query.target === "annotation-reply" && query.annotationReply ? `annotation-reply-${query.annotationReply}` : query.annotation ? `annotation-card-${query.annotation}` : undefined} />
+      <div className="annotation-detached-list">{annotationViews.map((annotation) => <article id={`annotation-card-${annotation.id}`} key={annotation.id} className={`annotation-card annotation-card--flow${query.annotation === annotation.id ? " is-active" : ""}`} tabIndex={-1}>
+        <AnnotationThread annotation={annotation} replyAction={createAnnotationReplyAction.bind(null, id)} deleteAction={deleteAnnotationAction.bind(null, id)} deleteReplyAction={deleteAnnotationReplyAction.bind(null, id)} removeImportedAction={removeImportedAnnotationThreadAction.bind(null, id)} allowReplies={false} highlightReplyId={query.target === "annotation-reply" ? query.annotationReply : undefined} />
       </article>)}</div>
     </section>}
   </>;
 }
 
 async function DiscussionRegion({ id, query, memberId, contentVisible }: { id: string; query: PostQuery; memberId: string; contentVisible: boolean }) {
-  const replyViews = await Promise.all((await listReplies(id)).map(async (reply) => ({
+  const replyViews = await Promise.all((await listReplies(id, { includeUnavailableReplyId: query.target === "post-reply" ? query.reply : undefined })).map(async (reply) => ({
     ...reply,
     html: reply.lifecycle.contentVisible ? await renderMarkdown(reply.reply.markdown) : "",
   })));
   const visibleReplyCount = replyViews.filter((reply) => reply.lifecycle.contentVisible).length;
+  const noticeState = parseNotificationTargetState(query.notice);
+  const noticeKind = targetKindFromQuery(query.target);
+  const targetNotice = noticeState && noticeKind ? notificationTargetNotice(noticeState, noticeKind) : null;
 
   return <section className="replies-section" id="replies">
-    {query.notice === "reply-deleted" && <div className="content-notice" role="status">该回复已经被删除。</div>}
-    {query.notice === "reply-hidden" && <div className="content-notice" role="status">该回复已被管理员隐藏。</div>}
-    {query.notice === "annotation-unavailable" && <div className="content-notice" role="status">该批注已不可用，或不再属于当前正文。</div>}
+    {targetNotice && <div className="content-notice" role="status">{targetNotice}</div>}
+    {!targetNotice && query.notice === "reply-deleted" && <div className="content-notice" role="status">该回复已被作者删除。</div>}
+    {!targetNotice && query.notice === "reply-hidden" && <div className="content-notice" role="status">该回复已被管理员隐藏。</div>}
+    {!targetNotice && query.notice === "annotation-unavailable" && <div className="content-notice" role="status">该内容存在于历史版本中，但当前版本已不再包含它。</div>}
+    <DeepLinkHighlighter targetId={query.target === "post-reply" && query.reply ? `reply-${query.reply}` : undefined} />
     <div className="section-heading"><h2>回复</h2><span>{visibleReplyCount} 条</span></div>
     {replyViews.length > 0 ? <ReplyList items={replyViews} currentUserId={memberId} replyActionFor={(targetId) => createReplyAction.bind(null, id, targetId)} deleteActionFor={(replyId) => deleteReplyAction.bind(null, id, replyId)} /> : <p className="empty-copy">还没有回复。可以从一句认真读过的话开始。</p>}
     {contentVisible && <div className="new-reply-block"><h3>写一条回复</h3><ReplyForm action={createReplyAction.bind(null, id, null)} initialSubmissionKey={crypto.randomUUID()} /></div>}

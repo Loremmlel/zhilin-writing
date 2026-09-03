@@ -261,7 +261,7 @@ button, summary, input[type="file"] { cursor: pointer; }
 .markdown-body th { background: var(--green-pale); }
 .markdown-body img { max-width: 100%; height: auto; border-radius: 10px; }
 .annotation-range { padding: .05em .08em; margin-inline: -.03em; border-bottom: 1px dotted rgba(125, 57, 52, .5); border-radius: 3px; background: var(--annotation); box-decoration-break: clone; -webkit-box-decoration-break: clone; cursor: pointer; transition: background .18s, box-shadow .18s; }
-.annotation-range:hover, .annotation-range:focus-visible, .annotation-range.is-active { background: var(--annotation-active); box-shadow: 0 0 0 2px rgba(125, 57, 52, .12); outline: none; }
+.annotation-range:hover, .annotation-range:focus-visible, .annotation-range.is-active, .annotation-range.is-deep-linked { background: var(--annotation-active); box-shadow: 0 0 0 2px rgba(125, 57, 52, .12); outline: none; }
 .annotation-range--preview { cursor: default; }
 .reading-page--annotated { width: min(1240px, calc(100% - 40px)); }
 .post-article--annotated { padding-inline: 46px; }
@@ -291,7 +291,8 @@ button, summary, input[type="file"] { cursor: pointer; }
 .annotation-reply-heading { display: flex; align-items: center; justify-content: space-between; margin: 14px -16px 0; padding: 9px 16px; border-top: 1px solid #eadeda; border-bottom: 1px solid #eadeda; color: var(--muted); font-size: 11px; }
 .annotation-reply-heading strong { color: var(--annotation-ink); font-size: 11px; }
 .annotation-reply-list { display: grid; gap: 0; margin: 0 -16px; }
-.annotation-reply { padding: 13px 16px; border-bottom: 1px solid #eadeda; background: rgba(251, 250, 247, .66); }
+.annotation-reply { padding: 13px 16px; border-bottom: 1px solid #eadeda; background: rgba(251, 250, 247, .66); transition: background .35s ease-out, box-shadow .35s ease-out; }
+.annotation-reply.is-deep-linked { background: var(--annotation); box-shadow: inset 3px 0 0 var(--annotation-ink); }
 .annotation-reply header { display: flex; align-items: center; gap: 8px; }
 .annotation-reply header > div { min-width: 0; display: grid; gap: 1px; }
 .annotation-reply header strong { font-size: 12px; }
@@ -312,7 +313,8 @@ button, summary, input[type="file"] { cursor: pointer; }
 .annotation-placeholder { margin: 11px 0; color: var(--warning); font-size: 12px; font-weight: 700; line-height: 1.65; }
 .annotation-card > .text-button--danger, .annotation-shared-reply > .text-button--danger, .annotation-reply > .text-button--danger { margin-top: 7px; font-size: 11px; }
 .annotation-sheet-actions { display: flex; justify-content: flex-end; margin: -8px 0 8px; }
-.annotation-sheet-thread { padding-bottom: 4px; }
+.annotation-sheet-thread { padding: 4px; border-radius: 10px; transition: background .35s ease-out, box-shadow .35s ease-out; }
+.annotation-sheet-thread.is-deep-linked { background: var(--annotation); box-shadow: inset 3px 0 0 var(--annotation-ink); }
 .annotated-editor-layout[data-annotation-layout="compact"] > .annotation-editor-sheet-trigger { width: 100%; min-height: 44px; margin-top: 10px; border: 1px solid #d7aaa5; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; background: #fffaf8; color: var(--annotation-ink); font-size: 13px; font-weight: 700; }
 .annotated-editor-layout[data-annotation-layout="compact"] > .annotation-editor-sheet-trigger:hover,
 .annotated-editor-layout[data-annotation-layout="compact"] > .annotation-editor-sheet-trigger:focus-visible { background: var(--annotation); outline: 2px solid rgba(125, 57, 52, .25); outline-offset: 2px; }
@@ -346,7 +348,7 @@ button, summary, input[type="file"] { cursor: pointer; }
 .section-heading span { color: var(--muted); font-size: 13px; }
 .reply-list { display: grid; gap: 14px; }
 .reply-thread { border: 1px solid var(--line); border-radius: 12px; background: var(--paper-strong); overflow: hidden; }
-.reply { padding: 19px 21px; display: grid; grid-template-columns: 32px 1fr; gap: 12px; }
+.reply { padding: 19px 21px; display: grid; grid-template-columns: 32px 1fr; gap: 12px; transition: background .35s ease-out, box-shadow .35s ease-out; }
 .reply--nested { margin-left: 42px; border-top: 1px solid var(--line); background: #f9faf6; }
 .reply-meta { display: flex; gap: 8px 12px; align-items: baseline; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
 .reply-meta strong { color: var(--ink); font-size: 13px; }
@@ -404,6 +406,8 @@ button, summary, input[type="file"] { cursor: pointer; }
 .unavailable-card p { margin: 0; color: var(--muted); line-height: 1.8; }
 
 .reply:target { scroll-margin-top: 112px; animation: reply-highlight 2.5s ease-out; }
+.reply.is-deep-linked { scroll-margin-top: 112px; background: #e7f2e5; box-shadow: inset 4px 0 0 var(--green); }
+.annotation-card.is-deep-linked { background: var(--annotation); box-shadow: inset 3px 0 0 var(--annotation-ink), 0 8px 24px rgba(90, 48, 44, .09); }
 @keyframes reply-highlight {
   0%, 22% { background: #e7f2e5; box-shadow: inset 4px 0 0 var(--green); }
   100% { background: transparent; box-shadow: inset 4px 0 0 transparent; }

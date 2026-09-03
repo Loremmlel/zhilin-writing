@@ -71,7 +71,7 @@ export async function listCurrentAnnotations(postId: string) {
   }));
 }
 
-export async function listCurrentAnnotationThreads(postId: string) {
+export async function listCurrentAnnotationThreads(postId: string, options: { includeUnavailableReplyId?: string } = {}) {
   const [rawRoots, post] = await Promise.all([
     listCurrentAnnotations(postId),
     getDb().select({ markdown: posts.markdown }).from(posts).where(eq(posts.id, postId)).limit(1).then((rows) => rows[0] ?? null),
@@ -96,7 +96,9 @@ export async function listCurrentAnnotationThreads(postId: string) {
   return roots.map((root) => {
     const rootState = contentState(root.annotation).state;
     const threadRows = replyRows.filter((row) => row.reply.annotationId === root.annotation.id);
-    const lifecycle = buildAnnotationReplyLifecycleViews(threadRows.map((row) => row.reply));
+    const lifecycle = buildAnnotationReplyLifecycleViews(threadRows.map((row) => row.reply), {
+      requiredPlaceholderIds: options.includeUnavailableReplyId ? [options.includeUnavailableReplyId] : [],
+    });
     const lifecycleById = new Map(lifecycle.map((reply) => [reply.id, reply]));
     return {
       ...root,

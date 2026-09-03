@@ -45,8 +45,12 @@ export type ReplyLifecycleView<T extends ReplyTreeInput> = T & {
   visibleOtherAuthorDependentCount: number;
 };
 
-export function buildReplyLifecycleViews<T extends ReplyTreeInput>(rows: T[]): ReplyLifecycleView<T>[] {
+export function buildReplyLifecycleViews<T extends ReplyTreeInput>(
+  rows: T[],
+  options: { requiredPlaceholderIds?: readonly string[] } = {},
+): ReplyLifecycleView<T>[] {
   const active = rows.filter((row) => contentState(row).state === "normal");
+  const requiredPlaceholderIds = new Set(options.requiredPlaceholderIds ?? []);
   const result: ReplyLifecycleView<T>[] = [];
   for (const row of rows) {
     const { state } = contentState(row);
@@ -63,7 +67,7 @@ export function buildReplyLifecycleViews<T extends ReplyTreeInput>(rows: T[]): R
       result.push({ ...row, state, contentVisible: true, placeholder: null, visibleDependentCount, visibleOtherAuthorDependentCount });
       continue;
     }
-    if (!shouldRenderReplyPlaceholder({ state, visibleDependentCount })) continue;
+    if (!shouldRenderReplyPlaceholder({ state, visibleDependentCount }) && !requiredPlaceholderIds.has(row.id)) continue;
     result.push({
       ...row,
       state,

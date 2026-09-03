@@ -91,9 +91,9 @@ function AnnotationComposer({ action, savedSelection, submissionKey, validateSel
   </ModalDialog>;
 }
 
-export function AnnotationReadingLayout({ postId, html, annotations, baseRevisionId, action, replyAction, deleteAction, deleteReplyAction, removeImportedAction, initialAnnotationId }: {
+export function AnnotationReadingLayout({ postId, html, annotations, baseRevisionId, action, replyAction, deleteAction, deleteReplyAction, removeImportedAction, initialAnnotationId, initialAnnotationReplyId }: {
   postId: string; html: string; annotations: AnnotationCardView[]; baseRevisionId: string; action: AnnotationAction; replyAction: AnnotationReplyAction;
-  deleteAction: AnnotationDeleteAction; deleteReplyAction: AnnotationReplyDeleteAction; removeImportedAction: AnnotationRemoveImportedAction; initialAnnotationId?: string;
+  deleteAction: AnnotationDeleteAction; deleteReplyAction: AnnotationReplyDeleteAction; removeImportedAction: AnnotationRemoveImportedAction; initialAnnotationId?: string; initialAnnotationReplyId?: string;
 }) {
   const router = useRouter();
   const layoutRef = useRef<HTMLDivElement>(null);
@@ -108,6 +108,7 @@ export function AnnotationReadingLayout({ postId, html, annotations, baseRevisio
   const [sidebarHeight, setSidebarHeight] = useState(0);
   const [sheetId, setSheetId] = useState<string | null>(null);
   const [layoutMode, setLayoutMode] = useState<AnnotationLayoutMode>("compact");
+  const [deepLinkHighlight, setDeepLinkHighlight] = useState<{ annotationId: string; replyId: string | null } | null>(null);
   const currentSelectionContext = selectionContext?.saved.postId === postId && selectionContext.saved.baseRevisionId === baseRevisionId ? selectionContext : null;
   const previewSelection = currentSelectionContext && currentSelectionContext.phase !== "hidden" ? currentSelectionContext.saved : null;
 
@@ -192,20 +193,43 @@ export function AnnotationReadingLayout({ postId, html, annotations, baseRevisio
 
   useEffect(() => {
     if (!initialAnnotationId) return;
+    let nestedFrame = 0;
     const frame = window.requestAnimationFrame(() => {
       const anchor = bodyRef.current?.querySelector<HTMLElement>(`.annotation-range[data-annotation-id="${CSS.escape(initialAnnotationId)}"]`);
-      anchor?.scrollIntoView({ block: "center" }); anchor?.focus({ preventScroll: true });
-      if (layoutMode === "compact" && annotations.some((annotation) => annotation.id === initialAnnotationId)) setSheetId(initialAnnotationId);
+      const annotation = annotations.find((item) => item.id === initialAnnotationId);
+      if (!anchor || !annotation) return;
+      const replyAvailable = !initialAnnotationReplyId || annotation.replies.some((reply) => reply.id === initialAnnotationReplyId);
+      const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      setActiveId(initialAnnotationId);
+      anchor.scrollIntoView({ block: "center", behavior: reducedMotion ? "auto" : "smooth" });
+      anchor.focus({ preventScroll: true });
+      if (layoutMode === "compact") setSheetId(initialAnnotationId);
+      nestedFrame = window.requestAnimationFrame(() => {
+        const targetId = initialAnnotationReplyId && replyAvailable
+          ? `annotation-reply-${initialAnnotationReplyId}`
+          : layoutMode === "desktop" ? `annotation-card-${initialAnnotationId}` : null;
+        const target = targetId ? document.getElementById(targetId) : null;
+        target?.scrollIntoView({ block: "nearest", behavior: reducedMotion ? "auto" : "smooth" });
+        target?.focus({ preventScroll: true });
+        setDeepLinkHighlight({ annotationId: initialAnnotationId, replyId: initialAnnotationReplyId && replyAvailable ? initialAnnotationReplyId : null });
+      });
     });
-    return () => window.cancelAnimationFrame(frame);
-  }, [annotations, initialAnnotationId, layoutMode]);
+    return () => { window.cancelAnimationFrame(frame); window.cancelAnimationFrame(nestedFrame); };
+  }, [annotations, initialAnnotationId, initialAnnotationReplyId, layoutMode]);
+
+  useEffect(() => {
+    if (!deepLinkHighlight) return;
+    const timeout = window.setTimeout(() => setDeepLinkHighlight(null), 2_000);
+    return () => window.clearTimeout(timeout);
+  }, [deepLinkHighlight]);
 
   useEffect(() => { if (layoutMode === "desktop") setSheetId(null); }, [layoutMode]);
   useEffect(() => {
     const body = bodyRef.current; if (!body) return;
-    body.querySelectorAll(".annotation-range.is-active").forEach((element) => element.classList.remove("is-active"));
+    body.querySelectorAll(".annotation-range.is-active, .annotation-range.is-deep-linked").forEach((element) => element.classList.remove("is-active", "is-deep-linked"));
     if (activeId) body.querySelector<HTMLElement>(`.annotation-range[data-annotation-id="${CSS.escape(activeId)}"]`)?.classList.add("is-active");
-  }, [activeId]);
+    if (deepLinkHighlight) body.querySelector<HTMLElement>(`.annotation-range[data-annotation-id="${CSS.escape(deepLinkHighlight.annotationId)}"]`)?.classList.add("is-deep-linked");
+  }, [activeId, deepLinkHighlight]);
 
   const inspectSelection = useCallback((eventTarget?: EventTarget | null) => {
     const root = bodyRef.current; const selection = window.getSelection();
@@ -268,11 +292,11 @@ export function AnnotationReadingLayout({ postId, html, annotations, baseRevisio
       dangerouslySetInnerHTML={{ __html: html }} />
     <svg className="annotation-connectors" aria-hidden="true">{connectors.map((connector) => <path key={connector.annotationId} d={connector.path} className={activeId === connector.annotationId ? "is-active" : ""} />)}</svg>
     <aside ref={sidebarRef} className="annotation-sidebar" aria-label={`正文批注，共 ${annotations.length} 条`} style={{ minHeight: sidebarHeight || undefined }}>
-      {annotations.map((annotation) => <article id={`annotation-card-${annotation.id}`} key={annotation.id} ref={(element) => { if (element) cardRefs.current.set(annotation.id, element); else cardRefs.current.delete(annotation.id); }} className={`annotation-card${activeId === annotation.id ? " is-active" : ""}`} style={{ top: cardTops[annotation.id] ?? 0 }} tabIndex={-1} onFocusCapture={() => setActiveId(annotation.id)} onPointerEnter={() => setActiveId(annotation.id)}>
-        <AnnotationThread annotation={annotation} replyAction={replyAction} deleteAction={deleteAction} deleteReplyAction={deleteReplyAction} removeImportedAction={removeImportedAction} onLocate={() => { setActiveId(annotation.id); bodyRef.current?.querySelector<HTMLElement>(`.annotation-range[data-annotation-id="${CSS.escape(annotation.id)}"]`)?.scrollIntoView({ block: "center", behavior: "smooth" }); }} />
+      {layoutMode === "desktop" && annotations.map((annotation) => <article id={`annotation-card-${annotation.id}`} key={annotation.id} ref={(element) => { if (element) cardRefs.current.set(annotation.id, element); else cardRefs.current.delete(annotation.id); }} className={`annotation-card${activeId === annotation.id ? " is-active" : ""}${deepLinkHighlight?.annotationId === annotation.id && !deepLinkHighlight.replyId ? " is-deep-linked" : ""}`} style={{ top: cardTops[annotation.id] ?? 0 }} tabIndex={-1} onFocusCapture={() => setActiveId(annotation.id)} onPointerEnter={() => setActiveId(annotation.id)}>
+        <AnnotationThread annotation={annotation} replyAction={replyAction} deleteAction={deleteAction} deleteReplyAction={deleteReplyAction} removeImportedAction={removeImportedAction} highlightReplyId={deepLinkHighlight?.annotationId === annotation.id ? deepLinkHighlight.replyId : null} onLocate={() => { setActiveId(annotation.id); const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches; bodyRef.current?.querySelector<HTMLElement>(`.annotation-range[data-annotation-id="${CSS.escape(annotation.id)}"]`)?.scrollIntoView({ block: "center", behavior: reducedMotion ? "auto" : "smooth" }); }} />
       </article>)}
     </aside>
-    <AnnotationSheet annotation={annotations.find((annotation) => annotation.id === sheetId) ?? null} open={Boolean(sheetId)} onClose={() => setSheetId((current) => nextAnnotationSheetState(current, { type: "close" }))} replyAction={replyAction} deleteAction={deleteAction} deleteReplyAction={deleteReplyAction} removeImportedAction={removeImportedAction} />
+    <AnnotationSheet annotation={annotations.find((annotation) => annotation.id === sheetId) ?? null} open={Boolean(sheetId)} onClose={() => setSheetId((current) => nextAnnotationSheetState(current, { type: "close" }))} replyAction={replyAction} deleteAction={deleteAction} deleteReplyAction={deleteReplyAction} removeImportedAction={removeImportedAction} highlightReplyId={deepLinkHighlight?.annotationId === sheetId ? deepLinkHighlight.replyId : null} highlighted={deepLinkHighlight?.annotationId === sheetId && !deepLinkHighlight.replyId} />
     {currentSelectionContext?.phase === "bubble" && <button type="button" className="annotation-selection-menu" style={{ left: currentSelectionContext.left, top: currentSelectionContext.top }} onPointerDown={(event) => event.preventDefault()} onClick={() => transitionSelectionPreview("open-composer")}>添加批注</button>}
     {currentSelectionContext && ["composer", "pending", "failed"].includes(currentSelectionContext.phase) && <AnnotationComposer
       key={currentSelectionContext.submissionKey}

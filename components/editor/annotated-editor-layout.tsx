@@ -201,7 +201,7 @@ export function AnnotatedEditorLayout({ children, editorRoot, annotations, pendi
     <div className="annotated-editor-main">{children}</div>
     <svg className="annotation-connectors" aria-hidden="true">{connectors.map((connector) => <path key={connector.annotationId} d={connector.path} className={resolvedActiveId === connector.annotationId ? "is-active" : ""} />)}</svg>
     <aside ref={sidebarRef} className="annotation-sidebar annotation-editor-sidebar" aria-label={`正文批注，只读，共 ${visibleAnnotations.length} 条`} style={{ minHeight: sidebarHeight || undefined }}>
-      {visibleAnnotations.map((annotation) => <article id={`annotation-editor-card-${annotation.id}`} key={annotation.id} ref={(element) => {
+      {layoutMode === "desktop" && visibleAnnotations.map((annotation) => <article id={`annotation-editor-card-${annotation.id}`} key={annotation.id} ref={(element) => {
         if (element) cardRefs.current.set(annotation.id, element);
         else cardRefs.current.delete(annotation.id);
       }} className={`annotation-card${resolvedActiveId === annotation.id ? " is-active" : ""}`} style={{ top: cardTops[annotation.id] ?? 0 }} tabIndex={-1} onFocusCapture={() => setActiveId(annotation.id)} onPointerEnter={() => setActiveId(annotation.id)}>

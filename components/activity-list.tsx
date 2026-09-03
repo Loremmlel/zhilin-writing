@@ -2,8 +2,9 @@ import Link from "next/link";
 
 import type { listUserActivity } from "@/db/queries";
 import { formatDateTime } from "@/lib/format";
-import { annotationTargetHref, truncateActivityPreview } from "@/lib/activity/policy";
+import { annotationReplyTargetHref, annotationTargetHref, replyTargetHref, truncateActivityPreview } from "@/lib/activity/policy";
 import { markdownToPlainText } from "@/lib/markdown/render";
+import { resolveNotificationTarget, targetHrefWithNotice } from "@/lib/notifications/target-resolution";
 
 type ActivityItem = Awaited<ReturnType<typeof listUserActivity>>[number];
 
@@ -17,9 +18,9 @@ function ActivityCopy({ item }: { item: ActivityItem }) {
       : <p><strong>{item.actor.displayName}</strong> <Link href={`/posts/${item.post.id}`}>发布了一条现已不可用的内容</Link></p>;
   }
   if (item.event.eventType === "ANNOTATION_CREATED") {
-    const href = item.annotationCurrent && item.annotation
-      ? annotationTargetHref(item.post.id, item.annotation.id)
-      : `/posts/${item.post.id}?notice=annotation-unavailable`;
+    const baseHref = item.annotation ? annotationTargetHref(item.post.id, item.annotation.id) : `/posts/${item.post.id}?target=annotation`;
+    const resolution = resolveNotificationTarget({ kind: "ANNOTATION", postExists: true, postReachable: item.postReachable, targetState: item.annotation ? item.annotationState : null, annotationCurrent: item.annotationCurrent });
+    const href = resolution.state === "AVAILABLE" ? baseHref : targetHrefWithNotice(baseHref, resolution.state);
     if (!item.annotationAvailable || !item.annotation) {
       return <p><strong>{item.actor.displayName}</strong> <Link href={href}>批注了一段现已不可用的文字</Link></p>;
     }
@@ -29,9 +30,11 @@ function ActivityCopy({ item }: { item: ActivityItem }) {
     </>;
   }
   if (item.event.eventType === "ANNOTATION_REPLY_CREATED") {
-    const href = item.annotationCurrent && item.annotation
-      ? annotationTargetHref(item.post.id, item.annotation.id)
-      : `/posts/${item.post.id}?notice=annotation-unavailable`;
+    const baseHref = item.annotation && item.annotationReply
+      ? annotationReplyTargetHref(item.post.id, item.annotation.id, item.annotationReply.id)
+      : item.annotation ? annotationTargetHref(item.post.id, item.annotation.id) : `/posts/${item.post.id}?target=annotation-reply`;
+    const resolution = resolveNotificationTarget({ kind: "ANNOTATION_REPLY", postExists: true, postReachable: item.postReachable, targetState: item.annotationReply ? item.annotationReplyState : null, annotationCurrent: item.annotationCurrent });
+    const href = resolution.state === "AVAILABLE" ? baseHref : targetHrefWithNotice(baseHref, resolution.state);
     if (!item.annotationReplyAvailable || !item.annotationReply) {
       return <p><strong>{item.actor.displayName}</strong> <Link href={href}>回复了一条现已不可用的批注讨论</Link></p>;
     }
@@ -46,9 +49,12 @@ function ActivityCopy({ item }: { item: ActivityItem }) {
     </>;
   }
   if (!item.replyAvailable || !item.reply) {
-    return <p><strong>{item.actor.displayName}</strong> <Link href={`/posts/${item.post.id}#replies`}>回复了一条现已删除或隐藏的内容</Link></p>;
+    const baseHref = item.reply ? replyTargetHref(item.post.id, item.reply.id) : `/posts/${item.post.id}?target=post-reply`;
+    const resolution = resolveNotificationTarget({ kind: "POST_REPLY", postExists: true, postReachable: item.postReachable, targetState: item.reply ? item.replyState : null });
+    const href = resolution.state === "AVAILABLE" ? baseHref : targetHrefWithNotice(baseHref, resolution.state);
+    return <p><strong>{item.actor.displayName}</strong> <Link href={href}>回复了一条现已删除或隐藏的内容</Link></p>;
   }
-  const target = <Link href={`/posts/${item.post.id}#reply-${item.reply.id}`}>{item.postAvailable ? `《${item.post.title}》` : "一条正文已撤下的讨论"}</Link>;
+  const target = <Link href={replyTargetHref(item.post.id, item.reply.id)}>{item.postAvailable ? `《${item.post.title}》` : "一条正文已撤下的讨论"}</Link>;
   return <>
     <p>
       <strong>{item.actor.displayName}</strong>{" "}

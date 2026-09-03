@@ -36,12 +36,19 @@ export function truncateActivityPreview(value: string, length = 120): string {
 }
 
 export function replyTargetHref(postId: string, replyId: string): string {
-  return `/posts/${encodeURIComponent(postId)}#reply-${encodeURIComponent(replyId)}`;
+  const encodedId = encodeURIComponent(replyId);
+  return `/posts/${encodeURIComponent(postId)}?target=post-reply&reply=${encodedId}#reply-${encodedId}`;
 }
 
 export function annotationTargetHref(postId: string, annotationId: string): string {
   const encodedId = encodeURIComponent(annotationId);
-  return `/posts/${encodeURIComponent(postId)}?annotation=${encodedId}#annotation-card-${encodedId}`;
+  return `/posts/${encodeURIComponent(postId)}?target=annotation&annotation=${encodedId}#annotation-card-${encodedId}`;
+}
+
+export function annotationReplyTargetHref(postId: string, annotationId: string, annotationReplyId: string): string {
+  const encodedAnnotationId = encodeURIComponent(annotationId);
+  const encodedReplyId = encodeURIComponent(annotationReplyId);
+  return `/posts/${encodeURIComponent(postId)}?target=annotation-reply&annotation=${encodedAnnotationId}&annotationReply=${encodedReplyId}#annotation-reply-${encodedReplyId}`;
 }
 
 export function canExposeAnnotationActivitySnapshot(
