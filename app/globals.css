@@ -525,6 +525,9 @@ input[type="file"] {
   color: var(--muted);
   font-size: 13px;
 }
+.site-main:has(.admin-shell) + .site-footer {
+  display: none;
+}
 
 .button {
   min-height: 40px;
@@ -2329,9 +2332,10 @@ input[type="file"] {
 .admin-sidebar {
   position: sticky;
   top: 76px;
-  min-height: calc(100dvh - 76px);
+  height: calc(100dvh - 76px);
   padding: 28px 18px 50px;
   border-right: 1px solid var(--line);
+  overflow-y: auto;
 }
 .admin-navigation {
   display: grid;

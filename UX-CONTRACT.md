@@ -115,6 +115,7 @@
 - Forbidden administrator navigation is enforced server-side and returns to the community root under the current auth contract.
 - Revision selection is URL-addressable; the route itself remains administrator-only.
 - The admin shell keeps one left navigation for overview, four content types, members, and audit. The main content panel never repeats the content-type segment. A 292px summary rail is optional and moves below the main panel at 1200px.
+- Administrator routes omit the community footer. On desktop the sidebar stays below the sticky header for the remaining viewport height and scrolls only when its own navigation no longer fits.
 - Admin tables preserve status, committed query, sort and page in the URL. On narrow screens the table owns horizontal overflow and shows a swipe cue; the document remains the only vertical scroll owner.
 - At 900px the revision timeline stacks above preview; at 640px dialogs and actions become one column.
 - Annotation reading derives one layout mode from its actual container: at 1060px or wider it can preserve a 720px reading column, 70px gutter and 270px rail; below that it removes sidebar/connectors and opens the selected thread in a bottom Sheet. CSS, connector logic and sheet behavior consume this same mode; native text selection and page scrolling remain available.
