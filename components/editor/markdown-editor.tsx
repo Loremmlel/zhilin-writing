@@ -1,6 +1,9 @@
 "use client";
 
 import { Crepe, CrepeFeature } from "@milkdown/crepe";
+import { imageBlockConfig } from "@milkdown/kit/component/image-block";
+import { editorViewCtx } from "@milkdown/kit/core";
+import { uploadConfig } from "@milkdown/kit/plugin/upload";
 import "@milkdown/crepe/theme/common/style.css";
 import "@milkdown/crepe/theme/frame.css";
 import { useEffect, useRef, useState } from "react";
@@ -40,6 +43,14 @@ type MarkdownEditorProps = {
   disabled?: boolean;
 };
 
+type ImageUploadTask = {
+  id: string;
+  filename: string;
+  status: "uploading" | "failed";
+  percent: number;
+  error?: string;
+};
+
 async function uploadImage(file: File, onProgress: (percent: number) => void, signal: AbortSignal, onAssetUploaded?: (asset: UploadedAsset) => void) {
   const data = await uploadAsset(file, onProgress, signal);
   const asset = { ...data.asset, markdown: data.markdown ?? "" } as UploadedAsset;
@@ -59,12 +70,13 @@ function MarkdownEditorSession({ initialMarkdown, onMarkdownChange, onAssetUploa
   const uploadAbortRef = useRef<AbortController | null>(null);
   const uploadQueueRef = useRef(createSerialUploadQueue());
   const queuedUploadCountRef = useRef(0);
+  const failedImageFilesRef = useRef(new Map<string, File>());
+  const retryImageUploadRef = useRef<((taskId: string) => Promise<void>) | null>(null);
   const emittedConfirmedDeletionIdsRef = useRef(annotationEditing?.initialConfirmedAnnotationDeletionIds ?? []);
   const guardRef = useRef<ReturnType<typeof createAnnotationGuardPlugin> | null>(null);
   const [pendingImpact, setPendingImpact] = useState<PendingAnnotationImpact | null>(null);
   const [guardMessage, setGuardMessage] = useState<string | null>(null);
-  const [uploadProgress, setUploadProgress] = useState<{ filename: string; percent: number } | null>(null);
-  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [imageUploadTasks, setImageUploadTasks] = useState<ImageUploadTask[]>([]);
 
   useEffect(() => { onChangeRef.current = onMarkdownChange; }, [onMarkdownChange]);
   useEffect(() => { uploadRef.current = onAssetUploaded; }, [onAssetUploaded]);
@@ -80,32 +92,44 @@ function MarkdownEditorSession({ initialMarkdown, onMarkdownChange, onAssetUploa
     if (!rootRef.current) return;
     onEditorRootChangeRef.current?.(rootRef.current);
     let disposed = false;
-    const handleImageUpload = async (file: File) => {
+    const performImageUpload = async (taskId: string, file: File) => {
       let controller = uploadAbortRef.current;
       if (!controller || controller.signal.aborted) {
         controller = new AbortController();
         uploadAbortRef.current = controller;
         rootRef.current!.inert = true;
         onUploadStateChangeRef.current?.(true);
-        setUploadError(null);
       }
+      if (!disposed) setImageUploadTasks((current) => [
+        ...current.filter((task) => task.id !== taskId),
+        { id: taskId, filename: file.name, status: "uploading", percent: 0 },
+      ]);
       queuedUploadCountRef.current += 1;
       try {
         return await uploadQueueRef.current(async () => {
           controller.signal.throwIfAborted();
-          if (!disposed) setUploadProgress({ filename: file.name, percent: 0 });
           return uploadImage(
             file,
-            (percent) => { if (!disposed) setUploadProgress({ filename: file.name, percent }); },
+            (percent) => {
+              if (!disposed) setImageUploadTasks((current) => current.map((task) => task.id === taskId ? { ...task, percent } : task));
+            },
             controller.signal,
             (asset) => { if (!disposed) uploadRef.current?.(asset); },
           );
         });
       } catch (caught) {
         const aborted = caught instanceof DOMException && caught.name === "AbortError";
-        if (!aborted) {
-          controller.abort();
-          if (!disposed) setUploadError(caught instanceof Error ? caught.message : "图片上传失败");
+        if (!disposed) {
+          if (aborted) {
+            setImageUploadTasks((current) => current.filter((task) => task.id !== taskId));
+          } else {
+            failedImageFilesRef.current.set(taskId, file);
+            setImageUploadTasks((current) => current.map((task) => task.id === taskId ? {
+              ...task,
+              status: "failed",
+              error: caught instanceof Error ? caught.message : "图片上传失败，请稍后重试",
+            } : task));
+          }
         }
         throw caught;
       } finally {
@@ -114,10 +138,19 @@ function MarkdownEditorSession({ initialMarkdown, onMarkdownChange, onAssetUploa
           if (uploadAbortRef.current === controller) uploadAbortRef.current = null;
           if (!disposed) {
             if (rootRef.current) rootRef.current.inert = disabledRef.current;
-            setUploadProgress(null);
             onUploadStateChangeRef.current?.(false);
           }
         }
+      }
+    };
+    const handleImageUpload = async (file: File) => {
+      const taskId = crypto.randomUUID();
+      try {
+        const url = await performImageUpload(taskId, file);
+        if (!disposed) setImageUploadTasks((current) => current.filter((task) => task.id !== taskId));
+        return url;
+      } catch (error) {
+        throw error;
       }
     };
     const crepe = new Crepe({
@@ -144,6 +177,41 @@ function MarkdownEditorSession({ initialMarkdown, onMarkdownChange, onAssetUploa
         },
       },
     });
+    crepe.editor.config((ctx) => {
+      ctx.update(uploadConfig.key, (previous) => ({
+        ...previous,
+        uploader: async (files, schema, uploadContext) => {
+          const nodeType = schema.nodes["image-block"] ?? schema.nodes.image;
+          if (!nodeType) return [];
+          const onUpload = uploadContext.get(imageBlockConfig.key).onUpload;
+          const images = Array.from(files).filter((file) => file.type.startsWith("image/"));
+          const results = await Promise.allSettled(images.map((file) => onUpload(file)));
+          return results.flatMap((result) => {
+            if (result.status === "rejected") return [];
+            const node = nodeType.createAndFill({ src: result.value });
+            return node ? [node] : [];
+          });
+        },
+      }));
+    });
+    retryImageUploadRef.current = async (taskId) => {
+      const file = failedImageFilesRef.current.get(taskId);
+      if (!file || disposed) return;
+      try {
+        const src = await performImageUpload(taskId, file);
+        if (disposed) return;
+        failedImageFilesRef.current.delete(taskId);
+        setImageUploadTasks((current) => current.filter((task) => task.id !== taskId));
+        crepe.editor.action((ctx) => {
+          const view = ctx.get(editorViewCtx);
+          const nodeType = view.state.schema.nodes["image-block"] ?? view.state.schema.nodes.image;
+          const node = nodeType?.createAndFill({ src });
+          if (node) view.dispatch(view.state.tr.replaceSelectionWith(node).scrollIntoView());
+        });
+      } catch {
+        // The per-file task keeps its typed error and remains retryable.
+      }
+    };
     crepe.editor.use(annotationPlugin);
     const guardOptions = annotationEditingRef.current;
     if (guardOptions) {
@@ -178,6 +246,8 @@ function MarkdownEditorSession({ initialMarkdown, onMarkdownChange, onAssetUploa
       disposed = true;
       uploadAbortRef.current?.abort();
       uploadAbortRef.current = null;
+      retryImageUploadRef.current = null;
+      failedImageFilesRef.current.clear();
       onUploadStateChangeRef.current?.(false);
       onEditorRootChangeRef.current?.(null);
       guardRef.current?.discard();
@@ -187,12 +257,24 @@ function MarkdownEditorSession({ initialMarkdown, onMarkdownChange, onAssetUploa
   }, [allowImageUploads, compact]);
 
   return <>
-    <div ref={rootRef} className={compact ? "markdown-editor markdown-editor--compact" : "markdown-editor"} aria-busy={uploadProgress !== null} aria-disabled={disabled} />
-    {uploadProgress !== null && <div className="upload-progress upload-progress--editor" role="status" aria-live="polite">
-      <div><span>当前图片上传进度 · {uploadProgress.filename}</span><strong>{uploadProgress.percent}%</strong></div>
-      <progress max={100} value={uploadProgress.percent} aria-label="图片上传进度" />
+    <div ref={rootRef} className={compact ? "markdown-editor markdown-editor--compact" : "markdown-editor"} aria-busy={imageUploadTasks.some((task) => task.status === "uploading")} aria-disabled={disabled} />
+    {imageUploadTasks.length > 0 && <div className="asset-upload-list asset-upload-list--editor" aria-label="图片上传状态" aria-live="polite">
+      {imageUploadTasks.map((task) => <div className="asset-upload-task" key={task.id}>
+        <div>
+          <strong>{task.filename}</strong>
+          {task.status === "uploading"
+            ? <><span>上传中 · {task.percent}%</span><progress max={100} value={task.percent} aria-label={`${task.filename} 上传进度`} /></>
+            : <span className="form-error" role="alert">上传失败 · {task.error}</span>}
+        </div>
+        {task.status === "failed" && <span className="asset-row-actions">
+          <button type="button" className="text-button" onClick={() => void retryImageUploadRef.current?.(task.id)} disabled={disabled}>重试</button>
+          <button type="button" className="text-button text-button--danger" onClick={() => {
+            failedImageFilesRef.current.delete(task.id);
+            setImageUploadTasks((current) => current.filter((item) => item.id !== task.id));
+          }}>移除</button>
+        </span>}
+      </div>)}
     </div>}
-    {uploadError && <p className="form-error" role="alert">{uploadError}</p>}
     <AnnotationGuardDialog
       pending={pendingImpact}
       annotations={annotationEditing?.annotations ?? []}

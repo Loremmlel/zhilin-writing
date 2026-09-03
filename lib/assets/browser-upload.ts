@@ -1,3 +1,6 @@
+import { BrowserAssetUploadError, type AssetUploadErrorCode } from "./errors.ts";
+import { validateAssetUpload } from "./upload-policy.ts";
+
 export type BrowserAssetUploadResult = {
   asset?: {
     id: string;
@@ -7,6 +10,7 @@ export type BrowserAssetUploadResult = {
   };
   markdown?: string;
   error?: string;
+  code?: AssetUploadErrorCode;
 };
 
 export function createSerialUploadQueue() {
@@ -20,6 +24,11 @@ export function createSerialUploadQueue() {
 
 export function uploadAsset(file: File, onProgress: (percent: number) => void, signal?: AbortSignal): Promise<BrowserAssetUploadResult & { asset: NonNullable<BrowserAssetUploadResult["asset"]> }> {
   return new Promise((resolve, reject) => {
+    const validation = validateAssetUpload({ size: file.size, mimeType: file.type || "application/octet-stream" });
+    if (validation) {
+      reject(new BrowserAssetUploadError(validation.code, validation.message));
+      return;
+    }
     const request = new XMLHttpRequest();
     const formData = new FormData();
     formData.set("file", file);
@@ -41,14 +50,14 @@ export function uploadAsset(file: File, onProgress: (percent: number) => void, s
       stopListening();
       const data = (request.response ?? {}) as BrowserAssetUploadResult;
       if (request.status < 200 || request.status >= 300 || !data.asset) {
-        reject(new Error(data.error ?? "上传失败"));
+        reject(new BrowserAssetUploadError(data.code ?? "SERVER_FAILURE", data.error ?? "文件上传失败，请稍后重试"));
         return;
       }
       resolve({ ...data, asset: data.asset });
     });
     request.addEventListener("error", () => {
       stopListening();
-      reject(new Error("网络连接中断，上传失败"));
+      reject(new BrowserAssetUploadError("NETWORK_FAILURE", "网络连接中断，上传失败"));
     });
     request.addEventListener("abort", () => {
       stopListening();

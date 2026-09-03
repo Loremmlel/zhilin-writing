@@ -1,6 +1,7 @@
 import { getApiMemberAccess } from "@/lib/auth/access";
 import { accessErrorMessage } from "@/lib/actions/result";
 import { storeTemporaryAsset } from "@/lib/assets/storage";
+import { AssetStorageError } from "@/lib/assets/errors";
 import { assetMarkdown } from "@/lib/domain/rules";
 
 export const dynamic = "force-dynamic";
@@ -23,7 +24,10 @@ export async function POST(request: Request) {
       markdown: asset.kind === "avatar" ? null : assetMarkdown({ kind: asset.kind, filename: asset.filename, url }),
     }, { status: 201 });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "上传失败";
-    return Response.json({ error: message }, { status: 400 });
+    if (error instanceof AssetStorageError) {
+      const status = error.code === "SERVER_FAILURE" ? 503 : 400;
+      return Response.json({ error: error.message, code: error.code }, { status });
+    }
+    return Response.json({ error: "文件上传失败，请稍后重试", code: "SERVER_FAILURE" }, { status: 500 });
   }
 }

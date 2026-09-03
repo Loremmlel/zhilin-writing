@@ -31,6 +31,14 @@ type InitialEditorState = {
   attachments: UploadedAsset[];
 };
 
+type AttachmentUploadTask = {
+  id: string;
+  file: File;
+  status: "uploading" | "failed";
+  percent: number;
+  error?: string;
+};
+
 type PostEditorFormProps = {
   userId: string;
   draftId: string;
@@ -71,8 +79,7 @@ export function PostEditorForm({ userId, draftId, action, initial, submitLabel =
   const [conflictOpen, setConflictOpen] = useState(false);
   const [confirmChoice, setConfirmChoice] = useState<"online" | "overwrite" | null>(null);
   const [saveBlocked, setSaveBlocked] = useState(false);
-  const [uploadError, setUploadError] = useState<string | null>(null);
-  const [uploadProgress, setUploadProgress] = useState<{ filename: string; percent: number } | null>(null);
+  const [attachmentUploadTasks, setAttachmentUploadTasks] = useState<AttachmentUploadTask[]>([]);
   const [imageUploadPending, setImageUploadPending] = useState(false);
   const [confirmedAnnotationDeletionIds, setConfirmedAnnotationDeletionIds] = useState<string[]>([]);
   const [editorRoot, setEditorRoot] = useState<HTMLElement | null>(null);
@@ -87,7 +94,7 @@ export function PostEditorForm({ userId, draftId, action, initial, submitLabel =
     return result;
   }, {});
   const editorKey = `${draftId}:${hydrated ? "ready" : "initial"}`;
-  const uploadPending = uploadProgress !== null || imageUploadPending;
+  const uploadPending = attachmentUploadTasks.some((task) => task.status === "uploading") || imageUploadPending;
   const accessBlocked = isBlockingAccessError(state.code);
 
   useEffect(() => {
@@ -159,17 +166,23 @@ export function PostEditorForm({ userId, draftId, action, initial, submitLabel =
     return { title, markdown, tags, attachmentIds, baseRevisionId };
   }
 
-  async function uploadAttachment(file: File) {
-    setUploadError(null);
-    setUploadProgress({ filename: file.name, percent: 0 });
+  async function uploadAttachment(file: File, taskId = crypto.randomUUID()) {
+    const task: AttachmentUploadTask = { id: taskId, file, status: "uploading", percent: 0 };
+    setAttachmentUploadTasks((current) => [...current.filter((item) => item.id !== taskId), task]);
     try {
-      const data = await uploadAsset(file, (percent) => setUploadProgress({ filename: file.name, percent }));
+      const data = await uploadAsset(file, (percent) => {
+        setAttachmentUploadTasks((current) => current.map((item) => item.id === taskId ? { ...item, percent } : item));
+      });
       const asset = { ...data.asset, markdown: data.markdown ?? "" } as UploadedAsset;
       setAttachments((current) => [...current.filter((item) => item.id !== asset.id), asset]);
       setAttachmentIds((current) => [...new Set([...current, asset.id])]);
+      setAttachmentUploadTasks((current) => current.filter((item) => item.id !== taskId));
       setDirty(true);
-    } finally {
-      setUploadProgress(null);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "文件上传失败，请稍后重试";
+      setAttachmentUploadTasks((current) => current.map((item) => item.id === taskId
+        ? { ...item, status: "failed", error: message }
+        : item));
     }
   }
 
@@ -280,21 +293,29 @@ export function PostEditorForm({ userId, draftId, action, initial, submitLabel =
               setDirty(true);
             }} placeholder="随笔，生活" disabled={pending || accessBlocked} />
           </label>
-          <label className="attachment-upload" aria-busy={uploadProgress !== null}>
+          <label className="attachment-upload" aria-busy={attachmentUploadTasks.some((task) => task.status === "uploading")}>
             <span className="field-label">附件</span>
-            <input type="file" disabled={pending || accessBlocked || uploadProgress !== null} onChange={(event) => {
-              const file = event.target.files?.[0];
-              if (file) void uploadAttachment(file).catch((error) => setUploadError(error instanceof Error ? error.message : "上传失败"));
+            <input type="file" multiple disabled={pending || accessBlocked} onChange={(event) => {
+              for (const file of Array.from(event.target.files ?? [])) void uploadAttachment(file);
               event.currentTarget.value = "";
             }} />
-            <span className="muted">上传到文件区；可插入正文链接。</span>
+            <span className="muted">可选择多个文件；成功项会立即保留。</span>
           </label>
         </div>
-        {uploadProgress && <div className="upload-progress" role="status" aria-live="polite">
-          <div><span>附件上传进度 · {uploadProgress.filename}</span><strong>{uploadProgress.percent}%</strong></div>
-          <progress max={100} value={uploadProgress.percent} aria-label="附件上传进度" />
+        {attachmentUploadTasks.length > 0 && <div className="asset-upload-list" aria-label="附件上传状态" aria-live="polite">
+          {attachmentUploadTasks.map((task) => <div className="asset-upload-task" key={task.id}>
+            <div>
+              <strong>{task.file.name}</strong>
+              {task.status === "uploading"
+                ? <><span>上传中 · {task.percent}%</span><progress max={100} value={task.percent} aria-label={`${task.file.name} 上传进度`} /></>
+                : <span className="form-error" role="alert">上传失败 · {task.error}</span>}
+            </div>
+            {task.status === "failed" && <span className="asset-row-actions">
+              <button type="button" className="text-button" onClick={() => void uploadAttachment(task.file, task.id)} disabled={pending || accessBlocked}>重试</button>
+              <button type="button" className="text-button text-button--danger" onClick={() => setAttachmentUploadTasks((current) => current.filter((item) => item.id !== task.id))} disabled={pending}>移除</button>
+            </span>}
+          </div>)}
         </div>}
-        {uploadError && <p className="form-error" role="alert">{uploadError}</p>}
         {attachments.length > 0 && <div className="asset-list" aria-label="帖子附件">
           {attachments.filter((asset) => attachmentIds.includes(asset.id)).map((asset) => <div key={asset.id} className="asset-row">
             <span>{asset.filename}</span>

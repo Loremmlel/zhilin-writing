@@ -52,3 +52,21 @@ test("the V7 plan preserves one canonical author-delete and admin-hide vocabular
   assert.match(annotationViews, /该回复已被管理员隐藏。/);
   assert.match(design, /该内容存在于历史版本中，但当前版本已不再包含它。/);
 });
+
+test("asset failures remain per-file and unsafe attachments are downloaded", async () => {
+  const [editor, postForm, assetRoute, storage] = await Promise.all([
+    source("../components/editor/markdown-editor.tsx"),
+    source("../components/editor/post-editor-form.tsx"),
+    source("../app/api/assets/[id]/route.ts"),
+    source("../lib/assets/storage.ts"),
+  ]);
+
+  assert.match(editor, /Promise\.allSettled/);
+  assert.match(editor, /status: "failed"/);
+  assert.doesNotMatch(editor, /controller\.abort\(\);[\s\S]{0,120}setImageUploadTasks/);
+  assert.match(postForm, /type="file" multiple/);
+  assert.match(postForm, /uploadAttachment\(task\.file, task\.id\)/);
+  assert.match(assetRoute, /x-content-type-options/);
+  assert.match(assetRoute, /\? "inline" : "attachment"/);
+  assert.match(storage, /await env\.BUCKET\.delete\(r2Key\)/);
+});

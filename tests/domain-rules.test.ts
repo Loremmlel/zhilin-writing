@@ -77,4 +77,5 @@ test("upload validation rejects empty and oversized files", () => {
   assert.equal(validateUpload({ size: 1024, mimeType: "image/png" }), null);
   assert.equal(validateUpload({ size: 0, mimeType: "image/png" }), "文件不能为空");
   assert.equal(validateUpload({ size: 21 * 1024 * 1024, mimeType: "application/pdf" }), "文件不能超过 20 MB");
+  assert.equal(validateUpload({ size: 1024, mimeType: "image/svg+xml" }), "暂不支持此图片格式，请使用 PNG、JPEG、GIF 或 WebP");
 });

@@ -1,3 +1,5 @@
+import { validateAssetUpload } from "../assets/upload-policy.ts";
+
 export type PostInput = {
   title: string;
   markdown: string;
@@ -90,10 +92,5 @@ export function assetMarkdown(asset: {
 }
 
 export function validateUpload(file: { size: number; mimeType: string }): string | null {
-  if (file.size <= 0) return "文件不能为空";
-  if (file.size > 20 * 1024 * 1024) return "文件不能超过 20 MB";
-  if (file.mimeType.startsWith("image/") && file.size > 10 * 1024 * 1024) {
-    return "图片不能超过 10 MB";
-  }
-  return null;
+  return validateAssetUpload(file)?.message ?? null;
 }

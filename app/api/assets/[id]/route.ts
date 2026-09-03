@@ -20,8 +20,10 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
   const headers = new Headers();
   object.writeHttpMetadata(headers);
   headers.set("content-type", asset.mimeType);
+  headers.set("x-content-type-options", "nosniff");
   headers.set("content-length", String(asset.byteSize));
-  headers.set("content-disposition", `inline; filename*=UTF-8''${encodeURIComponent(asset.filename)}`);
+  const disposition = asset.kind === "image" || asset.kind === "avatar" ? "inline" : "attachment";
+  headers.set("content-disposition", `${disposition}; filename*=UTF-8''${encodeURIComponent(asset.filename)}`);
   headers.set("cache-control", asset.status === "permanent" ? "private, max-age=86400" : "private, no-store");
   return new Response(object.body, { headers });
 }
