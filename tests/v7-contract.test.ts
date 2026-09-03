@@ -118,3 +118,21 @@ test("ordinary post reading defers the large editor bundle until a composer open
   assert.match(lazyReply, /import\("\.\/reply-form"\)/);
   assert.doesNotMatch(`${readingLayout}\n${editorLayout}`, /addEventListener\("scroll"/);
 });
+
+test("home cards, admin tabs, and the compact header keep their interaction contract", async () => {
+  const [styles, card, admin] = await Promise.all([
+    source("../app/globals.css"),
+    source("../components/post-card.tsx"),
+    source("../app/(site)/admin/page.tsx"),
+  ]);
+
+  assert.match(card, /className="post-title-link"/);
+  assert.match(styles, /\.post-title-link::after[^}]*position: absolute[^}]*inset: 0/);
+  assert.match(styles, /\.post-card :is\(\.author-link, \.reply-count, \.tag\)[^}]*z-index: 1/);
+  assert.match(styles, /\.admin-page \.list-tabs[^}]*overflow-x: auto[^}]*overflow-y: hidden/);
+  assert.doesNotMatch(styles, /\.admin-page \.list-tabs[^}]*scrollbar-gutter: stable/);
+  assert.match(styles, /\.button--write[^}]*white-space: nowrap/);
+  assert.match(styles, /@media \(max-width: 640px\)[\s\S]*\.header-actions \{ gap: 8px; \}[\s\S]*\.account-menu-trigger \{[^}]*min-width: 44px/);
+  assert.match(admin, /所属帖子：用户已删除/);
+  assert.match(admin, /所属帖子：管理员已隐藏/);
+});

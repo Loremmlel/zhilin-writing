@@ -99,12 +99,12 @@ button, summary, input[type="file"] { cursor: pointer; }
 .header-search:focus-within { border-color: #a9bfad; box-shadow: 0 0 0 3px rgba(79, 130, 95, .08); }
 .header-search svg { width: 18px; fill: none; stroke: var(--muted); stroke-width: 1.7; }
 .header-search input { width: 100%; border: 0; outline: 0; background: transparent; color: var(--ink); }
-.header-actions { justify-self: end; display: flex; align-items: center; gap: 18px; }
+.header-actions { min-width: 0; justify-self: end; display: flex; align-items: center; gap: 18px; }
 .notification-link { min-width: 38px; height: 38px; padding: 0 9px; border: 1px solid var(--line); border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; gap: 5px; color: var(--muted); background: rgba(255, 255, 255, .55); }
 .notification-link:hover { border-color: #b6c7b8; color: var(--green-dark); }
 .notification-link svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 .notification-link span { min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; display: inline-grid; place-items: center; background: var(--green); color: white; font-size: 10px; font-weight: 750; }
-.account-menu { position: relative; }
+.account-menu { position: relative; flex: none; }
 .account-menu-trigger { padding: 3px 5px; border: 0; border-radius: 999px; display: flex; align-items: center; gap: 8px; background: transparent; color: inherit; font-size: 14px; }
 .account-menu-trigger:hover, .account-menu-trigger[aria-expanded="true"] { background: var(--green-soft); color: var(--green-dark); }
 .account-popover { position: absolute; z-index: var(--z-popover); right: 0; top: calc(100% + 12px); min-width: 170px; padding: 8px; display: grid; gap: 2px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper-strong); box-shadow: var(--shadow); }
@@ -131,7 +131,8 @@ button, summary, input[type="file"] { cursor: pointer; }
 .button--danger { border-color: #9a453f; background: var(--danger); color: white; box-shadow: 0 5px 14px rgba(164, 77, 71, .14); }
 .button--danger:hover { background: #8d403a; }
 .button--small { min-height: 34px; padding: 0 13px; font-size: 13px; }
-.button--write::before { content: "✎"; font-size: 18px; font-weight: 400; }
+.button--write { flex: none; white-space: nowrap; }
+.button--write::before { content: "✎"; flex: none; font-size: 18px; font-weight: 400; line-height: 1; }
 .text-button { appearance: none; border: 0; background: transparent; color: var(--green-dark); padding: 2px; font-size: 13px; }
 .text-button:hover { text-decoration: underline; }
 .text-button--danger { color: var(--danger); }
@@ -148,9 +149,13 @@ button, summary, input[type="file"] { cursor: pointer; }
 .list-tabs a.is-active::after { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 3px; border-radius: 3px 3px 0 0; background: var(--green); }
 .list-tabs .tab-spacer { margin-left: auto; color: var(--green-dark); font-size: 13px; }
 .post-list { display: grid; gap: 10px; }
-.post-card { min-height: 150px; padding: 22px 24px; border: 1px solid var(--line); border-radius: var(--radius); background: rgba(255, 254, 250, .78); box-shadow: 0 3px 14px rgba(35, 48, 37, .025); display: flex; gap: 20px; justify-content: space-between; transition: border-color .2s, transform .2s, box-shadow .2s; }
+.post-card { position: relative; min-height: 150px; padding: 22px 24px; border: 1px solid var(--line); border-radius: var(--radius); background: rgba(255, 254, 250, .78); box-shadow: 0 3px 14px rgba(35, 48, 37, .025); display: flex; gap: 20px; justify-content: space-between; transition: border-color .2s, transform .2s, box-shadow .2s; }
 .post-card:hover { border-color: #cbd8cc; transform: translateY(-1px); box-shadow: var(--shadow); }
 .post-card-content { min-width: 0; flex: 1; }
+.post-title-link::after { content: ""; position: absolute; inset: 0; border-radius: var(--radius); }
+.post-title-link:focus-visible { outline: none; }
+.post-title-link:focus-visible::after { outline: 3px solid rgba(53, 97, 69, .34); outline-offset: 2px; }
+.post-card :is(.author-link, .reply-count, .tag) { position: relative; z-index: 1; }
 .post-title-link h2 { margin: 0 0 8px; font: 700 21px/1.35 Georgia, "Noto Serif SC", serif; }
 .post-title-link:hover { color: var(--green-dark); }
 .post-excerpt { margin: 0 0 17px; color: #5f655e; font-size: 14px; line-height: 1.8; }
@@ -437,8 +442,6 @@ button, summary, input[type="file"] { cursor: pointer; }
 
 .admin-page { width: min(840px, calc(100% - 40px)); }
 .admin-section { padding: 24px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper-strong); margin-bottom: 18px; }
-.admin-page .list-tabs { overflow-x: auto; }
-.admin-page .list-tabs a { flex: none; }
 .admin-list { border-top: 1px solid var(--line); }
 .admin-row { min-height: 62px; padding: 12px 3px; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: 15px; }
 .admin-row:last-child { border-bottom: 0; }
@@ -446,7 +449,7 @@ button, summary, input[type="file"] { cursor: pointer; }
 .admin-row strong { font-size: 14px; }
 .admin-row span { color: var(--muted); font-size: 12px; }
 .admin-row--link:hover { color: var(--green-dark); }
-.admin-page .list-tabs { margin-bottom: 8px; overflow-x: auto; scrollbar-gutter: stable; }
+.admin-page .list-tabs { margin-bottom: 8px; overflow-x: auto; overflow-y: hidden; }
 .admin-page .list-tabs a { flex: none; }
 .list-tabs--secondary { height: 44px; gap: 24px; margin-bottom: 18px; font-size: 13px; }
 .admin-content-list { margin-top: 4px; }
@@ -576,12 +579,14 @@ button, summary, input[type="file"] { cursor: pointer; }
 
 @media (max-width: 640px) {
   .header-inner { min-height: 66px; padding: 0 16px; gap: 12px; }
+  .header-actions { gap: 8px; }
   .brand-name { font-size: 21px; }
   .button--write { width: 42px; padding: 0; font-size: 0; }
   .button--write::before { font-size: 20px; }
   .button, .button--small, .text-button, .notification-link, .account-menu-trigger, .tag, .annotation-card-locate, .annotation-reply-cta, .annotation-reply-action, .annotation-reply-root-target, .annotation-selection-menu, .inline-reply summary, .attachment-link, .admin-row--link, .text-link { min-height: 44px; }
   .text-button, .tag, .inline-reply summary, .text-link { display: inline-flex; align-items: center; }
   .account-menu-trigger > span { display: none; }
+  .account-menu-trigger { min-width: 44px; padding-inline: 7px; justify-content: center; }
   .page-column, .editor-page, .admin-page { width: min(100% - 24px, 920px); padding-top: 30px; }
   .home-intro { padding-inline: 2px; }
   .post-card { padding: 18px; flex-direction: column; }

@@ -50,6 +50,13 @@ function annotationAuthorLabel(author: AnnotationAuthorView): string {
   return [author.displayName, annotationSourceMetadata(author)].filter(Boolean).join(" · ");
 }
 
+function ParentPostLifecycle({ post }: { post: { deletedAt: Date | null; hiddenAt: Date | null } }) {
+  return <>
+    {post.deletedAt && <span className="status-pill status-pill--deleted">所属帖子：用户已删除</span>}
+    {post.hiddenAt && <span className="status-pill status-pill--hidden">所属帖子：管理员已隐藏</span>}
+  </>;
+}
+
 const auditLabels: Record<string, string> = {
   POST_HIDDEN: "隐藏帖子",
   POST_UNHIDDEN: "取消隐藏帖子",
@@ -142,6 +149,7 @@ async function AdminContent({ query }: { query: AdminQuery }) {
                 {!reply.deletedAt && !reply.hiddenAt && <span className="status-pill status-pill--normal">正常</span>}
                 {reply.deletedAt && <span className="status-pill status-pill--deleted">用户已删除</span>}
                 {reply.hiddenAt && <span className="status-pill status-pill--hidden">管理员已隐藏</span>}
+                <ParentPostLifecycle post={post} />
               </div>
               <strong>{author.displayName} 回复《{post.title}》</strong>
               <span>{formatDateTime(reply.publishedAt)}</span>
@@ -163,6 +171,7 @@ async function AdminContent({ query }: { query: AdminQuery }) {
                 {!annotation.deletedAt && !annotation.hiddenAt && <span className="status-pill status-pill--normal">正常</span>}
                 {annotation.deletedAt && <span className="status-pill status-pill--deleted">用户已删除</span>}
                 {annotation.hiddenAt && <span className="status-pill status-pill--hidden">管理员已隐藏</span>}
+                <ParentPostLifecycle post={post} />
               </div>
               <strong>{annotationAuthorLabel(author)} 批注《{post.title}》</strong>
               <span>{formatDateTime(annotation.sourceCreatedAt ?? annotation.createdAt)} · 原选文：{annotation.originalSelectedText}</span>
@@ -183,6 +192,7 @@ async function AdminContent({ query }: { query: AdminQuery }) {
                 {!reply.deletedAt && !reply.hiddenAt && <span className="status-pill status-pill--normal">正常</span>}
                 {reply.deletedAt && <span className="status-pill status-pill--deleted">用户已删除</span>}
                 {reply.hiddenAt && <span className="status-pill status-pill--hidden">管理员已隐藏</span>}
+                <ParentPostLifecycle post={post} />
               </div>
               <strong>{annotationAuthorLabel(author)} 回复《{post.title}》中的批注</strong>
               <span>{formatDateTime(reply.sourceCreatedAt ?? reply.createdAt)} · 批注 {annotation.id}</span>
