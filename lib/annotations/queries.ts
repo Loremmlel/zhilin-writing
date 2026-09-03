@@ -1,9 +1,16 @@
-import { and, asc, desc, eq, inArray, isNotNull, isNull } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, isNotNull, isNull, like, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/sqlite-core";
 
 import { getDb } from "@/db";
 import { annotationReplies, annotations, postAnnotationAnchors, posts, users } from "@/db/schema";
 import { contentState } from "@/lib/lifecycle/policy";
+import {
+  ADMIN_PAGE_SIZE,
+  type AdminContentStatus,
+  type AdminListOptions,
+  type AdminPageResult,
+  type AdminStatusCounts,
+} from "@/lib/admin/query";
 import { buildAnnotationAuthorView } from "./identity";
 import { buildAnnotationReplyLifecycleViews } from "./lifecycle";
 import { sortAnnotationReplyRows, sortAnnotationRowsByAnchorPosition } from "./policy";
@@ -215,21 +222,104 @@ export async function listCurrentAnnotationThreads(
   });
 }
 
-export type AnnotationAdminStatus = "normal" | "deleted" | "hidden";
-
-export async function listAdminAnnotations(status: AnnotationAdminStatus, limit = 100) {
+function annotationStatusCondition(status: AdminContentStatus) {
   const condition =
     status === "deleted"
       ? isNotNull(annotations.deletedAt)
       : status === "hidden"
         ? isNotNull(annotations.hiddenAt)
         : and(isNull(annotations.deletedAt), isNull(annotations.hiddenAt));
-  const rows = await getDb()
+  return condition;
+}
+
+function annotationReplyStatusCondition(status: AdminContentStatus) {
+  return status === "deleted"
+    ? isNotNull(annotationReplies.deletedAt)
+    : status === "hidden"
+      ? isNotNull(annotationReplies.hiddenAt)
+      : and(isNull(annotationReplies.deletedAt), isNull(annotationReplies.hiddenAt));
+}
+
+function statusCounts(row?: {
+  normal: number | null;
+  deleted: number | null;
+  hidden: number | null;
+}): AdminStatusCounts {
+  return {
+    normal: Number(row?.normal ?? 0),
+    deleted: Number(row?.deleted ?? 0),
+    hidden: Number(row?.hidden ?? 0),
+  };
+}
+
+export async function countAdminAnnotationsByStatus(): Promise<AdminStatusCounts> {
+  const [row] = await getDb()
+    .select({
+      normal: sql<number>`sum(case when ${annotations.deletedAt} is null and ${annotations.hiddenAt} is null then 1 else 0 end)`,
+      deleted: sql<number>`sum(case when ${annotations.deletedAt} is not null then 1 else 0 end)`,
+      hidden: sql<number>`sum(case when ${annotations.hiddenAt} is not null then 1 else 0 end)`,
+    })
+    .from(annotations);
+  return statusCounts(row);
+}
+
+export async function countAdminAnnotationRepliesByStatus(): Promise<AdminStatusCounts> {
+  const [row] = await getDb()
+    .select({
+      normal: sql<number>`sum(case when ${annotationReplies.deletedAt} is null and ${annotationReplies.hiddenAt} is null then 1 else 0 end)`,
+      deleted: sql<number>`sum(case when ${annotationReplies.deletedAt} is not null then 1 else 0 end)`,
+      hidden: sql<number>`sum(case when ${annotationReplies.hiddenAt} is not null then 1 else 0 end)`,
+    })
+    .from(annotationReplies);
+  return statusCounts(row);
+}
+
+export async function listAdminAnnotations(
+  options: AdminListOptions,
+): Promise<AdminPageResult<Awaited<ReturnType<typeof selectAdminAnnotationRows>>[number]>> {
+  const search = options.q ? `%${options.q}%` : null;
+  const condition = search
+    ? and(
+        annotationStatusCondition(options.status),
+        or(
+          like(annotations.contentMarkdown, search),
+          like(annotations.originalSelectedText, search),
+          like(posts.title, search),
+          like(annotationAuthor.displayName, search),
+          like(annotationAttributedUser.displayName, search),
+          like(annotations.sourceAuthorName, search),
+        ),
+      )
+    : annotationStatusCondition(options.status);
+  const [{ value: total = 0 } = { value: 0 }] = await getDb()
+    .select({ value: count() })
+    .from(annotations)
+    .leftJoin(annotationAuthor, eq(annotations.authorId, annotationAuthor.id))
+    .leftJoin(
+      annotationAttributedUser,
+      eq(annotations.attributedUserId, annotationAttributedUser.id),
+    )
+    .innerJoin(posts, eq(annotations.postId, posts.id))
+    .where(condition);
+  const pageSize = Math.min(Math.max(options.pageSize ?? ADMIN_PAGE_SIZE, 1), 100);
+  const page = Math.min(options.page, Math.max(1, Math.ceil(total / pageSize)));
+  const rows = await selectAdminAnnotationRows(condition, options.sort, page, pageSize);
+  return { rows, total, page, pageSize };
+}
+
+function selectAdminAnnotationRows(
+  condition: ReturnType<typeof annotationStatusCondition>,
+  sort: AdminListOptions["sort"],
+  page: number,
+  pageSize: number,
+) {
+  return getDb()
     .select({
       annotation: annotations,
       nativeAuthor: annotationAuthor,
       attributedUser: annotationAttributedUser,
       post: posts,
+      currentAnchorId: postAnnotationAnchors.annotationId,
     })
     .from(annotations)
     .leftJoin(annotationAuthor, eq(annotations.authorId, annotationAuthor.id))
@@ -238,43 +328,102 @@ export async function listAdminAnnotations(status: AnnotationAdminStatus, limit 
       eq(annotations.attributedUserId, annotationAttributedUser.id),
     )
     .innerJoin(posts, eq(annotations.postId, posts.id))
+    .leftJoin(
+      postAnnotationAnchors,
+      and(
+        eq(postAnnotationAnchors.annotationId, annotations.id),
+        eq(postAnnotationAnchors.postId, annotations.postId),
+      ),
+    )
     .where(condition)
-    .orderBy(desc(annotations.createdAt))
-    .limit(limit);
-  return rows.map(({ annotation, nativeAuthor, attributedUser, post }) => ({
-    annotation,
-    author: buildAnnotationAuthorView(annotation, nativeAuthor, attributedUser),
-    post,
-  }));
+    .orderBy(
+      sort === "oldest" ? asc(annotations.createdAt) : desc(annotations.createdAt),
+      sort === "oldest" ? asc(annotations.id) : desc(annotations.id),
+    )
+    .limit(pageSize)
+    .offset((page - 1) * pageSize)
+    .then((rows) =>
+      rows.map(({ annotation, nativeAuthor, attributedUser, post, currentAnchorId }) => ({
+        annotation,
+        author: buildAnnotationAuthorView(annotation, nativeAuthor, attributedUser),
+        post,
+        isCurrent: Boolean(currentAnchorId),
+      })),
+    );
 }
 
-export async function listAdminAnnotationReplies(status: AnnotationAdminStatus, limit = 100) {
-  const condition =
-    status === "deleted"
-      ? isNotNull(annotationReplies.deletedAt)
-      : status === "hidden"
-        ? isNotNull(annotationReplies.hiddenAt)
-        : and(isNull(annotationReplies.deletedAt), isNull(annotationReplies.hiddenAt));
-  const rows = await getDb()
+export async function listAdminAnnotationReplies(
+  options: AdminListOptions,
+): Promise<AdminPageResult<Awaited<ReturnType<typeof selectAdminAnnotationReplyRows>>[number]>> {
+  const search = options.q ? `%${options.q}%` : null;
+  const condition = search
+    ? and(
+        annotationReplyStatusCondition(options.status),
+        or(
+          like(annotationReplies.contentMarkdown, search),
+          like(annotations.originalSelectedText, search),
+          like(posts.title, search),
+          like(replyAuthor.displayName, search),
+          like(replyAttributedUser.displayName, search),
+          like(annotationReplies.sourceAuthorName, search),
+        ),
+      )
+    : annotationReplyStatusCondition(options.status);
+  const [{ value: total = 0 } = { value: 0 }] = await getDb()
+    .select({ value: count() })
+    .from(annotationReplies)
+    .leftJoin(replyAuthor, eq(annotationReplies.authorId, replyAuthor.id))
+    .leftJoin(replyAttributedUser, eq(annotationReplies.attributedUserId, replyAttributedUser.id))
+    .innerJoin(annotations, eq(annotationReplies.annotationId, annotations.id))
+    .innerJoin(posts, eq(annotations.postId, posts.id))
+    .where(condition);
+  const pageSize = Math.min(Math.max(options.pageSize ?? ADMIN_PAGE_SIZE, 1), 100);
+  const page = Math.min(options.page, Math.max(1, Math.ceil(total / pageSize)));
+  const rows = await selectAdminAnnotationReplyRows(condition, options.sort, page, pageSize);
+  return { rows, total, page, pageSize };
+}
+
+function selectAdminAnnotationReplyRows(
+  condition: ReturnType<typeof annotationReplyStatusCondition>,
+  sort: AdminListOptions["sort"],
+  page: number,
+  pageSize: number,
+) {
+  return getDb()
     .select({
       reply: annotationReplies,
       nativeAuthor: replyAuthor,
       attributedUser: replyAttributedUser,
       annotation: annotations,
       post: posts,
+      currentAnchorId: postAnnotationAnchors.annotationId,
     })
     .from(annotationReplies)
     .leftJoin(replyAuthor, eq(annotationReplies.authorId, replyAuthor.id))
     .leftJoin(replyAttributedUser, eq(annotationReplies.attributedUserId, replyAttributedUser.id))
     .innerJoin(annotations, eq(annotationReplies.annotationId, annotations.id))
     .innerJoin(posts, eq(annotations.postId, posts.id))
+    .leftJoin(
+      postAnnotationAnchors,
+      and(
+        eq(postAnnotationAnchors.annotationId, annotations.id),
+        eq(postAnnotationAnchors.postId, annotations.postId),
+      ),
+    )
     .where(condition)
-    .orderBy(desc(annotationReplies.createdAt))
-    .limit(limit);
-  return rows.map(({ reply, nativeAuthor, attributedUser, annotation, post }) => ({
-    reply,
-    author: buildAnnotationAuthorView(reply, nativeAuthor, attributedUser),
-    annotation,
-    post,
-  }));
+    .orderBy(
+      sort === "oldest" ? asc(annotationReplies.createdAt) : desc(annotationReplies.createdAt),
+      sort === "oldest" ? asc(annotationReplies.id) : desc(annotationReplies.id),
+    )
+    .limit(pageSize)
+    .offset((page - 1) * pageSize)
+    .then((rows) =>
+      rows.map(({ reply, nativeAuthor, attributedUser, annotation, post, currentAnchorId }) => ({
+        reply,
+        author: buildAnnotationAuthorView(reply, nativeAuthor, attributedUser),
+        annotation,
+        post,
+        isCurrent: Boolean(currentAnchorId),
+      })),
+    );
 }

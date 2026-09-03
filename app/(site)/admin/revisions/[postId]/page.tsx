@@ -1,8 +1,10 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { RestoreRevisionForm } from "@/components/admin/restore-revision-form";
+import { AdminShell } from "@/components/admin/admin-shell";
 import { RevisionPreviewSkeleton } from "@/components/loading/skeletons";
 import { RegionErrorBoundary } from "@/components/region-error-boundary";
 import { getPostForAdministration } from "@/db/queries";
@@ -13,6 +15,7 @@ import { getRevisionSnapshot, listPostRevisions } from "@/lib/revisions/service"
 import { restoreRevisionAction } from "./actions";
 
 export const dynamic = "force-dynamic";
+export const metadata: Metadata = { title: "帖子历史 | 知临中学" };
 
 const revisionKindLabels = {
   CONTENT_EDIT: "内容编辑",
@@ -42,65 +45,67 @@ export default async function PostRevisionsPage({
   if (!selectedId) notFound();
 
   return (
-    <div className="page-column revision-admin-page">
-      <header className="page-header">
-        <span className="eyebrow">管理员 · Post revisions</span>
-        <h1>{post.post.title}</h1>
-        <p>历史内容只对唯一管理员开放。预览与恢复不会创建公开动态或通知。</p>
-      </header>
-      {query.restored === "1" && (
-        <p className="content-notice" role="status">
-          历史版本已复制为新的当前版本。
-        </p>
-      )}
-      <div className="revision-admin-layout">
-        <aside className="revision-timeline" aria-label="Post revisions">
-          <div className="section-heading">
-            <h2>Post revisions</h2>
-            <span>{revisions.length} 个</span>
-          </div>
-          <div className="revision-list">
-            {revisions.map(({ revision, creator }) => {
-              const isCurrent = revision.id === post.post.currentRevisionId;
-              const restoreNumber = revision.restoreSourceRevisionId
-                ? revisionNumbers.get(revision.restoreSourceRevisionId)
-                : null;
-              return (
-                <Link
-                  key={revision.id}
-                  href={`/admin/revisions/${postId}?revision=${encodeURIComponent(revision.id)}`}
-                  className={`revision-list-item${revision.id === selectedId ? " is-selected" : ""}`}
-                >
-                  <span className="revision-number">v{revision.revisionNumber}</span>
-                  <strong>{revision.title}</strong>
-                  <small>
-                    {formatDateTime(revision.createdAt)} · {creator.displayName}
-                  </small>
-                  <span className="revision-badges">
-                    <em>{revisionKindLabels[revision.kind]}</em>
-                    {isCurrent && <em>当前版本</em>}
-                    {restoreNumber && <em>恢复自 v{restoreNumber}</em>}
-                  </span>
-                </Link>
-              );
-            })}
-          </div>
-        </aside>
-        <RegionErrorBoundary
-          title="版本预览暂时无法载入"
-          description="当前选中的版本仍会保留，请稍后重试。"
-        >
-          <Suspense fallback={<RevisionPreviewSkeleton />}>
-            <RevisionPreview
-              postId={postId}
-              selectedId={selectedId}
-              currentRevisionId={post.post.currentRevisionId}
-              postDeleted={Boolean(post.post.deletedAt)}
-            />
-          </Suspense>
-        </RegionErrorBoundary>
+    <AdminShell active="posts">
+      <div className="admin-page revision-admin-page">
+        <header className="page-header">
+          <span className="eyebrow">管理员 · Post revisions</span>
+          <h1>{post.post.title}</h1>
+          <p>历史内容只对唯一管理员开放。预览与恢复不会创建公开动态或通知。</p>
+        </header>
+        {query.restored === "1" && (
+          <p className="content-notice" role="status">
+            历史版本已复制为新的当前版本。
+          </p>
+        )}
+        <div className="revision-admin-layout">
+          <aside className="revision-timeline" aria-label="Post revisions">
+            <div className="section-heading">
+              <h2>Post revisions</h2>
+              <span>{revisions.length} 个</span>
+            </div>
+            <div className="revision-list">
+              {revisions.map(({ revision, creator }) => {
+                const isCurrent = revision.id === post.post.currentRevisionId;
+                const restoreNumber = revision.restoreSourceRevisionId
+                  ? revisionNumbers.get(revision.restoreSourceRevisionId)
+                  : null;
+                return (
+                  <Link
+                    key={revision.id}
+                    href={`/admin/revisions/${postId}?revision=${encodeURIComponent(revision.id)}`}
+                    className={`revision-list-item${revision.id === selectedId ? " is-selected" : ""}`}
+                  >
+                    <span className="revision-number">v{revision.revisionNumber}</span>
+                    <strong>{revision.title}</strong>
+                    <small>
+                      {formatDateTime(revision.createdAt)} · {creator.displayName}
+                    </small>
+                    <span className="revision-badges">
+                      <em>{revisionKindLabels[revision.kind]}</em>
+                      {isCurrent && <em>当前版本</em>}
+                      {restoreNumber && <em>恢复自 v{restoreNumber}</em>}
+                    </span>
+                  </Link>
+                );
+              })}
+            </div>
+          </aside>
+          <RegionErrorBoundary
+            title="版本预览暂时无法载入"
+            description="当前选中的版本仍会保留，请稍后重试。"
+          >
+            <Suspense fallback={<RevisionPreviewSkeleton />}>
+              <RevisionPreview
+                postId={postId}
+                selectedId={selectedId}
+                currentRevisionId={post.post.currentRevisionId}
+                postDeleted={Boolean(post.post.deletedAt)}
+              />
+            </Suspense>
+          </RegionErrorBoundary>
+        </div>
       </div>
-    </div>
+    </AdminShell>
   );
 }
 

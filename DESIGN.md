@@ -1,5 +1,5 @@
 ---
-version: "1.1"
+version: "1.2"
 name: "知临中学"
 description: "面向少数受邀同学的私密 Markdown 写作社区，以旧校刊纸张与克制校园绿构成安静、可信的阅读界面。"
 colors:
@@ -42,6 +42,8 @@ components:
   annotation-range: {}
   annotation-sidebar: {}
   annotation-sheet: {}
+  admin-shell: {}
+  admin-table: {}
 ---
 
 # 知临中学 Design System
@@ -74,7 +76,7 @@ components:
 
 ## Layout
 
-普通内容列最大宽度 920px，编辑器 1080px，revision 管理页 1180px。带批注的桌面帖子扩展为舒适正文列、70px 连线沟槽和 270–330px 右栏；卡片按正文位置顺序错开。Annotation 组件以自身可用宽度为唯一布局来源：至少 1060px（720px 正文 + 70px gutter + 270px rail）才显示侧栏和引导线，否则使用底部 Sheet。管理员历史在宽屏采用 320px 左侧时间线和右侧预览；900px 以下堆叠，时间线自身限高滚动。所有固定弹窗保留安全边距，移动端转为单列操作。
+普通内容列最大宽度 920px，编辑器 1080px。管理后台扩展至 1480px，以 220px 索引式左栏、弹性工作区和 292px 摘要栏组成；中等宽度摘要栏下移，900px 以下左栏收进“管理导航”。管理表格只让自身横向滚动，页面仍由文档负责纵向滚动。带批注的桌面帖子扩展为舒适正文列、70px 连线沟槽和 270–330px 右栏；卡片按正文位置顺序错开。Annotation 组件以自身可用宽度为唯一布局来源：至少 1060px（720px 正文 + 70px gutter + 270px rail）才显示侧栏和引导线，否则使用底部 Sheet。管理员历史在宽屏采用 320px 左侧时间线和右侧预览；900px 以下堆叠，时间线自身限高滚动。所有固定弹窗保留安全边距，移动端转为单列操作。
 
 ## Elevation & Depth
 
@@ -96,7 +98,7 @@ components:
 
 ### Navigation and data display
 
-顶部导航保持紧凑；帖子与动态用列表卡片；revision 用带版本号、创建者、时间和状态徽标的纵向时间线。内容管理用小型筛选列表和可组合状态胶囊表达 Normal、User Deleted、Admin Hidden；同时状态并列显示。历史正文使用与当前帖子一致的 Markdown 渲染器。
+顶部导航保持紧凑；帖子与动态用列表卡片；revision 用带版本号、创建者、时间和状态徽标的纵向时间线。管理后台的内容类型只出现在左侧索引导航，主区使用状态页签、显式搜索、单一排序和语义表格，不重复内容类型切换。总览卡只呈现帖子、回复、批注、批注回复的真实状态计数，不展示推算趋势。Normal、User Deleted、Admin Hidden 可并列显示；批注另显示是否属于当前版本。历史正文使用与当前帖子一致的 Markdown 渲染器。
 
 ### Forms and overlays
 

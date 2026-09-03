@@ -185,11 +185,23 @@ export function TagSkeleton() {
 
 export function AdminSkeleton() {
   return (
-    <LoadingShell className="page-column admin-page loading-shell" label="正在加载管理后台">
-      <PageHeading />
-      <AdminListSkeleton />
-      <AdminListSkeleton />
-    </LoadingShell>
+    <div className="admin-shell admin-loading-shell" aria-busy="true" aria-live="polite">
+      <span className="sr-only">正在加载管理后台</span>
+      <div className="admin-sidebar" aria-hidden="true">
+        <div className="skeleton-lines">
+          {Array.from({ length: 8 }, (_, index) => (
+            <span className="skeleton-block" key={index} />
+          ))}
+        </div>
+      </div>
+      <div className="admin-shell-main admin-page" aria-hidden="true">
+        <PageHeading />
+        <div className="admin-workspace">
+          <AdminListSkeleton />
+          <AdminListSkeleton />
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -212,16 +224,23 @@ export function AdminListSkeleton() {
 
 export function RevisionSkeleton() {
   return (
-    <LoadingShell
-      className="page-column revision-admin-page loading-shell"
-      label="正在加载历史版本"
-    >
-      <PageHeading />
-      <div className="revision-admin-layout">
-        <AdminListSkeleton />
-        <RevisionPreviewSkeleton />
+    <div className="admin-shell admin-loading-shell" aria-busy="true" aria-live="polite">
+      <span className="sr-only">正在加载历史版本</span>
+      <div className="admin-sidebar" aria-hidden="true">
+        <div className="skeleton-lines">
+          {Array.from({ length: 8 }, (_, index) => (
+            <span className="skeleton-block" key={index} />
+          ))}
+        </div>
       </div>
-    </LoadingShell>
+      <div className="admin-shell-main admin-page revision-admin-page" aria-hidden="true">
+        <PageHeading />
+        <div className="revision-admin-layout">
+          <AdminListSkeleton />
+          <RevisionPreviewSkeleton />
+        </div>
+      </div>
+    </div>
   );
 }
 
