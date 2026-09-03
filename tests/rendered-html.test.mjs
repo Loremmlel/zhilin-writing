@@ -63,13 +63,16 @@ test("production artifact contains administrator revision preview and restore su
 });
 
 test("production artifact keeps administrator chrome within the viewport", async () => {
-  const styles = await builtCssSource();
+  const [source, styles] = await Promise.all([builtServerSource(), builtCssSource()]);
+  assert.doesNotMatch(source, /返回总览/);
   assert.match(styles, /\.site-main:has\(\.admin-shell\)\+\.site-footer\{display:none\}/);
   assert.match(
     styles,
     /\.admin-sidebar\{[^}]*height:calc\(100dvh - 76px\)[^}]*overflow-y:auto[^}]*\}/,
   );
   assert.doesNotMatch(styles, /\.admin-sidebar\{[^}]*min-height:calc\(100dvh - 76px\)[^}]*\}/);
+  assert.match(styles, /\.admin-page\{[^}]*padding:24px clamp\(20px,2\.6vw,38px\) 64px[^}]*\}/);
+  assert.match(styles, /\.admin-page-header\{[^}]*margin-bottom:18px[^}]*\}/);
 });
 
 test("production artifact contains V4 lifecycle placeholders, confirmations, and moderation", async () => {

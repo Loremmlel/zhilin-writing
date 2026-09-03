@@ -121,11 +121,6 @@ export default async function AdminPage({
             <h1>{copy.title}</h1>
             <p>{copy.description}</p>
           </div>
-          {view.section !== "overview" && (
-            <Link className="text-link" href="/admin">
-              返回总览
-            </Link>
-          )}
         </header>
         <div className={showAside ? "admin-workspace" : "admin-workspace admin-workspace--single"}>
           <main className="admin-workspace-main">

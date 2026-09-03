@@ -2400,10 +2400,10 @@ input[type="file"] {
 }
 .admin-page {
   width: 100%;
-  padding: 31px clamp(20px, 2.6vw, 38px) 70px;
+  padding: 24px clamp(20px, 2.6vw, 38px) 64px;
 }
 .admin-page-header {
-  margin-bottom: 25px;
+  margin-bottom: 18px;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -2422,10 +2422,6 @@ input[type="file"] {
   color: var(--muted);
   font-size: 14px;
   line-height: 1.7;
-}
-.admin-page-header > .text-link {
-  flex: none;
-  margin-top: 15px;
 }
 .admin-workspace {
   min-width: 0;
@@ -3800,9 +3796,6 @@ input[type="file"] {
     align-items: flex-start;
     flex-direction: column;
     gap: 7px;
-  }
-  .admin-page-header > .text-link {
-    margin-top: 0;
   }
   .admin-mobile-navigation {
     margin: 12px 12px 0;
