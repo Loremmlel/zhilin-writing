@@ -1,9 +1,9 @@
-import { and, asc, eq, isNotNull, isNull, lte, notExists, or, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNotNull, isNull, lte, notExists, or, sql } from "drizzle-orm";
 import { env } from "cloudflare:workers";
 
 import { getDb } from "@/db";
 import { assets, postAssetRefs, revisionAssetRefs, users } from "@/db/schema";
-import { runAssetGcCandidates, type AssetGcFailureCode } from "./gc-core";
+import { assertUntrackedR2Execution, runAssetGcCandidates, untrackedR2Candidates, type AssetGcFailureCode } from "./gc-core";
 
 type ReferenceCounts = {
   currentRefCount: number;
@@ -89,4 +89,50 @@ export async function collectOrphanedAssets(options: { now?: Date; limit?: numbe
       },
     },
   });
+}
+
+export async function scanUntrackedR2Objects(options: {
+  ownerPrefix: string;
+  now?: Date;
+  cursor?: string;
+  limit?: number;
+  dryRun?: boolean;
+  confirmedAssetIds?: string[];
+}) {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\/$/i.test(options.ownerPrefix)) {
+    throw new Error("R2 inventory scan requires one exact owner UUID prefix");
+  }
+  if (!env.BUCKET) throw new Error("R2_UNAVAILABLE");
+  const now = options.now ?? new Date();
+  const page = await env.BUCKET.list({
+    prefix: options.ownerPrefix.toLocaleLowerCase("en-US"),
+    cursor: options.cursor,
+    limit: Math.min(Math.max(options.limit ?? 90, 1), 90),
+  });
+  const keys = page.objects.map((object) => object.key);
+  const tracked = keys.length === 0 ? [] : await getDb().select({ r2Key: assets.r2Key }).from(assets).where(inArray(assets.r2Key, keys));
+  const candidates = untrackedR2Candidates(page.objects, new Set(tracked.map((asset) => asset.r2Key)), now);
+  const report = {
+    dryRun: options.dryRun ?? true,
+    inspected: page.objects.length,
+    candidateCount: candidates.length,
+    bytes: candidates.reduce((total, candidate) => total + candidate.bytes, 0),
+    candidates: candidates.map(({ assetId, bytes, reason }) => ({ assetId, bytes, reason })),
+    collected: [] as string[],
+    failures: [] as Array<{ assetId: string; code: "R2_DELETE_FAILED" }>,
+    nextCursor: page.truncated ? page.cursor : undefined,
+  };
+  if (report.dryRun) return report;
+  assertUntrackedR2Execution(candidates, options.confirmedAssetIds);
+  for (const candidate of candidates) {
+    const trackedNow = (await getDb().select({ id: assets.id }).from(assets).where(eq(assets.r2Key, candidate.key)).limit(1))[0];
+    if (trackedNow) continue;
+    try {
+      await env.BUCKET.delete(candidate.key);
+      report.collected.push(candidate.assetId);
+    } catch {
+      report.failures.push({ assetId: candidate.assetId, code: "R2_DELETE_FAILED" });
+    }
+  }
+  return report;
 }

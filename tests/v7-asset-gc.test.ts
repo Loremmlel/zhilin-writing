@@ -3,7 +3,7 @@ import { readFile, readdir } from "node:fs/promises";
 import { DatabaseSync } from "node:sqlite";
 import test from "node:test";
 
-import { runAssetGcCandidates, type AssetGcCandidate, type AssetGcFailureCode } from "../lib/assets/gc-core.ts";
+import { assertUntrackedR2Execution, runAssetGcCandidates, untrackedR2Candidates, type AssetGcCandidate, type AssetGcFailureCode } from "../lib/assets/gc-core.ts";
 
 const now = new Date("2026-09-03T12:00:00.000Z");
 const candidates: AssetGcCandidate[] = [
@@ -84,4 +84,23 @@ test("V7 GC migration is additive and binding paths reject claimed assets", asyn
     readFile(new URL("../db/queries.ts", import.meta.url), "utf8"),
   ]);
   for (const source of [posts, saveTransaction, docx, profile]) assert.match(source, /gcClaimedAt|gc_claimed_at/);
+});
+
+test("R2 inventory only reports old site-shaped objects absent from D1 and requires exact dry-run confirmation", () => {
+  const old = new Date(now.getTime() - 8 * 86_400_000);
+  const recent = new Date(now.getTime() - 86_400_000);
+  const owner = "00112233-4455-4677-8899-aabbccddeeff";
+  const orphanId = "11112233-4455-4677-8899-aabbccddeeff";
+  const trackedId = "21112233-4455-4677-8899-aabbccddeeff";
+  const orphanKey = `${owner}/image/${orphanId}-orphan.png`;
+  const trackedKey = `${owner}/attachment/${trackedId}-tracked.pdf`;
+  const found = untrackedR2Candidates([
+    { key: orphanKey, size: 12, uploaded: old },
+    { key: trackedKey, size: 13, uploaded: old },
+    { key: `${owner}/image/31112233-4455-4677-8899-aabbccddeeff-recent.png`, size: 14, uploaded: recent },
+    { key: `${owner}/unknown-object`, size: 15, uploaded: old },
+  ], new Set([trackedKey]), now);
+  assert.deepEqual(found, [{ assetId: orphanId, key: orphanKey, bytes: 12, reason: "UNTRACKED_R2_OBJECT" }]);
+  assert.throws(() => assertUntrackedR2Execution(found, []), /exact dry-run asset IDs/);
+  assert.doesNotThrow(() => assertUntrackedR2Execution(found, [orphanId]));
 });

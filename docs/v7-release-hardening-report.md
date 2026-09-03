@@ -63,11 +63,11 @@
 
 ## 11. Temporary / orphan R2 GC 规则
 
-`PASS (automated)`：temporary 只有同时满足 `created_at ≤ now-7d`、`expires_at ≤ now`、无 current/revision/avatar ref 才候选；24 小时 IndexedDB DOCX Preview 因此不会触达物理删除窗口。permanent 且零引用归类为 `PERMANENT_ORPHAN`。候选先 claim，所有 Post/DOCX/avatar binding 都拒绝已 claim asset，删除前再次查 current/revision/avatar ref；引用在 claim 前后出现时释放 claim，不删 R2。
+`PASS (automated)`：temporary 只有同时满足 `created_at ≤ now-7d`、`expires_at ≤ now`、无 current/revision/avatar ref 才候选；24 小时 IndexedDB DOCX Preview 因此不会触达物理删除窗口。permanent 且零引用归类为 `PERMANENT_ORPHAN`。候选先 claim，所有 Post/DOCX/avatar binding 都拒绝已 claim asset，删除前再次查 current/revision/avatar ref；引用在 claim 前后出现时释放 claim，不删 R2。另有按单一 owner UUID prefix、每页 ≤90 的 R2 inventory scan，只识别 7 天前且符合本站 key 结构、D1 完全无 metadata 的对象。
 
 ## 12. GC dry-run 与 failure retry
 
-`PASS (automated)`：`collectOrphanedAssets` 默认 `dryRun=true`，报告 candidate count、bytes、asset IDs、`EXPIRED_TEMPORARY | PERMANENT_ORPHAN` reasons 且零 mutation。执行模式逐项处理；R2 不可用/删除失败不会删除 DB metadata，也不阻塞后续 candidate，并持久化 failure count、time、code。claim 一小时后才可重试，避免并发 maintenance 重入；R2 已删但 metadata update 失败也保留可重试记录。
+`PASS (automated)`：`collectOrphanedAssets` 默认 `dryRun=true`，报告 candidate count、bytes、asset IDs、`EXPIRED_TEMPORARY | PERMANENT_ORPHAN` reasons 且零 mutation。执行模式逐项处理；R2 不可用/删除失败不会删除 DB metadata，也不阻塞后续 candidate，并持久化 failure count、time、code。claim 一小时后才可重试，避免并发 maintenance 重入；R2 已删但 metadata update 失败也保留可重试记录。无 metadata 的 `UNTRACKED_R2_OBJECT` 执行还必须提交与 dry-run 完全一致的 asset ID 集合，并在每次删除前再次查询 D1。
 
 ## 13. Mobile / tablet Annotation breakpoint
 
