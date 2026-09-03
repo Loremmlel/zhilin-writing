@@ -7,7 +7,12 @@ export const dynamic = "force-dynamic";
 
 export default async function SiteLayout({ children }: { children: React.ReactNode }) {
   const { member, allowed } = await requireMember("/");
-  const unreadCount = await countUnreadNotifications(member.id);
+  let unreadCount = 0;
+  try {
+    unreadCount = await countUnreadNotifications(member.id);
+  } catch {
+    // The badge is non-critical; the Notifications route owns its own retry boundary.
+  }
   return (
     <div className="site-shell">
       <SiteHeader member={member} isAdmin={allowed.isAdmin} unreadCount={unreadCount} />

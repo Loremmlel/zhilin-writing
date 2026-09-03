@@ -1,12 +1,15 @@
 import { findAsset } from "@/db/queries";
-import { requireMember } from "@/lib/auth/access";
+import { getApiMemberAccess } from "@/lib/auth/access";
+import { accessErrorMessage } from "@/lib/actions/result";
 import { canReadAsset } from "@/lib/assets/access-service";
 import { getStoredObject } from "@/lib/assets/storage";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) {
-  const { member, allowed } = await requireMember("/");
+  const access = await getApiMemberAccess();
+  if (!access.ok) return Response.json({ error: accessErrorMessage(access.code), code: access.code }, { status: access.status });
+  const { member, allowed } = access;
   const { id } = await context.params;
   const asset = await findAsset(id);
   if (!asset || !(await canReadAsset(id, { userId: member.id, isAdmin: allowed.isAdmin }))) {

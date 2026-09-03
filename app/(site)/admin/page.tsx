@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 
 import { ContentLifecycleControl } from "@/components/admin/content-lifecycle-control";
+import { AddAllowlistForm, RemoveAllowlistForm } from "@/components/admin/allowlist-forms";
 import { AdminListSkeleton } from "@/components/loading/skeletons";
 import {
   listAdminAuditLog,
@@ -188,9 +189,9 @@ async function AdminContent({ query }: { query: AdminQuery }) {
       </section>
 
       <section className="admin-section"><div className="section-heading"><h2>邀请邮箱</h2><span>{allowed.length} 个</span></div>
-        <form action={addAllowlistAction} className="inline-form" noValidate><input className="text-input" type="email" name="email" placeholder="friend@example.com" /><button className="button button--primary">加入白名单</button></form>
+        <AddAllowlistForm action={addAllowlistAction} />
         {query.error && <p className="form-error">{query.error}</p>}
-        <div className="admin-list">{allowed.map((entry) => <div className="admin-row" key={entry.id}><div><strong>{entry.email}</strong><span>{entry.isAdmin ? "唯一管理员" : `添加于 ${formatDateTime(entry.addedAt)}`}</span></div>{!entry.isAdmin && <form action={removeAllowlistAction} noValidate><input type="hidden" name="id" value={entry.id} /><button className="text-button text-button--danger">移除</button></form>}</div>)}</div>
+        <div className="admin-list">{allowed.map((entry) => <div className="admin-row" key={entry.id}><div><strong>{entry.email}</strong><span>{entry.isAdmin ? "唯一管理员" : `添加于 ${formatDateTime(entry.addedAt)}`}</span></div>{!entry.isAdmin && <RemoveAllowlistForm action={removeAllowlistAction} id={entry.id} />}</div>)}</div>
       </section>
       <section className="admin-section"><div className="section-heading"><h2>已注册成员</h2><span>{users.length} 位</span></div><div className="admin-list">{users.map((user) => <div className="admin-row" key={user.id}><div><strong>{user.displayName}</strong><span>{formatDateTime(user.joinedAt)} 加入</span></div></div>)}</div></section>
     </>

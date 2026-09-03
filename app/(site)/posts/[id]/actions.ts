@@ -5,7 +5,8 @@ import { revalidatePath } from "next/cache";
 import type { PostActionState } from "@/components/editor/post-editor-form";
 import type { ReplyActionState } from "@/components/reply-form";
 import type { LifecycleActionState } from "@/components/lifecycle/delete-content-control";
-import { requireMember } from "@/lib/auth/access";
+import { getApiMemberAccess } from "@/lib/auth/access";
+import { actionAccessFailure, type ActionAccessErrorCode } from "@/lib/actions/result";
 import { createAnnotation, createAnnotationReply, deleteAnnotationByAuthor, deleteAnnotationReplyByAuthor, removeImportedAnnotationThread } from "@/lib/annotations/service";
 import { AnnotationIntegrityError } from "@/lib/annotations/save-plan";
 import type { AnnotationSelectionDescriptor } from "@/lib/annotations/types";
@@ -13,8 +14,8 @@ import { deletePostByAuthor, deleteReplyByAuthor } from "@/lib/lifecycle/service
 import { createReply, updatePost } from "@/lib/posts/service";
 import { EditConflictError } from "@/lib/revisions/service";
 
-export type AnnotationActionState = { annotationId?: string; error?: string };
-export type AnnotationReplyActionState = { annotationReplyId?: string; error?: string };
+export type AnnotationActionState = { annotationId?: string; error?: string; code?: ActionAccessErrorCode };
+export type AnnotationReplyActionState = { annotationReplyId?: string; error?: string; code?: ActionAccessErrorCode };
 
 function parseAnnotationSelection(value: FormDataEntryValue | null): AnnotationSelectionDescriptor {
   let parsed: unknown;
@@ -45,7 +46,9 @@ function parseConfirmedAnnotationDeletionIds(value: FormDataEntryValue | null): 
 
 export async function updatePostAction(postId: string, _state: PostActionState, formData: FormData): Promise<PostActionState> {
   try {
-    const { member } = await requireMember(`/posts/${postId}/edit`);
+    const access = await getApiMemberAccess();
+    if (!access.ok) return actionAccessFailure(access.code);
+    const { member } = access;
     const result = await updatePost(postId, member.id, {
       title: String(formData.get("title") ?? ""),
       markdown: String(formData.get("markdown") ?? ""),
@@ -68,7 +71,9 @@ export async function updatePostAction(postId: string, _state: PostActionState, 
 
 export async function createReplyAction(postId: string, targetReplyId: string | null, _state: ReplyActionState, formData: FormData): Promise<ReplyActionState> {
   try {
-    const { member } = await requireMember(`/posts/${postId}`);
+    const access = await getApiMemberAccess();
+    if (!access.ok) return actionAccessFailure(access.code);
+    const { member } = access;
     const replyId = await createReply({
       postId,
       authorId: member.id,
@@ -86,7 +91,9 @@ export async function createReplyAction(postId: string, targetReplyId: string | 
 
 export async function createAnnotationAction(postId: string, _state: AnnotationActionState, formData: FormData): Promise<AnnotationActionState> {
   try {
-    const { member } = await requireMember(`/posts/${postId}`);
+    const access = await getApiMemberAccess();
+    if (!access.ok) return actionAccessFailure(access.code);
+    const { member } = access;
     const annotationId = await createAnnotation({ postId, authorId: member.id, baseRevisionId: String(formData.get("baseRevisionId") ?? ""), selection: parseAnnotationSelection(formData.get("selection")), contentMarkdown: String(formData.get("contentMarkdown") ?? ""), submissionKey: String(formData.get("submissionKey") ?? "") });
     revalidatePath(`/posts/${postId}`); revalidatePath("/"); revalidatePath("/notifications"); revalidatePath(`/users/${member.id}`);
     return { annotationId };
@@ -95,7 +102,9 @@ export async function createAnnotationAction(postId: string, _state: AnnotationA
 
 export async function createAnnotationReplyAction(postId: string, annotationId: string, targetReplyId: string | null, _state: AnnotationReplyActionState, formData: FormData): Promise<AnnotationReplyActionState> {
   try {
-    const { member } = await requireMember(`/posts/${postId}`);
+    const access = await getApiMemberAccess();
+    if (!access.ok) return actionAccessFailure(access.code);
+    const { member } = access;
     const annotationReplyId = await createAnnotationReply({ postId, annotationId, authorId: member.id, targetReplyId: targetReplyId ?? undefined, contentMarkdown: String(formData.get("contentMarkdown") ?? ""), submissionKey: String(formData.get("submissionKey") ?? "") });
     revalidatePath(`/posts/${postId}`); revalidatePath("/"); revalidatePath("/notifications"); revalidatePath(`/users/${member.id}`);
     return { annotationReplyId };
@@ -105,7 +114,9 @@ export async function createAnnotationReplyAction(postId: string, annotationId: 
 export async function deletePostAction(postId: string, _state: LifecycleActionState): Promise<LifecycleActionState> {
   void _state;
   try {
-    const { member } = await requireMember(`/posts/${postId}`);
+    const access = await getApiMemberAccess();
+    if (!access.ok) return actionAccessFailure(access.code);
+    const { member } = access;
     await deletePostByAuthor(postId, member.id);
     revalidatePath("/", "layout");
     return { success: true };
@@ -117,7 +128,9 @@ export async function deletePostAction(postId: string, _state: LifecycleActionSt
 export async function deleteReplyAction(postId: string, replyId: string, _state: LifecycleActionState): Promise<LifecycleActionState> {
   void _state;
   try {
-    const { member } = await requireMember(`/posts/${postId}`);
+    const access = await getApiMemberAccess();
+    if (!access.ok) return actionAccessFailure(access.code);
+    const { member } = access;
     await deleteReplyByAuthor(replyId, member.id);
     revalidatePath("/", "layout");
     return { success: true };
@@ -129,7 +142,9 @@ export async function deleteReplyAction(postId: string, replyId: string, _state:
 export async function deleteAnnotationAction(postId: string, annotationId: string, _state: LifecycleActionState): Promise<LifecycleActionState> {
   void _state;
   try {
-    const { member } = await requireMember(`/posts/${postId}`);
+    const access = await getApiMemberAccess();
+    if (!access.ok) return actionAccessFailure(access.code);
+    const { member } = access;
     await deleteAnnotationByAuthor(postId, annotationId, member.id);
     revalidatePath("/", "layout");
     return { success: true };
@@ -139,7 +154,9 @@ export async function deleteAnnotationAction(postId: string, annotationId: strin
 export async function deleteAnnotationReplyAction(postId: string, replyId: string, _state: LifecycleActionState): Promise<LifecycleActionState> {
   void _state;
   try {
-    const { member } = await requireMember(`/posts/${postId}`);
+    const access = await getApiMemberAccess();
+    if (!access.ok) return actionAccessFailure(access.code);
+    const { member } = access;
     await deleteAnnotationReplyByAuthor(postId, replyId, member.id);
     revalidatePath("/", "layout");
     return { success: true };
@@ -149,7 +166,9 @@ export async function deleteAnnotationReplyAction(postId: string, replyId: strin
 export async function removeImportedAnnotationThreadAction(postId: string, annotationId: string, _state: LifecycleActionState): Promise<LifecycleActionState> {
   void _state;
   try {
-    const { member } = await requireMember(`/posts/${postId}`);
+    const access = await getApiMemberAccess();
+    if (!access.ok) return actionAccessFailure(access.code);
+    const { member } = access;
     await removeImportedAnnotationThread(postId, annotationId, member.id);
     revalidatePath("/", "layout");
     return { success: true };

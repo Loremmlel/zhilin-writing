@@ -9,13 +9,14 @@ import { ModalDialog } from "@/components/modal-dialog";
 import { uploadAsset } from "@/lib/assets/browser-upload";
 import { loadDraft, removeDraft, saveDraft, type LocalDraft } from "@/lib/drafts/indexed-db";
 import { availableConflictChoices, chooseConflictResolution, hasRecoverablePublishedDraft } from "@/lib/editor/conflict";
+import { isBlockingAccessError, type ActionAccessErrorCode } from "@/lib/actions/result";
 import type { EditConflictSnapshot } from "@/lib/revisions/service";
 import { AnnotatedEditorLayout } from "./annotated-editor-layout";
 import { MarkdownEditor, type AnnotationEditingOptions, type UploadedAsset } from "./markdown-editor";
 
 export type PostActionState = {
   error?: string;
-  code?: "ANNOTATION_INTEGRITY_ERROR";
+  code?: "ANNOTATION_INTEGRITY_ERROR" | ActionAccessErrorCode;
   postId?: string;
   currentRevisionId?: string;
   conflict?: EditConflictSnapshot;
@@ -87,6 +88,7 @@ export function PostEditorForm({ userId, draftId, action, initial, submitLabel =
   }, {});
   const editorKey = `${draftId}:${hydrated ? "ready" : "initial"}`;
   const uploadPending = uploadProgress !== null || imageUploadPending;
+  const accessBlocked = isBlockingAccessError(state.code);
 
   useEffect(() => {
     let live = true;
@@ -224,7 +226,7 @@ export function PostEditorForm({ userId, draftId, action, initial, submitLabel =
     ...annotationEditing,
     initialConfirmedAnnotationDeletionIds: confirmedAnnotationDeletionIds,
     onConfirmedAnnotationDeletionIdsChange: setConfirmedAnnotationDeletionIds,
-  } : undefined} onEditorRootChange={annotationThreads.length > 0 ? setEditorRoot : undefined} onUploadStateChange={setImageUploadPending} disabled={pending} onMarkdownChange={(value) => {
+  } : undefined} onEditorRootChange={annotationThreads.length > 0 ? setEditorRoot : undefined} onUploadStateChange={setImageUploadPending} disabled={pending || accessBlocked} onMarkdownChange={(value) => {
     setMarkdown(value);
     setDirty(true);
   }} />;
@@ -264,7 +266,7 @@ export function PostEditorForm({ userId, draftId, action, initial, submitLabel =
         <input id="post-title" className="title-input" name="title" value={title} onChange={(event) => {
           setTitle(event.target.value);
           setDirty(true);
-        }} maxLength={120} placeholder="给这篇文字起一个标题" aria-invalid={Boolean(state.error && !conflict)} disabled={pending} />
+        }} maxLength={120} placeholder="给这篇文字起一个标题" aria-invalid={Boolean(state.error && !conflict)} disabled={pending || accessBlocked} />
         <label className="field-label">正文</label>
         {confirmedAnnotationDeletionIds.length > 0 && <p className="annotation-editor-pending" role="status">保存后将撤下 {confirmedAnnotationDeletionIds.length} 条批注；撤销正文修改可恢复。</p>}
         {annotationThreads.length > 0
@@ -276,11 +278,11 @@ export function PostEditorForm({ userId, draftId, action, initial, submitLabel =
             <input className="text-input" name="tags" value={tags} onChange={(event) => {
               setTags(event.target.value);
               setDirty(true);
-            }} placeholder="随笔，生活" disabled={pending} />
+            }} placeholder="随笔，生活" disabled={pending || accessBlocked} />
           </label>
           <label className="attachment-upload" aria-busy={uploadProgress !== null}>
             <span className="field-label">附件</span>
-            <input type="file" disabled={pending || uploadProgress !== null} onChange={(event) => {
+            <input type="file" disabled={pending || accessBlocked || uploadProgress !== null} onChange={(event) => {
               const file = event.target.files?.[0];
               if (file) void uploadAttachment(file).catch((error) => setUploadError(error instanceof Error ? error.message : "上传失败"));
               event.currentTarget.value = "";
@@ -312,7 +314,7 @@ export function PostEditorForm({ userId, draftId, action, initial, submitLabel =
         {state.error && !state.conflict && <p className="form-error" role="alert">{state.error}</p>}
         <div className="form-actions">
           <Link href={cancelHref} className="button button--ghost">取消</Link>
-          <button type="submit" className="button button--primary" disabled={pending || saveBlocked || !hydrated || uploadPending} aria-busy={pending}>
+          <button type="submit" className="button button--primary" disabled={pending || accessBlocked || saveBlocked || !hydrated || uploadPending} aria-busy={pending}>
             {pending ? "保存中…" : uploadPending ? "等待上传完成" : saveBlocked ? "请先处理冲突" : submitLabel}
           </button>
         </div>

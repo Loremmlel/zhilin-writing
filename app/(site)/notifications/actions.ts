@@ -3,14 +3,17 @@
 import { revalidatePath } from "next/cache";
 
 import { markAllNotificationsRead } from "@/db/queries";
-import { requireMember } from "@/lib/auth/access";
+import { getApiMemberAccess } from "@/lib/auth/access";
+import { actionAccessFailure, type ActionAccessErrorCode } from "@/lib/actions/result";
 
-export type NotificationActionState = { success?: boolean; error?: string };
+export type NotificationActionState = { success?: boolean; error?: string; code?: ActionAccessErrorCode };
 
 export async function markAllNotificationsReadAction(_previous: NotificationActionState, _formData: FormData): Promise<NotificationActionState> {
   void _previous;
   void _formData;
-  const { member } = await requireMember("/notifications");
+  const access = await getApiMemberAccess();
+  if (!access.ok) return actionAccessFailure(access.code);
+  const { member } = access;
   try {
     await markAllNotificationsRead(member.id);
   } catch {

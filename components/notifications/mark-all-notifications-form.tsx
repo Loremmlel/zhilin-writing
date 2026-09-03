@@ -11,7 +11,7 @@ export function MarkAllNotificationsForm({ action }: {
   const [state, formAction, pending] = useActionState(action, {});
 
   return <form action={formAction} noValidate aria-busy={pending}>
-    <PendingSubmitButton className="button button--ghost button--small" pendingLabel="标记中…">全部标记已读</PendingSubmitButton>
+    <PendingSubmitButton className="button button--ghost button--small" pendingLabel="标记中…" disabled={state.code === "ACCESS_REVOKED"}>全部标记已读</PendingSubmitButton>
     {state.error && <p className="form-error notification-action-error" role="alert">{state.error}</p>}
   </form>;
 }

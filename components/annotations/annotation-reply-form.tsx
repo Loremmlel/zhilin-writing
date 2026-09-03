@@ -6,6 +6,7 @@ import { useActionState, useEffect, useRef, useState } from "react";
 import type { AnnotationReplyActionState } from "@/app/(site)/posts/[id]/actions";
 import { MarkdownEditor } from "@/components/editor/markdown-editor";
 import { replyMarkdownAfterResult } from "@/lib/annotations/reply-composer";
+import { isBlockingAccessError } from "@/lib/actions/result";
 
 export function AnnotationReplyForm({ action, initialSubmissionKey, label = "回复批注", focusRequest = 0, onSuccess }: {
   action: (state: AnnotationReplyActionState, formData: FormData) => Promise<AnnotationReplyActionState>;
@@ -22,6 +23,7 @@ export function AnnotationReplyForm({ action, initialSubmissionKey, label = "回
   const [submissionKey, setSubmissionKey] = useState(initialSubmissionKey);
   const [resetRevision, setResetRevision] = useState(0);
   const annotationReplyId = state.annotationReplyId;
+  const accessBlocked = isBlockingAccessError(state.code);
   useEffect(() => { onSuccessRef.current = onSuccess; }, [onSuccess]);
   useEffect(() => {
     if (focusRequest === 0) return;
@@ -42,8 +44,8 @@ export function AnnotationReplyForm({ action, initialSubmissionKey, label = "回
   return <form action={formAction} className="annotation-reply-form" noValidate>
     <input type="hidden" name="contentMarkdown" value={markdown} />
     <input type="hidden" name="submissionKey" value={submissionKey} />
-    <MarkdownEditor initialMarkdown="" onMarkdownChange={setMarkdown} onEditorRootChange={(root) => { editorRootRef.current = root; }} compact resetRevision={resetRevision} disabled={pending} />
+    <MarkdownEditor initialMarkdown="" onMarkdownChange={setMarkdown} onEditorRootChange={(root) => { editorRootRef.current = root; }} compact resetRevision={resetRevision} disabled={pending || accessBlocked} />
     {state.error && <p className="form-error" role="alert">{state.error}</p>}
-    <div className="annotation-reply-form-actions"><span className="muted">发布后不可编辑</span><button className="button button--primary button--small" disabled={pending || !markdown.trim()} aria-busy={pending}>{pending ? "发布中…" : label}</button></div>
+    <div className="annotation-reply-form-actions"><span className="muted">发布后不可编辑</span><button className="button button--primary button--small" disabled={pending || accessBlocked || !markdown.trim()} aria-busy={pending}>{pending ? "发布中…" : label}</button></div>
   </form>;
 }

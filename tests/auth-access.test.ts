@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { readFile } from "node:fs/promises";
 
 test("an unknown first visitor cannot claim the administrator role", async () => {
   const authModule = await import("../lib/auth/authorize.ts").catch(() => null);
@@ -52,7 +53,7 @@ test("API member resolution returns typed outcomes without page redirects", asyn
 
   assert.deepEqual(
     await authModule.resolveApiMemberAccess(null, null, baseDependencies),
-    { ok: false, code: "AUTH_REQUIRED", status: 401 },
+    { ok: false, code: "AUTH_EXPIRED", status: 401 },
   );
   assert.deepEqual(
     await authModule.resolveApiMemberAccess(
@@ -60,7 +61,7 @@ test("API member resolution returns typed outcomes without page redirects", asyn
       null,
       { ...baseDependencies, findAllowedUser: async () => null },
     ),
-    { ok: false, code: "MEMBER_REQUIRED", status: 403 },
+    { ok: false, code: "ACCESS_REVOKED", status: 403 },
   );
   assert.deepEqual(
     await authModule.resolveApiMemberAccess(
@@ -72,6 +73,39 @@ test("API member resolution returns typed outcomes without page redirects", asyn
   );
   assert.deepEqual(
     await authModule.resolveApiMemberAccess({ email: "member@example.com" }, null, baseDependencies),
-    { ok: true, member: { id: "member-id" } },
+    { ok: true, member: { id: "member-id" }, allowed: { email: "member@example.com", isAdmin: false } },
   );
+});
+
+test("action access failures use the exact expiry and revocation recovery copy", async () => {
+  const { actionAccessFailure, isBlockingAccessError } = await import("../lib/actions/result.ts");
+  assert.deepEqual(actionAccessFailure("AUTH_EXPIRED"), {
+    error: "登录状态已失效，请重新登录后继续。",
+    code: "AUTH_EXPIRED",
+  });
+  assert.deepEqual(actionAccessFailure("ACCESS_REVOKED"), {
+    error: "你的站点访问权限已被移除。",
+    code: "ACCESS_REVOKED",
+  });
+  assert.equal(isBlockingAccessError("AUTH_EXPIRED"), false);
+  assert.equal(isBlockingAccessError("ACCESS_REVOKED"), true);
+});
+
+test("mutations and asset APIs use typed access instead of navigation redirects", async () => {
+  const paths = [
+    "app/(site)/admin/actions.ts",
+    "app/(site)/admin/revisions/[postId]/actions.ts",
+    "app/(site)/notifications/actions.ts",
+    "app/(site)/posts/[id]/actions.ts",
+    "app/(site)/posts/new/actions.ts",
+    "app/(site)/settings/profile/actions.ts",
+    "app/api/assets/route.ts",
+    "app/api/assets/[id]/route.ts",
+  ];
+  const sources = await Promise.all(paths.map((path) => readFile(new URL(`../${path}`, import.meta.url), "utf8")));
+
+  for (const [index, source] of sources.entries()) {
+    assert.doesNotMatch(source, /requireMember|requireAdministrator/, paths[index]);
+    assert.match(source, /getApiMemberAccess|getActionAdministratorAccess/, paths[index]);
+  }
 });

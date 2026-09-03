@@ -8,6 +8,7 @@ import { AnnotationSheet } from "@/components/annotations/annotation-sheet";
 import { AnnotationThread, type AnnotationCardView, type AnnotationDeleteAction, type AnnotationRemoveImportedAction, type AnnotationReplyAction, type AnnotationReplyDeleteAction } from "@/components/annotations/annotation-thread";
 import { MarkdownEditor } from "@/components/editor/markdown-editor";
 import { ModalDialog } from "@/components/modal-dialog";
+import { isBlockingAccessError } from "@/lib/actions/result";
 import { describeAnnotationDomRange } from "@/lib/annotations/dom-selection";
 import {
   annotationAnchorGeometry,
@@ -52,6 +53,7 @@ function AnnotationComposer({ action, savedSelection, submissionKey, validateSel
   const [markdown, setMarkdown] = useState("");
   const [clientError, setClientError] = useState<string | null>(null);
   const handledSuccessRef = useRef<string | null>(null);
+  const accessBlocked = isBlockingAccessError(state.code);
   const onPhaseChangeRef = useRef(onPhaseChange);
   const onSuccessRef = useRef(onSuccess);
   useEffect(() => {
@@ -84,9 +86,9 @@ function AnnotationComposer({ action, savedSelection, submissionKey, validateSel
       <input type="hidden" name="contentMarkdown" value={markdown} />
       <input type="hidden" name="submissionKey" value={submissionKey} />
       <blockquote className="annotation-selection-preview">{savedSelection.selectedText}</blockquote>
-      <MarkdownEditor initialMarkdown="" onMarkdownChange={setMarkdown} compact disabled={pending} />
+      <MarkdownEditor initialMarkdown="" onMarkdownChange={setMarkdown} compact disabled={pending || accessBlocked} />
       {(clientError || state.error) && <p className="form-error" role="alert">{clientError ?? state.error}</p>}
-      <div className="dialog-actions"><button type="button" className="button button--ghost" onClick={onClose} disabled={pending}>取消</button><button className="button button--primary" disabled={pending || !markdown.trim()} aria-busy={pending}>{pending ? "发布中…" : "发布批注"}</button></div>
+      <div className="dialog-actions"><button type="button" className="button button--ghost" onClick={onClose} disabled={pending}>取消</button><button className="button button--primary" disabled={pending || accessBlocked || !markdown.trim()} aria-busy={pending}>{pending ? "发布中…" : "发布批注"}</button></div>
     </form>
   </ModalDialog>;
 }

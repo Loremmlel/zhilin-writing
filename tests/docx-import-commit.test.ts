@@ -355,7 +355,7 @@ test("the service rejects non-members, invalid attribution, and unclaimable asse
   try {
     await assert.rejects(
       commitDocxImport(uuid(999), commitFixture(), harness.adapter),
-      /MEMBER_REQUIRED/,
+      /ACCESS_REVOKED/,
     );
 
     const invalidAttribution = commitFixture();

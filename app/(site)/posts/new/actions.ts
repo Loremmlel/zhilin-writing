@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 
 import type { PostActionState } from "@/components/editor/post-editor-form";
-import { requireMember } from "@/lib/auth/access";
+import { getApiMemberAccess } from "@/lib/auth/access";
+import { actionAccessFailure } from "@/lib/actions/result";
 import { createPost } from "@/lib/posts/service";
 
 function parseTags(value: FormDataEntryValue | null): string[] {
@@ -19,7 +20,9 @@ function parseAttachmentIds(value: FormDataEntryValue | null): string[] {
 
 export async function createPostAction(_state: PostActionState, formData: FormData): Promise<PostActionState> {
   try {
-    const { member } = await requireMember("/posts/new");
+    const access = await getApiMemberAccess();
+    if (!access.ok) return actionAccessFailure(access.code);
+    const { member } = access;
     const postId = await createPost(member.id, {
       title: String(formData.get("title") ?? ""),
       markdown: String(formData.get("markdown") ?? ""),

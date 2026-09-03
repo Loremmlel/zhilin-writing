@@ -4,8 +4,9 @@ import { useActionState, useState } from "react";
 
 import { ModalDialog } from "@/components/modal-dialog";
 import { PendingSubmitButton } from "@/components/pending/pending-submit-button";
+import type { ActionAccessErrorCode } from "@/lib/actions/result";
 
-type RestoreRevisionActionState = { error?: string };
+type RestoreRevisionActionState = { error?: string; code?: ActionAccessErrorCode };
 
 export function RestoreRevisionForm({
   revisionNumber,
@@ -39,7 +40,7 @@ export function RestoreRevisionForm({
           <input type="hidden" name="operationId" value={operationId} />
           {state.error && <p className="form-error dialog-form-error" role="alert">{state.error}</p>}
           <button type="button" className="button button--ghost" disabled={pending} onClick={() => setOpen(false)}>取消</button>
-          <PendingSubmitButton className="button button--danger" pendingLabel="正在恢复…">确认恢复</PendingSubmitButton>
+          <PendingSubmitButton className="button button--danger" pendingLabel="正在恢复…" disabled={state.code === "ACCESS_REVOKED"}>确认恢复</PendingSubmitButton>
         </form>
       </ModalDialog>
     </>

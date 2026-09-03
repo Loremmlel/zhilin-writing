@@ -90,11 +90,11 @@ test("pending editors and moderation fields cannot diverge from the submitted sn
 
   assert.match(editor, /disabled\?: boolean/);
   assert.match(editor, /rootRef\.current\.inert/);
-  assert.match(post, /<MarkdownEditor[\s\S]*?disabled=\{pending\}/);
-  assert.match(post, /id="post-title"[\s\S]*?disabled=\{pending\}/);
-  assert.match(postReply, /<MarkdownEditor[\s\S]*?disabled=\{pending\}/);
-  assert.match(annotationReply, /<MarkdownEditor[\s\S]*?disabled=\{pending\}/);
-  assert.match(annotationCreate, /<MarkdownEditor[\s\S]*?disabled=\{pending\}/);
+  assert.match(post, /<MarkdownEditor[\s\S]*?disabled=\{pending \|\| accessBlocked\}/);
+  assert.match(post, /id="post-title"[\s\S]*?disabled=\{pending \|\| accessBlocked\}/);
+  assert.match(postReply, /<MarkdownEditor[\s\S]*?disabled=\{pending \|\| accessBlocked\}/);
+  assert.match(annotationReply, /<MarkdownEditor[\s\S]*?disabled=\{pending \|\| accessBlocked\}/);
+  assert.match(annotationCreate, /<MarkdownEditor[\s\S]*?disabled=\{pending \|\| accessBlocked\}/);
   assert.match(moderation, /value=\{reason\}/);
   assert.match(moderation, /setReason/);
 });
@@ -118,7 +118,7 @@ test("image and attachment uploads report real request-body byte progress", asyn
   assert.match(postForm, /uploadProgress/);
   assert.match(postForm, /附件上传进度/);
   assert.match(postForm, /imageUploadPending/);
-  assert.match(postForm, /disabled=\{pending \|\| saveBlocked \|\| !hydrated \|\| uploadPending\}/);
+  assert.match(postForm, /disabled=\{pending \|\| accessBlocked \|\| saveBlocked \|\| !hydrated \|\| uploadPending\}/);
 });
 
 test("asset upload progress is calculated from the browser request body bytes", async () => {

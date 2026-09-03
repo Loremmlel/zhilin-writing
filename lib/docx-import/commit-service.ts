@@ -56,7 +56,7 @@ export async function commitDocxImport(
   }
   const payloadHash = await sha256(stableJson(validated));
   const importer = await loadImporterProfile(db, importerUserId);
-  if (!importer) throw new DocxImportCommitError("MEMBER_REQUIRED", 403);
+  if (!importer) throw new DocxImportCommitError("ACCESS_REVOKED", 403);
 
   const existing = await findExistingBatch(db, validated.importBatchId);
   if (existing) return assertMatchingBatch(existing, importerUserId, validated.source.filename, validated.source.sha256, payloadHash);

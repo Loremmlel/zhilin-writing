@@ -7,13 +7,16 @@ import { getDb } from "@/db";
 import { isDisplayNameTaken, updateUserProfile } from "@/db/queries";
 import { assets } from "@/db/schema";
 import { storeTemporaryAsset } from "@/lib/assets/storage";
-import { requireMember } from "@/lib/auth/access";
+import { getApiMemberAccess } from "@/lib/auth/access";
+import { actionAccessFailure, type ActionAccessErrorCode } from "@/lib/actions/result";
 import { validateDisplayName } from "@/lib/domain/rules";
 
-export type ProfileActionState = { error?: string };
+export type ProfileActionState = { error?: string; code?: ActionAccessErrorCode };
 
 export async function updateProfileAction(_previous: ProfileActionState, formData: FormData): Promise<ProfileActionState> {
-  const { member } = await requireMember("/settings/profile");
+  const access = await getApiMemberAccess();
+  if (!access.ok) return actionAccessFailure(access.code);
+  const { member } = access;
   const displayName = String(formData.get("displayName") ?? "").trim();
   const bio = String(formData.get("bio") ?? "").trim().slice(0, 300);
   const error = validateDisplayName(displayName);

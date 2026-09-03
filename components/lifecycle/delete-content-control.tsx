@@ -4,8 +4,9 @@ import { useActionState, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { ModalDialog } from "@/components/modal-dialog";
+import type { ActionAccessErrorCode } from "@/lib/actions/result";
 
-export type LifecycleActionState = { success?: boolean; error?: string };
+export type LifecycleActionState = { success?: boolean; error?: string; code?: ActionAccessErrorCode };
 export type LifecycleFormAction = (
   state: LifecycleActionState,
   formData: FormData,
@@ -43,7 +44,7 @@ export function DeleteContentControl({
       <form action={formAction} className="dialog-actions" noValidate>
         {state.error && <p className="form-error" role="alert">{state.error}</p>}
         <button className="button button--ghost" type="button" disabled={pending} onClick={() => setOpen(false)}>取消</button>
-        <button className="button button--danger" type="submit" disabled={pending} aria-busy={pending}>{pending ? pendingLabel : confirmLabel}</button>
+        <button className="button button--danger" type="submit" disabled={pending || state.code === "ACCESS_REVOKED"} aria-busy={pending}>{pending ? pendingLabel : confirmLabel}</button>
       </form>
     </ModalDialog>
   </>;

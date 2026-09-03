@@ -9,8 +9,8 @@ import { commitDocxImport, DocxImportCommitError } from "@/lib/docx-import/commi
 export const dynamic = "force-dynamic";
 
 const errorMessages: Record<string, string> = {
-  AUTH_REQUIRED: "请先登录后再导入 DOCX。",
-  MEMBER_REQUIRED: "当前账号没有导入权限。",
+  AUTH_EXPIRED: "登录状态已失效，请重新登录后继续。",
+  ACCESS_REVOKED: "你的站点访问权限已被移除。",
   ONBOARDING_REQUIRED: "请先完成站内资料设置后再导入 DOCX。",
   COMMIT_BODY_SIZE_LIMIT: "导入请求过大，请重新选择 DOCX。",
   IMPORT_BATCH_CONFLICT: "这份导入预览与已提交的内容不一致，请重新选择 DOCX。",

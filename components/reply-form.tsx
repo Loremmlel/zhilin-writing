@@ -4,8 +4,9 @@ import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useState } from "react";
 
 import { MarkdownEditor } from "@/components/editor/markdown-editor";
+import { isBlockingAccessError, type ActionAccessErrorCode } from "@/lib/actions/result";
 
-export type ReplyActionState = { error?: string; replyId?: string };
+export type ReplyActionState = { error?: string; code?: ActionAccessErrorCode; replyId?: string };
 export type ReplyFormAction = (state: ReplyActionState, formData: FormData) => Promise<ReplyActionState>;
 
 export function ReplyForm({ action, initialSubmissionKey, label = "写回复", compact = false }: { action: ReplyFormAction; initialSubmissionKey: string; label?: string; compact?: boolean }) {
@@ -14,6 +15,7 @@ export function ReplyForm({ action, initialSubmissionKey, label = "写回复", c
   const [markdown, setMarkdown] = useState("");
   const [submissionKey, setSubmissionKey] = useState(initialSubmissionKey);
   const [editorKey, setEditorKey] = useState(0);
+  const accessBlocked = isBlockingAccessError(state.code);
   useEffect(() => {
     if (!state.replyId) return;
     const timer = window.setTimeout(() => {
@@ -28,11 +30,11 @@ export function ReplyForm({ action, initialSubmissionKey, label = "写回复", c
     <form action={formAction} className={compact ? "reply-form reply-form--nested" : "reply-form"} noValidate>
       <input type="hidden" name="markdown" value={markdown} />
       <input type="hidden" name="submissionKey" value={submissionKey} />
-      <MarkdownEditor key={editorKey} initialMarkdown="" onMarkdownChange={setMarkdown} compact disabled={pending} />
+      <MarkdownEditor key={editorKey} initialMarkdown="" onMarkdownChange={setMarkdown} compact disabled={pending || accessBlocked} />
       {state.error && <p className="form-error" role="alert">{state.error}</p>}
       <div className="reply-form-actions">
         <span className="muted">回复发布后不能编辑</span>
-        <button className="button button--small button--primary" disabled={pending || !markdown.trim() || !submissionKey} aria-busy={pending}>{pending ? "发布中…" : label}</button>
+        <button className="button button--small button--primary" disabled={pending || accessBlocked || !markdown.trim() || !submissionKey} aria-busy={pending}>{pending ? "发布中…" : label}</button>
       </div>
     </form>
   );

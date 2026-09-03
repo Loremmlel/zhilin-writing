@@ -1,11 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 
 import { addAllowedUser, findAllowedUser, removeAllowedUser } from "@/db/queries";
 import type { LifecycleActionState } from "@/components/lifecycle/delete-content-control";
-import { requireAdministrator } from "@/lib/auth/access";
+import { getActionAdministratorAccess } from "@/lib/auth/access";
+import { actionAccessFailure, type ActionAccessErrorCode } from "@/lib/actions/result";
 import { normalizeEmail } from "@/lib/domain/rules";
 import {
   hidePostByAdmin,
@@ -18,19 +18,34 @@ import {
 import { validateLifecycleOperationId } from "@/lib/lifecycle/policy";
 import { moderateAnnotationByAdmin, moderateAnnotationReplyByAdmin } from "@/lib/annotations/service";
 
-export async function addAllowlistAction(formData: FormData) {
-  const { member } = await requireAdministrator("/admin");
+export type AllowlistActionState = { success?: boolean; error?: string; code?: ActionAccessErrorCode };
+
+export async function addAllowlistAction(_state: AllowlistActionState, formData: FormData): Promise<AllowlistActionState> {
+  const access = await getActionAdministratorAccess();
+  if (!access.ok) return actionAccessFailure(access.code);
+  const { member } = access;
   const email = normalizeEmail(String(formData.get("email") ?? ""));
-  if (!email || !email.includes("@")) redirect(`/admin?error=${encodeURIComponent("请输入有效邮箱")}`);
-  if (!(await findAllowedUser(email))) await addAllowedUser(email, false, member.id);
+  if (!email || !email.includes("@")) return { error: "请输入有效邮箱" };
+  try {
+    if (!(await findAllowedUser(email))) await addAllowedUser(email, false, member.id);
+  } catch {
+    return { error: "白名单更新失败，请稍后重试" };
+  }
   revalidatePath("/admin");
+  return { success: true };
 }
 
-export async function removeAllowlistAction(formData: FormData) {
-  await requireAdministrator("/admin");
+export async function removeAllowlistAction(_state: AllowlistActionState, formData: FormData): Promise<AllowlistActionState> {
+  const access = await getActionAdministratorAccess();
+  if (!access.ok) return actionAccessFailure(access.code);
   const id = String(formData.get("id") ?? "");
-  if (id) await removeAllowedUser(id);
+  try {
+    if (id) await removeAllowedUser(id);
+  } catch {
+    return { error: "白名单更新失败，请稍后重试" };
+  }
   revalidatePath("/admin");
+  return { success: true };
 }
 
 export async function moderatePostAction(
@@ -41,7 +56,9 @@ export async function moderatePostAction(
 ): Promise<LifecycleActionState> {
   void _state;
   try {
-    const { member } = await requireAdministrator("/admin");
+    const access = await getActionAdministratorAccess();
+    if (!access.ok) return actionAccessFailure(access.code);
+    const { member } = access;
     const reason = String(formData.get("reason") ?? "");
     const operationId = validateLifecycleOperationId(String(formData.get("operationId") ?? ""));
     if (operation === "hide") await hidePostByAdmin(postId, member.id, reason, operationId);
@@ -62,7 +79,9 @@ export async function moderateReplyAction(
 ): Promise<LifecycleActionState> {
   void _state;
   try {
-    const { member } = await requireAdministrator("/admin");
+    const access = await getActionAdministratorAccess();
+    if (!access.ok) return actionAccessFailure(access.code);
+    const { member } = access;
     const reason = String(formData.get("reason") ?? "");
     const operationId = validateLifecycleOperationId(String(formData.get("operationId") ?? ""));
     if (operation === "hide") await hideReplyByAdmin(replyId, member.id, reason, operationId);
@@ -83,7 +102,9 @@ export async function moderateAnnotationAction(
 ): Promise<LifecycleActionState> {
   void _state;
   try {
-    const { member } = await requireAdministrator("/admin");
+    const access = await getActionAdministratorAccess();
+    if (!access.ok) return actionAccessFailure(access.code);
+    const { member } = access;
     const operationId = validateLifecycleOperationId(String(formData.get("operationId") ?? ""));
     await moderateAnnotationByAdmin({
       annotationId,
@@ -107,7 +128,9 @@ export async function moderateAnnotationReplyAction(
 ): Promise<LifecycleActionState> {
   void _state;
   try {
-    const { member } = await requireAdministrator("/admin");
+    const access = await getActionAdministratorAccess();
+    if (!access.ok) return actionAccessFailure(access.code);
+    const { member } = access;
     const operationId = validateLifecycleOperationId(String(formData.get("operationId") ?? ""));
     await moderateAnnotationReplyByAdmin({
       replyId,

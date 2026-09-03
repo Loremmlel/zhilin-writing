@@ -43,7 +43,7 @@ export function ContentLifecycleControl({
         {state.error && <p className="form-error" role="alert">{state.error}</p>}
         <div className="dialog-actions">
           <button className="button button--ghost" type="button" disabled={pending} onClick={() => setOpen(false)}>取消</button>
-          <button className={operation === "hide" ? "button button--danger" : "button button--primary"} type="submit" disabled={pending} aria-busy={pending}>{pending ? "正在更新…" : copy.label}</button>
+          <button className={operation === "hide" ? "button button--danger" : "button button--primary"} type="submit" disabled={pending || state.code === "ACCESS_REVOKED"} aria-busy={pending}>{pending ? "正在更新…" : copy.label}</button>
         </div>
       </form>
     </ModalDialog>

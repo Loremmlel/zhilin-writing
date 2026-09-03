@@ -1,4 +1,5 @@
-import { requireMember } from "@/lib/auth/access";
+import { getApiMemberAccess } from "@/lib/auth/access";
+import { accessErrorMessage } from "@/lib/actions/result";
 import { storeTemporaryAsset } from "@/lib/assets/storage";
 import { assetMarkdown } from "@/lib/domain/rules";
 
@@ -6,7 +7,9 @@ export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
   try {
-    const { member } = await requireMember("/");
+    const access = await getApiMemberAccess();
+    if (!access.ok) return Response.json({ error: accessErrorMessage(access.code), code: access.code }, { status: access.status });
+    const { member } = access;
     const formData = await request.formData();
     const value = formData.get("file");
     if (!(value instanceof File)) {
