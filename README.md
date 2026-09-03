@@ -1,6 +1,6 @@
 # 知临中学
 
-一个只对少数受邀成员开放的 Markdown 写作与批注社区。当前版本为 V6：作者可以继续编辑已有正文批注的帖子；普通编辑保持无感，只有真正破坏批注锚点语义时才要求确认。
+一个只对少数受邀成员开放的 Markdown 写作与批注社区。当前稳定基线为 V6：作者可以继续编辑已有正文批注的帖子；普通编辑保持无感，只有真正破坏批注锚点语义时才要求确认。V7 正在做发布收尾与可靠性加固，不增加新的大型产品能力。
 
 ## 当前能力
 
@@ -49,4 +49,4 @@
 - `npm test`：全量单测、生产构建和最终产物检查。
 - `npm run db:generate`：schema 变化后生成 D1 迁移。
 
-V6 的实现与验收证据见 `docs/v6-annotation-guard-report.md`。
+V6 的实现与验收证据见 `docs/v6-annotation-guard-report.md`。V7 的可行性裁决、设计与实施顺序见 `docs/superpowers/specs/2026-09-03-release-hardening-v7-design.md` 和 `docs/superpowers/plans/2026-09-03-release-hardening-v7.md`。
