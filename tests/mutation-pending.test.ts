@@ -92,9 +92,9 @@ test("pending editors and moderation fields cannot diverge from the submitted sn
   assert.match(editor, /rootRef\.current\.inert/);
   assert.match(post, /<MarkdownEditor[\s\S]*?disabled=\{pending \|\| accessBlocked\}/);
   assert.match(post, /id="post-title"[\s\S]*?disabled=\{pending \|\| accessBlocked\}/);
-  assert.match(postReply, /<MarkdownEditor[\s\S]*?disabled=\{pending \|\| accessBlocked\}/);
-  assert.match(annotationReply, /<MarkdownEditor[\s\S]*?disabled=\{pending \|\| accessBlocked\}/);
-  assert.match(annotationCreate, /<MarkdownEditor[\s\S]*?disabled=\{pending \|\| accessBlocked\}/);
+  assert.match(postReply, /<(?:Lazy)?MarkdownEditor[\s\S]*?disabled=\{pending \|\| accessBlocked\}/);
+  assert.match(annotationReply, /<(?:Lazy)?MarkdownEditor[\s\S]*?disabled=\{pending \|\| accessBlocked\}/);
+  assert.match(annotationCreate, /<(?:Lazy)?MarkdownEditor[\s\S]*?disabled=\{pending \|\| accessBlocked\}/);
   assert.match(moderation, /value=\{reason\}/);
   assert.match(moderation, /setReason/);
 });

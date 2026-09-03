@@ -1,9 +1,9 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 
-import { MarkdownEditor } from "@/components/editor/markdown-editor";
+import { LazyMarkdownEditor } from "@/components/editor/lazy-markdown-editor";
 import { isBlockingAccessError, type ActionAccessErrorCode } from "@/lib/actions/result";
 
 export type ReplyActionState = { error?: string; code?: ActionAccessErrorCode; replyId?: string };
@@ -15,6 +15,7 @@ export function ReplyForm({ action, initialSubmissionKey, label = "写回复", c
   const [markdown, setMarkdown] = useState("");
   const [submissionKey, setSubmissionKey] = useState(initialSubmissionKey);
   const [editorKey, setEditorKey] = useState(0);
+  const focusedEditorRef = useRef<HTMLElement | null>(null);
   const accessBlocked = isBlockingAccessError(state.code);
   useEffect(() => {
     if (!state.replyId) return;
@@ -30,7 +31,11 @@ export function ReplyForm({ action, initialSubmissionKey, label = "写回复", c
     <form action={formAction} className={compact ? "reply-form reply-form--nested" : "reply-form"} noValidate>
       <input type="hidden" name="markdown" value={markdown} />
       <input type="hidden" name="submissionKey" value={submissionKey} />
-      <MarkdownEditor key={editorKey} initialMarkdown="" onMarkdownChange={setMarkdown} compact disabled={pending || accessBlocked} />
+      <LazyMarkdownEditor key={editorKey} initialMarkdown="" onMarkdownChange={setMarkdown} onEditorRootChange={(root) => {
+        if (!root || focusedEditorRef.current === root) return;
+        focusedEditorRef.current = root;
+        window.requestAnimationFrame(() => root.querySelector<HTMLElement>(".ProseMirror")?.focus());
+      }} compact disabled={pending || accessBlocked} />
       {state.error && <p className="form-error" role="alert">{state.error}</p>}
       <div className="reply-form-actions">
         <span className="muted">回复发布后不能编辑</span>

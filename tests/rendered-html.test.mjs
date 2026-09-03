@@ -46,7 +46,7 @@ test("production artifact contains the V2 activity and notification surfaces", a
   const [source, styles] = await Promise.all([builtServerSource(), builtCssSource()]);
   assert.match(source, /Activity/);
   assert.match(source, /全部标记已读/);
-  assert.match(source, /该回复已经被删除/);
+  assert.match(source, /该回复已被作者删除/);
   assert.match(styles, /reply-highlight/);
 });
 

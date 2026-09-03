@@ -6,7 +6,7 @@
 - 分支：`feature/v7-hardening`
 - 基线：`488ab91`
 - 阶段：设计与实施计划完成，代码实现进行中，尚未发布
-- 自动化当前：342 tests / 341 pass / 1 approved skip（以最终回归为准）
+- 自动化当前：345 tests / 344 pass / 1 approved skip（以最终回归为准）
 - 浏览器门：`BLOCKED`；Work cloud browser 对健康的 Site preview 返回 `ERR_BLOCKED_BY_CLIENT`
 
 ## 可行性裁决
@@ -79,7 +79,7 @@
 
 ## 15. Slow-network / failure-injection 结果
 
-`BLOCKED/PENDING`：浏览器 slow-network 受环境阻断；服务 failure injection 待实现。
+`PARTIAL`：自动 failure injection 已覆盖 D1 batch 中途失败全回滚、R2 upload/delete/metadata failure、asset bind claim guard、auth typed failure 与 optimistic revision conflict；各项均保持输入或一致性并提供恢复路径。浏览器 throttling 与交互证据仍因 browser blocker 为 `BLOCKED`。
 
 ## 16. 尚存已知限制
 
@@ -87,6 +87,8 @@
 - SIWC dispatcher 接管的顶层 session 失效可能不经过应用 typed result。
 - R2/D1 不具备跨存储事务。
 - bounded `%LIKE%` search 保留全表扫描取舍。
+- Milkdown/Crepe 的独立编辑器 chunk 约 1.19 MB minified，构建仍提示单 chunk 超过 500 KB；已从普通帖子阅读依赖中移除，只在打开 composer、帖子编辑或 DOCX Preview 时按需加载。进一步缩小需替换既有编辑器栈，V7 不做高风险重写。
+- 生产错误日志只输出 operation、entity ID、内部 user ID、error code 和随机 request ID；测试证明不序列化 exception message/stack、email 或正文载荷。通用 mutation failure 对用户只返回固定恢复文案。
 - owner-only deployment 暂时阻止其他 allowlist 成员。
 
 ## 证据索引

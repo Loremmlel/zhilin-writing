@@ -6,7 +6,7 @@ import { useActionState, useCallback, useEffect, useLayoutEffect, useRef, useSta
 import type { AnnotationActionState } from "@/app/(site)/posts/[id]/actions";
 import { AnnotationSheet } from "@/components/annotations/annotation-sheet";
 import { AnnotationThread, type AnnotationCardView, type AnnotationDeleteAction, type AnnotationRemoveImportedAction, type AnnotationReplyAction, type AnnotationReplyDeleteAction } from "@/components/annotations/annotation-thread";
-import { MarkdownEditor } from "@/components/editor/markdown-editor";
+import { LazyMarkdownEditor } from "@/components/editor/lazy-markdown-editor";
 import { ModalDialog } from "@/components/modal-dialog";
 import { isBlockingAccessError } from "@/lib/actions/result";
 import { describeAnnotationDomRange } from "@/lib/annotations/dom-selection";
@@ -86,7 +86,9 @@ function AnnotationComposer({ action, savedSelection, submissionKey, validateSel
       <input type="hidden" name="contentMarkdown" value={markdown} />
       <input type="hidden" name="submissionKey" value={submissionKey} />
       <blockquote className="annotation-selection-preview">{savedSelection.selectedText}</blockquote>
-      <MarkdownEditor initialMarkdown="" onMarkdownChange={setMarkdown} compact disabled={pending || accessBlocked} />
+      <LazyMarkdownEditor initialMarkdown="" onMarkdownChange={setMarkdown} onEditorRootChange={(root) => {
+        if (root) window.requestAnimationFrame(() => root.querySelector<HTMLElement>(".ProseMirror")?.focus());
+      }} compact disabled={pending || accessBlocked} />
       {(clientError || state.error) && <p className="form-error" role="alert">{clientError ?? state.error}</p>}
       <div className="dialog-actions"><button type="button" className="button button--ghost" onClick={onClose} disabled={pending}>取消</button><button className="button button--primary" disabled={pending || accessBlocked || !markdown.trim()} aria-busy={pending}>{pending ? "发布中…" : "发布批注"}</button></div>
     </form>

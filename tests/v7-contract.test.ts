@@ -97,3 +97,24 @@ test("V7 polish keeps lifecycle states out of 404 and provides local recovery an
     assert.match(region, /RegionErrorBoundary/);
   }
 });
+
+test("ordinary post reading defers the large editor bundle until a composer opens", async () => {
+  const [readingLayout, editorLayout, annotationReply, replyForm, replyList, lazyEditor, lazyReply] = await Promise.all([
+    source("../components/annotations/annotation-reading-layout.tsx"),
+    source("../components/editor/annotated-editor-layout.tsx"),
+    source("../components/annotations/annotation-reply-form.tsx"),
+    source("../components/reply-form.tsx"),
+    source("../components/reply-list.tsx"),
+    source("../components/editor/lazy-markdown-editor.tsx"),
+    source("../components/lazy-reply-form.tsx"),
+  ]);
+
+  for (const sourceText of [readingLayout, annotationReply, replyForm]) {
+    assert.doesNotMatch(sourceText, /import \{ MarkdownEditor \} from/);
+    assert.match(sourceText, /LazyMarkdownEditor/);
+  }
+  assert.match(replyList, /LazyReplyForm/);
+  assert.match(lazyEditor, /import\("\.\/markdown-editor"\)/);
+  assert.match(lazyReply, /import\("\.\/reply-form"\)/);
+  assert.doesNotMatch(`${readingLayout}\n${editorLayout}`, /addEventListener\("scroll"/);
+});

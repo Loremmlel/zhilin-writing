@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import type { PostActionState } from "@/components/editor/post-editor-form";
 import { getApiMemberAccess } from "@/lib/auth/access";
 import { actionAccessFailure } from "@/lib/actions/result";
+import { logServerError } from "@/lib/logging";
 import { createPost } from "@/lib/posts/service";
 
 function parseTags(value: FormDataEntryValue | null): string[] {
@@ -19,10 +20,12 @@ function parseAttachmentIds(value: FormDataEntryValue | null): string[] {
 }
 
 export async function createPostAction(_state: PostActionState, formData: FormData): Promise<PostActionState> {
+  let actorUserId: string | undefined;
   try {
     const access = await getApiMemberAccess();
     if (!access.ok) return actionAccessFailure(access.code);
     const { member } = access;
+    actorUserId = member.id;
     const postId = await createPost(member.id, {
       title: String(formData.get("title") ?? ""),
       markdown: String(formData.get("markdown") ?? ""),
@@ -33,6 +36,7 @@ export async function createPostAction(_state: PostActionState, formData: FormDa
     revalidatePath("/");
     return { postId };
   } catch (error) {
-    return { error: error instanceof Error ? error.message : "发布失败" };
+    logServerError({ operation: "post.create", userId: actorUserId, error, errorCode: "POST_CREATE_FAILED" });
+    return { error: "发布失败，请稍后重试" };
   }
 }

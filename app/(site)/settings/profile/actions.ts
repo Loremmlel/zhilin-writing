@@ -7,6 +7,7 @@ import { storeTemporaryAsset } from "@/lib/assets/storage";
 import { getApiMemberAccess } from "@/lib/auth/access";
 import { actionAccessFailure, type ActionAccessErrorCode } from "@/lib/actions/result";
 import { validateDisplayName } from "@/lib/domain/rules";
+import { logServerError } from "@/lib/logging";
 
 export type ProfileActionState = { error?: string; code?: ActionAccessErrorCode };
 
@@ -28,7 +29,8 @@ export async function updateProfileAction(_previous: ProfileActionState, formDat
     } else {
       await updateUserProfile(member.id, { displayName, bio });
     }
-  } catch {
+  } catch (caught) {
+    logServerError({ operation: "profile.update", entityId: member.id, userId: member.id, error: caught, errorCode: "PROFILE_UPDATE_FAILED" });
     return { error: "资料保存失败，请稍后重试" };
   }
   redirect(`/users/${member.id}`);

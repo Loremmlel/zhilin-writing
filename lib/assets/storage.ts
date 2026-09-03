@@ -5,6 +5,7 @@ import { assets } from "@/db/schema";
 import { classifyUpload } from "@/lib/domain/rules";
 import { AssetStorageError } from "./errors";
 import { validateAssetUpload } from "./upload-policy";
+import { logServerError } from "@/lib/logging";
 
 function safeFilename(filename: string): string {
   return filename.replace(/[^\p{L}\p{N}._-]+/gu, "-").slice(0, 100) || "file";
@@ -41,8 +42,9 @@ export async function storeTemporaryAsset(ownerId: string, file: File, requested
   } catch (error) {
     try {
       await env.BUCKET.delete(r2Key);
-    } catch {
+    } catch (compensationError) {
       // A later orphan scan can recover an object whose metadata insert and compensation both failed.
+      logServerError({ operation: "asset.upload-compensation-delete", entityId: id, userId: ownerId, error: compensationError, errorCode: "R2_DELETE_FAILED" });
     }
     throw new AssetStorageError("SERVER_FAILURE", "文件记录保存失败，请重试", { cause: error });
   }

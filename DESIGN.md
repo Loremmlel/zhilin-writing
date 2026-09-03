@@ -88,7 +88,7 @@ components:
 
 ### Foundational visual states
 
-所有可点击元素有 hover、键盘焦点、按下和 disabled 状态。选中 revision 使用绿边与浅绿背景；错误与冲突使用文字、图标语义和浅红表面，不单靠颜色。加载按钮保持尺寸稳定。路由切换使用 2px 主题绿进度条且不拦截交互；主要动态页面用接近最终几何的共享 Skeleton，局部慢查询放进独立 Suspense，不让导航与既有页面壳一起消失。错误边界只提供安全说明、重试和返回首页，不显示内部错误文本。
+所有可点击元素有 hover、键盘焦点、按下和 disabled 状态。选中 revision 使用绿边与浅绿背景；错误与冲突使用文字、图标语义和浅红表面，不单靠颜色。加载按钮保持尺寸稳定。路由切换使用 2px 主题绿进度条且不拦截交互；主要动态页面用接近最终几何的共享 Skeleton，局部慢查询放进独立 Suspense，不让导航与既有页面壳一起消失。错误边界只提供安全说明、重试和返回首页，不显示内部错误文本。普通阅读页只在用户打开回复或批注输入区后加载 Milkdown；帖子编辑与 DOCX Preview 仍直接加载完整编辑器。
 
 ### Buttons and actions
 
@@ -108,7 +108,7 @@ components:
 
 ### Annotation reading
 
-正文范围、右侧卡片、SVG connector 与移动端 Sheet 全部用稳定 `annotation_id` 联动。正文 mark 可聚焦，卡片可键盘访问；内部普通链接仍保持导航语义。桌面卡片按文档位置排列并避免重叠，resize/scroll 只重新测量几何，不重新解析 Markdown。删除或隐藏的根内容只显示占位，其他成员讨论不被连带移除。
+正文范围、右侧卡片、SVG connector 与移动端 Sheet 全部用稳定 `annotation_id` 联动。正文 mark 可聚焦，卡片可键盘访问；内部普通链接仍保持导航语义。桌面卡片按文档位置排列并避免重叠；字体、图片、容器和卡片尺寸变化才合并重测几何，普通 scroll 不触发 React 布局更新，也不重新解析 Markdown。删除或隐藏的根内容只显示占位，其他成员讨论不被连带移除。
 
 合法正文选区在“添加批注”入口、输入弹窗和发布 pending/失败期间必须持续可见；以已保存且含 revision/epoch 的 range 为权威，原生 Selection 只负责最初捕获。视觉优先使用 CSS Custom Highlight，fallback overlay 仍需同时具备背景与点状下划线，不能只靠颜色。每个 thread 只有一个回复输入区，固定放在根批注正文之后、回复计数和列表之前；回复某条回复只重定向并聚焦这个输入区，失败保留草稿，成功后才清空。
 

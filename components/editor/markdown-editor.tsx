@@ -30,7 +30,7 @@ export type AnnotationEditingOptions = {
   onConfirmedAnnotationDeletionIdsChange: (ids: string[]) => void;
 };
 
-type MarkdownEditorProps = {
+export type MarkdownEditorProps = {
   initialMarkdown: string;
   onMarkdownChange: (markdown: string) => void;
   onAssetUploaded?: (asset: UploadedAsset) => void;

@@ -252,11 +252,11 @@
 
 **Steps:**
 
-- [ ] Emit operation, entity ID, internal user ID, error code and request correlation ID.
-- [ ] Prove logs redact email, Markdown, annotation body, DOCX content and auth headers.
-- [ ] Ensure client messages never contain stack trace or raw database/platform text.
-- [ ] Inspect client bundle, Markdown parser imports and annotation fetch paths; remove only proven duplicate/oversized work.
-- [ ] Add a connector measurement test that repeated pointer/scroll activity does not schedule full layout work.
+- [x] Emit operation, entity ID, internal user ID, error code and request correlation ID.
+- [x] Prove logs redact email, Markdown, annotation body, DOCX content and auth headers.
+- [x] Ensure client messages never contain stack trace or raw database/platform text.
+- [x] Inspect client bundle, Markdown parser imports and annotation fetch paths; remove only proven duplicate/oversized work.
+- [x] Add a connector measurement test that repeated pointer/scroll activity does not schedule full layout work.
 - [ ] Run focused tests, full tests, build and `git diff --check`.
 
 ## Task 11: Run the complete release regression

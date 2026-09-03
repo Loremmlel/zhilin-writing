@@ -3,7 +3,8 @@ import { DeleteContentControl, type LifecycleFormAction } from "@/components/lif
 import type { ReplyRecord, SiteUser } from "@/db/schema";
 import { formatDateTime } from "@/lib/format";
 import { deleteReplyConfirmation } from "@/lib/lifecycle/policy";
-import { ReplyForm, type ReplyFormAction } from "@/components/reply-form";
+import { LazyReplyForm } from "@/components/lazy-reply-form";
+import type { ReplyFormAction } from "@/components/reply-form";
 
 export type ReplyView = {
   reply: ReplyRecord;
@@ -44,10 +45,7 @@ function ReplyItem({ item, nested, currentUserId, replyActionFor, deleteActionFo
         {item.lifecycle.contentVisible
           ? <div className="markdown-body markdown-body--reply" dangerouslySetInnerHTML={{ __html: item.html }} />
           : <p className="deleted-placeholder">{item.lifecycle.placeholder}</p>}
-        {item.lifecycle.contentVisible && <details className="inline-reply">
-          <summary>回复</summary>
-          <ReplyForm action={replyActionFor(item.reply.id)} initialSubmissionKey={crypto.randomUUID()} label={`回复 ${item.author.displayName}`} compact />
-        </details>}
+        {item.lifecycle.contentVisible && <LazyReplyForm action={replyActionFor(item.reply.id)} initialSubmissionKey={crypto.randomUUID()} label={`回复 ${item.author.displayName}`} openLabel="回复" compact />}
         {item.lifecycle.contentVisible && item.reply.authorId === currentUserId && <div className="delete-reply-form">
           <DeleteContentControl
             action={deleteActionFor(item.reply.id)}

@@ -8,7 +8,7 @@ import { AnnotationThread } from "@/components/annotations/annotation-thread";
 import { DeleteContentControl } from "@/components/lifecycle/delete-content-control";
 import { DeepLinkHighlighter } from "@/components/deep-link-highlighter";
 import { DiscussionSkeleton, PostBodySkeleton } from "@/components/loading/skeletons";
-import { ReplyForm } from "@/components/reply-form";
+import { LazyReplyForm } from "@/components/lazy-reply-form";
 import { ReplyList } from "@/components/reply-list";
 import { RegionErrorBoundary } from "@/components/region-error-boundary";
 import { getPostDetail, listReplies } from "@/db/queries";
@@ -165,6 +165,6 @@ async function DiscussionRegion({ id, query, memberId, contentVisible }: { id: s
     <DeepLinkHighlighter targetId={query.target === "post-reply" && query.reply ? `reply-${query.reply}` : undefined} />
     <div className="section-heading"><h2>回复</h2><span>{visibleReplyCount} 条</span></div>
     {replyViews.length > 0 ? <ReplyList items={replyViews} currentUserId={memberId} replyActionFor={(targetId) => createReplyAction.bind(null, id, targetId)} deleteActionFor={(replyId) => deleteReplyAction.bind(null, id, replyId)} /> : <p className="empty-copy">还没有回复。可以从一句认真读过的话开始。</p>}
-    {contentVisible && <div className="new-reply-block"><h3>写一条回复</h3><ReplyForm action={createReplyAction.bind(null, id, null)} initialSubmissionKey={crypto.randomUUID()} /></div>}
+    {contentVisible && <div className="new-reply-block"><h3>写一条回复</h3><LazyReplyForm action={createReplyAction.bind(null, id, null)} initialSubmissionKey={crypto.randomUUID()} label="写回复" openLabel="开始写回复" /></div>}
   </section>;
 }

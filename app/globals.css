@@ -195,6 +195,10 @@ button, summary, input[type="file"] { cursor: pointer; }
 .markdown-editor--compact { min-height: 145px; margin: 0; }
 .markdown-editor--compact .milkdown, .markdown-editor--compact .milkdown .ProseMirror { min-height: 120px; }
 .markdown-editor--compact .milkdown .ProseMirror { padding: 16px 18px; font: 14px/1.75 inherit; }
+.markdown-editor-loading { min-height: 250px; border: 1px solid var(--line); border-radius: 10px; background: linear-gradient(100deg, #f2f3ee 20%, #fafaf6 40%, #f2f3ee 60%); background-size: 220% 100%; animation: editor-loading 1.4s ease-in-out infinite; }
+.markdown-editor-loading--compact { min-height: 115px; }
+.editor-load-state { min-height: 115px; padding: 16px; border: 1px solid #e0b9b4; border-radius: 9px; display: flex; align-items: center; justify-content: space-between; gap: 14px; background: #fff9f7; color: #704b47; font-size: 13px; }
+@keyframes editor-loading { to { background-position-x: -220%; } }
 .annotation-editor-pending { width: fit-content; margin: 0 0 10px; padding: 7px 10px; border-left: 2px solid var(--annotation-ink); background: var(--annotation); color: #704943; font-size: 12px; line-height: 1.55; }
 .annotated-editor-layout { position: relative; display: block; margin-bottom: 22px; }
 .annotated-editor-layout[data-annotation-layout="desktop"] { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 320px); gap: 54px; align-items: start; }
@@ -369,6 +373,7 @@ button, summary, input[type="file"] { cursor: pointer; }
 .markdown-body--reply { font: 14px/1.8 inherit; margin-top: 8px; }
 .markdown-body--reply p { margin: .5em 0; }
 .inline-reply { display: inline-block; margin-top: 5px; }
+.reply-form-launcher { margin-top: 12px; }
 .inline-reply summary { color: var(--green-dark); font-size: 12px; list-style: none; }
 .inline-reply[open] { display: block; }
 .inline-reply[open] summary { margin-bottom: 10px; }

@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { markAllNotificationsRead } from "@/db/queries";
 import { getApiMemberAccess } from "@/lib/auth/access";
 import { actionAccessFailure, type ActionAccessErrorCode } from "@/lib/actions/result";
+import { logServerError } from "@/lib/logging";
 
 export type NotificationActionState = { success?: boolean; error?: string; code?: ActionAccessErrorCode };
 
@@ -16,7 +17,8 @@ export async function markAllNotificationsReadAction(_previous: NotificationActi
   const { member } = access;
   try {
     await markAllNotificationsRead(member.id);
-  } catch {
+  } catch (error) {
+    logServerError({ operation: "notification.mark-all-read", userId: member.id, error, errorCode: "NOTIFICATION_MARK_READ_FAILED" });
     return { error: "未能标记通知，请稍后重试" };
   }
   revalidatePath("/notifications");

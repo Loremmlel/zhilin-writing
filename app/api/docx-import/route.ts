@@ -5,6 +5,7 @@ import {
   readDocxImportCommitBody,
 } from "@/lib/docx-import/commit-schema";
 import { commitDocxImport, DocxImportCommitError } from "@/lib/docx-import/commit-service";
+import { logServerError } from "@/lib/logging";
 
 export const dynamic = "force-dynamic";
 
@@ -28,8 +29,10 @@ export async function POST(request: Request) {
     }, { status: access.status });
   }
   let input: unknown;
+  let importBatchId: string | undefined;
   try {
     input = parseDocxImportCommitBody(await readDocxImportCommitBody(request));
+    importBatchId = typeof input === "object" && input && "importBatchId" in input ? String(input.importBatchId) : undefined;
   } catch (error) {
     if (error instanceof DocxImportBodyError && error.code === "COMMIT_BODY_SIZE_LIMIT") {
       return Response.json({ error: { code: error.code, message: errorMessages[error.code] } }, { status: 413 });
@@ -42,6 +45,7 @@ export async function POST(request: Request) {
     return Response.json({ result }, { status: result.alreadyCommitted ? 200 : 201 });
   } catch (error) {
     if (error instanceof DocxImportCommitError) {
+      if (error.status >= 500) logServerError({ operation: "docx.commit", entityId: importBatchId, userId: access.member.id, error });
       return Response.json({
         error: {
           code: error.code,
@@ -49,6 +53,7 @@ export async function POST(request: Request) {
         },
       }, { status: error.status });
     }
+    logServerError({ operation: "docx.commit", entityId: importBatchId, userId: access.member.id, error, errorCode: "IMPORT_COMMIT_FAILED" });
     return Response.json({ error: { code: "IMPORT_COMMIT_FAILED", message: "未能完成导入，请稍后重试。" } }, { status: 500 });
   }
 }

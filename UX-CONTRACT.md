@@ -131,6 +131,7 @@
 - Post body/annotation rail, post replies, notifications, profile activity/posts, administrator lists, and revision preview use local Suspense fallbacks so the shared layout or already-resolved region stays available.
 - Skeletons keep stable geometry, expose `aria-busy` plus readable status, delay shimmer, and become static under `prefers-reduced-motion`.
 - Route, site, and global error boundaries never render exception messages, stack traces, database identifiers, or raw causes; recovery is retry plus return-home, with a dedicated missing/expired-login explanation at the site boundary.
+- Ordinary post reading defers the Milkdown bundle until a member explicitly opens a reply or annotation composer; editor-load failure stays local and retryable. Post edit and DOCX Preview load it immediately because editing is their primary task.
 - Mutation default: pessimistic UI with disabled duplicate submit.
 - Annotation create/reply mutations use per-submit UUID keys; server-generated annotation IDs, revision CAS and one D1 batch prevent partial anchors/events/notifications.
 - Idempotency: replies use submission keys; lifecycle retries are no-ops; audit transitions use dedupe keys; revision restore uses a per-confirmation operation ID in addition to revision uniqueness.

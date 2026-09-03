@@ -4,6 +4,7 @@ import { env } from "cloudflare:workers";
 import { getDb } from "@/db";
 import { assets, postAssetRefs, revisionAssetRefs, users } from "@/db/schema";
 import { assertUntrackedR2Execution, runAssetGcCandidates, untrackedR2Candidates, type AssetGcFailureCode } from "./gc-core";
+import { logServerError } from "@/lib/logging";
 
 type ReferenceCounts = {
   currentRefCount: number;
@@ -46,7 +47,7 @@ export async function collectOrphanedAssets(options: { now?: Date; limit?: numbe
     .orderBy(asc(assets.createdAt))
     .limit(limit);
 
-  return runAssetGcCandidates({
+  const report = await runAssetGcCandidates({
     candidates,
     now,
     dryRun: options.dryRun ?? true,
@@ -89,6 +90,8 @@ export async function collectOrphanedAssets(options: { now?: Date; limit?: numbe
       },
     },
   });
+  report.failures.forEach((failure) => logServerError({ operation: "asset.gc", entityId: failure.assetId, errorCode: failure.code }));
+  return report;
 }
 
 export async function scanUntrackedR2Objects(options: {
@@ -130,8 +133,9 @@ export async function scanUntrackedR2Objects(options: {
     try {
       await env.BUCKET.delete(candidate.key);
       report.collected.push(candidate.assetId);
-    } catch {
+    } catch (error) {
       report.failures.push({ assetId: candidate.assetId, code: "R2_DELETE_FAILED" });
+      logServerError({ operation: "asset.gc-untracked", entityId: candidate.assetId, error, errorCode: "R2_DELETE_FAILED" });
     }
   }
   return report;
