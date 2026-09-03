@@ -48,8 +48,7 @@ device_response="$(
   curl -fsS --connect-timeout 10 --max-time 30 \
     -X POST \
     -H "Accept: application/json" \
-    --data-urlencode "client_id=$oauth_client_id" \
-    --data-urlencode "scope=$oauth_scope" \
+    --data "client_id=$oauth_client_id&scope=$oauth_scope" \
     https://github.com/login/device/code
 )" || die "could not start GitHub device authorization."
 
@@ -76,9 +75,7 @@ while ((SECONDS < deadline)); do
     curl -fsS --connect-timeout 10 --max-time 30 \
       -X POST \
       -H "Accept: application/json" \
-      --data-urlencode "client_id=$oauth_client_id" \
-      --data-urlencode "device_code=$device_code" \
-      --data-urlencode "grant_type=urn:ietf:params:oauth:grant-type:device_code" \
+      --data "client_id=$oauth_client_id&device_code=$device_code&grant_type=urn:ietf:params:oauth:grant-type:device_code" \
       https://github.com/login/oauth/access_token
   )" || die "GitHub authorization check failed."
 
