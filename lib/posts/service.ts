@@ -3,7 +3,7 @@ import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 
 import { getDb } from "@/db";
 import { activityEvents, assets, notifications, postAssetRefs, postRevisions, posts, postTags, replies, revisionAssetRefs, tags } from "@/db/schema";
-import { findReply, findReplyBySubmissionKey, getPost } from "@/db/queries";
+import { findPostByCreationSubmissionKey, findReply, findReplyBySubmissionKey, getPost } from "@/db/queries";
 import { activityEventId, notificationId, resolveReplyRecipient, validateSubmissionKey } from "@/lib/activity/policy";
 import { assertOrdinaryPostMarkdown } from "@/lib/annotations/policy";
 import { getCurrentAnnotationSaveStates } from "@/lib/annotations/queries";
@@ -54,9 +54,12 @@ async function validateSnapshotAssets(authorId: string, refs: AssetSnapshotRef[]
   }
 }
 
-export async function createPost(authorId: string, input: SavePostInput) {
+export async function createPost(authorId: string, input: SavePostInput & { submissionKey: string }) {
   const clean = validatePostInput(input);
   assertOrdinaryPostMarkdown(clean.markdown);
+  const submissionKey = validateSubmissionKey(input.submissionKey);
+  const duplicate = await findPostByCreationSubmissionKey(authorId, submissionKey);
+  if (duplicate) return duplicate.id;
   const now = new Date();
   const id = crypto.randomUUID();
   const revisionId = crypto.randomUUID();
@@ -68,6 +71,7 @@ export async function createPost(authorId: string, input: SavePostInput) {
     db.insert(posts).values({
       id,
       authorId,
+      creationSubmissionKey: submissionKey,
       title: clean.title,
       markdown: clean.markdown,
       searchText: markdownToPlainText(clean.markdown),
@@ -115,11 +119,17 @@ export async function createPost(authorId: string, input: SavePostInput) {
       expiresAt: null,
     }).where(and(eq(assets.id, ref.assetId), eq(assets.ownerId, authorId)))),
   ];
-  await commitPostSave((items) => db.batch(asBatch(items)), {
-    content: contentOperations,
-    assets: assetOperations,
-    tags: tagOperations,
-  });
+  try {
+    await commitPostSave((items) => db.batch(asBatch(items)), {
+      content: contentOperations,
+      assets: assetOperations,
+      tags: tagOperations,
+    });
+  } catch (error) {
+    const repeated = await findPostByCreationSubmissionKey(authorId, submissionKey);
+    if (repeated) return repeated.id;
+    throw error;
+  }
   return id;
 }
 

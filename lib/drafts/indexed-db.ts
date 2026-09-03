@@ -15,6 +15,7 @@ export type LocalDraft = {
   }>;
   baseRevisionId: string | null;
   confirmedAnnotationDeletionIds?: string[];
+  creationSubmissionKey?: string;
   updatedAt: number;
 };
 

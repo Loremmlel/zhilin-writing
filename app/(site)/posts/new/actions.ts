@@ -28,6 +28,7 @@ export async function createPostAction(_state: PostActionState, formData: FormDa
       markdown: String(formData.get("markdown") ?? ""),
       tags: parseTags(formData.get("tags")),
       attachmentIds: parseAttachmentIds(formData.get("attachmentIds")),
+      submissionKey: String(formData.get("creationSubmissionKey") ?? ""),
     });
     revalidatePath("/");
     return { postId };

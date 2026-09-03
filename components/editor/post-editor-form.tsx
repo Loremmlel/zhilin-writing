@@ -7,6 +7,7 @@ import { useActionState, useEffect, useRef, useState } from "react";
 import type { AnnotationCardView } from "@/components/annotations/annotation-thread";
 import { ModalDialog } from "@/components/modal-dialog";
 import { uploadAsset } from "@/lib/assets/browser-upload";
+import { isValidSubmissionKey } from "@/lib/activity/policy";
 import { loadDraft, removeDraft, saveDraft, type LocalDraft } from "@/lib/drafts/indexed-db";
 import { availableConflictChoices, chooseConflictResolution, hasRecoverablePublishedDraft } from "@/lib/editor/conflict";
 import { isBlockingAccessError, type ActionAccessErrorCode } from "@/lib/actions/result";
@@ -82,6 +83,7 @@ export function PostEditorForm({ userId, draftId, action, initial, submitLabel =
   const [attachmentUploadTasks, setAttachmentUploadTasks] = useState<AttachmentUploadTask[]>([]);
   const [imageUploadPending, setImageUploadPending] = useState(false);
   const [confirmedAnnotationDeletionIds, setConfirmedAnnotationDeletionIds] = useState<string[]>([]);
+  const [creationSubmissionKey, setCreationSubmissionKey] = useState(() => crypto.randomUUID());
   const [editorRoot, setEditorRoot] = useState<HTMLElement | null>(null);
   const [state, formAction, pending] = useActionState(async (previous: PostActionState, formData: FormData) => {
     const result = await action(previous, formData);
@@ -134,7 +136,7 @@ export function PostEditorForm({ userId, draftId, action, initial, submitLabel =
     if (!hydrated || !dirty || state.postId) return;
     const statusTimer = window.setTimeout(() => setDraftStatus("saving"), 0);
     const timer = window.setTimeout(() => {
-      const draft: LocalDraft = { title, markdown, tags, attachmentIds, attachments, baseRevisionId, confirmedAnnotationDeletionIds, updatedAt: Date.now() };
+      const draft: LocalDraft = { title, markdown, tags, attachmentIds, attachments, baseRevisionId, confirmedAnnotationDeletionIds, creationSubmissionKey, updatedAt: Date.now() };
       void saveDraft(userId, draftId, draft)
         .then(() => setDraftStatus("saved"))
         .catch(() => setDraftStatus("failed"));
@@ -143,7 +145,7 @@ export function PostEditorForm({ userId, draftId, action, initial, submitLabel =
       window.clearTimeout(statusTimer);
       window.clearTimeout(timer);
     };
-  }, [attachmentIds, attachments, baseRevisionId, confirmedAnnotationDeletionIds, dirty, draftId, hydrated, markdown, state.postId, tags, title, userId]);
+  }, [attachmentIds, attachments, baseRevisionId, confirmedAnnotationDeletionIds, creationSubmissionKey, dirty, draftId, hydrated, markdown, state.postId, tags, title, userId]);
 
   useEffect(() => {
     if (!state.postId) return;
@@ -158,6 +160,9 @@ export function PostEditorForm({ userId, draftId, action, initial, submitLabel =
     if (draft.attachments) setAttachments(draft.attachments);
     setBaseRevisionId(draft.baseRevisionId ?? initial?.baseRevisionId ?? null);
     setConfirmedAnnotationDeletionIds(draft.confirmedAnnotationDeletionIds ?? []);
+    if (draft.creationSubmissionKey && isValidSubmissionKey(draft.creationSubmissionKey)) {
+      setCreationSubmissionKey(draft.creationSubmissionKey);
+    }
     setEditorResetRevision((current) => current + 1);
     setDirty(true);
   }
@@ -252,6 +257,7 @@ export function PostEditorForm({ userId, draftId, action, initial, submitLabel =
         <input type="hidden" name="baseRevisionId" value={baseRevisionId ?? ""} />
         <input type="hidden" name="overwriteBaseRevisionId" value={overwriteBaseRevisionId ?? ""} />
         <input type="hidden" name="confirmedAnnotationDeletionIds" value={JSON.stringify(confirmedAnnotationDeletionIds)} />
+        <input type="hidden" name="creationSubmissionKey" value={creationSubmissionKey} />
         <div className="editor-topline">
           <span className={`draft-status draft-status--${draftStatus}`} role="status">
             {draftStatus === "loading" && "检查本地修改…"}

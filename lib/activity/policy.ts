@@ -59,10 +59,13 @@ export function canExposeAnnotationActivitySnapshot(
   return postState === "normal" && targetState === "normal" && anchorAvailable;
 }
 
+export function isValidSubmissionKey(value: string): boolean {
+  const key = value.trim().toLocaleLowerCase("en-US");
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(key);
+}
+
 export function validateSubmissionKey(value: string): string {
   const key = value.trim().toLocaleLowerCase("en-US");
-  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(key)) {
-    throw new Error("回复提交标识无效，请刷新页面后重试");
-  }
+  if (!isValidSubmissionKey(key)) throw new Error("提交标识无效，请刷新页面后重试");
   return key;
 }

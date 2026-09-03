@@ -313,6 +313,13 @@ export async function findReplyBySubmissionKey(authorId: string, submissionKey: 
   return (await getDb().select().from(replies).where(and(eq(replies.authorId, authorId), eq(replies.submissionKey, submissionKey))).limit(1))[0] ?? null;
 }
 
+export async function findPostByCreationSubmissionKey(authorId: string, submissionKey: string) {
+  return (await getDb().select({ id: posts.id }).from(posts).where(and(
+    eq(posts.authorId, authorId),
+    eq(posts.creationSubmissionKey, submissionKey),
+  )).limit(1))[0] ?? null;
+}
+
 export async function listUserActivity(actorUserId: string, limit = 50) {
   const rows = await getDb()
     .select({ event: activityEvents, actor: users, post: posts, reply: replies, annotation: annotations, annotationReply: annotationReplies })

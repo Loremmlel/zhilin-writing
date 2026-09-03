@@ -35,6 +35,7 @@ export const posts = sqliteTable(
   {
     id: text("id").primaryKey(),
     authorId: text("author_id").notNull().references(() => users.id),
+    creationSubmissionKey: text("creation_submission_key"),
     title: text("title").notNull(),
     markdown: text("markdown").notNull(),
     searchText: text("search_text").notNull().default(""),
@@ -52,6 +53,7 @@ export const posts = sqliteTable(
     index("posts_published_at_idx").on(table.publishedAt),
     index("posts_last_activity_at_idx").on(table.lastActivityAt),
     index("posts_author_id_idx").on(table.authorId),
+    uniqueIndex("posts_author_creation_submission_unique").on(table.authorId, table.creationSubmissionKey),
   ],
 );
 
