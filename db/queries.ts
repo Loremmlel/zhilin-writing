@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, inArray, isNotNull, isNull, like, ne, or } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, isNotNull, isNull, like, ne, or, sql } from "drizzle-orm";
 
 import { getDb } from "./index";
 import { adminAuditLog, activityEvents, allowedUsers, annotationReplies, annotations, assets, notifications, postAnnotationAnchors, postAssetRefs, postTags, posts, replies, tags, users } from "./schema";
@@ -162,6 +162,20 @@ export async function createUserProfile(input: { emailKey: string; displayName: 
 
 export async function updateUserProfile(id: string, input: { displayName: string; bio: string; avatarAssetId?: string | null }) {
   await getDb().update(users).set({ ...input, updatedAt: new Date() }).where(eq(users.id, id));
+  return findUserById(id);
+}
+
+export async function updateUserProfileWithAvatar(id: string, input: { displayName: string; bio: string }, avatarAssetId: string) {
+  const db = getDb();
+  const now = new Date();
+  await db.batch([
+    db.update(assets).set({
+      status: sql<"permanent">`CASE WHEN ${assets.ownerId} = ${id} AND ${assets.status} = 'temporary' AND ${assets.kind} = 'avatar' AND ${assets.deletedAt} IS NULL AND ${assets.gcClaimedAt} IS NULL THEN 'permanent' ELSE NULL END`,
+      boundAt: now,
+      expiresAt: null,
+    }).where(eq(assets.id, avatarAssetId)),
+    db.update(users).set({ ...input, avatarAssetId, updatedAt: now }).where(eq(users.id, id)),
+  ]);
   return findUserById(id);
 }
 

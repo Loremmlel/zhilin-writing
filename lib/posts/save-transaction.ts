@@ -127,7 +127,7 @@ export function buildAnnotatedPostSaveOperations(
     ...input.nextAssetRefs.map((ref) => db.insert(schema.revisionAssetRefs).values({ revisionId: input.revisionId, ...ref })),
     ...input.nextAssetRefs.map((ref) => db.update(schema.assets).set({
       postId: input.postId,
-      status: "permanent",
+      status: sql<"permanent">`CASE WHEN ${schema.assets.gcClaimedAt} IS NULL AND ${schema.assets.deletedAt} IS NULL THEN 'permanent' ELSE NULL END`,
       boundAt: input.now,
       expiresAt: null,
     }).where(and(eq(schema.assets.id, ref.assetId), eq(schema.assets.ownerId, input.currentUserId)))),

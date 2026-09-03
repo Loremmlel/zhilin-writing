@@ -6,7 +6,7 @@
 - 分支：`feature/v7-hardening`
 - 基线：`488ab91`
 - 阶段：设计与实施计划完成，代码实现进行中，尚未发布
-- 自动化当前：336 tests / 335 pass / 1 approved skip（以最终回归为准）
+- 自动化当前：340 tests / 339 pass / 1 approved skip（以最终回归为准）
 - 浏览器门：`BLOCKED`；Work cloud browser 对健康的 Site preview 返回 `ERR_BLOCKED_BY_CLIENT`
 
 ## 可行性裁决
@@ -63,11 +63,11 @@
 
 ## 11. Temporary / orphan R2 GC 规则
 
-`PENDING`。
+`PASS (automated)`：temporary 只有同时满足 `created_at ≤ now-7d`、`expires_at ≤ now`、无 current/revision/avatar ref 才候选；24 小时 IndexedDB DOCX Preview 因此不会触达物理删除窗口。permanent 且零引用归类为 `PERMANENT_ORPHAN`。候选先 claim，所有 Post/DOCX/avatar binding 都拒绝已 claim asset，删除前再次查 current/revision/avatar ref；引用在 claim 前后出现时释放 claim，不删 R2。
 
 ## 12. GC dry-run 与 failure retry
 
-`PENDING`。
+`PASS (automated)`：`collectOrphanedAssets` 默认 `dryRun=true`，报告 candidate count、bytes、asset IDs、`EXPIRED_TEMPORARY | PERMANENT_ORPHAN` reasons 且零 mutation。执行模式逐项处理；R2 不可用/删除失败不会删除 DB metadata，也不阻塞后续 candidate，并持久化 failure count、time、code。claim 一小时后才可重试，避免并发 maintenance 重入；R2 已删但 metadata update 失败也保留可重试记录。
 
 ## 13. Mobile / tablet Annotation breakpoint
 

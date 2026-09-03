@@ -53,6 +53,7 @@ export type CommitAssetContext = {
   mimeType: string;
   status: "temporary" | "permanent";
   deletedAt: number | Date | null;
+  gcClaimedAt?: number | Date | null;
 };
 
 export type DocxImportCommitContext = {
@@ -154,7 +155,7 @@ export function planDocxImportCommit(
     statements.push({
       kind: "asset-claim",
       rowCount: 1,
-      sql: "UPDATE assets SET post_id = ?, status = CASE WHEN owner_id = ? AND status = 'temporary' AND kind = 'image' AND mime_type = ? AND deleted_at IS NULL THEN 'permanent' ELSE NULL END, bound_at = ?, expires_at = NULL WHERE id = ?",
+      sql: "UPDATE assets SET post_id = ?, status = CASE WHEN owner_id = ? AND status = 'temporary' AND kind = 'image' AND mime_type = ? AND deleted_at IS NULL AND gc_claimed_at IS NULL THEN 'permanent' ELSE NULL END, bound_at = ?, expires_at = NULL WHERE id = ?",
       params: [context.postId, context.importerUserId, manifest.mimeType, now, manifest.assetId],
     });
     rowChunks.push({ kind: "asset-claim", rowCount: 1 });

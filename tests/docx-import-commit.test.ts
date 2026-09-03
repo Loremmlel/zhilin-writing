@@ -644,7 +644,7 @@ function nestedListBlock(depth: 0 | 1 | 2, remaining: number): ListBlock {
 async function createHarness(failAfterStatement?: number) {
   const db = new DatabaseSync(":memory:");
   db.exec("PRAGMA foreign_keys = ON");
-  for (const prefix of ["0000_", "0001_", "0002_", "0003_", "0004_", "0005_"]) {
+  for (const prefix of ["0000_", "0001_", "0002_", "0003_", "0004_", "0005_", "0006_", "0007_", "0008_", "0009_"]) {
     const filename = (await readdir(new URL("../drizzle/", import.meta.url))).find((item) => item.startsWith(prefix) && item.endsWith(".sql"));
     assert.ok(filename, `${prefix} migration must exist`);
     const migration = await readFile(new URL(`../drizzle/${filename}`, import.meta.url), "utf8");

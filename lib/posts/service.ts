@@ -49,7 +49,7 @@ async function validateSnapshotAssets(authorId: string, refs: AssetSnapshotRef[]
   const ids = [...new Set(refs.map((ref) => ref.assetId))];
   if (ids.length === 0) return;
   const rows = await getDb().select().from(assets).where(and(inArray(assets.id, ids), isNull(assets.deletedAt)));
-  if (rows.length !== ids.length || rows.some((asset) => asset.ownerId !== authorId)) {
+  if (rows.length !== ids.length || rows.some((asset) => asset.ownerId !== authorId || asset.gcClaimedAt !== null)) {
     throw new Error("帖子引用了无权使用或不存在的资源");
   }
 }
@@ -114,7 +114,7 @@ export async function createPost(authorId: string, input: SavePostInput & { subm
     ...assetRefs.map((ref) => db.insert(revisionAssetRefs).values({ revisionId, ...ref })),
     ...assetRefs.map((ref) => db.update(assets).set({
       postId: id,
-      status: "permanent",
+      status: sql<"permanent">`CASE WHEN ${assets.gcClaimedAt} IS NULL AND ${assets.deletedAt} IS NULL THEN 'permanent' ELSE NULL END`,
       boundAt: now,
       expiresAt: null,
     }).where(and(eq(assets.id, ref.assetId), eq(assets.ownerId, authorId)))),

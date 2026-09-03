@@ -348,6 +348,10 @@ export const assets = sqliteTable(
     boundAt: integer("bound_at", { mode: "timestamp_ms" }),
     expiresAt: integer("expires_at", { mode: "timestamp_ms" }),
     deletedAt: integer("deleted_at", { mode: "timestamp_ms" }),
+    gcClaimedAt: integer("gc_claimed_at", { mode: "timestamp_ms" }),
+    gcFailureCount: integer("gc_failure_count").notNull().default(0),
+    gcLastFailedAt: integer("gc_last_failed_at", { mode: "timestamp_ms" }),
+    gcLastErrorCode: text("gc_last_error_code", { enum: ["R2_UNAVAILABLE", "R2_DELETE_FAILED", "METADATA_UPDATE_FAILED"] }),
   },
   (table) => [
     uniqueIndex("assets_r2_key_unique").on(table.r2Key),

@@ -125,7 +125,7 @@ async function allowedMemberIds(db: DocxImportCommitDatabase, ids: string[]): Pr
 async function loadAssets(db: DocxImportCommitDatabase, ids: string[]): Promise<AssetRow[]> {
   if (ids.length === 0) return [];
   return allByIds<AssetRow>(db, ids, (placeholders) => (
-    `SELECT id, owner_id AS ownerId, kind, filename, mime_type AS mimeType, byte_size AS byteSize, status, deleted_at AS deletedAt FROM assets WHERE id IN (${placeholders})`
+    `SELECT id, owner_id AS ownerId, kind, filename, mime_type AS mimeType, byte_size AS byteSize, status, deleted_at AS deletedAt, gc_claimed_at AS gcClaimedAt FROM assets WHERE id IN (${placeholders})`
   ));
 }
 
@@ -157,6 +157,7 @@ function assertClaimableAssets(
       || asset.kind !== "image"
       || asset.status !== "temporary"
       || asset.deletedAt !== null
+      || asset.gcClaimedAt != null
       || asset.mimeType !== manifest.mimeType
       || asset.filename !== manifest.filename
       || asset.byteSize <= 0
