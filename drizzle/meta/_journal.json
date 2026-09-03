@@ -57,6 +57,13 @@
       "when": 1788400781754,
       "tag": "0007_busy_valeria_richards",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1788401020074,
+      "tag": "0008_pretty_callisto",
+      "breakpoints": true
     }
   ]
 }

@@ -12,6 +12,63 @@ export type PostSort = "latest" | "active";
 
 const visiblePost = and(isNull(posts.deletedAt), isNull(posts.hiddenAt));
 
+type DiscussionState = {
+  authorId: string | null;
+  deletedAt: Date | null;
+  hiddenAt: Date | null;
+};
+
+type LifecycleQueryContext = {
+  currentAnnotationKeys: Set<string>;
+  discussionByPostId: Map<string, DiscussionState[]>;
+};
+
+function annotationKey(postId: string, annotationId: string): string {
+  return `${postId}:${annotationId}`;
+}
+
+async function loadLifecycleQueryContext(postIdValues: string[]): Promise<LifecycleQueryContext> {
+  const postIds = [...new Set(postIdValues)];
+  if (postIds.length === 0) return { currentAnnotationKeys: new Set(), discussionByPostId: new Map() };
+  const db = getDb();
+  const [anchorRows, postReplyRows, annotationRows, annotationReplyRows] = await Promise.all([
+    db.select({ postId: postAnnotationAnchors.postId, annotationId: postAnnotationAnchors.annotationId })
+      .from(postAnnotationAnchors)
+      .where(inArray(postAnnotationAnchors.postId, postIds)),
+    db.select({ postId: replies.postId, authorId: replies.authorId, deletedAt: replies.deletedAt, hiddenAt: replies.hiddenAt })
+      .from(replies)
+      .where(inArray(replies.postId, postIds)),
+    db.select({ postId: postAnnotationAnchors.postId, authorId: annotations.authorId, deletedAt: annotations.deletedAt, hiddenAt: annotations.hiddenAt })
+      .from(postAnnotationAnchors)
+      .innerJoin(annotations, eq(postAnnotationAnchors.annotationId, annotations.id))
+      .where(inArray(postAnnotationAnchors.postId, postIds)),
+    db.select({ postId: postAnnotationAnchors.postId, authorId: annotationReplies.authorId, deletedAt: annotationReplies.deletedAt, hiddenAt: annotationReplies.hiddenAt })
+      .from(postAnnotationAnchors)
+      .innerJoin(annotationReplies, eq(postAnnotationAnchors.annotationId, annotationReplies.annotationId))
+      .where(inArray(postAnnotationAnchors.postId, postIds)),
+  ]);
+  const discussionByPostId = new Map<string, DiscussionState[]>();
+  for (const row of [...postReplyRows, ...annotationRows, ...annotationReplyRows]) {
+    const current = discussionByPostId.get(row.postId) ?? [];
+    current.push({ authorId: row.authorId, deletedAt: row.deletedAt, hiddenAt: row.hiddenAt });
+    discussionByPostId.set(row.postId, current);
+  }
+  return {
+    currentAnnotationKeys: new Set(anchorRows.map((row) => annotationKey(row.postId, row.annotationId))),
+    discussionByPostId,
+  };
+}
+
+function contextAnnotationAvailable(context: LifecycleQueryContext, postId: string, annotationId: string | null): boolean {
+  return Boolean(annotationId && context.currentAnnotationKeys.has(annotationKey(postId, annotationId)));
+}
+
+async function findUsersByIds(idValues: string[]) {
+  const ids = [...new Set(idValues)];
+  const chunks = Array.from({ length: Math.ceil(ids.length / 90) }, (_, index) => ids.slice(index * 90, index * 90 + 90));
+  return (await Promise.all(chunks.map((chunk) => getDb().select().from(users).where(inArray(users.id, chunk))))).flat();
+}
+
 export async function allowlistCount(): Promise<number> {
   const [row] = await getDb().select({ value: count() }).from(allowedUsers);
   return row?.value ?? 0;
@@ -116,16 +173,11 @@ export async function listPosts(options: { sort?: PostSort; query?: string; auth
     conditions.push(or(like(posts.title, pattern), like(posts.searchText, pattern))!);
   }
 
-  let postIds: string[] | null = null;
   if (options.tagName) {
-    const tagged = await getDb()
-      .select({ postId: postTags.postId })
-      .from(postTags)
-      .innerJoin(tags, eq(postTags.tagId, tags.id))
-      .where(eq(tags.normalizedName, options.tagName.toLocaleLowerCase("zh-CN")));
-    postIds = tagged.map((row) => row.postId);
-    if (postIds.length === 0) return [];
-    conditions.push(inArray(posts.id, postIds));
+    const tag = (await getDb().select({ id: tags.id }).from(tags)
+      .where(eq(tags.normalizedName, options.tagName.toLocaleLowerCase("zh-CN"))).limit(1))[0];
+    if (!tag) return [];
+    conditions.push(inArray(posts.id, getDb().select({ postId: postTags.postId }).from(postTags).where(eq(postTags.tagId, tag.id))));
   }
 
   const rows = await getDb()
@@ -134,13 +186,28 @@ export async function listPosts(options: { sort?: PostSort; query?: string; auth
     .innerJoin(users, eq(posts.authorId, users.id))
     .where(and(...conditions))
     .orderBy(options.sort === "active" ? desc(posts.lastActivityAt) : desc(posts.publishedAt))
-    .limit(options.limit ?? 40);
-
-  return Promise.all(rows.map(async (row) => ({
+    .limit(Math.min(Math.max(options.limit ?? 40, 1), 60));
+  const ids = rows.map((row) => row.post.id);
+  if (ids.length === 0) return [];
+  const [tagRows, countRows] = await Promise.all([
+    getDb().select({ postId: postTags.postId, id: tags.id, name: tags.name, normalizedName: tags.normalizedName })
+      .from(postTags)
+      .innerJoin(tags, eq(postTags.tagId, tags.id))
+      .where(inArray(postTags.postId, ids))
+      .orderBy(asc(tags.name)),
+    getDb().select({ postId: replies.postId, value: count() })
+      .from(replies)
+      .where(and(inArray(replies.postId, ids), isNull(replies.deletedAt), isNull(replies.hiddenAt)))
+      .groupBy(replies.postId),
+  ]);
+  const tagsByPostId = new Map<string, Array<{ id: string; name: string; normalizedName: string }>>();
+  for (const tag of tagRows) tagsByPostId.set(tag.postId, [...(tagsByPostId.get(tag.postId) ?? []), { id: tag.id, name: tag.name, normalizedName: tag.normalizedName }]);
+  const countByPostId = new Map(countRows.map((row) => [row.postId, row.value]));
+  return rows.map((row) => ({
     ...row,
-    tags: await getTagsForPost(row.post.id),
-    replyCount: await getReplyCount(row.post.id),
-  })));
+    tags: tagsByPostId.get(row.post.id) ?? [],
+    replyCount: countByPostId.get(row.post.id) ?? 0,
+  }));
 }
 
 export async function getPost(id: string) {
@@ -286,7 +353,10 @@ export async function listReplies(postId: string, options: { includeUnavailableR
   const included = new Set(lifecycleRows.map((row) => row.id));
   const lifecycleById = new Map(lifecycleRows.map((row) => [row.id, row]));
   const replyById = new Map(rows.map((row) => [row.reply.id, row.reply]));
-  return Promise.all(rows.filter((row) => included.has(row.reply.id)).map(async (row) => {
+  const replyToIds = [...new Set(rows.map((row) => row.reply.replyToUserId).filter((id): id is string => Boolean(id)))];
+  const replyToUsers = await findUsersByIds(replyToIds);
+  const replyToById = new Map(replyToUsers.map((user) => [user.id, user]));
+  return rows.filter((row) => included.has(row.reply.id)).map((row) => {
     const lifecycle = lifecycleById.get(row.reply.id)!;
     const directTarget = row.reply.replyToReplyId ? replyById.get(row.reply.replyToReplyId) : null;
     return {
@@ -299,10 +369,10 @@ export async function listReplies(postId: string, options: { includeUnavailableR
         visibleDependentCount: lifecycle.visibleDependentCount,
         visibleOtherAuthorDependentCount: lifecycle.visibleOtherAuthorDependentCount,
       },
-      replyTo: row.reply.replyToUserId ? await findUserById(row.reply.replyToUserId) : null,
+      replyTo: row.reply.replyToUserId ? replyToById.get(row.reply.replyToUserId) ?? null : null,
       replyToUnavailable: Boolean(directTarget && contentState(directTarget).state !== "normal"),
     };
-  }));
+  });
 }
 
 export async function findReply(id: string) {
@@ -331,15 +401,20 @@ export async function listUserActivity(actorUserId: string, limit = 50) {
     .leftJoin(annotationReplies, eq(activityEvents.annotationReplyId, annotationReplies.id))
     .where(and(eq(activityEvents.actorUserId, actorUserId), isNull(activityEvents.invalidatedAt)))
     .orderBy(desc(activityEvents.createdAt))
-    .limit(limit);
-
-  return Promise.all(rows.map(async (row) => {
+    .limit(Math.min(Math.max(limit, 1), 50));
+  const replyToIds = rows.map((row) => row.event.replyToUserId).filter((id): id is string => Boolean(id));
+  const [context, replyToUsers] = await Promise.all([
+    loadLifecycleQueryContext(rows.flatMap((row) => row.post ? [row.post.id] : [])),
+    findUsersByIds(replyToIds),
+  ]);
+  const replyToById = new Map(replyToUsers.map((user) => [user.id, user]));
+  return rows.map((row) => {
     const postState = row.post ? contentState(row.post).state : "deleted";
     const replyState = row.reply ? contentState(row.reply).state : "deleted";
     const annotationState = row.annotation ? contentState(row.annotation).state : "deleted";
     const annotationReplyState = row.annotationReply ? contentState(row.annotationReply).state : "deleted";
-    const annotationCurrent = row.post ? await currentAnnotationAnchorAvailable(row.post.id, row.event.annotationId) : false;
-    const postReachable = row.post ? buildPostLifecycleView(row.post, await getPostDiscussionStates(row.post.id)).discussionReachable : false;
+    const annotationCurrent = row.post ? contextAnnotationAvailable(context, row.post.id, row.event.annotationId) : false;
+    const postReachable = row.post ? buildPostLifecycleView(row.post, context.discussionByPostId.get(row.post.id) ?? []).discussionReachable : false;
     const annotationEvent = row.event.eventType === "ANNOTATION_CREATED" || row.event.eventType === "ANNOTATION_REPLY_CREATED";
     const annotationTargetState = row.event.eventType === "ANNOTATION_REPLY_CREATED" ? annotationReplyState : annotationState;
     const eventMetadataVisible = annotationEvent
@@ -352,7 +427,7 @@ export async function listUserActivity(actorUserId: string, limit = 50) {
       reply: row.reply ? { ...row.reply, markdown: replyState === "normal" ? row.reply.markdown : "" } : null,
       annotation: row.annotation ? { ...row.annotation, contentMarkdown: annotationState === "normal" && annotationCurrent ? row.annotation.contentMarkdown : "", originalSelectedText: annotationState === "normal" && annotationCurrent ? row.annotation.originalSelectedText : "" } : null,
       annotationReply: row.annotationReply ? { ...row.annotationReply, contentMarkdown: annotationReplyState === "normal" && annotationCurrent ? row.annotationReply.contentMarkdown : "" } : null,
-      replyTo: row.event.replyToUserId ? await findUserById(row.event.replyToUserId) : null,
+      replyTo: row.event.replyToUserId ? replyToById.get(row.event.replyToUserId) ?? null : null,
       postAvailable: Boolean(row.post && postState === "normal"),
       postReachable,
       postState,
@@ -364,7 +439,7 @@ export async function listUserActivity(actorUserId: string, limit = 50) {
       annotationReplyAvailable: Boolean(row.annotationReply && annotationReplyState === "normal" && annotationCurrent),
       annotationReplyState,
     };
-  }));
+  });
 }
 
 export async function countUnreadNotifications(recipientUserId: string): Promise<number> {
@@ -389,9 +464,11 @@ export async function listNotifications(recipientUserId: string, options: { unre
     .leftJoin(annotationReplies, eq(notifications.annotationReplyId, annotationReplies.id))
     .where(and(...conditions))
     .orderBy(desc(notifications.createdAt))
-    .limit(options.limit ?? 60);
-
-  return Promise.all(rows.map((row) => lifecycleNotificationRow(row)));
+    .limit(Math.min(Math.max(options.limit ?? 60, 1), 60));
+  const context = await loadLifecycleQueryContext(
+    rows.flatMap((row) => row.post ? [row.post.id] : []),
+  );
+  return Promise.all(rows.map((row) => lifecycleNotificationRow(row, context)));
 }
 
 export async function findOwnedNotification(id: string, recipientUserId: string) {
@@ -417,13 +494,21 @@ async function lifecycleNotificationRow<T extends {
   reply: typeof replies.$inferSelect | null;
   annotation: typeof annotations.$inferSelect | null;
   annotationReply: typeof annotationReplies.$inferSelect | null;
-}>(row: T) {
+}>(row: T, context?: LifecycleQueryContext) {
   const postState = row.post ? contentState(row.post).state : "deleted";
   const replyState = row.reply ? contentState(row.reply).state : "deleted";
   const annotationState = row.annotation ? contentState(row.annotation).state : "deleted";
   const annotationReplyState = row.annotationReply ? contentState(row.annotationReply).state : "deleted";
-  const annotationCurrent = row.post ? await currentAnnotationAnchorAvailable(row.post.id, row.event.annotationId) : false;
-  const postReachable = row.post ? buildPostLifecycleView(row.post, await getPostDiscussionStates(row.post.id)).discussionReachable : false;
+  const annotationCurrent = row.post
+    ? context
+      ? contextAnnotationAvailable(context, row.post.id, row.event.annotationId)
+      : await currentAnnotationAnchorAvailable(row.post.id, row.event.annotationId)
+    : false;
+  const postReachable = row.post
+    ? buildPostLifecycleView(row.post, context
+      ? context.discussionByPostId.get(row.post.id) ?? []
+      : await getPostDiscussionStates(row.post.id)).discussionReachable
+    : false;
   const annotationEvent = row.event.eventType === "ANNOTATION_CREATED" || row.event.eventType === "ANNOTATION_REPLY_CREATED";
   const annotationTargetState = row.event.eventType === "ANNOTATION_REPLY_CREATED" ? annotationReplyState : annotationState;
   const eventMetadataVisible = annotationEvent
@@ -487,16 +572,20 @@ export async function markAllNotificationsRead(recipientUserId: string) {
 }
 
 export async function listTags() {
-  const rows = await getDb().select().from(tags).orderBy(asc(tags.name));
-  const counted = await Promise.all(rows.map(async (tag) => {
-    const [result] = await getDb()
-      .select({ value: count() })
-      .from(postTags)
-      .innerJoin(posts, eq(postTags.postId, posts.id))
-      .where(and(eq(postTags.tagId, tag.id), visiblePost));
-    return { ...tag, postCount: result?.value ?? 0 };
-  }));
-  return counted.filter((tag) => tag.postCount > 0);
+  return getDb()
+    .select({
+      id: tags.id,
+      name: tags.name,
+      normalizedName: tags.normalizedName,
+      createdAt: tags.createdAt,
+      postCount: count(),
+    })
+    .from(tags)
+    .innerJoin(postTags, eq(postTags.tagId, tags.id))
+    .innerJoin(posts, eq(postTags.postId, posts.id))
+    .where(visiblePost)
+    .groupBy(tags.id, tags.name, tags.normalizedName, tags.createdAt)
+    .orderBy(asc(tags.name));
 }
 
 export type AdminContentStatus = "normal" | "deleted" | "hidden";

@@ -52,7 +52,7 @@ export const posts = sqliteTable(
   (table) => [
     index("posts_published_at_idx").on(table.publishedAt),
     index("posts_last_activity_at_idx").on(table.lastActivityAt),
-    index("posts_author_id_idx").on(table.authorId),
+    index("posts_author_published_idx").on(table.authorId, table.publishedAt),
     uniqueIndex("posts_author_creation_submission_unique").on(table.authorId, table.creationSubmissionKey),
   ],
 );
@@ -76,7 +76,7 @@ export const replies = sqliteTable(
     hiddenReason: text("hidden_reason"),
   },
   (table) => [
-    index("replies_post_id_idx").on(table.postId),
+    index("replies_post_published_idx").on(table.postId, table.publishedAt),
     index("replies_root_reply_id_idx").on(table.rootReplyId),
     index("replies_reply_to_reply_id_idx").on(table.replyToReplyId),
     uniqueIndex("replies_author_submission_unique").on(table.authorId, table.submissionKey),
@@ -326,7 +326,10 @@ export const postTags = sqliteTable(
     postId: text("post_id").notNull().references(() => posts.id),
     tagId: text("tag_id").notNull().references(() => tags.id),
   },
-  (table) => [primaryKey({ columns: [table.postId, table.tagId] })],
+  (table) => [
+    primaryKey({ columns: [table.postId, table.tagId] }),
+    index("post_tags_tag_post_idx").on(table.tagId, table.postId),
+  ],
 );
 
 export const assets = sqliteTable(
