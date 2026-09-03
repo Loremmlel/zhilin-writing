@@ -118,6 +118,31 @@ test("canonical Markdown escapes literal syntax without normalizing Unicode", ()
   );
 });
 
+test("canonical Markdown coalesces adjacent Word runs with identical formatting", () => {
+  const annotationId = "00000000-0000-4000-8000-000000000001";
+  const markdown = renderCanonicalImportMarkdown([{
+    type: "paragraph",
+    id: "block_1",
+    segments: [
+      { text: "很多", marks: ["em"], commentIds: ["11"] },
+      { text: "人这辈子就再也见不到了", marks: ["em"], commentIds: ["11"] },
+    ],
+  }], [], [{
+    annotationId,
+    sourceCommentId: "11",
+    blockId: "block_1",
+    blockLocalStart: 0,
+    blockLocalEnd: 13,
+    sourceAuthorName: "批注作者",
+    sourceDocumentOrder: 0,
+    sourceResolved: false,
+    bodyMarkdown: "批注正文",
+    replies: [],
+  }]);
+
+  assert.equal(markdown, `:annotation[*很多人这辈子就再也见不到了*]{#${annotationId}}`);
+});
+
 test("canonical Markdown enforces the UTF-8 byte limit", () => {
   assert.throws(
     () => renderCanonicalImportMarkdown([

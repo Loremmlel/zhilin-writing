@@ -114,6 +114,9 @@ export function parseWordComments(
     const sourceCommentId = xmlAttr(node, "id");
     if (!sourceCommentId) return [];
     const paragraphs = xmlChildren(node, "p");
+    const bodyMarkdown = paragraphs
+      .map((paragraph) => escapeMarkdownLiteral(xmlText(paragraph).trim()))
+      .join("\n\n");
     const paraId = paragraphs.length > 0 ? xmlAttr(paragraphs.at(-1)!, "paraId") : undefined;
     const extendedRecords = paraId ? extendedByParaId.get(paraId) ?? [] : [];
     const extended = extendedRecords[0];
@@ -126,7 +129,7 @@ export function parseWordComments(
       sourceCreatedAt: xmlAttr(node, "date"),
       sourceDocumentOrder,
       sourceResolved: extended?.resolved ?? false,
-      bodyMarkdown: paragraphs.map((paragraph) => escapeMarkdownLiteral(xmlText(paragraph).trim())).join("\n\n"),
+      bodyMarkdown,
       paraId,
       parentParaId: extended?.parentParaId,
       ...(parentParaIds.length > 0 ? { parentParaIds } : {}),
@@ -276,6 +279,12 @@ export function resolveAnnotationThreads(
       }));
       continue;
     }
+    if (!thread.root.bodyMarkdown.trim()) {
+      skipped.push(skipWordThread(thread, "ANNOTATION_THREAD_SKIPPED", {
+        reason: "EMPTY_BODY",
+      }));
+      continue;
+    }
     const trace = traces.get(thread.root.sourceCommentId);
     if (!trace) {
       skipped.push(skipWordThread(thread, "ANNOTATION_ORPHAN_DEFINITION"));
@@ -344,7 +353,7 @@ export function resolveAnnotationThreads(
     sourceDocumentOrder: thread.root.sourceDocumentOrder,
     sourceResolved: thread.root.sourceResolved,
     bodyMarkdown: thread.root.bodyMarkdown,
-    replies: thread.replies.map((reply): ImportedReply => ({
+    replies: thread.replies.filter((reply) => reply.bodyMarkdown.trim()).map((reply): ImportedReply => ({
       replyId: createReplyId(reply.sourceCommentId),
       sourceCommentId: reply.sourceCommentId,
       parentSourceCommentId: reply.parentSourceCommentId!,

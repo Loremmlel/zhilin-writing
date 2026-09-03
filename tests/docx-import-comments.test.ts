@@ -205,6 +205,25 @@ test("builds immediate reply parents from the last comment paragraph and flatten
   ]);
 });
 
+test("ignores empty annotation-reference replies emitted by Word", async () => {
+  const definitions = `
+    ${comment("60", "AAA00060", "根作者", "RA", "根批注")}
+    <w:comment w:id="61" w:author="回复作者" w:date="2024-01-01T00:00:00Z">
+      <w:p w14:paraId="AAA00061"><w:r><w:annotationRef/></w:r></w:p>
+    </w:comment>`;
+  const extended = commentsExtendedXml(`
+    <w15:commentEx w15:paraId="AAA00060"/>
+    <w15:commentEx w15:paraId="AAA00061" w15:paraIdParent="AAA00060"/>`);
+  const parsed = await parseDocx(await commentFixture(
+    `<w:p><w:commentRangeStart w:id="60"/><w:commentRangeStart w:id="61"/><w:r><w:t>锚点</w:t></w:r><w:commentRangeEnd w:id="60"/><w:commentRangeEnd w:id="61"/></w:p>`,
+    definitions,
+    extended,
+  ), undefined, parseOptions);
+
+  assert.equal(parsed.skippedThreads.length, 0);
+  assert.deepEqual(parsed.threads.map((thread) => [thread.sourceCommentId, thread.replies.length]), [["60", 0]]);
+});
+
 test("enforces the combined root and reply definition limit before graph construction", () => {
   const catalogWith = (count: number) => parseWordComments(xml(commentsXml(
     Array.from({ length: count }, (_, index) => comment(

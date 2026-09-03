@@ -19,11 +19,14 @@ import { toDocxImportCommitPayload } from "../lib/docx-import/commit-schema.ts";
 import { handleDocxWorkerRequest } from "../lib/docx-import/docx-import.worker.ts";
 import { replaceDocxAssetReferences } from "../lib/docx-import/preview-assets.ts";
 import { validateEditedImportPreview } from "../lib/docx-import/preview-validation.ts";
+import { importedThreadSelectedText } from "../lib/docx-import/thread-range.ts";
 import type { DocxImportIR, DocxPreviewAsset, ParsedDocx } from "../lib/docx-import/types.ts";
 import { DOCX_WORKER_PROGRESS_STAGES, type DocxWorkerResponse } from "../lib/docx-import/worker-protocol.ts";
 
 const fixturePath = resolve("tests/fixtures/docx/generated/semantic-matrix.docx");
 const expectedPath = resolve("tests/fixtures/docx/expected/normalized-ir.json");
+const crossBlockFixturePath = resolve("tests/fixtures/docx/manual/cross-block-annotation.docx");
+const crossBlockFixtureSha256 = "1358c68f838c5467aeced325f28d5f1f31e62963d2cfbd0f7b75d335af4901bc";
 const batchId = "00000000-0000-4000-8000-000000000100";
 const importerId = "00000000-0000-4000-8000-000000000101";
 const attributedId = "00000000-0000-4000-8000-000000000102";
@@ -143,13 +146,82 @@ test("the generated semantic matrix is deterministic across the complete import 
   assert.equal(importedAuthor.attributedUser?.id, attributedId);
 });
 
-async function runWorker(bytes: Uint8Array): Promise<{ result: ParsedDocx; stages: string[] }> {
+test("the owner-provided DOCX preserves a real three-paragraph annotation through the complete pipeline", async () => {
+  const bytes = await readFile(crossBlockFixturePath);
+  assert.equal(createHash("sha256").update(bytes).digest("hex"), crossBlockFixtureSha256);
+  const worker = await runWorker(bytes, "cross-block-annotation.docx", "owner-cross-block");
+  assert.deepEqual(worker.stages, [...DOCX_WORKER_PROGRESS_STAGES]);
+  assert.equal(worker.result.skippedThreads.length, 0);
+
+  const crossBlockSource = worker.result.threads.find((thread) => thread.sourceCommentId === "11");
+  assert.ok(crossBlockSource?.endBlockId);
+  const selectedText = importedThreadSelectedText(worker.result.blocks, crossBlockSource);
+  assert.equal(selectedText.split("\n\n").length, 3);
+  assert.match(selectedText, /^青春的终点/);
+  assert.match(selectedText, /豪言壮语。$/);
+
+  const ir = finalizeDocxPreview(worker.result, {
+    importBatchId: batchId,
+    sourceSha256: crossBlockFixtureSha256,
+    idFactory: sequentialIdsWithClosure(),
+  });
+  const crossBlockThread = ir.threads.find((thread) => thread.sourceCommentId === "11");
+  assert.ok(crossBlockThread?.endBlockId);
+  assert.equal(ir.canonicalMarkdown.split(crossBlockThread.annotationId).length - 1, 3);
+
+  const preview = {
+    version: 1 as const,
+    importBatchId: batchId,
+    title: ir.suggestedTitle,
+    createdAt: "2026-09-03T05:00:00.000Z",
+    expiresAt: "2026-09-04T05:00:00.000Z",
+    ir,
+    canonicalMarkdown: ir.canonicalMarkdown,
+    markdown: ir.canonicalMarkdown,
+    temporaryAssets: [],
+    authorMappings: {},
+  };
+  const checked = validateEditedImportPreview(preview, Date.parse("2026-09-03T06:00:00.000Z"));
+  assert.equal(checked.ok, true, checked.ok ? undefined : JSON.stringify(checked.errors));
+  if (!checked.ok) return;
+
+  const validated = validateDocxImportCommitPayload(toDocxImportCommitPayload(checked.payload));
+  const plan = planDocxImportCommit(validated, {
+    importerUserId: importerId,
+    importerDisplayName: "柚子",
+    postId: "00000000-0000-4000-8000-000000000103",
+    revisionId: "00000000-0000-4000-8000-000000000104",
+    eventId: "00000000-0000-4000-8000-000000000105",
+    payloadHash: "c".repeat(64),
+    now: new Date("2026-09-03T06:00:00.000Z"),
+    assets: [],
+  });
+  const rowCount = (kind: string) => plan.rowChunks
+    .filter((row) => row.kind === kind)
+    .reduce((sum, row) => sum + row.rowCount, 0);
+  assert.equal(rowCount("annotations"), ir.threads.length);
+  assert.equal(rowCount("anchors"), ir.threads.length);
+  assert.equal(collectAnnotationIds(parseAnnotationMarkdown(validated.markdown)).length, ir.threads.length);
+
+  const documentJson = await parseWithMilkdown(validated.markdown);
+  assert.ok(Array.isArray(documentJson.content));
+  assert.equal(
+    documentJson.content.filter((node) => JSON.stringify(node).includes(crossBlockThread.annotationId)).length,
+    3,
+  );
+});
+
+async function runWorker(
+  bytes: Uint8Array,
+  filename = "semantic-matrix.docx",
+  requestId = "semantic-matrix",
+): Promise<{ result: ParsedDocx; stages: string[] }> {
   const responses: DocxWorkerResponse[] = [];
   const transferableBytes = Uint8Array.from(bytes).buffer;
   await handleDocxWorkerRequest({
     kind: "start",
-    requestId: "semantic-matrix",
-    filename: "semantic-matrix.docx",
+    requestId,
+    filename,
     bytes: transferableBytes,
   }, (message) => responses.push(message));
   const failure = responses.find((message) => message.kind === "failure");

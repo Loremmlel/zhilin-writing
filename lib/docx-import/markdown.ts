@@ -126,7 +126,7 @@ function renderInline(
 
 function renderSegmentSlice(segments: InlineSegment[], start: number, end: number): string {
   let cursor = 0;
-  const rendered: string[] = [];
+  const selected: InlineSegment[] = [];
   for (const segment of segments) {
     const segmentStart = cursor;
     const segmentEnd = cursor + segment.text.length;
@@ -136,20 +136,32 @@ function renderSegmentSlice(segments: InlineSegment[], start: number, end: numbe
       Math.max(0, start - segmentStart),
       Math.min(segment.text.length, end - segmentStart),
     );
+    const previous = selected.at(-1);
+    if (
+      previous
+      && previous.synthetic === segment.synthetic
+      && previous.link === segment.link
+      && previous.marks.length === segment.marks.length
+      && previous.marks.every((mark, index) => mark === segment.marks[index])
+    ) {
+      previous.text += text;
+    } else {
+      selected.push({ ...segment, text });
+    }
+  }
+
+  return selected.map((segment) => {
+    const text = segment.text;
     let value = segment.synthetic
       ? text
       : segment.marks.includes("code") ? renderCode(text) : escapeMarkdownLiteral(text);
-    if (segment.synthetic) {
-      rendered.push(value);
-      continue;
-    }
+    if (segment.synthetic) return value;
     if (segment.marks.includes("strike")) value = `~~${value}~~`;
     if (segment.marks.includes("em")) value = `*${value}*`;
     if (segment.marks.includes("strong")) value = `**${value}**`;
     if (segment.link) value = `[${value}](${escapeLinkDestination(segment.link)})`;
-    rendered.push(value);
-  }
-  return rendered.join("");
+    return value;
+  }).join("");
 }
 
 export function escapeMarkdownLiteral(value: string): string {
