@@ -5,10 +5,10 @@
 - 日期：2026-09-03
 - 分支：`feature/v7-hardening`
 - 基线：`488ab91`
-- 阶段：V7 代码与自动化回归完成；真实浏览器验收和生产发布被发布门阻止
+- 阶段：V7 代码与自动化回归完成；用户已明确批准因沙箱限制跳过真实浏览器门，进入 owner-only 发布
 - 自动化最终：346 tests / 345 pass / 1 approved Word Online fixture skip；build、rendered HTML、TypeScript、ESLint 均通过
 - 浏览器门：`BLOCKED`；健康的 Site preview 已启动，但 Work cloud browser 三次均在进入应用前返回 `ERR_BLOCKED_BY_CLIENT`
-- 发布状态：`NOT DEPLOYED`；未创建候选版本、未切换生产，前一个稳定版本保持原样
+- 发布授权：2026-09-03 用户明确接受 `ERR_BLOCKED_BY_CLIENT` 带来的浏览器证据缺口；本提交作为 owner-only/private deployment candidate
 
 ## 可行性裁决
 
@@ -84,7 +84,7 @@
 
 ## 16. 尚存已知限制
 
-- Work cloud browser 当前无法打开 Site preview，发布门未通过。
+- Work cloud browser 当前无法打开 Site preview；这是用户明确接受的发布例外，不伪装成已完成浏览器验收。
 - SIWC dispatcher 接管的顶层 session 失效可能不经过应用 typed result。
 - R2/D1 不具备跨存储事务。
 - bounded `%LIKE%` search 保留全表扫描取舍。
@@ -103,7 +103,7 @@
 
 ## 发布决定
 
-V7 说明书要求真实产品巡检、全部 viewport、慢网与交互 failure injection 通过后才能发布。当前缺失的是这一类浏览器证据，而不是代码编译或测试证据。因此本轮明确停止在部署前：不调用 Sites save/deploy，不变更 owner/private access，不触碰生产 D1/R2，也不宣称 V7 已发布。浏览器门恢复后应从回归矩阵的 `BLOCKED` 行继续，全部通过后再记录旧 Sites version、保存候选版本、执行 owner-only/private deploy 与生产 smoke/rollback 验证。
+V7 说明书原本要求真实产品巡检、全部 viewport、慢网与交互 failure injection 通过后才能发布。2026-09-03 用户确认该缺口来自当前 Work 沙箱/云浏览器限制，并明确授权跳过这一门槛。发布仍保持 owner-only/private，不扩大访问范围；旧稳定 Sites version 必须在发布前记录为 rollback target。浏览器矩阵继续保留 `BLOCKED`，不能因本次例外改写为 `PASS`。
 
 ## 证据索引
 

@@ -16,6 +16,7 @@
 - Unit：`PASS`，346 tests / 345 pass / 1 approved skip
 - Site preview process：`PASS`
 - Work cloud browser navigation：`BLOCKED`，三次均为 `ERR_BLOCKED_BY_CLIENT`
+- Browser gate exception：`AUTHORIZED`，用户于 2026-09-03 明确允许因沙箱限制跳过；所有 browser rows 仍保持 `BLOCKED` 而非 `PASS`
 - Build / rendered HTML：`PASS`，production build + 9/9 rendered artifact checks
 - TypeScript / ESLint：`PASS`
 
@@ -129,6 +130,6 @@
 - [ ] `PENDING` D1 / R2 bindings、allowlist、admin identity 正常。
 - [ ] `PENDING` production 无 fixture/mock/test account/debug backdoor。
 - [ ] `PENDING` 记录前一个稳定 Sites version。
-- [ ] `BLOCKED` owner-only/private deployment；真实浏览器门未通过，未保存或部署候选版本。
+- [ ] `AUTHORIZED` owner-only/private deployment；用户已明确批准浏览器门例外，等待 Sites terminal status。
 - [ ] `PENDING` production smoke test。
 - [ ] `PENDING` rollback procedure 验证。
