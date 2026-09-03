@@ -727,6 +727,53 @@ export async function countUnreadNotifications(recipientUserId: string): Promise
   return row?.value ?? 0;
 }
 
+const notificationSelection = {
+  notification: {
+    id: notifications.id,
+    notificationType: notifications.notificationType,
+    postId: notifications.postId,
+    replyId: notifications.replyId,
+    annotationId: notifications.annotationId,
+    annotationReplyId: notifications.annotationReplyId,
+    metadataJson: notifications.metadataJson,
+    createdAt: notifications.createdAt,
+    readAt: notifications.readAt,
+  },
+  event: {
+    eventType: activityEvents.eventType,
+    annotationId: activityEvents.annotationId,
+    replyToUserId: activityEvents.replyToUserId,
+    metadataJson: activityEvents.metadataJson,
+  },
+  actor: {
+    displayName: users.displayName,
+    avatarAssetId: users.avatarAssetId,
+  },
+  post: {
+    id: posts.id,
+    authorId: posts.authorId,
+    title: posts.title,
+    deletedAt: posts.deletedAt,
+    hiddenAt: posts.hiddenAt,
+  },
+  reply: {
+    markdown: replies.markdown,
+    deletedAt: replies.deletedAt,
+    hiddenAt: replies.hiddenAt,
+  },
+  annotation: {
+    contentMarkdown: annotations.contentMarkdown,
+    originalSelectedText: annotations.originalSelectedText,
+    deletedAt: annotations.deletedAt,
+    hiddenAt: annotations.hiddenAt,
+  },
+  annotationReply: {
+    contentMarkdown: annotationReplies.contentMarkdown,
+    deletedAt: annotationReplies.deletedAt,
+    hiddenAt: annotationReplies.hiddenAt,
+  },
+};
+
 export async function listNotifications(
   recipientUserId: string,
   options: { unreadOnly?: boolean; limit?: number } = {},
@@ -734,15 +781,7 @@ export async function listNotifications(
   const conditions = [eq(notifications.recipientUserId, recipientUserId)];
   if (options.unreadOnly) conditions.push(isNull(notifications.readAt));
   const rows = await getDb()
-    .select({
-      notification: notifications,
-      event: activityEvents,
-      actor: users,
-      post: posts,
-      reply: replies,
-      annotation: annotations,
-      annotationReply: annotationReplies,
-    })
+    .select(notificationSelection)
     .from(notifications)
     .innerJoin(activityEvents, eq(notifications.eventId, activityEvents.id))
     .innerJoin(users, eq(notifications.actorUserId, users.id))
@@ -762,15 +801,7 @@ export async function listNotifications(
 export async function findOwnedNotification(id: string, recipientUserId: string) {
   const row = (
     await getDb()
-      .select({
-        notification: notifications,
-        event: activityEvents,
-        actor: users,
-        post: posts,
-        reply: replies,
-        annotation: annotations,
-        annotationReply: annotationReplies,
-      })
+      .select(notificationSelection)
       .from(notifications)
       .innerJoin(activityEvents, eq(notifications.eventId, activityEvents.id))
       .innerJoin(users, eq(notifications.actorUserId, users.id))
@@ -787,12 +818,32 @@ export async function findOwnedNotification(id: string, recipientUserId: string)
 
 async function lifecycleNotificationRow<
   T extends {
-    notification: typeof notifications.$inferSelect;
-    event: typeof activityEvents.$inferSelect;
-    post: typeof posts.$inferSelect | null;
-    reply: typeof replies.$inferSelect | null;
-    annotation: typeof annotations.$inferSelect | null;
-    annotationReply: typeof annotationReplies.$inferSelect | null;
+    notification: Pick<
+      typeof notifications.$inferSelect,
+      | "notificationType"
+      | "postId"
+      | "metadataJson"
+      | "replyId"
+      | "annotationId"
+      | "annotationReplyId"
+    >;
+    event: Pick<
+      typeof activityEvents.$inferSelect,
+      "eventType" | "annotationId" | "replyToUserId" | "metadataJson"
+    >;
+    post: Pick<
+      typeof posts.$inferSelect,
+      "id" | "authorId" | "title" | "deletedAt" | "hiddenAt"
+    > | null;
+    reply: Pick<typeof replies.$inferSelect, "markdown" | "deletedAt" | "hiddenAt"> | null;
+    annotation: Pick<
+      typeof annotations.$inferSelect,
+      "contentMarkdown" | "originalSelectedText" | "deletedAt" | "hiddenAt"
+    > | null;
+    annotationReply: Pick<
+      typeof annotationReplies.$inferSelect,
+      "contentMarkdown" | "deletedAt" | "hiddenAt"
+    > | null;
   },
 >(row: T, context?: LifecycleQueryContext) {
   const postState = row.post ? contentState(row.post).state : "deleted";
