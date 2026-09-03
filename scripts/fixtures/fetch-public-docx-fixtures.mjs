@@ -40,7 +40,8 @@ export async function fetchPublicDocxFixtures(manifestPath = MANIFEST_PATH) {
       throw new Error(`${fixture.id}: fixture exceeds ${MAX_FIXTURE_BYTES} bytes`);
     }
     const bytes = new Uint8Array(await response.arrayBuffer());
-    if (bytes.byteLength > MAX_FIXTURE_BYTES) throw new Error(`${fixture.id}: fixture exceeds ${MAX_FIXTURE_BYTES} bytes`);
+    if (bytes.byteLength > MAX_FIXTURE_BYTES)
+      throw new Error(`${fixture.id}: fixture exceeds ${MAX_FIXTURE_BYTES} bytes`);
     assertHash(fixture, bytes);
 
     const target = resolve(dirname(manifestPath), fixture.filename);
@@ -57,29 +58,32 @@ export async function fetchPublicDocxFixtures(manifestPath = MANIFEST_PATH) {
 
 async function loadManifest(path) {
   const manifest = JSON.parse(await readFile(path, "utf8"));
-  if (manifest?.schemaVersion !== 1 || !Array.isArray(manifest.fixtures)) throw new Error("Unsupported public fixture manifest");
+  if (manifest?.schemaVersion !== 1 || !Array.isArray(manifest.fixtures))
+    throw new Error("Unsupported public fixture manifest");
   const ids = new Set();
   const filenames = new Set();
   for (const fixture of manifest.fixtures) {
     if (!fixture?.id || ids.has(fixture.id)) throw new Error("Public fixture IDs must be unique");
     ids.add(fixture.id);
     if (fixture.status === "unavailable") {
-      if (!fixture.skipReason) throw new Error(`${fixture.id}: unavailable fixture requires a skip reason`);
+      if (!fixture.skipReason)
+        throw new Error(`${fixture.id}: unavailable fixture requires a skip reason`);
       continue;
     }
     if (
-      fixture.status !== "available"
-      || !fixture.filename
-      || basename(fixture.filename) !== fixture.filename
-      || filenames.has(fixture.filename)
-      || !/^https:\/\//.test(fixture.downloadUrl)
-      || !/^[0-9a-f]{64}$/.test(fixture.sha256)
-      || !fixture.license
-      || !fixture.sourceStatement
-      || (fixture.observedProducerEvidence
-        ? (!fixture.observedProducerEvidence.part || !fixture.observedProducerEvidence.contains)
+      fixture.status !== "available" ||
+      !fixture.filename ||
+      basename(fixture.filename) !== fixture.filename ||
+      filenames.has(fixture.filename) ||
+      !/^https:\/\//.test(fixture.downloadUrl) ||
+      !/^[0-9a-f]{64}$/.test(fixture.sha256) ||
+      !fixture.license ||
+      !fixture.sourceStatement ||
+      (fixture.observedProducerEvidence
+        ? !fixture.observedProducerEvidence.part || !fixture.observedProducerEvidence.contains
         : !fixture.evidenceNote)
-    ) throw new Error(`${fixture.id}: incomplete pinned fixture metadata`);
+    )
+      throw new Error(`${fixture.id}: incomplete pinned fixture metadata`);
     filenames.add(fixture.filename);
   }
   return manifest;
@@ -87,7 +91,8 @@ async function loadManifest(path) {
 
 function assertHash(fixture, bytes) {
   const actual = createHash("sha256").update(bytes).digest("hex");
-  if (actual !== fixture.sha256) throw new Error(`${fixture.id}: SHA-256 mismatch (expected ${fixture.sha256}, got ${actual})`);
+  if (actual !== fixture.sha256)
+    throw new Error(`${fixture.id}: SHA-256 mismatch (expected ${fixture.sha256}, got ${actual})`);
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

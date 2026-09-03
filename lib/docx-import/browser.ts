@@ -48,12 +48,9 @@ export async function parseDocxWithWorker(
   try {
     worker = options.workerFactory?.() ?? createDocxWorker();
   } catch (error) {
-    throw new DocxImportError(
-      "PARSE_FAILED",
-      "Unable to start the DOCX import worker",
-      undefined,
-      { cause: error },
-    );
+    throw new DocxImportError("PARSE_FAILED", "Unable to start the DOCX import worker", undefined, {
+      cause: error,
+    });
   }
   const requestId = crypto.randomUUID();
   const timeoutMs = options.timeoutMs ?? DOCX_IMPORT_LIMITS.workerTimeoutMs;
@@ -99,43 +96,46 @@ export async function parseDocxWithWorker(
         try {
           options.onProgress?.(message.stage);
         } catch (error) {
-          fail(new DocxImportError(
-            "PARSE_FAILED",
-            "DOCX import progress callback failed",
-            undefined,
-            { cause: error },
-          ));
+          fail(
+            new DocxImportError("PARSE_FAILED", "DOCX import progress callback failed", undefined, {
+              cause: error,
+            }),
+          );
         }
       } else if (message.kind === "success") {
         succeed(message.result);
       } else {
-        fail(new DocxImportError(
-          message.error.code,
-          message.error.message,
-          message.error.details,
-        ));
+        fail(new DocxImportError(message.error.code, message.error.message, message.error.details));
       }
     };
-    worker.onerror = (event) => fail(new DocxImportError(
-      "PARSE_FAILED",
-      event.message || "DOCX import worker failed",
-    ));
+    worker.onerror = (event) =>
+      fail(new DocxImportError("PARSE_FAILED", event.message || "DOCX import worker failed"));
     options.signal?.addEventListener("abort", abort, { once: true });
-    timeoutHandle = timer.set(() => fail(new DocxImportError(
-      "PARSE_TIMEOUT",
-      `DOCX import exceeded the ${timeoutMs}-millisecond limit`,
-      { timeoutMs },
-    )), timeoutMs);
+    timeoutHandle = timer.set(
+      () =>
+        fail(
+          new DocxImportError(
+            "PARSE_TIMEOUT",
+            `DOCX import exceeded the ${timeoutMs}-millisecond limit`,
+            { timeoutMs },
+          ),
+        ),
+      timeoutMs,
+    );
 
-    void file.arrayBuffer().then((bytes) => {
-      if (settled) return;
-      worker.postMessage({ kind: "start", requestId, filename: file.name, bytes }, [bytes]);
-    }).catch((error: unknown) => fail(new DocxImportError(
-      "PARSE_FAILED",
-      "Unable to read the DOCX source file",
-      undefined,
-      { cause: error },
-    )));
+    void file
+      .arrayBuffer()
+      .then((bytes) => {
+        if (settled) return;
+        worker.postMessage({ kind: "start", requestId, filename: file.name, bytes }, [bytes]);
+      })
+      .catch((error: unknown) =>
+        fail(
+          new DocxImportError("PARSE_FAILED", "Unable to read the DOCX source file", undefined, {
+            cause: error,
+          }),
+        ),
+      );
   });
 }
 

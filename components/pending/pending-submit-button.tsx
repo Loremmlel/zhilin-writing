@@ -8,22 +8,32 @@ type PendingSubmitButtonProps = Omit<ComponentPropsWithoutRef<"button">, "childr
   pendingLabel: string;
 };
 
-export function PendingSubmitButton({ children, className = "", disabled, pendingLabel, ...props }: PendingSubmitButtonProps) {
+export function PendingSubmitButton({
+  children,
+  className = "",
+  disabled,
+  pendingLabel,
+  ...props
+}: PendingSubmitButtonProps) {
   const { pending } = useFormStatus();
 
-  return <>
-    <button
-      {...props}
-      type="submit"
-      className={`${className}${pending ? " button--pending" : ""}`}
-      disabled={pending || disabled}
-      aria-busy={pending}
-    >
-      <span className="pending-submit-labels">
-        <span aria-hidden={pending}>{children}</span>
-        <span aria-hidden={!pending}>{pendingLabel}</span>
+  return (
+    <>
+      <button
+        {...props}
+        type="submit"
+        className={`${className}${pending ? " button--pending" : ""}`}
+        disabled={pending || disabled}
+        aria-busy={pending}
+      >
+        <span className="pending-submit-labels">
+          <span aria-hidden={pending}>{children}</span>
+          <span aria-hidden={!pending}>{pendingLabel}</span>
+        </span>
+      </button>
+      <span className="sr-only" role="status" aria-live="polite">
+        {pending ? pendingLabel : ""}
       </span>
-    </button>
-    <span className="sr-only" role="status" aria-live="polite">{pending ? pendingLabel : ""}</span>
-  </>;
+    </>
+  );
 }

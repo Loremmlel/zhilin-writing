@@ -19,14 +19,18 @@ function serializeDomBoundary(root: Element, node: Node, offset: number): Serial
   return { path, offset };
 }
 
-function restoreDomBoundary(root: Element, boundary: SerializedDomBoundary): { node: Node; offset: number } | null {
+function restoreDomBoundary(
+  root: Element,
+  boundary: SerializedDomBoundary,
+): { node: Node; offset: number } | null {
   let node: Node = root;
   for (const index of boundary.path) {
     if (!Number.isInteger(index) || index < 0 || index >= node.childNodes.length) return null;
     node = node.childNodes[index]!;
   }
   const maximumOffset = node.nodeType === 3 ? (node as Text).data.length : node.childNodes.length;
-  if (!Number.isInteger(boundary.offset) || boundary.offset < 0 || boundary.offset > maximumOffset) return null;
+  if (!Number.isInteger(boundary.offset) || boundary.offset < 0 || boundary.offset > maximumOffset)
+    return null;
   return { node, offset: boundary.offset };
 }
 
@@ -37,7 +41,10 @@ export function serializeDomRange(root: Element, range: Range): SerializedDomRan
   };
 }
 
-export function restoreSerializedDomRange(root: Element, serialized: SerializedDomRange): Range | null {
+export function restoreSerializedDomRange(
+  root: Element,
+  serialized: SerializedDomRange,
+): Range | null {
   const start = restoreDomBoundary(root, serialized.start);
   const end = restoreDomBoundary(root, serialized.end);
   if (!start || !end) return null;
@@ -68,9 +75,13 @@ function eligibleDomBlocks(root: Element): Element[] {
 }
 
 function blockForBoundary(root: Element, node: Node): Element | null {
-  const element = node.nodeType === 1 ? node as Element : node.parentElement;
+  const element = node.nodeType === 1 ? (node as Element) : node.parentElement;
   if (!element || !root.contains(element)) return null;
-  return eligibleDomBlocks(root).find((candidate) => candidate === element || candidate.contains(element)) ?? null;
+  return (
+    eligibleDomBlocks(root).findLast(
+      (candidate) => candidate === element || candidate.contains(element),
+    ) ?? null
+  );
 }
 
 function excludedFromTightList(root: Element, text: Text): boolean {
@@ -103,7 +114,8 @@ function textSegments(block: Element): TextSegment[] {
 function boundaryOffset(segments: TextSegment[], node: Node, offset: number): number {
   if (node.nodeType !== 3) throw new Error("批注选区无效，请重新选择文字");
   const segment = segments.find((candidate) => candidate.node === node);
-  if (!segment || offset < 0 || offset > segment.node.data.length) throw new Error("批注选区无效，请重新选择文字");
+  if (!segment || offset < 0 || offset > segment.node.data.length)
+    throw new Error("批注选区无效，请重新选择文字");
   return segment.from + offset;
 }
 
@@ -111,30 +123,74 @@ function unsupportedAncestor(node: Text, block: Element): boolean {
   let current = node.parentElement;
   while (current && current !== block) {
     if (["CODE", "PRE", "TABLE"].includes(current.tagName)) return true;
-    if (current.tagName === "A" && current.getAttribute("href")?.startsWith("/api/assets/")) return true;
+    if (current.tagName === "A" && current.getAttribute("href")?.startsWith("/api/assets/"))
+      return true;
     current = current.parentElement;
   }
   return false;
 }
 
-export function describeAnnotationDomRange(root: Element, range: Range): AnnotationSelectionDescriptor {
+export function describeAnnotationDomRange(
+  root: Element,
+  range: Range,
+): AnnotationSelectionDescriptor {
   if (range.collapsed) throw new Error("请选择至少一个非空白字符");
   const startBlock = blockForBoundary(root, range.startContainer);
   const endBlock = blockForBoundary(root, range.endContainer);
   if (!startBlock || !endBlock) throw new Error("所选内容暂不支持正文批注");
-  if (startBlock !== endBlock) throw new Error("批注只能位于同一个文本块内");
   const blocks = eligibleDomBlocks(root);
   const blockOrdinal = blocks.indexOf(startBlock);
-  if (blockOrdinal < 0) throw new Error("所选内容暂不支持正文批注");
-  const segments = textSegments(startBlock);
-  const from = boundaryOffset(segments, range.startContainer, range.startOffset);
-  const to = boundaryOffset(segments, range.endContainer, range.endOffset);
-  if (to <= from) throw new Error("批注选区无效，请重新选择文字");
-  const selectedSegments = segments.filter((segment) => segment.from < to && segment.to > from);
-  if (selectedSegments.some((segment) => unsupportedAncestor(segment.node, startBlock))) throw new Error("所选内容包含暂不支持的格式");
-  if (selectedSegments.some((segment) => segment.node.parentElement?.closest(".annotation-range"))) throw new Error("所选内容与已有批注重叠，无法再次添加批注");
-  const blockText = segments.map((segment) => segment.node.data).join("");
-  const selectedText = blockText.slice(from, to);
-  if (!selectedText.trim()) throw new Error("请选择至少一个非空白字符");
-  return { blockOrdinal, endBlockOrdinal: blockOrdinal, blockTextFrom: from, blockTextTo: to, selectedText };
+  const endBlockOrdinal = blocks.indexOf(endBlock);
+  if (blockOrdinal < 0 || endBlockOrdinal < blockOrdinal)
+    throw new Error("所选内容暂不支持正文批注");
+
+  const intersects = (element: Element) => {
+    try {
+      return range.intersectsNode(element);
+    } catch {
+      return false;
+    }
+  };
+  const structuralBlocks = root.querySelectorAll("h1, h2, h3, h4, h5, h6, p, pre, table, hr");
+  if ([...structuralBlocks].some((element) => !blocks.includes(element) && intersects(element))) {
+    throw new Error("跨段批注不能穿过代码块、表格或其他不支持的内容");
+  }
+  if (
+    [...root.querySelectorAll("pre, table, hr, img, code, a[href^='/api/assets/']")].some(
+      intersects,
+    )
+  ) {
+    throw new Error("所选内容包含暂不支持的格式");
+  }
+
+  const selected = blocks.slice(blockOrdinal, endBlockOrdinal + 1).map((block, index, items) => {
+    const segments = textSegments(block);
+    const from =
+      index === 0 ? boundaryOffset(segments, range.startContainer, range.startOffset) : 0;
+    const to =
+      index === items.length - 1
+        ? boundaryOffset(segments, range.endContainer, range.endOffset)
+        : (segments.at(-1)?.to ?? 0);
+    if (to <= from) throw new Error("批注选区无效，请重新选择文字");
+    const selectedSegments = segments.filter((segment) => segment.from < to && segment.to > from);
+    if (selectedSegments.some((segment) => unsupportedAncestor(segment.node, block)))
+      throw new Error("所选内容包含暂不支持的格式");
+    if (
+      selectedSegments.some((segment) => segment.node.parentElement?.closest(".annotation-range"))
+    )
+      throw new Error("所选内容与已有批注重叠，无法再次添加批注");
+    const text = segments
+      .map((segment) => segment.node.data)
+      .join("")
+      .slice(from, to);
+    if (!text.trim()) throw new Error("请选择至少一个非空白字符");
+    return { from, to, text };
+  });
+  return {
+    blockOrdinal,
+    endBlockOrdinal,
+    blockTextFrom: selected[0]!.from,
+    blockTextTo: selected.at(-1)!.to,
+    selectedText: selected.map((item) => item.text).join("\n\n"),
+  };
 }

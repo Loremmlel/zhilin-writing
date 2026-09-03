@@ -40,16 +40,20 @@ test("an unavailable post stays reachable only for another member's public discu
     { authorId: "other", deletedAt: new Date(2_000), hiddenAt: null },
   ];
   assert.equal(isPostDiscussionReachable("author", replies), false);
-  assert.equal(isPostDiscussionReachable("author", [
-    ...replies,
-    { authorId: "other", deletedAt: null, hiddenAt: null },
-  ]), true);
+  assert.equal(
+    isPostDiscussionReachable("author", [
+      ...replies,
+      { authorId: "other", deletedAt: null, hiddenAt: null },
+    ]),
+    true,
+  );
 });
 
 test("imported Word identities do not masquerade as another member's discussion", () => {
-  assert.equal(isPostDiscussionReachable("author", [
-    { authorId: null, deletedAt: null, hiddenAt: null },
-  ]), false);
+  assert.equal(
+    isPostDiscussionReachable("author", [{ authorId: null, deletedAt: null, hiddenAt: null }]),
+    false,
+  );
 });
 
 test("recent activity derives from publication times of currently public replies", () => {
@@ -66,12 +70,66 @@ test("recent activity derives from publication times of currently public replies
 test("asset garbage collection requires every current, revision, and avatar reference to be gone", () => {
   const now = new Date(10_000);
   const cases = [
-    [{ status: "permanent", currentRefCount: 1, revisionRefCount: 0, avatarRefCount: 0, expiresAt: null }, "referenced"],
-    [{ status: "permanent", currentRefCount: 0, revisionRefCount: 1, avatarRefCount: 0, expiresAt: null }, "referenced"],
-    [{ status: "permanent", currentRefCount: 0, revisionRefCount: 0, avatarRefCount: 1, expiresAt: null }, "referenced"],
-    [{ status: "temporary", currentRefCount: 0, revisionRefCount: 0, avatarRefCount: 0, expiresAt: new Date(11_000) }, "temporary-not-expired"],
-    [{ status: "temporary", currentRefCount: 0, revisionRefCount: 0, avatarRefCount: 0, expiresAt: new Date(9_000) }, "eligible"],
-    [{ status: "permanent", currentRefCount: 0, revisionRefCount: 0, avatarRefCount: 0, expiresAt: null }, "eligible"],
+    [
+      {
+        status: "permanent",
+        currentRefCount: 1,
+        revisionRefCount: 0,
+        avatarRefCount: 0,
+        expiresAt: null,
+      },
+      "referenced",
+    ],
+    [
+      {
+        status: "permanent",
+        currentRefCount: 0,
+        revisionRefCount: 1,
+        avatarRefCount: 0,
+        expiresAt: null,
+      },
+      "referenced",
+    ],
+    [
+      {
+        status: "permanent",
+        currentRefCount: 0,
+        revisionRefCount: 0,
+        avatarRefCount: 1,
+        expiresAt: null,
+      },
+      "referenced",
+    ],
+    [
+      {
+        status: "temporary",
+        currentRefCount: 0,
+        revisionRefCount: 0,
+        avatarRefCount: 0,
+        expiresAt: new Date(11_000),
+      },
+      "temporary-not-expired",
+    ],
+    [
+      {
+        status: "temporary",
+        currentRefCount: 0,
+        revisionRefCount: 0,
+        avatarRefCount: 0,
+        expiresAt: new Date(9_000),
+      },
+      "eligible",
+    ],
+    [
+      {
+        status: "permanent",
+        currentRefCount: 0,
+        revisionRefCount: 0,
+        avatarRefCount: 0,
+        expiresAt: null,
+      },
+      "eligible",
+    ],
   ] as const;
 
   for (const [input, expected] of cases) {
@@ -98,7 +156,10 @@ test("delete confirmations explain when other people's discussion survives", () 
 });
 
 test("lifecycle operation IDs accept only bounded UUIDs", () => {
-  assert.equal(validateLifecycleOperationId("550e8400-e29b-41d4-a716-446655440000"), "550e8400-e29b-41d4-a716-446655440000");
+  assert.equal(
+    validateLifecycleOperationId("550e8400-e29b-41d4-a716-446655440000"),
+    "550e8400-e29b-41d4-a716-446655440000",
+  );
   assert.throws(() => validateLifecycleOperationId("forged"), /操作标识无效/);
 });
 

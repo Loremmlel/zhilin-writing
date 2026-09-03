@@ -1,0 +1,17 @@
+.next
+coverage
+dist
+node_modules
+out
+outputs
+work
+.sites-runtime
+.wrangler
+.github-sync-sandbox-notes.md
+
+drizzle/meta
+tests/fixtures/docx/expected
+tests/fixtures/docx/generated
+
+*.docx
+*.png

@@ -6,7 +6,13 @@ import type { ReplyFormAction } from "./reply-form";
 
 type ReplyFormModule = typeof import("./reply-form");
 
-export function LazyReplyForm({ action, initialSubmissionKey, label, openLabel = label, compact = false }: {
+export function LazyReplyForm({
+  action,
+  initialSubmissionKey,
+  label,
+  openLabel = label,
+  compact = false,
+}: {
   action: ReplyFormAction;
   initialSubmissionKey: string;
   label: string;
@@ -30,11 +36,31 @@ export function LazyReplyForm({ action, initialSubmissionKey, label, openLabel =
     }
   };
 
-  if (module) return <module.ReplyForm action={action} initialSubmissionKey={initialSubmissionKey} label={label} compact={compact} />;
-  return <div className={compact ? "inline-reply" : "reply-form-launcher"}>
-    <button type="button" className={compact ? "text-button" : "button button--ghost"} onClick={() => void open()} disabled={loading} aria-busy={loading}>
-      {loading ? "正在准备编辑器…" : openLabel}
-    </button>
-    {failed && <p className="form-error" role="alert">编辑器加载失败。请重试。</p>}
-  </div>;
+  if (module)
+    return (
+      <module.ReplyForm
+        action={action}
+        initialSubmissionKey={initialSubmissionKey}
+        label={label}
+        compact={compact}
+      />
+    );
+  return (
+    <div className={compact ? "inline-reply" : "reply-form-launcher"}>
+      <button
+        type="button"
+        className={compact ? "text-button" : "button button--ghost"}
+        onClick={() => void open()}
+        disabled={loading}
+        aria-busy={loading}
+      >
+        {loading ? "正在准备编辑器…" : openLabel}
+      </button>
+      {failed && (
+        <p className="form-error" role="alert">
+          编辑器加载失败。请重试。
+        </p>
+      )}
+    </div>
+  );
 }

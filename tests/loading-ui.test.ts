@@ -59,7 +59,10 @@ test("route progress ignores stale completions and always resets after a new req
   const current = progress.start();
   assert.equal(progress.complete(stale), false);
   assert.equal(progress.complete(current), true);
-  assert.deepEqual(events.map(({ phase }) => phase), ["loading", "loading", "complete", "idle"]);
+  assert.deepEqual(
+    events.map(({ phase }) => phase),
+    ["loading", "loading", "complete", "idle"],
+  );
 });
 
 test("targeted Suspense boundaries keep the shared shell and independent regions available", async () => {
@@ -81,11 +84,7 @@ test("targeted Suspense boundaries keep the shared shell and independent regions
 });
 
 test("error boundaries offer safe recovery without rendering internal error details", async () => {
-  const paths = [
-    "../app/error.tsx",
-    "../app/global-error.tsx",
-    "../app/(site)/error.tsx",
-  ];
+  const paths = ["../app/error.tsx", "../app/global-error.tsx", "../app/(site)/error.tsx"];
   const boundaries = await Promise.all(paths.map(source));
   const errorView = await source("../components/error-state.tsx");
   const notFound = await source("../app/not-found.tsx");
@@ -107,8 +106,14 @@ test("error boundaries offer safe recovery without rendering internal error deta
 test("loading motion has an explicit reduced-motion fallback", async () => {
   const styles = await source("../app/globals.css");
   assert.match(styles, /@keyframes\s+skeleton-shimmer/);
-  assert.match(styles, /@media\s*\(prefers-reduced-motion:\s*reduce\)[\s\S]*?\.skeleton-block::after\s*\{[^}]*animation:\s*none/);
-  assert.match(styles, /@media\s*\(prefers-reduced-motion:\s*reduce\)[\s\S]*?#route-progress[^}]*transition:\s*none/);
+  assert.match(
+    styles,
+    /@media\s*\(prefers-reduced-motion:\s*reduce\)[\s\S]*?\.skeleton-block::after\s*\{[^}]*animation:\s*none/,
+  );
+  assert.match(
+    styles,
+    /@media\s*\(prefers-reduced-motion:\s*reduce\)[\s\S]*?#route-progress[^}]*transition:\s*none/,
+  );
   assert.match(styles, /scroll-behavior:\s*auto\s*!important/);
 });
 

@@ -1,7 +1,8 @@
 import type { ActionAccessErrorCode } from "@/lib/actions/result";
 import type { AssetUploadValidationCode } from "./upload-policy";
 
-export type AssetUploadErrorCode = AssetUploadValidationCode | ActionAccessErrorCode | "NETWORK_FAILURE" | "SERVER_FAILURE";
+export type AssetUploadErrorCode =
+  AssetUploadValidationCode | ActionAccessErrorCode | "NETWORK_FAILURE" | "SERVER_FAILURE";
 
 export class AssetStorageError extends Error {
   readonly code: AssetUploadValidationCode | "SERVER_FAILURE";

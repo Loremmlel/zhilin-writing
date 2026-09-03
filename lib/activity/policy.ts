@@ -1,14 +1,27 @@
-export const activityEventTypes = ["POST_CREATED", "POST_REPLY_CREATED", "ANNOTATION_CREATED", "ANNOTATION_REPLY_CREATED"] as const;
+export const activityEventTypes = [
+  "POST_CREATED",
+  "POST_REPLY_CREATED",
+  "ANNOTATION_CREATED",
+  "ANNOTATION_REPLY_CREATED",
+] as const;
 export type ActivityEventType = (typeof activityEventTypes)[number];
 
-export const notificationTypes = ["POST_REPLY_RECEIVED", "POST_ANNOTATION_RECEIVED", "ANNOTATION_REPLY_RECEIVED"] as const;
+export const notificationTypes = [
+  "POST_REPLY_RECEIVED",
+  "POST_ANNOTATION_RECEIVED",
+  "ANNOTATION_REPLY_RECEIVED",
+] as const;
 export type NotificationType = (typeof notificationTypes)[number];
 
 function kebabCase(value: string): string {
   return value.toLocaleLowerCase("en-US").replaceAll("_", "-");
 }
 
-export function activityEventId(eventType: ActivityEventType, postId: string, replyId?: string): string {
+export function activityEventId(
+  eventType: ActivityEventType,
+  postId: string,
+  replyId?: string,
+): string {
   if (eventType === "POST_CREATED") return `activity:post:${postId}:created`;
   if (!replyId) throw new Error("互动事件缺少内容标识");
   if (eventType === "POST_REPLY_CREATED") return `activity:reply:${replyId}:created`;
@@ -16,7 +29,11 @@ export function activityEventId(eventType: ActivityEventType, postId: string, re
   return `activity:annotation-reply:${replyId}:created`;
 }
 
-export function notificationId(eventId: string, recipientUserId: string, type: NotificationType): string {
+export function notificationId(
+  eventId: string,
+  recipientUserId: string,
+  type: NotificationType,
+): string {
   return `notification:${eventId}:${recipientUserId}:${kebabCase(type)}`;
 }
 
@@ -45,7 +62,11 @@ export function annotationTargetHref(postId: string, annotationId: string): stri
   return `/posts/${encodeURIComponent(postId)}?target=annotation&annotation=${encodedId}#annotation-card-${encodedId}`;
 }
 
-export function annotationReplyTargetHref(postId: string, annotationId: string, annotationReplyId: string): string {
+export function annotationReplyTargetHref(
+  postId: string,
+  annotationId: string,
+  annotationReplyId: string,
+): string {
   const encodedAnnotationId = encodeURIComponent(annotationId);
   const encodedReplyId = encodeURIComponent(annotationReplyId);
   return `/posts/${encodeURIComponent(postId)}?target=annotation-reply&annotation=${encodedAnnotationId}&annotationReply=${encodedReplyId}#annotation-reply-${encodedReplyId}`;

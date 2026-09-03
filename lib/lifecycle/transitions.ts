@@ -39,7 +39,11 @@ export function planAdminLifecycleTransition(
   const isHide = actionType.endsWith("_HIDDEN");
   const isUnhide = actionType.endsWith("_UNHIDDEN");
   const isRestore = actionType.endsWith("_RESTORED");
-  if ((isHide && record.hiddenAt) || (isUnhide && !record.hiddenAt) || (isRestore && !record.deletedAt)) {
+  if (
+    (isHide && record.hiddenAt) ||
+    (isUnhide && !record.hiddenAt) ||
+    (isRestore && !record.deletedAt)
+  ) {
     return { changed: false as const, patch: {}, audit: null };
   }
 
@@ -61,7 +65,12 @@ export function planAdminLifecycleTransition(
       adminUserId,
       createdAt: now,
       metadataJson: isHide && cleanReason ? JSON.stringify({ reason: cleanReason }) : null,
-      dedupeKey: adminAuditDedupeKey(actionType, targetType, targetId, operationId || priorTransitionAt),
+      dedupeKey: adminAuditDedupeKey(
+        actionType,
+        targetType,
+        targetId,
+        operationId || priorTransitionAt,
+      ),
     },
   };
 }

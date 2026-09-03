@@ -50,10 +50,20 @@ test("blocks missing, unknown, and duplicate annotation anchors", () => {
 
   const duplicate = validateEditedImportPreview({
     ...editableFixture(),
-    markdown: `:annotation[正文]{#${ROOT_ID}}\n\n:annotation[正文]{#${ROOT_ID}}`,
+    markdown: `:annotation[正]{#${ROOT_ID}}文 :annotation[文]{#${ROOT_ID}}`,
   });
   assert.equal(duplicate.ok, false);
   assert.ok(duplicate.errors.some((item) => item.code === "ANNOTATION_ANCHOR_DUPLICATE"));
+
+  const duplicateThreadFixture = editableFixture();
+  duplicateThreadFixture.ir.threads.push({
+    ...duplicateThreadFixture.ir.threads[0]!,
+    sourceCommentId: "12",
+    replies: [],
+  });
+  const duplicateThread = validateEditedImportPreview(duplicateThreadFixture);
+  assert.equal(duplicateThread.ok, false);
+  assert.ok(duplicateThread.errors.some((item) => item.code === "ANNOTATION_ANCHOR_DUPLICATE"));
 });
 
 test("blocks edited annotation text, nested directives, and overlapping imported ranges", () => {
@@ -108,11 +118,13 @@ test("blocks unsafe external URLs and error-severity import warnings", () => {
   assert.ok(blocked.errors.some((item) => item.code === "IMPORT_WARNING_ERROR"));
 
   const skipped = editableFixture();
-  skipped.ir.skippedThreads = [{
-    sourceCommentId: "99",
-    sourceDocumentOrder: 2,
-    warning: { code: "ANNOTATION_THREAD_SKIPPED", severity: "error" },
-  }];
+  skipped.ir.skippedThreads = [
+    {
+      sourceCommentId: "99",
+      sourceDocumentOrder: 2,
+      warning: { code: "ANNOTATION_THREAD_SKIPPED", severity: "error" },
+    },
+  ];
   const skippedBlocked = validateEditedImportPreview(skipped);
   assert.equal(skippedBlocked.ok, false);
   assert.ok(skippedBlocked.errors.some((item) => item.code === "IMPORT_WARNING_ERROR"));
@@ -120,26 +132,30 @@ test("blocks unsafe external URLs and error-severity import warnings", () => {
 
 test("blocks restored Previews with missing or tampered temporary image references", () => {
   const missing = editableFixture();
-  missing.ir.assets = [{
-    id: "docx-image-1",
-    filename: "image.png",
-    mimeType: "image/png",
-    bytes: new Uint8Array([1, 2, 3]),
-    alt: "image",
-    sourceRelationshipId: "rImage",
-    floating: false,
-  }];
+  missing.ir.assets = [
+    {
+      id: "docx-image-1",
+      filename: "image.png",
+      mimeType: "image/png",
+      bytes: new Uint8Array([1, 2, 3]),
+      alt: "image",
+      sourceRelationshipId: "rImage",
+      floating: false,
+    },
+  ];
   const missingResult = validateEditedImportPreview(missing);
   assert.equal(missingResult.ok, false);
   assert.ok(missingResult.errors.some((item) => item.code === "ASSET_UPLOAD_MISSING"));
 
   const tampered = editableFixture();
-  tampered.temporaryAssets = [{
-    assetId: "asset-1",
-    temporaryUrl: "https://evil.example/image.png",
-    filename: "image.png",
-    mimeType: "image/png",
-  }];
+  tampered.temporaryAssets = [
+    {
+      assetId: "asset-1",
+      temporaryUrl: "https://evil.example/image.png",
+      filename: "image.png",
+      mimeType: "image/png",
+    },
+  ];
   const tamperedResult = validateEditedImportPreview(tampered);
   assert.equal(tamperedResult.ok, false);
   assert.ok(tamperedResult.errors.some((item) => item.code === "ASSET_REFERENCE_INVALID"));
@@ -194,21 +210,25 @@ function editableFixture() {
 
 function editableFixtureWithImage() {
   const fixture = editableFixture();
-  fixture.ir.assets = [{
-    id: "docx-image-1",
-    filename: "image.png",
-    mimeType: "image/png",
-    bytes: new Uint8Array([1, 2, 3]),
-    alt: "image",
-    sourceRelationshipId: "rImage",
-    floating: false,
-  }];
-  fixture.temporaryAssets = [{
-    assetId: "asset-1",
-    temporaryUrl: "/api/assets/asset-1",
-    filename: "image.png",
-    mimeType: "image/png",
-  }];
+  fixture.ir.assets = [
+    {
+      id: "docx-image-1",
+      filename: "image.png",
+      mimeType: "image/png",
+      bytes: new Uint8Array([1, 2, 3]),
+      alt: "image",
+      sourceRelationshipId: "rImage",
+      floating: false,
+    },
+  ];
+  fixture.temporaryAssets = [
+    {
+      assetId: "asset-1",
+      temporaryUrl: "/api/assets/asset-1",
+      filename: "image.png",
+      mimeType: "image/png",
+    },
+  ];
   fixture.markdown = `:annotation[正文]{#${ROOT_ID}}\n\n![image](/api/assets/asset-1)`;
   return fixture;
 }
@@ -224,32 +244,38 @@ function previewFixture(): DocxPreviewRecord {
       importBatchId: "00000000-0000-4000-8000-000000000010",
       source: { filename: "source.docx", producer: "Word", sha256: "source-hash" },
       suggestedTitle: "导入标题",
-      blocks: [{
-        id: "p1",
-        type: "paragraph",
-        segments: [{ text: "正文", marks: [], commentIds: ["10"] }],
-      }],
+      blocks: [
+        {
+          id: "p1",
+          type: "paragraph",
+          segments: [{ text: "正文", marks: [], commentIds: ["10"] }],
+        },
+      ],
       assets: [],
-      threads: [{
-        annotationId: ROOT_ID,
-        sourceCommentId: "10",
-        blockId: "p1",
-        blockLocalStart: 0,
-        blockLocalEnd: 2,
-        sourceAuthorName: "Author",
-        sourceDocumentOrder: 0,
-        sourceResolved: false,
-        bodyMarkdown: "Root",
-        replies: [{
-          replyId: REPLY_ID,
-          sourceCommentId: "11",
-          parentSourceCommentId: "10",
-          sourceAuthorName: "Reply Author",
-          sourceDocumentOrder: 1,
+      threads: [
+        {
+          annotationId: ROOT_ID,
+          sourceCommentId: "10",
+          blockId: "p1",
+          blockLocalStart: 0,
+          blockLocalEnd: 2,
+          sourceAuthorName: "Author",
+          sourceDocumentOrder: 0,
           sourceResolved: false,
-          bodyMarkdown: "Reply",
-        }],
-      }],
+          bodyMarkdown: "Root",
+          replies: [
+            {
+              replyId: REPLY_ID,
+              sourceCommentId: "11",
+              parentSourceCommentId: "10",
+              sourceAuthorName: "Reply Author",
+              sourceDocumentOrder: 1,
+              sourceResolved: false,
+              bodyMarkdown: "Reply",
+            },
+          ],
+        },
+      ],
       skippedThreads: [],
       warnings: [],
       canonicalMarkdown: `:annotation[正文]{#${ROOT_ID}}`,

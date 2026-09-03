@@ -1,7 +1,8 @@
 import type { Nodes, Root } from "mdast";
 
-import { parseAnnotationMarkdown } from "./markdown.ts";
 import { isAttachmentAssetHref } from "./inline-policy.ts";
+import { parseAnnotationMarkdown } from "./markdown.ts";
+import { collectAnnotationDocumentBlocks, isCanonicalMultiBlockAnnotationSpan } from "./span.ts";
 
 export type AnnotationInvariantIssueCode =
   | "DUPLICATE"
@@ -44,7 +45,14 @@ type MarkdownNode = Nodes & {
   title?: string | null;
 };
 
-const allowedParagraphParents = new Set(["root", "listItem", "blockquote"]);
+type PhysicalAnchor = CanonicalAnnotationAnchorState & {
+  documentIndex: number;
+  from: number;
+  to: number;
+  firstVisibleFrom: number;
+  lastVisibleTo: number;
+};
+
 const allowedInlineContainers = new Set(["strong", "emphasis", "delete", "link"]);
 
 function annotationId(node: MarkdownNode): string | null {
@@ -53,7 +61,10 @@ function annotationId(node: MarkdownNode): string | null {
 }
 
 function isAnnotationDirective(node: MarkdownNode): boolean {
-  return node.name === "annotation" && ["textDirective", "leafDirective", "containerDirective"].includes(node.type);
+  return (
+    node.name === "annotation" &&
+    ["textDirective", "leafDirective", "containerDirective"].includes(node.type)
+  );
 }
 
 function inlineText(node: MarkdownNode): string {
@@ -75,74 +86,148 @@ function hasUnsupportedInline(node: MarkdownNode): boolean {
   return node.children?.some(hasUnsupportedInline) ?? false;
 }
 
-function supportedBlock(node: MarkdownNode, parentType: string | null): boolean {
-  return (node.type === "heading" && parentType === "root")
-    || (node.type === "paragraph" && parentType !== null && allowedParagraphParents.has(parentType));
+function containsAnnotationDirective(node: MarkdownNode): boolean {
+  return (
+    node.children?.some(
+      (child) => isAnnotationDirective(child) || containsAnnotationDirective(child),
+    ) ?? false
+  );
+}
+
+function visibleBounds(text: string) {
+  const first = text.search(/\S/u);
+  if (first < 0) return { firstVisibleFrom: 0, lastVisibleTo: 0 };
+  let last = text.length;
+  while (last > first && /\s/u.test(text[last - 1]!)) last -= 1;
+  return { firstVisibleFrom: first, lastVisibleTo: last };
 }
 
 function scan(markdown: string) {
   const tree = parseAnnotationMarkdown(markdown) as Root as MarkdownNode;
+  const entries = collectAnnotationDocumentBlocks(tree);
   const anchors: CanonicalAnnotationAnchor[] = [];
   const anchorStates: CanonicalAnnotationAnchorState[] = [];
+  const physicalAnchors: PhysicalAnchor[] = [];
   const issues: AnnotationInvariantIssue[] = [];
   const seenIds: string[] = [];
-  let blockIndex = -1;
+  const handled = new Set<MarkdownNode>();
   let nestedReported = false;
 
   const addIssue = (code: AnnotationInvariantIssueCode, id: string | null) => {
-    if (!issues.some((issue) => issue.code === code && issue.annotationId === id)) issues.push({ code, annotationId: id });
+    if (!issues.some((issue) => issue.code === code && issue.annotationId === id))
+      issues.push({ code, annotationId: id });
   };
 
-  const visit = (
-    node: MarkdownNode,
-    parentType: string | null,
-    currentBlock: number | null,
-    currentBlockType: string | null,
-    annotationDepth: number,
-  ) => {
-    let nextBlock = currentBlock;
-    let nextBlockType = currentBlockType;
-    if (supportedBlock(node, parentType)) {
-      blockIndex += 1;
-      nextBlock = blockIndex;
-      nextBlockType = node.type;
-    }
+  for (const entry of entries.filter((candidate) => candidate.supported)) {
+    const block = entry.node as MarkdownNode;
+    const bounds = visibleBounds(inlineText(block));
+    const validInlineBlock = !(block.children?.some(hasUnsupportedInline) ?? false);
+    let cursor = 0;
 
+    const visitInline = (node: MarkdownNode, annotationDepth: number) => {
+      if (node.type === "text" || node.type === "inlineCode") {
+        cursor += (node.value ?? "").length;
+        return;
+      }
+      if (isAnnotationDirective(node)) {
+        handled.add(node);
+        const id = annotationId(node);
+        if (id) seenIds.push(id);
+        else addIssue("UNKNOWN_ID", null);
+        const start = cursor;
+        const hasNested = containsAnnotationDirective(node);
+        node.children?.forEach((child) => visitInline(child, annotationDepth + 1));
+        const end = cursor;
+        if (annotationDepth > 0 || hasNested) {
+          if (!nestedReported) addIssue("NESTED", id);
+          nestedReported = true;
+          return;
+        }
+        const text = inlineText(node);
+        if (node.type !== "textDirective" || !validInlineBlock || hasUnsupportedInline(node))
+          addIssue("INVALID_BLOCK", id);
+        else if (!text.trim()) addIssue("EMPTY", id);
+        else if (id) {
+          physicalAnchors.push({
+            annotationId: id,
+            text,
+            blockIndex: entry.eligibleOrdinal!,
+            documentIndex: entry.documentIndex,
+            blockType: block.type,
+            inlineStructure: JSON.stringify(node.children?.map(inlineShape) ?? []),
+            from: start,
+            to: end,
+            ...bounds,
+          });
+        }
+        return;
+      }
+      node.children?.forEach((child) => visitInline(child, annotationDepth));
+    };
+
+    block.children?.forEach((child) => visitInline(child, 0));
+  }
+
+  const visitUnhandled = (node: MarkdownNode, annotationDepth: number) => {
     if (isAnnotationDirective(node)) {
+      if (handled.has(node)) return;
       const id = annotationId(node);
       if (id) seenIds.push(id);
-      if (!id) addIssue("UNKNOWN_ID", null);
-
+      else addIssue("UNKNOWN_ID", null);
       if (annotationDepth > 0) {
         if (!nestedReported) addIssue("NESTED", id);
         nestedReported = true;
-        return;
+      } else {
+        addIssue(node.type === "containerDirective" ? "MULTI_BLOCK" : "INVALID_BLOCK", id);
       }
-      if (node.type === "containerDirective") {
-        addIssue("MULTI_BLOCK", id);
-        return;
-      }
-      const text = inlineText(node);
-      if (node.type !== "textDirective" || nextBlock === null || hasUnsupportedInline(node)) addIssue("INVALID_BLOCK", id);
-      else if (!text.trim()) addIssue("EMPTY", id);
-      else if (id) {
-        const anchor = { annotationId: id, text, blockIndex: nextBlock };
-        anchors.push(anchor);
-        anchorStates.push({
-          ...anchor,
-          blockType: nextBlockType ?? "unknown",
-          inlineStructure: JSON.stringify(node.children?.map(inlineShape) ?? []),
-        });
-      }
-
-      node.children?.forEach((child) => visit(child, node.type, nextBlock, nextBlockType, annotationDepth + 1));
+      node.children?.forEach((child) => visitUnhandled(child, annotationDepth + 1));
       return;
     }
-
-    node.children?.forEach((child) => visit(child, node.type, nextBlock, nextBlockType, annotationDepth));
+    node.children?.forEach((child) => visitUnhandled(child, annotationDepth));
   };
+  visitUnhandled(tree, 0);
 
-  visit(tree, null, null, null, 0);
+  const groups = new Map<string, PhysicalAnchor[]>();
+  for (const anchor of physicalAnchors)
+    groups.set(anchor.annotationId, [...(groups.get(anchor.annotationId) ?? []), anchor]);
+  const orderedGroups = [...groups.entries()].sort(
+    (left, right) => left[1][0]!.documentIndex - right[1][0]!.documentIndex,
+  );
+  for (const [id, rawSegments] of orderedGroups) {
+    const segments = [...rawSegments].sort(
+      (left, right) => left.documentIndex - right.documentIndex || left.from - right.from,
+    );
+    const byBlock = new Map<number, number>();
+    for (const segment of segments)
+      byBlock.set(segment.documentIndex, (byBlock.get(segment.documentIndex) ?? 0) + 1);
+    const duplicate = [...byBlock.values()].some((count) => count > 1);
+    if (duplicate) addIssue("DUPLICATE", id);
+    else if (
+      !isCanonicalMultiBlockAnnotationSpan(
+        segments.map((segment) => ({
+          blockIndex: segment.documentIndex,
+          from: segment.from,
+          to: segment.to,
+          firstVisibleFrom: segment.firstVisibleFrom,
+          lastVisibleTo: segment.lastVisibleTo,
+        })),
+      )
+    )
+      addIssue("MULTI_BLOCK", id);
+
+    const anchor = {
+      annotationId: id,
+      text: segments.map((segment) => segment.text).join("\n\n"),
+      blockIndex: segments[0]!.blockIndex,
+    };
+    anchors.push(anchor);
+    anchorStates.push({
+      ...anchor,
+      blockType: segments.map((segment) => segment.blockType).join("\n"),
+      inlineStructure: JSON.stringify(segments.map((segment) => segment.inlineStructure)),
+    });
+  }
+
   return { anchors, anchorStates, issues, seenIds };
 }
 
@@ -150,28 +235,26 @@ export function scanCanonicalAnnotationAnchors(markdown: string): CanonicalAnnot
   return scan(markdown).anchors;
 }
 
-export function scanCanonicalAnnotationAnchorStates(markdown: string): CanonicalAnnotationAnchorState[] {
+export function scanCanonicalAnnotationAnchorStates(
+  markdown: string,
+): CanonicalAnnotationAnchorState[] {
   return scan(markdown).anchorStates;
 }
 
 export function validateCanonicalAnnotationDocument(
   markdown: string,
   knownIds: Iterable<string>,
-  requiredIds: Iterable<string> = knownIds,
+  requiredIds?: Iterable<string>,
 ): AnnotationDocumentValidation {
   const { anchors, issues, seenIds } = scan(markdown);
   const known = new Set(knownIds);
-  const required = new Set(requiredIds);
-  const counts = new Map<string, number>();
-  for (const id of seenIds) counts.set(id, (counts.get(id) ?? 0) + 1);
+  const required = new Set(requiredIds ?? known);
+  const present = new Set(seenIds);
 
-  for (const [id, count] of counts) {
-    if (count > 1) issues.push({ code: "DUPLICATE", annotationId: id });
+  for (const id of present)
     if (!known.has(id)) issues.push({ code: "UNKNOWN_ID", annotationId: id });
-  }
-  for (const id of required) {
-    if (!counts.has(id)) issues.push({ code: "MISSING_ACTIVE_ID", annotationId: id });
-  }
+  for (const id of required)
+    if (!present.has(id)) issues.push({ code: "MISSING_ACTIVE_ID", annotationId: id });
 
   const priority: Record<AnnotationInvariantIssueCode, number> = {
     DUPLICATE: 0,
@@ -183,8 +266,11 @@ export function validateCanonicalAnnotationDocument(
     UNKNOWN_ID: 6,
     MISSING_ACTIVE_ID: 7,
   };
-  issues.sort((left, right) => priority[left.code] - priority[right.code]
-    || (left.annotationId ?? "").localeCompare(right.annotationId ?? ""));
+  issues.sort(
+    (left, right) =>
+      priority[left.code] - priority[right.code] ||
+      (left.annotationId ?? "").localeCompare(right.annotationId ?? ""),
+  );
 
   return { ok: issues.length === 0, anchors, issues };
 }

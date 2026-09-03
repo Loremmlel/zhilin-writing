@@ -77,10 +77,10 @@
 
 - 状态：实现与三轮代码审阅修复完成；Task 6 尚未开始。
 - RED：新增 `tests/docx-import-rich-content.test.ts`，先后观察到 rich-content 模块缺失、URL 中竖线未转义、percent-encoded media target 未解析，以及审阅补充的图片缓存/源顺序/MIME、未引用 note 批注、表格 grid offset、列表图片、纯图片空批注范围、无效图片残留段落拆分等预期失败，再逐项实现至 GREEN。
-- Tables：矩形表格输出 GFM table；无显式 header 时合成空 header 并聚合 `TABLE_HEADER_SYNTHESIZED`；单元格多段落以 ` / ` 展平。`gridSpan`、`vMerge`、`rowSpan`、`colSpan` 等合并标记统一按 source order 降级为普通段落，不输出 raw HTML；`tblGrid`、`gridBefore`、`gridAfter` 用于稳定矩形化。table cell 批注仍按 `ANNOTATION_TABLE_UNSUPPORTED` 原子跳过。
+- Tables：矩形表格输出 GFM table；无显式 header 时合成空 header 并聚合 `TABLE_HEADER_SYNTHESIZED`；单元格多段落以 `/` 展平。`gridSpan`、`vMerge`、`rowSpan`、`colSpan` 等合并标记统一按 source order 降级为普通段落，不输出 raw HTML；`tblGrid`、`gridBefore`、`gridAfter` 用于稳定矩形化。table cell 批注仍按 `ANNOTATION_TABLE_UNSUPPORTED` 原子跳过。
 - Images：仅接受 relationship 指向 `word/media/` 的内嵌 PNG/JPEG/GIF/WebP；同时校验 `[Content_Types].xml` 的 Default/Override（含 percent-decoding）、扩展名、MIME 与 magic signature。alt 依次取 descr、title、filename、`image`；floating image 保留并聚合 warning。正文按图片所在 source offset 拆分，列表内图片保持单一 list item 后附图片；纯图片段落保留零长度文字 segment，确保空范围仍归类为空批注。
 - Asset safety：单图 10 MB、总图片数 200 的 hard limit；相同 package media bytes 复用缓存，避免重复引用造成内存放大。缺失、不安全、格式/MIME/signature 不一致的图片确定性跳过；material validation 拒绝候选后进行轻量二次 walk，避免无效图片在 Markdown 中留下错误段落拆分。
-- Special content：textbox 中可读段落以 ` / ` 展平；OMML 输出稳定占位符 `[公式]`；可读 DrawingML shape text 保留，不可读 shape 聚合 `SHAPE_CONTENT_SKIPPED`。所有降级均使用 typed warning。
+- Special content：textbox 中可读段落以 `/` 展平；OMML 输出稳定占位符 `[公式]`；可读 DrawingML shape text 保留，不可读 shape 聚合 `SHAPE_CONTENT_SKIPPED`。所有降级均使用 typed warning。
 - Notes：footnote/endnote 按正文引用顺序共享稳定编号，正文插入 `[N]`，文末追加 `---` 与“脚注（从 Word 导入）”列表；未引用 notes 中的批注也会被扫描并归类为 non-text，避免误绑定正文。notes 降级 warning 聚合输出。
 - 审阅修复：消除重复媒体引用的内存放大；补齐图片 source order、MIME/扩展名/signature 一致性、未引用 note 批注、table grid offset；修复列表图片重复项目、纯图片空范围、无效 signature 残留拆分与 merged-table 合成空格问题。最终独立审阅无 Critical、Important 或 Minor 发现。
 - GREEN：Task 5 + 正文/批注/asset focused regression 38/38 通过；完整 `npm run test:unit` 150/150 通过；TypeScript、定向 ESLint 与 `git diff --check` 在提交前复核。
@@ -169,13 +169,13 @@
 - 可复现获取：新增机器可读 manifest、来源说明与失败关闭的 fetch/verify 脚本。脚本只访问 manifest 中的 HTTPS URL，下载后先校验固定 SHA-256，再原子替换本地 fixture；文件名、许可、来源陈述与可用的包内 producer 证据均受校验。
 - Producer matrix：
 
-| Producer / version | Fixture feature | Result |
-| --- | --- | --- |
-| Microsoft Office Word 14.0000 | Mammoth comments | PASS：正文批注可导入；孤儿定义稳定降级。 |
-| Microsoft Office Word 14.0000 | Mammoth footnotes | PASS：脚注/尾注进入统一附录。 |
-| Google Docs（包内未声明版本） | PDF Association 明确说明的 Google Docs DOCX export | PASS：标题与多级 heading 保持稳定；producer 仅依据明确来源陈述，不伪造包内证据。 |
-| LibreOffice 5.4.5.1 Linux x86-64 | mat2 dirty DOCX / floating image | PASS：正文与图片可读，floating image 使用 typed warning 降级。 |
-| Microsoft Word Online | 无合格公开 fixture | SKIP / deployment blocker：未找到同时具备明确创建/导出 provenance、再分发条件与匹配内部证据的文件；没有改名冒充。 |
+| Producer / version               | Fixture feature                                    | Result                                                                                                            |
+| -------------------------------- | -------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| Microsoft Office Word 14.0000    | Mammoth comments                                   | PASS：正文批注可导入；孤儿定义稳定降级。                                                                          |
+| Microsoft Office Word 14.0000    | Mammoth footnotes                                  | PASS：脚注/尾注进入统一附录。                                                                                     |
+| Google Docs（包内未声明版本）    | PDF Association 明确说明的 Google Docs DOCX export | PASS：标题与多级 heading 保持稳定；producer 仅依据明确来源陈述，不伪造包内证据。                                  |
+| LibreOffice 5.4.5.1 Linux x86-64 | mat2 dirty DOCX / floating image                   | PASS：正文与图片可读，floating image 使用 typed warning 降级。                                                    |
+| Microsoft Word Online            | 无合格公开 fixture                                 | SKIP / deployment blocker：未找到同时具备明确创建/导出 provenance、再分发条件与匹配内部证据的文件；没有改名冒充。 |
 
 - Generated matrix：`semantic-matrix.docx` 固定字节覆盖普通段落、H1–H9、run-style inheritance、粗体/斜体/删除线、代码样式白名单、四层列表、Quote/Intense Quote、安全/不安全链接、缓存字段、TOC、显式/合成 header 与 merged table、inline/floating image、脚注/尾注、Track Changes、OMML、textbox、相邻/交叠/空/跨 block/table/image/orphan/missing-extended/cycle 批注、threaded/resolved reply、CJK、emoji/UTF-16 surrogate、combining character 与 mixed RTL。生成器 `--check` 对四个 generated fixtures 做 byte-for-byte 校验。
 - End-to-end：真实链路执行 package validation → Worker stages → finalized Preview → temporary asset stubs → commit schema/plan → reloaded canonical Markdown → V5 Annotation AST → Milkdown/ProseMirror document；两种独立 deterministic ID factory 得到相同 normalized IR、Markdown 与 warnings。初始 revision 的 root/reply snapshots、import batch、assets 与 imported identity 同步验证。

@@ -189,6 +189,7 @@ export interface ImportedThread {
   annotationId: string;
   sourceCommentId: string;
   blockId: string;
+  endBlockId?: string;
   blockLocalStart: number;
   blockLocalEnd: number;
   sourceAuthorName: string;

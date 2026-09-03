@@ -83,9 +83,16 @@ export function DocxImportWorkspace({ users }: { users: SiteUser[] }) {
   useEffect(() => {
     let live = true;
     void listImportPreviews()
-      .then((items) => { if (live) setRecoverable(items); })
-      .catch(() => { if (live) setError({ code: "PREVIEW_LOAD_FAILED", message: "Preview load failed" }); });
-    return () => { live = false; abortRef.current?.abort(); };
+      .then((items) => {
+        if (live) setRecoverable(items);
+      })
+      .catch(() => {
+        if (live) setError({ code: "PREVIEW_LOAD_FAILED", message: "Preview load failed" });
+      });
+    return () => {
+      live = false;
+      abortRef.current?.abort();
+    };
   }, []);
 
   useEffect(() => {
@@ -104,9 +111,11 @@ export function DocxImportWorkspace({ users }: { users: SiteUser[] }) {
             await removePreviewRecord(record.importBatchId);
             return;
           }
-          setError((current) => current?.code === "PREVIEW_SAVE_FAILED" ? null : current);
+          setError((current) => (current?.code === "PREVIEW_SAVE_FAILED" ? null : current));
         })
-        .catch(() => setError({ code: "PREVIEW_SAVE_FAILED", message: "预览未能保存到当前浏览器。" }));
+        .catch(() =>
+          setError({ code: "PREVIEW_SAVE_FAILED", message: "预览未能保存到当前浏览器。" }),
+        );
     }, 500);
     return () => window.clearTimeout(timer);
   }, [phase, preview]);
@@ -120,7 +129,7 @@ export function DocxImportWorkspace({ users }: { users: SiteUser[] }) {
   }, [preview]);
 
   const validation = useMemo(
-    () => preview ? validateEditedImportPreview(preview, validationNow, validUserIds) : null,
+    () => (preview ? validateEditedImportPreview(preview, validationNow, validUserIds) : null),
     [preview, validationNow, validUserIds],
   );
 
@@ -143,7 +152,10 @@ export function DocxImportWorkspace({ users }: { users: SiteUser[] }) {
         parseDocxWithWorker(file, { signal: controller.signal, onProgress: setStage }),
         sha256DocxSource(file),
       ]);
-      const ir = finalizeDocxPreview(parsed, { importBatchId: crypto.randomUUID(), sourceSha256: sha256 });
+      const ir = finalizeDocxPreview(parsed, {
+        importBatchId: crypto.randomUUID(),
+        sourceSha256: sha256,
+      });
       setPhase("uploading");
       setUploadTotal(ir.assets.length);
       setUploadedCount(0);
@@ -170,12 +182,18 @@ export function DocxImportWorkspace({ users }: { users: SiteUser[] }) {
       await saveImportPreview(record, now, controller.signal);
       controller.signal.throwIfAborted();
       setPreview(toEditable(record));
-      setRecoverable((items) => [record, ...items.filter((item) => item.importBatchId !== record.importBatchId)]);
+      setRecoverable((items) => [
+        record,
+        ...items.filter((item) => item.importBatchId !== record.importBatchId),
+      ]);
       setPhase("previewing");
     } catch (caught) {
-      const code = caught instanceof DOMException && caught.name === "AbortError"
-        ? "PARSE_ABORTED"
-        : typeof caught === "object" && caught && "code" in caught ? String(caught.code) : "PARSE_FAILED";
+      const code =
+        caught instanceof DOMException && caught.name === "AbortError"
+          ? "PARSE_ABORTED"
+          : typeof caught === "object" && caught && "code" in caught
+            ? String(caught.code)
+            : "PARSE_FAILED";
       setError({ code, message: caught instanceof Error ? caught.message : "DOCX 解析失败" });
       setPhase("selecting");
     } finally {
@@ -200,9 +218,14 @@ export function DocxImportWorkspace({ users }: { users: SiteUser[] }) {
   async function restorePreview(record: DocxPreviewRecord, now: number) {
     const editable = toEditable(record);
     const restoredValidation = validateEditedImportPreview(editable, now, validUserIds);
-    if (!restoredValidation.ok && restoredValidation.errors.some((item) => item.code === "PREVIEW_EXPIRED")) {
-      if (!await removePreviewRecord(record.importBatchId)) return;
-      setRecoverable((items) => items.filter((item) => item.importBatchId !== record.importBatchId));
+    if (
+      !restoredValidation.ok &&
+      restoredValidation.errors.some((item) => item.code === "PREVIEW_EXPIRED")
+    ) {
+      if (!(await removePreviewRecord(record.importBatchId))) return;
+      setRecoverable((items) =>
+        items.filter((item) => item.importBatchId !== record.importBatchId),
+      );
       setError({ code: "PREVIEW_EXPIRED", message: "Preview expired" });
       return;
     }
@@ -245,7 +268,7 @@ export function DocxImportWorkspace({ users }: { users: SiteUser[] }) {
         headers: { "content-type": "application/json" },
         body: submission.body,
       });
-      const data = await response.json() as {
+      const data = (await response.json()) as {
         result?: { postId: string };
         error?: { code?: string; message?: string };
       };
@@ -255,123 +278,329 @@ export function DocxImportWorkspace({ users }: { users: SiteUser[] }) {
         });
       }
       discardedRef.current.add(preview.importBatchId);
-      try { await removeImportPreview(preview.importBatchId); }
-      catch { /* The committed post is authoritative; an exact retry remains idempotent. */ }
-      setRecoverable((items) => items.filter((item) => item.importBatchId !== preview.importBatchId));
+      try {
+        await removeImportPreview(preview.importBatchId);
+      } catch {
+        /* The committed post is authoritative; an exact retry remains idempotent. */
+      }
+      setRecoverable((items) =>
+        items.filter((item) => item.importBatchId !== preview.importBatchId),
+      );
       setPhase("complete");
       router.push(`/posts/${data.result.postId}`);
       router.refresh();
     } catch (caught) {
       commitInFlightRef.current = false;
-      const code = typeof caught === "object" && caught && "code" in caught
-        ? String(caught.code)
-        : "COMMIT_REQUEST_FAILED";
+      const code =
+        typeof caught === "object" && caught && "code" in caught
+          ? String(caught.code)
+          : "COMMIT_REQUEST_FAILED";
       setError({ code, message: caught instanceof Error ? caught.message : "导入提交失败" });
       setPhase("previewing");
     }
   }
 
-  return <section className="docx-import-workspace" aria-busy={phase === "parsing" || phase === "uploading" || phase === "committing"}>
-    {phase === "selecting" && <>
-      {recoverable.length > 0 && <section className="docx-import-recovery" aria-labelledby="docx-recovery-heading">
-        <div className="section-heading"><h2 id="docx-recovery-heading">继续未完成的导入</h2><span>保留 24 小时</span></div>
-        <div className="docx-import-recovery-list">{recoverable.map((record) => <article key={record.importBatchId}>
-          <div><strong>{record.title ?? record.ir.suggestedTitle}</strong><span>{record.ir.source.filename}</span></div>
-          <div><button type="button" className="button button--small button--ghost" onClick={() => void restorePreview(record, Date.now())}>继续预览</button><button type="button" className="text-button text-button--danger" onClick={() => setDiscardBatchId(record.importBatchId)}>放弃</button></div>
-        </article>)}</div>
-      </section>}
+  return (
+    <section
+      className="docx-import-workspace"
+      aria-busy={phase === "parsing" || phase === "uploading" || phase === "committing"}
+    >
+      {phase === "selecting" && (
+        <>
+          {recoverable.length > 0 && (
+            <section className="docx-import-recovery" aria-labelledby="docx-recovery-heading">
+              <div className="section-heading">
+                <h2 id="docx-recovery-heading">继续未完成的导入</h2>
+                <span>保留 24 小时</span>
+              </div>
+              <div className="docx-import-recovery-list">
+                {recoverable.map((record) => (
+                  <article key={record.importBatchId}>
+                    <div>
+                      <strong>{record.title ?? record.ir.suggestedTitle}</strong>
+                      <span>{record.ir.source.filename}</span>
+                    </div>
+                    <div>
+                      <button
+                        type="button"
+                        className="button button--small button--ghost"
+                        onClick={() => void restorePreview(record, Date.now())}
+                      >
+                        继续预览
+                      </button>
+                      <button
+                        type="button"
+                        className="text-button text-button--danger"
+                        onClick={() => setDiscardBatchId(record.importBatchId)}
+                      >
+                        放弃
+                      </button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </section>
+          )}
 
-      <label className={`docx-import-dropzone${dragOver ? " is-drag-over" : ""}`}
-        onDragOver={(event) => { event.preventDefault(); setDragOver(true); }}
-        onDragLeave={() => setDragOver(false)}
-        onDrop={(event) => { event.preventDefault(); setDragOver(false); const file = event.dataTransfer.files[0]; if (file) void beginImport(file); }}>
-        <input type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" onChange={(event) => {
-          const file = event.target.files?.[0];
-          if (file) void beginImport(file);
-          event.currentTarget.value = "";
-        }} />
-        <span className="docx-import-file-mark" aria-hidden="true">DOCX</span>
-        <h2>选择 DOCX 文件</h2>
-        <p>拖到这里，或点击浏览文件。一次选择 1 个，最大 20 MB。</p>
-        <small>解析在浏览器内完成；原始 DOCX 不会上传。</small>
-      </label>
+          <label
+            className={`docx-import-dropzone${dragOver ? " is-drag-over" : ""}`}
+            onDragOver={(event) => {
+              event.preventDefault();
+              setDragOver(true);
+            }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={(event) => {
+              event.preventDefault();
+              setDragOver(false);
+              const file = event.dataTransfer.files[0];
+              if (file) void beginImport(file);
+            }}
+          >
+            <input
+              type="file"
+              accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                if (file) void beginImport(file);
+                event.currentTarget.value = "";
+              }}
+            />
+            <span className="docx-import-file-mark" aria-hidden="true">
+              DOCX
+            </span>
+            <h2>选择 DOCX 文件</h2>
+            <p>拖到这里，或点击浏览文件。一次选择 1 个，最大 20 MB。</p>
+            <small>解析在浏览器内完成；原始 DOCX 不会上传。</small>
+          </label>
 
-      {error && <div className="docx-import-error" role="alert">
-        <div><strong>未能准备预览</strong><p>{errorLabels[error.code] ?? error.message}</p></div>
-        {lastFile && error.code !== "INVALID_EXTENSION" && error.code !== "FILE_SIZE_LIMIT" && <button type="button" className="button button--ghost button--small" onClick={() => void beginImport(lastFile)}>重试</button>}
-      </div>}
-    </>}
+          {error && (
+            <div className="docx-import-error" role="alert">
+              <div>
+                <strong>未能准备预览</strong>
+                <p>{errorLabels[error.code] ?? error.message}</p>
+              </div>
+              {lastFile &&
+                error.code !== "INVALID_EXTENSION" &&
+                error.code !== "FILE_SIZE_LIMIT" && (
+                  <button
+                    type="button"
+                    className="button button--ghost button--small"
+                    onClick={() => void beginImport(lastFile)}
+                  >
+                    重试
+                  </button>
+                )}
+            </div>
+          )}
+        </>
+      )}
 
-    {(phase === "parsing" || phase === "uploading") && <section className="docx-import-progress" role="status" aria-live="polite" aria-labelledby="docx-progress-heading">
-      <span className="docx-import-file-mark" aria-hidden="true">DOCX</span>
-      <div>
-        <span className="eyebrow">解析进度</span>
-        <h2 id="docx-progress-heading">{phase === "parsing" ? stageLabels[stage] : "上传预览图片"}</h2>
-        <p>{phase === "parsing" ? "正在本地读取正文结构与批注关系。" : `已上传 ${uploadedCount} / ${uploadTotal} 张图片。`}</p>
-      </div>
-      <progress max={phase === "parsing" ? 6 : Math.max(1, uploadTotal)} value={phase === "parsing" ? progressValue(stage) : uploadedCount} aria-label={phase === "parsing" ? stageLabels[stage] : "图片上传进度"} />
-      <button type="button" className="button button--ghost" onClick={cancelActiveImport}>取消导入</button>
-    </section>}
+      {(phase === "parsing" || phase === "uploading") && (
+        <section
+          className="docx-import-progress"
+          role="status"
+          aria-live="polite"
+          aria-labelledby="docx-progress-heading"
+        >
+          <span className="docx-import-file-mark" aria-hidden="true">
+            DOCX
+          </span>
+          <div>
+            <span className="eyebrow">解析进度</span>
+            <h2 id="docx-progress-heading">
+              {phase === "parsing" ? stageLabels[stage] : "上传预览图片"}
+            </h2>
+            <p>
+              {phase === "parsing"
+                ? "正在本地读取正文结构与批注关系。"
+                : `已上传 ${uploadedCount} / ${uploadTotal} 张图片。`}
+            </p>
+          </div>
+          <progress
+            max={phase === "parsing" ? 6 : Math.max(1, uploadTotal)}
+            value={phase === "parsing" ? progressValue(stage) : uploadedCount}
+            aria-label={phase === "parsing" ? stageLabels[stage] : "图片上传进度"}
+          />
+          <button type="button" className="button button--ghost" onClick={cancelActiveImport}>
+            取消导入
+          </button>
+        </section>
+      )}
 
-    {phase === "previewing" && preview && validation && <>
-      {error && <div className="docx-import-error" role="alert"><div><strong>本地预览状态</strong><p>{errorLabels[error.code] ?? error.message}</p></div></div>}
-      <DocxImportPreview preview={preview} users={users} validation={validation}
-        onTitleChange={(title) => setPreview((current) => current ? { ...current, title } : current)}
-        onMarkdownChange={(markdown) => setPreview((current) => current ? { ...current, markdown } : current)}
-        onMappingChange={(sourceAuthorName, userId) => setPreview((current) => {
-          if (!current) return current;
-          const authorMappings = { ...current.authorMappings };
-          if (userId) authorMappings[sourceAuthorName] = userId;
-          else delete authorMappings[sourceAuthorName];
-          return { ...current, authorMappings };
-        })} />
-      <div className="docx-import-actions">
-        <button type="button" className="button button--ghost" onClick={() => setDiscardBatchId(preview.importBatchId)}>取消导入</button>
-        <div><span>{validation.ok ? "预览就绪，可以保存" : `还有 ${validation.errors.length} 项需要修正`}</span><button type="button" className="button button--primary" disabled={!validation.ok} aria-disabled={!validation.ok} onClick={() => void confirmImport()}>确认导入</button></div>
-      </div>
-    </>}
+      {phase === "previewing" && preview && validation && (
+        <>
+          {error && (
+            <div className="docx-import-error" role="alert">
+              <div>
+                <strong>本地预览状态</strong>
+                <p>{errorLabels[error.code] ?? error.message}</p>
+              </div>
+            </div>
+          )}
+          <DocxImportPreview
+            preview={preview}
+            users={users}
+            validation={validation}
+            onTitleChange={(title) =>
+              setPreview((current) => (current ? { ...current, title } : current))
+            }
+            onMarkdownChange={(markdown) =>
+              setPreview((current) => (current ? { ...current, markdown } : current))
+            }
+            onMappingChange={(sourceAuthorName, userId) =>
+              setPreview((current) => {
+                if (!current) return current;
+                const authorMappings = { ...current.authorMappings };
+                if (userId) authorMappings[sourceAuthorName] = userId;
+                else delete authorMappings[sourceAuthorName];
+                return { ...current, authorMappings };
+              })
+            }
+          />
+          <div className="docx-import-actions">
+            <button
+              type="button"
+              className="button button--ghost"
+              onClick={() => setDiscardBatchId(preview.importBatchId)}
+            >
+              取消导入
+            </button>
+            <div>
+              <span>
+                {validation.ok
+                  ? "预览就绪，可以保存"
+                  : `还有 ${validation.errors.length} 项需要修正`}
+              </span>
+              <button
+                type="button"
+                className="button button--primary"
+                disabled={!validation.ok}
+                aria-disabled={!validation.ok}
+                onClick={() => void confirmImport()}
+              >
+                确认导入
+              </button>
+            </div>
+          </div>
+        </>
+      )}
 
-    {phase === "committing" && <section className="docx-import-progress" role="status" aria-live="polite" aria-labelledby="docx-commit-heading">
-      <span className="docx-import-file-mark" aria-hidden="true">DOCX</span>
-      <div>
-        <span className="eyebrow">保存进度</span>
-        <h2 id="docx-commit-heading">正在保存帖子</h2>
-        <p>正在一次写入正文、批注和图片关系，请勿关闭页面。</p>
-      </div>
-      <progress aria-label="正在保存帖子" />
-    </section>}
+      {phase === "committing" && (
+        <section
+          className="docx-import-progress"
+          role="status"
+          aria-live="polite"
+          aria-labelledby="docx-commit-heading"
+        >
+          <span className="docx-import-file-mark" aria-hidden="true">
+            DOCX
+          </span>
+          <div>
+            <span className="eyebrow">保存进度</span>
+            <h2 id="docx-commit-heading">正在保存帖子</h2>
+            <p>正在一次写入正文、批注和图片关系，请勿关闭页面。</p>
+          </div>
+          <progress aria-label="正在保存帖子" />
+        </section>
+      )}
 
-    {phase === "complete" && <div className="empty-state"><h2>导入完成</h2><p>正在打开新帖子。</p></div>}
+      {phase === "complete" && (
+        <div className="empty-state">
+          <h2>导入完成</h2>
+          <p>正在打开新帖子。</p>
+        </div>
+      )}
 
-    <ModalDialog open={Boolean(discardBatchId)} title="放弃这份 DOCX 预览？" description="这会删除当前浏览器里保存的预览；已经上传的临时图片会由站点自动回收。" onClose={() => setDiscardBatchId(null)} alert>
-      <div className="dialog-actions"><button type="button" className="button button--ghost" onClick={() => setDiscardBatchId(null)}>继续保留</button><button type="button" className="button button--danger" onClick={() => { if (discardBatchId) void discardPreview(discardBatchId); }}>放弃预览</button></div>
-    </ModalDialog>
-  </section>;
+      <ModalDialog
+        open={Boolean(discardBatchId)}
+        title="放弃这份 DOCX 预览？"
+        description="这会删除当前浏览器里保存的预览；已经上传的临时图片会由站点自动回收。"
+        onClose={() => setDiscardBatchId(null)}
+        alert
+      >
+        <div className="dialog-actions">
+          <button
+            type="button"
+            className="button button--ghost"
+            onClick={() => setDiscardBatchId(null)}
+          >
+            继续保留
+          </button>
+          <button
+            type="button"
+            className="button button--danger"
+            onClick={() => {
+              if (discardBatchId) void discardPreview(discardBatchId);
+            }}
+          >
+            放弃预览
+          </button>
+        </div>
+      </ModalDialog>
+    </section>
+  );
 }
 
 function validateSourceFile(file: File) {
-  if (!file.name.toLocaleLowerCase("en-US").endsWith(".docx")) return { code: "INVALID_EXTENSION", message: "Invalid extension" };
-  if (file.size <= 0 || file.size > DOCX_IMPORT_LIMITS.compressedBytes) return { code: "FILE_SIZE_LIMIT", message: "Invalid file size" };
+  if (!file.name.toLocaleLowerCase("en-US").endsWith(".docx"))
+    return { code: "INVALID_EXTENSION", message: "Invalid extension" };
+  if (file.size <= 0 || file.size > DOCX_IMPORT_LIMITS.compressedBytes)
+    return { code: "FILE_SIZE_LIMIT", message: "Invalid file size" };
   return null;
 }
 
-async function uploadImageAsset(asset: DocxPreviewRecord["ir"]["assets"][number], signal: AbortSignal): Promise<DocxPreviewAsset> {
+async function uploadImageAsset(
+  asset: DocxPreviewRecord["ir"]["assets"][number],
+  signal: AbortSignal,
+): Promise<DocxPreviewAsset> {
   const formData = new FormData();
-  formData.set("file", new File([asset.bytes as Uint8Array<ArrayBuffer>], asset.filename, { type: asset.mimeType }));
+  formData.set(
+    "file",
+    new File([asset.bytes as Uint8Array<ArrayBuffer>], asset.filename, { type: asset.mimeType }),
+  );
   const response = await fetch("/api/assets", { method: "POST", body: formData, signal });
-  const data = await response.json() as { error?: string; asset?: { id: string; filename: string; mimeType: string; url: string } };
+  const data = (await response.json()) as {
+    error?: string;
+    asset?: { id: string; filename: string; mimeType: string; url: string };
+  };
   if (!response.ok || !data.asset) throw new Error(data.error ?? `图片 ${asset.filename} 上传失败`);
-  return { assetId: data.asset.id, temporaryUrl: data.asset.url, filename: data.asset.filename, mimeType: asset.mimeType };
+  return {
+    assetId: data.asset.id,
+    temporaryUrl: data.asset.url,
+    filename: data.asset.filename,
+    mimeType: asset.mimeType,
+  };
 }
 
 function toEditable(record: DocxPreviewRecord): EditedImportPreview {
-  const validAuthors = new Set(record.ir.threads.flatMap((thread) => [thread.sourceAuthorName, ...thread.replies.map((reply) => reply.sourceAuthorName)]));
-  const authorMappings = Object.fromEntries(
-    Object.entries(normalizeAuthorMappings(record.authorMappings)).filter(([author]) => validAuthors.has(author)),
+  const validAuthors = new Set(
+    record.ir.threads.flatMap((thread) => [
+      thread.sourceAuthorName,
+      ...thread.replies.map((reply) => reply.sourceAuthorName),
+    ]),
   );
-  return { ...record, title: record.title ?? record.ir.suggestedTitle, markdown: record.canonicalMarkdown, authorMappings };
+  const authorMappings = Object.fromEntries(
+    Object.entries(normalizeAuthorMappings(record.authorMappings)).filter(([author]) =>
+      validAuthors.has(author),
+    ),
+  );
+  return {
+    ...record,
+    title: record.title ?? record.ir.suggestedTitle,
+    markdown: record.canonicalMarkdown,
+    authorMappings,
+  };
 }
 
 function progressValue(stage: DocxWorkerProgressStage) {
-  return ["package-validation", "xml-preload", "document-walk", "thread-validation", "markdown-generation", "done"].indexOf(stage) + 1;
+  return (
+    [
+      "package-validation",
+      "xml-preload",
+      "document-walk",
+      "thread-validation",
+      "markdown-generation",
+      "done",
+    ].indexOf(stage) + 1
+  );
 }

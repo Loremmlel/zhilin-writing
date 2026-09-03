@@ -100,23 +100,23 @@ Back/Forward 恢复 URL 对应目标，但不得重新执行 mutation。重复�
 
 ### Access result
 
-| code | 含义 | UI | 编辑内容 |
-| --- | --- | --- | --- |
-| `AUTH_EXPIRED` | 请求已到达应用，但当前 ChatGPT identity/session 不再有效 | 登录状态已失效，请重新登录后继续。 | IndexedDB 与当前输入保留 |
-| `ACCESS_REVOKED` | identity 仍有效，但 email 已不在 allowlist | 你的站点访问权限已被移除。 | 本地内容保留，禁止提交与私人数据请求 |
+| code             | 含义                                                     | UI                                 | 编辑内容                             |
+| ---------------- | -------------------------------------------------------- | ---------------------------------- | ------------------------------------ |
+| `AUTH_EXPIRED`   | 请求已到达应用，但当前 ChatGPT identity/session 不再有效 | 登录状态已失效，请重新登录后继续。 | IndexedDB 与当前输入保留             |
+| `ACCESS_REVOKED` | identity 仍有效，但 email 已不在 allowlist               | 你的站点访问权限已被移除。         | 本地内容保留，禁止提交与私人数据请求 |
 
 顶层 navigation 若被 SIWC dispatcher 接管，仍按平台登录流程跳转；应用只能保证到达 Worker 的 action/API 返回上述 typed result。
 
 ### Target resolution
 
-| state | 判断 | 普通用户文案/行为 |
-| --- | --- | --- |
-| `AVAILABLE` | 当前目标可见且属于当前 revision | 精确定位并 highlight |
-| `DELETED_BY_AUTHOR` | `deleted_at` 生效且目标 placeholder 仍可达 | “该帖子/回复/批注已被作者删除。” |
-| `HIDDEN_BY_ADMIN` | `hidden_at` 生效 | “该帖子/回复/批注已被管理员隐藏。”；不含原文 |
+| state                     | 判断                                             | 普通用户文案/行为                                  |
+| ------------------------- | ------------------------------------------------ | -------------------------------------------------- |
+| `AVAILABLE`               | 当前目标可见且属于当前 revision                  | 精确定位并 highlight                               |
+| `DELETED_BY_AUTHOR`       | `deleted_at` 生效且目标 placeholder 仍可达       | “该帖子/回复/批注已被作者删除。”                   |
+| `HIDDEN_BY_ADMIN`         | `hidden_at` 生效                                 | “该帖子/回复/批注已被管理员隐藏。”；不含原文       |
 | `NOT_IN_CURRENT_REVISION` | 历史 snapshot 中存在但 current membership 不存在 | “该内容存在于历史版本中，但当前版本已不再包含它。” |
-| `POST_UNAVAILABLE` | 目标所属帖子当前不可访问，且无可达保留讨论 | 说明帖子不可用，不伪装为目标删除 |
-| `NOT_FOUND` | notification/target 数据从未存在或不属于该用户 | 通用 not found，不泄露存在性 |
+| `POST_UNAVAILABLE`        | 目标所属帖子当前不可访问，且无可达保留讨论       | 说明帖子不可用，不伪装为目标删除                   |
+| `NOT_FOUND`               | notification/target 数据从未存在或不属于该用户   | 通用 not found，不泄露存在性                       |
 
 管理员管理页仍可查看受权限保护的原内容和精确 lifecycle；普通页面只得到经过 redaction 的 target resolution。
 
@@ -124,18 +124,18 @@ Back/Forward 恢复 URL 对应目标，但不得重新执行 mutation。重复�
 
 Route navigation 继续使用即时轻量 TopLoader。现有页面 shell 不重写，异步反馈按区域处理：
 
-| 区域 | 初始状态 | 失败恢复 |
-| --- | --- | --- |
-| 首页 Latest / Active | list skeleton | 保留 tabs，区域错误 + Retry |
-| Post 正文 | article skeleton | Post 错误 + Retry |
-| Post discussions / Annotation | local skeleton | 保留正文，讨论错误 + Retry |
-| Notifications | list skeleton | 保留筛选，列表错误 + Retry |
-| Profile Posts / Activity | list skeleton | 保留 profile/tabs，区域错误 + Retry |
-| Search | result skeleton | 保留 query，结果错误 + Retry |
-| Tag | list skeleton | 保留 tag heading，列表错误 + Retry |
-| Admin / Revision list | table/list skeleton | 保留 section/tab，区域错误 + Retry |
-| DOCX Preview | staged progress/skeleton | 保留 source/preview，明确 Retry |
-| Upload | 每文件真实进度 | 单项 Retry/Remove |
+| 区域                          | 初始状态                 | 失败恢复                            |
+| ----------------------------- | ------------------------ | ----------------------------------- |
+| 首页 Latest / Active          | list skeleton            | 保留 tabs，区域错误 + Retry         |
+| Post 正文                     | article skeleton         | Post 错误 + Retry                   |
+| Post discussions / Annotation | local skeleton           | 保留正文，讨论错误 + Retry          |
+| Notifications                 | list skeleton            | 保留筛选，列表错误 + Retry          |
+| Profile Posts / Activity      | list skeleton            | 保留 profile/tabs，区域错误 + Retry |
+| Search                        | result skeleton          | 保留 query，结果错误 + Retry        |
+| Tag                           | list skeleton            | 保留 tag heading，列表错误 + Retry  |
+| Admin / Revision list         | table/list skeleton      | 保留 section/tab，区域错误 + Retry  |
+| DOCX Preview                  | staged progress/skeleton | 保留 source/preview，明确 Retry     |
+| Upload                        | 每文件真实进度           | 单项 Retry/Remove                   |
 
 局部 skeleton 延迟约 120–180ms 才显色，几何占位从首帧存在，避免快请求闪烁又避免 layout shift。Mutation 使用按钮/inline pending，不使用全屏 spinner。
 
@@ -153,7 +153,8 @@ type UploadTask = {
   status: "pending" | "uploading" | "succeeded" | "failed";
   progress: number;
   asset?: UploadedAsset;
-  errorCode?: "UNSUPPORTED_TYPE" | "SIZE_LIMIT" | "NETWORK" | "SERVER" | "AUTH_EXPIRED" | "ACCESS_REVOKED";
+  errorCode?:
+    "UNSUPPORTED_TYPE" | "SIZE_LIMIT" | "NETWORK" | "SERVER" | "AUTH_EXPIRED" | "ACCESS_REVOKED";
 };
 ```
 
@@ -179,12 +180,12 @@ Asset API 返回 JSON error code 与正确 HTTP status；客户端分别显示�
 
 当前明确候选：
 
-| 索引 | 对应查询 | 处理原则 |
-| --- | --- | --- |
-| `posts(author_id, published_at)` | Profile Posts 按作者倒序分页 | 若 plan 采用则替换冗余 `posts(author_id)` |
-| `post_replies(post_id, published_at)` | Post Detail 回复稳定排序/分页 | 若 plan 采用则替换冗余 `post_replies(post_id)` |
-| `post_tags(tag_id, post_id)` | Tag Posts 与 tags 聚合 | 新增 reverse lookup |
-| lifecycle partial/composite | admin deleted/hidden lists | 仅在实际 plan 证明全扫且值得优化时添加；一次性小型 admin query 默认不加 |
+| 索引                                  | 对应查询                      | 处理原则                                                                |
+| ------------------------------------- | ----------------------------- | ----------------------------------------------------------------------- |
+| `posts(author_id, published_at)`      | Profile Posts 按作者倒序分页  | 若 plan 采用则替换冗余 `posts(author_id)`                               |
+| `post_replies(post_id, published_at)` | Post Detail 回复稳定排序/分页 | 若 plan 采用则替换冗余 `post_replies(post_id)`                          |
+| `post_tags(tag_id, post_id)`          | Tag Posts 与 tags 聚合        | 新增 reverse lookup                                                     |
+| lifecycle partial/composite           | admin deleted/hidden lists    | 仅在实际 plan 证明全扫且值得优化时添加；一次性小型 admin query 默认不加 |
 
 `LIKE '%query%'` 不能使用普通 B-tree。私人小站继续使用有上限的全文扫描；V7 不为此引入 FTS 子系统。
 

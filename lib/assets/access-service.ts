@@ -10,16 +10,16 @@ export async function getAssetAccessFacts(assetId: string): Promise<AssetAccessF
   if (!asset) return null;
 
   const [currentRefs, revisionRefs, avatarRefs] = await Promise.all([
-    db.select({ deletedAt: posts.deletedAt, hiddenAt: posts.hiddenAt })
+    db
+      .select({ deletedAt: posts.deletedAt, hiddenAt: posts.hiddenAt })
       .from(postAssetRefs)
       .innerJoin(posts, eq(postAssetRefs.postId, posts.id))
       .where(eq(postAssetRefs.assetId, assetId)),
-    db.select({ assetId: revisionAssetRefs.assetId })
+    db
+      .select({ assetId: revisionAssetRefs.assetId })
       .from(revisionAssetRefs)
       .where(eq(revisionAssetRefs.assetId, assetId)),
-    db.select({ id: users.id })
-      .from(users)
-      .where(eq(users.avatarAssetId, assetId)),
+    db.select({ id: users.id }).from(users).where(eq(users.avatarAssetId, assetId)),
   ]);
 
   return {

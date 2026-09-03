@@ -6,7 +6,12 @@ import { commonmark } from "@milkdown/kit/preset/commonmark";
 import { gfm } from "@milkdown/kit/preset/gfm";
 import { Window } from "happy-dom";
 
-import { collectAnnotationIds, parseAnnotationMarkdown, stringifyAnnotationMarkdown, visiblePostText } from "../lib/annotations/markdown.ts";
+import {
+  collectAnnotationIds,
+  parseAnnotationMarkdown,
+  stringifyAnnotationMarkdown,
+  visiblePostText,
+} from "../lib/annotations/markdown.ts";
 import { annotationPlugin } from "../lib/editor/annotation-mark.ts";
 
 const FIRST_ID = "ann_550e8400-e29b-41d4-a716-446655440000";
@@ -26,8 +31,10 @@ function installDom() {
     addEventListener: window.addEventListener.bind(window),
     removeEventListener: window.removeEventListener.bind(window),
     dispatchEvent: window.dispatchEvent.bind(window),
-    requestAnimationFrame: (callback: FrameRequestCallback) => window.setTimeout(() => callback(Date.now()), 0),
-    cancelAnimationFrame: (id: number) => window.clearTimeout(id as unknown as ReturnType<typeof window.setTimeout>),
+    requestAnimationFrame: (callback: FrameRequestCallback) =>
+      window.setTimeout(() => callback(Date.now()), 0),
+    cancelAnimationFrame: (id: number) =>
+      window.clearTimeout(id as unknown as ReturnType<typeof window.setTimeout>),
   });
   Object.defineProperty(globalThis, "navigator", { configurable: true, value: window.navigator });
   return window;
@@ -75,17 +82,37 @@ test("Milkdown annotation mark round-trips supported inline formatting", async (
   for (const fixture of fixtures) {
     const result = await milkdownRoundTrip(fixture.source);
     const documentJson = result.document.toJSON();
-    const textNodes: Array<{ type: string; text?: string; marks?: Array<{ type: string; attrs?: Record<string, unknown> }>; content?: unknown[] }> = [];
-    const walk = (node: { type: string; text?: string; marks?: Array<{ type: string; attrs?: Record<string, unknown> }>; content?: unknown[] }) => {
+    const textNodes: Array<{
+      type: string;
+      text?: string;
+      marks?: Array<{ type: string; attrs?: Record<string, unknown> }>;
+      content?: unknown[];
+    }> = [];
+    const walk = (node: {
+      type: string;
+      text?: string;
+      marks?: Array<{ type: string; attrs?: Record<string, unknown> }>;
+      content?: unknown[];
+    }) => {
       if (node.type === "text") textNodes.push(node);
       node.content?.forEach((child) => walk(child as typeof node));
     };
     walk(documentJson);
-    assert.ok(textNodes.some((node) => node.marks?.some((mark) => mark.type === "annotation" && mark.attrs?.annotationId === FIRST_ID)));
-    if (fixture.mark) assert.ok(textNodes.some((node) => node.marks?.some((mark) => mark.type === fixture.mark)));
+    assert.ok(
+      textNodes.some((node) =>
+        node.marks?.some(
+          (mark) => mark.type === "annotation" && mark.attrs?.annotationId === FIRST_ID,
+        ),
+      ),
+    );
+    if (fixture.mark)
+      assert.ok(textNodes.some((node) => node.marks?.some((mark) => mark.type === fixture.mark)));
     const reparsed = parseAnnotationMarkdown(result.markdown);
     assert.deepEqual(collectAnnotationIds(reparsed), [FIRST_ID]);
-    assert.equal(visiblePostText(reparsed), visiblePostText(parseAnnotationMarkdown(fixture.source)));
+    assert.equal(
+      visiblePostText(reparsed),
+      visiblePostText(parseAnnotationMarkdown(fixture.source)),
+    );
     if (fixture.mark === "link") assert.match(result.markdown, /https:\/\/example\.com\/a/);
   }
 });
@@ -97,7 +124,32 @@ test("adjacent and separated annotation marks remain independent after Milkdown 
   ]) {
     const first = await milkdownRoundTrip(source);
     const second = await milkdownRoundTrip(first.markdown);
-    assert.deepEqual(collectAnnotationIds(parseAnnotationMarkdown(second.markdown)), [FIRST_ID, SECOND_ID]);
-    assert.equal(visiblePostText(parseAnnotationMarkdown(second.markdown)), visiblePostText(parseAnnotationMarkdown(source)));
+    assert.deepEqual(collectAnnotationIds(parseAnnotationMarkdown(second.markdown)), [
+      FIRST_ID,
+      SECOND_ID,
+    ]);
+    assert.equal(
+      visiblePostText(parseAnnotationMarkdown(second.markdown)),
+      visiblePostText(parseAnnotationMarkdown(source)),
+    );
   }
+});
+
+test("one annotation ID round-trips as consecutive cross-block mark segments", async () => {
+  const source = [
+    `第一段 :annotation[后半]{#${FIRST_ID}}`,
+    "",
+    `> :annotation[第二段]{#${FIRST_ID}}`,
+    "",
+    `- :annotation[第三段]{#${FIRST_ID}} 结尾`,
+  ].join("\n");
+  const first = await milkdownRoundTrip(source);
+  const second = await milkdownRoundTrip(first.markdown);
+
+  assert.deepEqual(collectAnnotationIds(parseAnnotationMarkdown(second.markdown)), [FIRST_ID]);
+  assert.equal(second.markdown.match(new RegExp(FIRST_ID, "g"))?.length, 3);
+  assert.equal(
+    visiblePostText(parseAnnotationMarkdown(second.markdown)),
+    visiblePostText(parseAnnotationMarkdown(source)),
+  );
 });

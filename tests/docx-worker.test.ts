@@ -1,9 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import {
-  DOCX_IMPORT_LIMITS,
-} from "../lib/docx-import/limits.ts";
+import { DOCX_IMPORT_LIMITS } from "../lib/docx-import/limits.ts";
 import {
   finalizeDocxPreview,
   parseDocxWithWorker,
@@ -99,12 +97,15 @@ test("uses the exact ordered DOCX worker stages and transfers source bytes once"
 test("the real worker emits every parse stage in order before success", async () => {
   const file = await makeDocxFixture();
   const responses: DocxWorkerResponse[] = [];
-  await handleDocxWorkerRequest({
-    kind: "start",
-    requestId: "request-1",
-    filename: file.name,
-    bytes: await file.arrayBuffer(),
-  }, (message) => responses.push(message));
+  await handleDocxWorkerRequest(
+    {
+      kind: "start",
+      requestId: "request-1",
+      filename: file.name,
+      bytes: await file.arrayBuffer(),
+    },
+    (message) => responses.push(message),
+  );
 
   assert.deepEqual(
     responses.filter((message) => message.kind === "progress").map((message) => message.stage),
@@ -119,7 +120,9 @@ test("transfers parsed image buffers with the worker success message", async () 
       "</Types>",
       '<Default Extension="png" ContentType="image/png"/></Types>',
     )}`,
-    "word/document.xml": wordDocumentXml(`<w:p><w:r><w:drawing><wp:inline><wp:docPr/><a:graphic><pic:pic><pic:blipFill><a:blip r:embed="rImage"/></pic:blipFill></pic:pic></a:graphic></wp:inline></w:drawing></w:r></w:p>`),
+    "word/document.xml": wordDocumentXml(
+      `<w:p><w:r><w:drawing><wp:inline><wp:docPr/><a:graphic><pic:pic><pic:blipFill><a:blip r:embed="rImage"/></pic:blipFill></pic:pic></a:graphic></wp:inline></w:drawing></w:r></w:p>`,
+    ),
     "word/_rels/document.xml.rels": documentRelationshipsXml(
       '<Relationship Id="rImage" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/picture.png"/>',
     ),
@@ -142,12 +145,14 @@ test("transfers parsed image buffers with the worker success message", async () 
       if (message.kind === "success" || message.kind === "failure") complete(message);
     },
   });
-  listener!({ data: {
-    kind: "start",
-    requestId: "request-image",
-    filename: file.name,
-    bytes: await file.arrayBuffer(),
-  } } as MessageEvent<DocxWorkerRequest>);
+  listener!({
+    data: {
+      kind: "start",
+      requestId: "request-image",
+      filename: file.name,
+      bytes: await file.arrayBuffer(),
+    },
+  } as MessageEvent<DocxWorkerRequest>);
   const terminal = await completion;
 
   const successIndex = responses.findIndex((message) => message.kind === "success");
@@ -174,9 +179,10 @@ test("preserves a structured worker error code and payload before terminating", 
 
   await assert.rejects(
     parseDocxWithWorker(new File(["docx"], "source.docx"), { workerFactory: () => worker }),
-    (error: unknown) => error instanceof DocxImportError
-      && error.code === "XML_MALFORMED"
-      && error.details?.partName === "word/document.xml",
+    (error: unknown) =>
+      error instanceof DocxImportError &&
+      error.code === "XML_MALFORMED" &&
+      error.details?.partName === "word/document.xml",
   );
   assert.equal(worker.terminated, true);
 });
@@ -205,7 +211,9 @@ test("rejects when a progress callback fails and terminates the worker", async (
   await assert.rejects(
     parseDocxWithWorker(new File(["docx"], "source.docx"), {
       workerFactory: () => worker,
-      onProgress: () => { throw new Error("progress callback failed"); },
+      onProgress: () => {
+        throw new Error("progress callback failed");
+      },
     }),
     (error: unknown) => error instanceof DocxImportError && error.code === "PARSE_FAILED",
   );
@@ -305,32 +313,38 @@ function parsedFixture(): ParsedDocx {
     version: 1,
     source: { filename: "source.docx", producer: "Word" },
     suggestedTitle: "Imported",
-    blocks: [{
-      id: "p1",
-      type: "paragraph",
-      segments: [{ text: "正文", marks: [], commentIds: ["10"] }],
-    }],
+    blocks: [
+      {
+        id: "p1",
+        type: "paragraph",
+        segments: [{ text: "正文", marks: [], commentIds: ["10"] }],
+      },
+    ],
     assets: [],
-    threads: [{
-      annotationId: "source-root",
-      sourceCommentId: "10",
-      blockId: "p1",
-      blockLocalStart: 0,
-      blockLocalEnd: 2,
-      sourceAuthorName: "Author",
-      sourceDocumentOrder: 0,
-      sourceResolved: false,
-      bodyMarkdown: "Root",
-      replies: [{
-        replyId: "source-reply",
-        sourceCommentId: "11",
-        parentSourceCommentId: "10",
-        sourceAuthorName: "Reply Author",
-        sourceDocumentOrder: 1,
+    threads: [
+      {
+        annotationId: "source-root",
+        sourceCommentId: "10",
+        blockId: "p1",
+        blockLocalStart: 0,
+        blockLocalEnd: 2,
+        sourceAuthorName: "Author",
+        sourceDocumentOrder: 0,
         sourceResolved: false,
-        bodyMarkdown: "Reply",
-      }],
-    }],
+        bodyMarkdown: "Root",
+        replies: [
+          {
+            replyId: "source-reply",
+            sourceCommentId: "11",
+            parentSourceCommentId: "10",
+            sourceAuthorName: "Reply Author",
+            sourceDocumentOrder: 1,
+            sourceResolved: false,
+            bodyMarkdown: "Reply",
+          },
+        ],
+      },
+    ],
     skippedThreads: [],
     warnings: [],
     canonicalMarkdown: ":annotation[正文]{#source-root}",

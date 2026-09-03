@@ -22,8 +22,7 @@ export function decideAssetReadAccess(
 
   if (asset.avatarRefCount > 0 || asset.activeCurrentRefCount > 0) return "allow";
 
-  const protectedHistoricalReference = (
-    asset.unavailableCurrentRefCount > 0 || asset.revisionRefCount > 0
-  );
+  const protectedHistoricalReference =
+    asset.unavailableCurrentRefCount > 0 || asset.revisionRefCount > 0;
   return viewer.isAdmin && protectedHistoricalReference ? "allow" : "deny";
 }

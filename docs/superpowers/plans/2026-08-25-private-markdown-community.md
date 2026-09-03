@@ -25,11 +25,13 @@
 ### Task 1: Domain rules and test harness
 
 **Files:**
+
 - Modify: `package.json`
 - Create: `lib/domain/rules.ts`
 - Create: `tests/domain-rules.test.ts`
 
 **Interfaces:**
+
 - Produces: `normalizeEmail`, `validateDisplayName`, `validatePostInput`, `validateReplyMarkdown`, `normalizeReplyTarget`, and `canEditPost`.
 
 - [ ] Write tests for email normalization, unique-name validation inputs, tag limits, post ownership, reply size/emptiness, and two-level reply normalization.
@@ -39,6 +41,7 @@
 ### Task 2: D1 schema and repositories
 
 **Files:**
+
 - Modify: `.openai/hosting.json`
 - Replace: `db/schema.ts`
 - Create: `db/queries.ts`
@@ -47,6 +50,7 @@
 - Create: `drizzle/*.sql`
 
 **Interfaces:**
+
 - Consumes: domain validation functions from Task 1.
 - Produces: `requireSiteAccess`, `getCurrentMember`, `createPost`, `updatePost`, post/reply/tag/profile/admin query functions.
 
@@ -58,11 +62,13 @@
 ### Task 3: Safe Markdown pipeline
 
 **Files:**
+
 - Create: `lib/markdown/render.ts`
 - Create: `lib/markdown/plain-text.ts`
 - Create: `tests/markdown.test.ts`
 
 **Interfaces:**
+
 - Produces: `renderMarkdown(markdown): Promise<string>` and `markdownToPlainText(markdown): string`.
 
 - [ ] Write failing tests for GFM tables/tasks, links, code, stripping script/iframe content, and searchable plain text.
@@ -72,11 +78,13 @@
 ### Task 4: Authenticated shell and onboarding
 
 **Files:**
+
 - Modify: `app/layout.tsx`, `app/globals.css`, `app/page.tsx`
 - Create: `app/(site)/layout.tsx`, `components/site-header.tsx`, `components/site-footer.tsx`
 - Create: `app/onboarding/page.tsx`, `app/onboarding/actions.ts`
 
 **Interfaces:**
+
 - Consumes: `requireSiteAccess` and profile query/update functions.
 - Produces: protected navigation and first-login profile creation.
 
@@ -87,12 +95,14 @@
 ### Task 5: Markdown-first editor and local drafts
 
 **Files:**
+
 - Create: `components/editor/markdown-editor.tsx`
 - Create: `components/editor/editor-shell.tsx`
 - Create: `lib/drafts/indexed-db.ts`
 - Create: `app/posts/new/page.tsx`, `app/posts/new/actions.ts`
 
 **Interfaces:**
+
 - Produces: an uncontrolled Milkdown editor whose `onMarkdownChange` callback emits canonical Markdown, and draft helpers keyed by user/post.
 
 - [ ] Write failing unit tests for stable draft keys and post form validation.
@@ -103,12 +113,14 @@
 ### Task 6: R2 uploads and attachment semantics
 
 **Files:**
+
 - Create: `lib/assets/storage.ts`
 - Create: `app/api/assets/route.ts`
 - Create: `app/api/assets/[id]/route.ts`
 - Create: `components/editor/asset-panel.tsx`
 
 **Interfaces:**
+
 - Produces: authenticated upload/download endpoints and Markdown insertion strings for image and attachment assets.
 
 - [ ] Write failing tests for file kind/size validation and generated Markdown semantics.
@@ -118,11 +130,13 @@
 ### Task 7: Post list, detail, edit, replies, tags, and search
 
 **Files:**
+
 - Create: `components/post-card.tsx`, `components/reply-list.tsx`, `components/reply-form.tsx`
 - Create: `app/posts/[id]/page.tsx`, `app/posts/[id]/edit/page.tsx`, route actions
 - Create: `app/tags/page.tsx`, `app/tags/[name]/page.tsx`, `app/search/page.tsx`
 
 **Interfaces:**
+
 - Consumes: post/reply/tag/search queries, renderer, editor, and post persistence boundary.
 
 - [ ] Add rendered-output and domain tests for Latest/Active ordering, edit timestamps, and flattened reply depth.
@@ -133,10 +147,12 @@
 ### Task 8: Profiles and administration
 
 **Files:**
+
 - Create: `app/users/[id]/page.tsx`, `app/settings/profile/page.tsx`, related actions
 - Create: `app/admin/page.tsx`, `app/admin/actions.ts`
 
 **Interfaces:**
+
 - Consumes: profile/admin queries and server-side admin authorization.
 
 - [ ] Add tests for unique display names and sole-admin protection.
@@ -146,10 +162,12 @@
 ### Task 9: Migration, build, and undeployed save
 
 **Files:**
+
 - Modify: `tests/rendered-html.test.mjs`
 - Verify: all application and migration files.
 
 **Interfaces:**
+
 - Produces: a validated Sites source version with no deployment.
 
 - [ ] Run `npm run db:generate` and inspect generated SQL.

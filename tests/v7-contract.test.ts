@@ -12,7 +12,17 @@ test("V7 keeps an executable release matrix and the required final report sectio
     source("../docs/v7-release-hardening-report.md"),
   ]);
 
-  for (const area of ["Auth", "Post", "Reply", "Annotation", "DOCX", "Assets", "Slow network", "Failure injection", "Deployment gate"]) {
+  for (const area of [
+    "Auth",
+    "Post",
+    "Reply",
+    "Annotation",
+    "DOCX",
+    "Assets",
+    "Slow network",
+    "Failure injection",
+    "Deployment gate",
+  ]) {
     assert.match(matrix, new RegExp(`## ${area.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`));
   }
   for (let section = 1; section <= 16; section += 1) {
@@ -35,7 +45,7 @@ test("every V7 route-loading contract has a real route boundary", async () => {
   ];
   const boundaries = await Promise.all(routes.map(source));
   boundaries.forEach((boundary, index) => {
-    assert.match(boundary, /Skeleton/ , `${routes[index]} must render a skeleton`);
+    assert.match(boundary, /Skeleton/, `${routes[index]} must render a skeleton`);
   });
 });
 
@@ -64,7 +74,7 @@ test("asset failures remain per-file and unsafe attachments are downloaded", asy
   assert.match(editor, /Promise\.allSettled/);
   assert.match(editor, /status: "failed"/);
   assert.doesNotMatch(editor, /controller\.abort\(\);[\s\S]{0,120}setImageUploadTasks/);
-  assert.match(postForm, /type="file" multiple/);
+  assert.match(postForm, /type="file"\s+multiple/);
   assert.match(postForm, /uploadAttachment\(task\.file, task\.id\)/);
   assert.match(assetRoute, /x-content-type-options/);
   assert.match(assetRoute, /\? "inline" : "attachment"/);
@@ -72,34 +82,43 @@ test("asset failures remain per-file and unsafe attachments are downloaded", asy
 });
 
 test("V7 polish keeps lifecycle states out of 404 and provides local recovery and mobile containment", async () => {
-  const [notFound, styles, notifications, annotationThread, admin, profile, post, revision] = await Promise.all([
-    source("../app/not-found.tsx"),
-    source("../app/globals.css"),
-    source("../app/(site)/notifications/page.tsx"),
-    source("../components/annotations/annotation-thread.tsx"),
-    source("../app/(site)/admin/page.tsx"),
-    source("../app/(site)/users/[id]/page.tsx"),
-    source("../app/(site)/posts/[id]/page.tsx"),
-    source("../app/(site)/admin/revisions/[postId]/page.tsx"),
-  ]);
+  const [notFound, styles, notifications, annotationThread, admin, profile, post, revision] =
+    await Promise.all([
+      source("../app/not-found.tsx"),
+      source("../app/globals.css"),
+      source("../app/(site)/notifications/page.tsx"),
+      source("../components/annotations/annotation-thread.tsx"),
+      source("../app/(site)/admin/page.tsx"),
+      source("../app/(site)/users/[id]/page.tsx"),
+      source("../app/(site)/posts/[id]/page.tsx"),
+      source("../app/(site)/admin/revisions/[postId]/page.tsx"),
+    ]);
 
   assert.match(notFound, /没有找到这个页面/);
   assert.doesNotMatch(notFound, /不可见|已删除|已隐藏/);
   assert.match(styles, /\.markdown-body table[^}]*max-width: 100%[^}]*overflow-x: auto/);
   assert.match(styles, /@media \(max-width: 640px\)[\s\S]*min-height: 44px/);
   assert.match(styles, /:focus-visible[^}]*outline/);
-  assert.match(styles, /skeleton-reveal 0s \.16s both/);
+  assert.match(styles, /skeleton-reveal 0s 0\.16s both/);
   assert.match(annotationThread, /还没有回复。/);
   assert.match(admin, /没有被作者删除的/);
   assert.match(admin, /没有被管理员隐藏的/);
-  assert.match(profile, />帖子<[\s\S]*>动态</);
+  assert.match(profile, />\s*帖子\s*<[\s\S]*>\s*动态\s*</);
   for (const region of [notifications, profile, post, admin, revision]) {
     assert.match(region, /RegionErrorBoundary/);
   }
 });
 
 test("ordinary post reading defers the large editor bundle until a composer opens", async () => {
-  const [readingLayout, editorLayout, annotationReply, replyForm, replyList, lazyEditor, lazyReply] = await Promise.all([
+  const [
+    readingLayout,
+    editorLayout,
+    annotationReply,
+    replyForm,
+    replyList,
+    lazyEditor,
+    lazyReply,
+  ] = await Promise.all([
     source("../components/annotations/annotation-reading-layout.tsx"),
     source("../components/editor/annotated-editor-layout.tsx"),
     source("../components/annotations/annotation-reply-form.tsx"),
@@ -132,7 +151,10 @@ test("home cards, admin tabs, and the compact header keep their interaction cont
   assert.match(styles, /\.admin-page \.list-tabs[^}]*overflow-x: auto[^}]*overflow-y: hidden/);
   assert.doesNotMatch(styles, /\.admin-page \.list-tabs[^}]*scrollbar-gutter: stable/);
   assert.match(styles, /\.button--write[^}]*white-space: nowrap/);
-  assert.match(styles, /@media \(max-width: 640px\)[\s\S]*\.header-actions \{ gap: 8px; \}[\s\S]*\.account-menu-trigger \{[^}]*min-width: 44px/);
+  assert.match(
+    styles,
+    /@media \(max-width: 640px\)[\s\S]*\.header-actions\s*\{[^}]*gap:\s*8px;[^}]*\}[\s\S]*\.account-menu-trigger\s*\{[^}]*min-width:\s*44px/,
+  );
   assert.match(admin, /所属帖子：用户已删除/);
   assert.match(admin, /所属帖子：管理员已隐藏/);
 });

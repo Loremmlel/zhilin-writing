@@ -39,7 +39,10 @@ export async function openDocxPackage(file: File): Promise<DocxPackageReader> {
     );
   }
   if (!startsWith(prefix, ZIP_LOCAL_FILE_SIGNATURE)) {
-    throw new DocxImportError("ZIP_SIGNATURE_INVALID", "The selected file is not a DOCX ZIP package");
+    throw new DocxImportError(
+      "ZIP_SIGNATURE_INVALID",
+      "The selected file is not a DOCX ZIP package",
+    );
   }
 
   const zipReader = new ZipReader(new BlobReader(file), {
@@ -96,28 +99,41 @@ function validateEntries(entries: Entry[]): Map<string, FileEntry> {
     assertSafePackagePath(entry.filename, entry.directory);
     const canonicalName = entry.filename.normalize("NFC").toLocaleLowerCase("en-US");
     if (canonicalNames.has(canonicalName)) {
-      throw new DocxImportError("ZIP_DUPLICATE_ENTRY", "DOCX package contains an ambiguous duplicate entry", {
-        path: entry.filename,
-      });
+      throw new DocxImportError(
+        "ZIP_DUPLICATE_ENTRY",
+        "DOCX package contains an ambiguous duplicate entry",
+        {
+          path: entry.filename,
+        },
+      );
     }
     canonicalNames.add(canonicalName);
 
     if (entry.encrypted) {
-      throw new DocxImportError("ZIP_ENCRYPTED_ENTRY", "Encrypted DOCX package entries are not supported", {
-        path: entry.filename,
-      });
+      throw new DocxImportError(
+        "ZIP_ENCRYPTED_ENTRY",
+        "Encrypted DOCX package entries are not supported",
+        {
+          path: entry.filename,
+        },
+      );
     }
     if (entry.symlink) {
-      throw new DocxImportError("ZIP_SYMLINK_ENTRY", "Symbolic links are forbidden in DOCX packages", {
-        path: entry.filename,
-      });
+      throw new DocxImportError(
+        "ZIP_SYMLINK_ENTRY",
+        "Symbolic links are forbidden in DOCX packages",
+        {
+          path: entry.filename,
+        },
+      );
     }
 
     totalUncompressed += entry.uncompressedSize;
-    if (entry.uncompressedSize > 0 && (
-      entry.compressedSize === 0
-      || entry.uncompressedSize / entry.compressedSize > DOCX_IMPORT_LIMITS.compressionRatio
-    )) {
+    if (
+      entry.uncompressedSize > 0 &&
+      (entry.compressedSize === 0 ||
+        entry.uncompressedSize / entry.compressedSize > DOCX_IMPORT_LIMITS.compressionRatio)
+    ) {
       throw new DocxImportError(
         "ZIP_RATIO_LIMIT",
         `DOCX entry exceeds the ${DOCX_IMPORT_LIMITS.compressionRatio}:1 compression-ratio limit`,
@@ -151,7 +167,9 @@ function validateEntries(entries: Entry[]): Map<string, FileEntry> {
 
   for (const path of REQUIRED_PARTS) {
     if (!files.has(path)) {
-      throw new DocxImportError("REQUIRED_PART_MISSING", `DOCX package is missing ${path}`, { path });
+      throw new DocxImportError("REQUIRED_PART_MISSING", `DOCX package is missing ${path}`, {
+        path,
+      });
     }
   }
   return files;
@@ -162,11 +180,15 @@ function createPackageReader(
   files: Map<string, FileEntry>,
 ): DocxPackageReader {
   let closed = false;
-  const publicEntries = Object.freeze([...files].map(([path, entry]) => Object.freeze({
-    path,
-    compressedSize: entry.compressedSize,
-    uncompressedSize: entry.uncompressedSize,
-  })));
+  const publicEntries = Object.freeze(
+    [...files].map(([path, entry]) =>
+      Object.freeze({
+        path,
+        compressedSize: entry.compressedSize,
+        uncompressedSize: entry.uncompressedSize,
+      }),
+    ),
+  );
 
   const assertOpen = () => {
     if (closed) throw new DocxImportError("PACKAGE_CLOSED", "DOCX package reader is closed");
@@ -176,16 +198,20 @@ function createPackageReader(
     assertOpen();
     const entry = files.get(path);
     if (!entry) {
-      throw new DocxImportError("ZIP_ENTRY_NOT_FOUND", "DOCX package entry does not exist", { path });
+      throw new DocxImportError("ZIP_ENTRY_NOT_FOUND", "DOCX package entry does not exist", {
+        path,
+      });
     }
     try {
-      const bytes = new Uint8Array(await entry.arrayBuffer({
-        strictness: "strict",
-        checkAmbiguity: true,
-        checkCrc32: true,
-        checkOverlappingEntry: true,
-        useWebWorkers: false,
-      }));
+      const bytes = new Uint8Array(
+        await entry.arrayBuffer({
+          strictness: "strict",
+          checkAmbiguity: true,
+          checkCrc32: true,
+          checkOverlappingEntry: true,
+          useWebWorkers: false,
+        }),
+      );
       if (bytes.byteLength !== entry.uncompressedSize) {
         throw new DocxImportError(
           "ZIP_ENTRY_SIZE_MISMATCH",
@@ -230,15 +256,17 @@ function assertSafePackagePath(path: string, directory: boolean): void {
   const normalizedPath = directory && path.endsWith("/") ? path.slice(0, -1) : path;
   const components = normalizedPath.split("/");
   if (
-    normalizedPath.length === 0
-    || path.includes("\\")
-    || path.includes("\0")
-    || path.startsWith("/")
-    || /^[a-zA-Z]:/.test(path)
-    || (!directory && path.endsWith("/"))
-    || components.some((component) => component === "" || component === "." || component === "..")
+    normalizedPath.length === 0 ||
+    path.includes("\\") ||
+    path.includes("\0") ||
+    path.startsWith("/") ||
+    /^[a-zA-Z]:/.test(path) ||
+    (!directory && path.endsWith("/")) ||
+    components.some((component) => component === "" || component === "." || component === "..")
   ) {
-    throw new DocxImportError("ZIP_PATH_UNSAFE", "DOCX package contains an unsafe entry path", { path });
+    throw new DocxImportError("ZIP_PATH_UNSAFE", "DOCX package contains an unsafe entry path", {
+      path,
+    });
   }
 }
 
@@ -275,16 +303,23 @@ function isXmlPart(path: string): boolean {
 function mapZipError(error: unknown): DocxImportError {
   const message = error instanceof Error ? error.message : String(error);
   if (message === ERR_UNSAFE_FILENAME) {
-    return new DocxImportError("ZIP_PATH_UNSAFE", "DOCX package contains an unsafe entry path", undefined, {
-      cause: error,
-    });
+    return new DocxImportError(
+      "ZIP_PATH_UNSAFE",
+      "DOCX package contains an unsafe entry path",
+      undefined,
+      {
+        cause: error,
+      },
+    );
   }
   if (message === ERR_AMBIGUOUS_ARCHIVE) {
     return new DocxImportError("ZIP_AMBIGUOUS", "DOCX ZIP structure is ambiguous", undefined, {
       cause: error,
     });
   }
-  return new DocxImportError("ZIP_INVALID", "DOCX ZIP package is malformed", undefined, { cause: error });
+  return new DocxImportError("ZIP_INVALID", "DOCX ZIP package is malformed", undefined, {
+    cause: error,
+  });
 }
 
 function startsWith(value: Uint8Array, prefix: Uint8Array): boolean {

@@ -103,19 +103,19 @@ Segment skeleton 已覆盖站点首页、Post detail、User profile、Notificati
 
 ## 自动化证据
 
-| Gate | 命令 | 结果 |
-|---|---|---|
-| Pre-unlock | `npm test` | V5 锁仍在时通过 |
-| Unlock RED | `node --experimental-strip-types --test tests/annotation-edit-lock.test.ts tests/annotation-guard-integration.test.ts` | 按预期仅旧 UI 锁断言失败 |
-| Focused unlock GREEN | 同上 | 6 / 6 通过 |
-| V6 focused matrix | `node --experimental-strip-types --test` 加载 13 个 V6 测试文件 | 77 / 77 通过 |
-| Unit suite | `node --experimental-strip-types --test tests/*.test.ts` | 315 total；314 passed；1 explicit skip；0 failed |
-| Full regression | `npm test` | unit、production build、rendered artifact 8 / 8 通过 |
-| TypeScript | `npx tsc --noEmit` | 通过 |
-| Lint | `npm run lint` | exit 0；仅工具自身输出既有 `jsx-ast-utils` AwaitExpression diagnostic |
-| Frontend strict audit | `audit_project.py . --mode strict --no-write` | 0 findings |
-| Design contract lint | `npx -p @google/design.md designmd lint DESIGN.md` | exit 0；0 errors；14 个既有 orphaned-token warnings |
-| Browser preview | `sites-preview start` / `sites-preview status` | preview healthy；云浏览器连接被客户端策略阻断，人工矩阵未声称通过 |
+| Gate                  | 命令                                                                                                                   | 结果                                                                  |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| Pre-unlock            | `npm test`                                                                                                             | V5 锁仍在时通过                                                       |
+| Unlock RED            | `node --experimental-strip-types --test tests/annotation-edit-lock.test.ts tests/annotation-guard-integration.test.ts` | 按预期仅旧 UI 锁断言失败                                              |
+| Focused unlock GREEN  | 同上                                                                                                                   | 6 / 6 通过                                                            |
+| V6 focused matrix     | `node --experimental-strip-types --test` 加载 13 个 V6 测试文件                                                        | 77 / 77 通过                                                          |
+| Unit suite            | `node --experimental-strip-types --test tests/*.test.ts`                                                               | 315 total；314 passed；1 explicit skip；0 failed                      |
+| Full regression       | `npm test`                                                                                                             | unit、production build、rendered artifact 8 / 8 通过                  |
+| TypeScript            | `npx tsc --noEmit`                                                                                                     | 通过                                                                  |
+| Lint                  | `npm run lint`                                                                                                         | exit 0；仅工具自身输出既有 `jsx-ast-utils` AwaitExpression diagnostic |
+| Frontend strict audit | `audit_project.py . --mode strict --no-write`                                                                          | 0 findings                                                            |
+| Design contract lint  | `npx -p @google/design.md designmd lint DESIGN.md`                                                                     | exit 0；0 errors；14 个既有 orphaned-token warnings                   |
+| Browser preview       | `sites-preview start` / `sites-preview status`                                                                         | preview healthy；云浏览器连接被客户端策略阻断，人工矩阵未声称通过     |
 
 ## 结论
 

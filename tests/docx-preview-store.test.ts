@@ -35,10 +35,7 @@ test("derives a 24-hour expiry when a Preview has invalid timestamps", async () 
   const now = Date.parse("2026-08-29T12:00:00.000Z");
   await saveImportPreview(previewFixture("derived", "not-a-date", "not-a-date"), now);
 
-  const loaded = await loadImportPreview(
-    "derived",
-    now + DOCX_IMPORT_LIMITS.previewTtlMs - 1,
-  );
+  const loaded = await loadImportPreview("derived", now + DOCX_IMPORT_LIMITS.previewTtlMs - 1);
   assert.equal(loaded?.createdAt, new Date(now).toISOString());
   assert.equal(loaded?.expiresAt, new Date(now + DOCX_IMPORT_LIMITS.previewTtlMs).toISOString());
 });
@@ -82,7 +79,10 @@ test("rejects non-Uint8Array asset bytes while retaining valid extracted image b
   valid.ir.assets = [validAsset];
   await saveImportPreview(valid, now);
   const loaded = await loadImportPreview("valid-asset", now);
-  assert.deepEqual([...((loaded?.ir.assets[0]?.bytes ?? new Uint8Array()) as Uint8Array)], [1, 2, 3]);
+  assert.deepEqual(
+    [...((loaded?.ir.assets[0]?.bytes ?? new Uint8Array()) as Uint8Array)],
+    [1, 2, 3],
+  );
 
   for (const [label, bytes] of [
     ["array-buffer", new ArrayBuffer(3)],
@@ -110,7 +110,10 @@ test("purges Previews expiring at or before the 24-hour boundary", async () => {
 
   assert.equal(await purgeExpiredImportPreviews(Date.parse("2026-08-29T12:00:00.000Z")), 1);
   assert.equal(await loadImportPreview("expired", Date.parse("2026-08-29T12:00:00.000Z")), null);
-  assert.equal((await loadImportPreview("active", Date.parse("2026-08-29T12:00:00.000Z")))?.importBatchId, "active");
+  assert.equal(
+    (await loadImportPreview("active", Date.parse("2026-08-29T12:00:00.000Z")))?.importBatchId,
+    "active",
+  );
 });
 
 test("removes a Preview after commit or explicit abandonment", async () => {
@@ -125,10 +128,17 @@ test("removes a Preview after commit or explicit abandonment", async () => {
 test("removes a Preview when cancellation arrives during persistence", async () => {
   const now = Date.parse("2026-08-29T12:00:00.000Z");
   const controller = new AbortController();
-  const saving = saveImportPreview(previewFixture("cancelled", "2026-08-30T00:00:00.000Z"), now, controller.signal);
+  const saving = saveImportPreview(
+    previewFixture("cancelled", "2026-08-30T00:00:00.000Z"),
+    now,
+    controller.signal,
+  );
   queueMicrotask(() => controller.abort());
 
-  await assert.rejects(saving, (error: unknown) => error instanceof DOMException && error.name === "AbortError");
+  await assert.rejects(
+    saving,
+    (error: unknown) => error instanceof DOMException && error.name === "AbortError",
+  );
   assert.equal(await loadImportPreview("cancelled", now), null);
 });
 
@@ -139,10 +149,17 @@ test("lists active recoverable Previews newest first without expired records", a
   await saveImportPreview(previewFixture("expired", "ignored", "2026-08-28T10:00:00.000Z"), now);
 
   const previews = await listImportPreviews(now);
-  assert.deepEqual(previews.map((preview) => preview.importBatchId), ["newer", "older"]);
+  assert.deepEqual(
+    previews.map((preview) => preview.importBatchId),
+    ["newer", "older"],
+  );
 });
 
-function previewFixture(importBatchId: string, expiresAt: string, createdAt = "2026-08-29T00:00:00.000Z"): DocxPreviewRecord {
+function previewFixture(
+  importBatchId: string,
+  expiresAt: string,
+  createdAt = "2026-08-29T00:00:00.000Z",
+): DocxPreviewRecord {
   return {
     version: 1,
     importBatchId,
@@ -154,50 +171,59 @@ function previewFixture(importBatchId: string, expiresAt: string, createdAt = "2
       importBatchId,
       source: { filename: "source.docx", producer: "Word", sha256: "source-hash" },
       suggestedTitle: "Imported",
-      blocks: [{
-        id: "p1",
-        type: "paragraph",
-        segments: [{ text: "正文", marks: [], commentIds: ["10"] }],
-      }],
+      blocks: [
+        {
+          id: "p1",
+          type: "paragraph",
+          segments: [{ text: "正文", marks: [], commentIds: ["10"] }],
+        },
+      ],
       assets: [],
-      threads: [{
-        annotationId: "ann_00000000-0000-4000-8000-000000000001",
-        sourceCommentId: "10",
-        blockId: "p1",
-        blockLocalStart: 0,
-        blockLocalEnd: 2,
-        sourceAuthorName: "Author",
-        sourceDocumentOrder: 0,
-        sourceResolved: false,
-        bodyMarkdown: "Root",
-        replies: [{
-          replyId: "00000000-0000-4000-8000-000000000002",
-          sourceCommentId: "11",
-          parentSourceCommentId: "10",
-          sourceAuthorName: "Reply Author",
-          sourceDocumentOrder: 1,
+      threads: [
+        {
+          annotationId: "ann_00000000-0000-4000-8000-000000000001",
+          sourceCommentId: "10",
+          blockId: "p1",
+          blockLocalStart: 0,
+          blockLocalEnd: 2,
+          sourceAuthorName: "Author",
+          sourceDocumentOrder: 0,
           sourceResolved: false,
-          bodyMarkdown: "Reply",
-        }],
-      }],
+          bodyMarkdown: "Root",
+          replies: [
+            {
+              replyId: "00000000-0000-4000-8000-000000000002",
+              sourceCommentId: "11",
+              parentSourceCommentId: "10",
+              sourceAuthorName: "Reply Author",
+              sourceDocumentOrder: 1,
+              sourceResolved: false,
+              bodyMarkdown: "Reply",
+            },
+          ],
+        },
+      ],
       skippedThreads: [],
       warnings: [{ code: "TABLE_HEADER_SYNTHESIZED", severity: "warning", count: 1 }],
       canonicalMarkdown: ":annotation[正文]{#ann_00000000-0000-4000-8000-000000000001}",
     },
     canonicalMarkdown: ":annotation[正文]{#ann_00000000-0000-4000-8000-000000000001}",
-    temporaryAssets: [{
-      assetId: "asset-1",
-      temporaryUrl: "/api/assets/asset-1",
-      filename: "image.png",
-      mimeType: "image/png",
-    }],
+    temporaryAssets: [
+      {
+        assetId: "asset-1",
+        temporaryUrl: "/api/assets/asset-1",
+        filename: "image.png",
+        mimeType: "image/png",
+      },
+    ],
     authorMappings: { Author: "user-1" },
   };
 }
 
 function containsOriginalBinary(value: unknown, seen = new Set<object>()): boolean {
   if (value instanceof File || value instanceof Blob || value instanceof ArrayBuffer) return true;
-  if (!value || typeof value !== "object" || ArrayBuffer.isView(value) || seen.has(value)) return false;
+  if (!value || typeof value !== "object" || ArrayBuffer.isView(value) || seen.has(value))
+    return false;
   seen.add(value);
   return Object.values(value).some((item) => containsOriginalBinary(item, seen));
 }

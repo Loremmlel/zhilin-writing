@@ -24,11 +24,15 @@ test("editor annotation threads expose reading and location without mutation con
 test("live editor anchors activate by stable annotation id and support split DOM marks", () => {
   const window = new Window();
   const root = window.document.createElement("div");
-  root.innerHTML = '<p><mark data-annotation-id="a"><strong>前半</strong></mark><mark data-annotation-id="a">后半</mark><mark data-annotation-id="b">另一条</mark></p>';
+  root.innerHTML =
+    '<p><mark data-annotation-id="a"><strong>前半</strong></mark><mark data-annotation-id="a">后半</mark><mark data-annotation-id="b">另一条</mark></p>';
   window.document.body.append(root);
 
   const nested = root.querySelector("strong");
-  assert.equal(findAnnotationIdFromTarget(root as unknown as Element, nested as unknown as Element), "a");
+  assert.equal(
+    findAnnotationIdFromTarget(root as unknown as Element, nested as unknown as Element),
+    "a",
+  );
   assert.equal(findAnnotationAnchorElements(root as unknown as Element, "a").length, 2);
   assert.equal(findAnnotationAnchorElements(root as unknown as Element, "missing").length, 0);
 });
@@ -45,7 +49,9 @@ test("connector measurement coalesces editor mutations into one animation frame"
   const frames = new Map<number, FrameRequestCallback>();
   const cancelled: number[] = [];
   const scheduler = createAnnotationLayoutScheduler(
-    () => { measured += 1; },
+    () => {
+      measured += 1;
+    },
     (callback) => {
       const id = ++nextFrameId;
       frames.set(id, callback);

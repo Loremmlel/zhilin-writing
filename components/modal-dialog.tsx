@@ -14,14 +14,26 @@ type ModalDialogProps = {
   backdropClassName?: string;
 };
 
-const focusableSelector = "button:not([disabled]), a[href], input:not([disabled]):not([type='hidden']), textarea:not([disabled]), [tabindex]:not([tabindex='-1'])";
+const focusableSelector =
+  "button:not([disabled]), a[href], input:not([disabled]):not([type='hidden']), textarea:not([disabled]), [tabindex]:not([tabindex='-1'])";
 
-export function ModalDialog({ open, title, description, onClose, children, alert = false, surfaceClassName, backdropClassName }: ModalDialogProps) {
+export function ModalDialog({
+  open,
+  title,
+  description,
+  onClose,
+  children,
+  alert = false,
+  surfaceClassName,
+  backdropClassName,
+}: ModalDialogProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const onCloseRef = useRef(onClose);
   const titleId = useId();
   const descriptionId = useId();
-  useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
   useEffect(() => {
     if (!open) return;
@@ -29,7 +41,8 @@ export function ModalDialog({ open, title, description, onClose, children, alert
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     const root = rootRef.current;
-    const focusable = () => root ? [...root.querySelectorAll<HTMLElement>(focusableSelector)] : [];
+    const focusable = () =>
+      root ? [...root.querySelectorAll<HTMLElement>(focusableSelector)] : [];
     window.setTimeout(() => (focusable()[0] ?? root)?.focus(), 0);
     const handleKeyDown = (event: KeyboardEvent) => {
       if (!root || !isTopmostModal(root)) return;
@@ -65,9 +78,12 @@ export function ModalDialog({ open, title, description, onClose, children, alert
 
   if (!open) return null;
   return (
-    <div className={`dialog-backdrop${backdropClassName ? ` ${backdropClassName}` : ""}`} onPointerDown={(event) => {
-      if (event.target === event.currentTarget) onClose();
-    }}>
+    <div
+      className={`dialog-backdrop${backdropClassName ? ` ${backdropClassName}` : ""}`}
+      onPointerDown={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
       <div
         ref={rootRef}
         className={`dialog-surface${surfaceClassName ? ` ${surfaceClassName}` : ""}`}

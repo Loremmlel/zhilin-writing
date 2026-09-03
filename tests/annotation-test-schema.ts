@@ -22,7 +22,11 @@ export function annotationMark(annotationId: string): Mark {
 
 export function editorDoc(segments: Array<{ text: string; marks?: Mark[] }>) {
   return annotationTestSchema.node("doc", null, [
-    annotationTestSchema.node("paragraph", null, segments.map(({ text, marks }) => annotationTestSchema.text(text, marks))),
+    annotationTestSchema.node(
+      "paragraph",
+      null,
+      segments.map(({ text, marks }) => annotationTestSchema.text(text, marks)),
+    ),
   ]);
 }
 
@@ -34,11 +38,17 @@ export function editorState(
   const doc = editorDoc(segments);
   return EditorState.create({
     doc,
-    selection: selection ? TextSelection.create(doc, selection.from, selection.to ?? selection.from) : undefined,
+    selection: selection
+      ? TextSelection.create(doc, selection.from, selection.to ?? selection.from)
+      : undefined,
     plugins,
   });
 }
 
 export function inlineSlice(segments: Array<{ text: string; marks?: Mark[] }>) {
-  return new Slice(Fragment.fromArray(segments.map(({ text, marks }) => annotationTestSchema.text(text, marks))), 0, 0);
+  return new Slice(
+    Fragment.fromArray(segments.map(({ text, marks }) => annotationTestSchema.text(text, marks))),
+    0,
+    0,
+  );
 }

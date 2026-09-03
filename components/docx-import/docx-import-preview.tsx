@@ -50,6 +50,7 @@ const validationLabels: Record<string, string> = {
   ANNOTATION_TEXT_CHANGED: "带批注的原文发生变化，请恢复该范围。",
   ANNOTATION_NESTED: "批注锚点不能互相嵌套。",
   ANNOTATION_NON_TEXT_RANGE: "批注锚点不能包含图片或其他非正文内容。",
+  ANNOTATION_CROSS_BLOCK: "跨段批注必须覆盖连续的正文段落。",
   ANNOTATION_OVERLAP: "批注范围发生重叠，无法安全导入。",
   UNSAFE_EXTERNAL_URL: "正文包含不安全链接，请移除后再确认。",
   IMPORT_WARNING_ERROR: "源文件包含阻断导入的问题。",
@@ -58,7 +59,14 @@ const validationLabels: Record<string, string> = {
   AUTHOR_MAPPING_INVALID: "有 Word 作者关联已失效，请重新选择。",
 };
 
-export function DocxImportPreview({ preview, users, validation, onTitleChange, onMarkdownChange, onMappingChange }: {
+export function DocxImportPreview({
+  preview,
+  users,
+  validation,
+  onTitleChange,
+  onMarkdownChange,
+  onMappingChange,
+}: {
   preview: EditedImportPreview;
   users: SiteUser[];
   validation: ImportPreviewValidationResult;
@@ -66,7 +74,10 @@ export function DocxImportPreview({ preview, users, validation, onTitleChange, o
   onMarkdownChange: (markdown: string) => void;
   onMappingChange: (sourceAuthorName: string, userId: string) => void;
 }) {
-  const summaryWarnings = warningsWithoutSkippedThreadDuplicates(preview.ir.warnings, preview.ir.skippedThreads);
+  const summaryWarnings = warningsWithoutSkippedThreadDuplicates(
+    preview.ir.warnings,
+    preview.ir.skippedThreads,
+  );
   const warningDetails = [
     ...summaryWarnings.map((warning) => ({
       key: `${warning.code}:${warning.sourceRef ?? ""}`,
@@ -84,94 +95,227 @@ export function DocxImportPreview({ preview, users, validation, onTitleChange, o
     })),
   ];
   const visibleWarnings = warningDetails.slice(0, 50);
-  const hiddenWarningCount = warningDetails.slice(50).reduce((total, item) => total + item.count, 0);
-  const hiddenWarningGroups = [...warningDetails.slice(50).reduce((groups, item) => {
-    groups.set(item.label, (groups.get(item.label) ?? 0) + item.count);
-    return groups;
-  }, new Map<string, number>())];
+  const hiddenWarningCount = warningDetails
+    .slice(50)
+    .reduce((total, item) => total + item.count, 0);
+  const hiddenWarningGroups = [
+    ...warningDetails.slice(50).reduce((groups, item) => {
+      groups.set(item.label, (groups.get(item.label) ?? 0) + item.count);
+      return groups;
+    }, new Map<string, number>()),
+  ];
   const authors = importedAuthors(preview.ir.threads);
-  const titleError = validation.ok ? undefined : validation.errors.find((item) => item.code === "TITLE_REQUIRED" || item.code === "TITLE_TOO_LONG");
+  const titleError = validation.ok
+    ? undefined
+    : validation.errors.find(
+        (item) => item.code === "TITLE_REQUIRED" || item.code === "TITLE_TOO_LONG",
+      );
 
-  return <div className="docx-import-preview">
-    <section className="docx-import-document" aria-labelledby="docx-preview-heading">
-      <div className="docx-import-preview-heading">
-        <div><span className="eyebrow">导入预览</span><h2 id="docx-preview-heading">检查正文与批注位置</h2></div>
-        <span className="docx-import-source">{preview.ir.source.filename}</span>
-      </div>
-      <label className="field-label" htmlFor="docx-import-title">帖子标题</label>
-      <input id="docx-import-title" className="title-input" value={preview.title} maxLength={120}
-        aria-invalid={Boolean(titleError)} aria-describedby={titleError ? "docx-import-title-error" : undefined}
-        onChange={(event) => onTitleChange(event.target.value)} />
-      {titleError && <p id="docx-import-title-error" className="form-error" role="alert">{validationLabels[titleError.code]}</p>}
-      {preview.ir.threads.length > 0 && <div className="docx-import-lock-notice" role="status">
-        此 DOCX 含正文批注。导入后可继续编辑正文；修改批注端点时系统会先要求确认。
-      </div>}
-      <label className="field-label">正文</label>
-      <MarkdownEditor initialMarkdown={preview.markdown} onMarkdownChange={onMarkdownChange} allowImageUploads={false} />
-    </section>
-
-    <aside className="docx-import-rail" aria-label="导入检查信息">
-      <section className="docx-import-panel">
-        <div className="section-heading"><h2>Word 批注</h2><span>{preview.ir.threads.length} 条</span></div>
-        {preview.ir.threads.length === 0
-          ? <p className="empty-copy">没有可导入的正文批注。</p>
-          : <div className="docx-import-thread-list">{preview.ir.threads.map((thread) => <ImportedThreadPreview key={thread.annotationId} thread={thread} selectedText={getImportedThreadSelectedText(preview.ir.blocks, thread.blockId, thread.blockLocalStart, thread.blockLocalEnd)} />)}</div>}
+  return (
+    <div className="docx-import-preview">
+      <section className="docx-import-document" aria-labelledby="docx-preview-heading">
+        <div className="docx-import-preview-heading">
+          <div>
+            <span className="eyebrow">导入预览</span>
+            <h2 id="docx-preview-heading">检查正文与批注位置</h2>
+          </div>
+          <span className="docx-import-source">{preview.ir.source.filename}</span>
+        </div>
+        <label className="field-label" htmlFor="docx-import-title">
+          帖子标题
+        </label>
+        <input
+          id="docx-import-title"
+          className="title-input"
+          value={preview.title}
+          maxLength={120}
+          aria-invalid={Boolean(titleError)}
+          aria-describedby={titleError ? "docx-import-title-error" : undefined}
+          onChange={(event) => onTitleChange(event.target.value)}
+        />
+        {titleError && (
+          <p id="docx-import-title-error" className="form-error" role="alert">
+            {validationLabels[titleError.code]}
+          </p>
+        )}
+        {preview.ir.threads.length > 0 && (
+          <div className="docx-import-lock-notice" role="status">
+            此 DOCX 含正文批注。导入后可继续编辑正文；修改批注端点时系统会先要求确认。
+          </div>
+        )}
+        <label className="field-label">正文</label>
+        <MarkdownEditor
+          initialMarkdown={preview.markdown}
+          onMarkdownChange={onMarkdownChange}
+          allowImageUploads={false}
+        />
       </section>
 
-      <section className="docx-import-panel">
-        <div className="section-heading"><h2>Word 作者关联</h2><span>{authors.length} 位</span></div>
-        <p className="muted">关联只用于通知和说明，Word 原作者身份始终保留。</p>
-        <div className="docx-import-author-list">{authors.map((author, index) => <label key={author}>
-          <span>{author} <small>Word 导入</small></span>
-          {/* Native select is intentional: this small mapping list accepts the platform-owned popup. */}
-          <select
-            value={preview.authorMappings[author] ?? ""}
-            aria-invalid={Boolean(preview.authorMappings[author] && !users.some((user) => user.id === preview.authorMappings[author]))}
-            aria-describedby={preview.authorMappings[author] && !users.some((user) => user.id === preview.authorMappings[author]) ? `docx-author-${index}-error` : undefined}
-            onChange={(event) => onMappingChange(author, event.target.value)}
+      <aside className="docx-import-rail" aria-label="导入检查信息">
+        <section className="docx-import-panel">
+          <div className="section-heading">
+            <h2>Word 批注</h2>
+            <span>{preview.ir.threads.length} 条</span>
+          </div>
+          {preview.ir.threads.length === 0 ? (
+            <p className="empty-copy">没有可导入的正文批注。</p>
+          ) : (
+            <div className="docx-import-thread-list">
+              {preview.ir.threads.map((thread) => (
+                <ImportedThreadPreview
+                  key={thread.annotationId}
+                  thread={thread}
+                  selectedText={getImportedThreadSelectedText(
+                    preview.ir.blocks,
+                    thread.blockId,
+                    thread.blockLocalStart,
+                    thread.blockLocalEnd,
+                    thread.endBlockId,
+                  )}
+                />
+              ))}
+            </div>
+          )}
+        </section>
+
+        <section className="docx-import-panel">
+          <div className="section-heading">
+            <h2>Word 作者关联</h2>
+            <span>{authors.length} 位</span>
+          </div>
+          <p className="muted">关联只用于通知和说明，Word 原作者身份始终保留。</p>
+          <div className="docx-import-author-list">
+            {authors.map((author, index) => (
+              <label key={author}>
+                <span>
+                  {author} <small>Word 导入</small>
+                </span>
+                {/* Native select is intentional: this small mapping list accepts the platform-owned popup. */}
+                <select
+                  value={preview.authorMappings[author] ?? ""}
+                  aria-invalid={Boolean(
+                    preview.authorMappings[author] &&
+                    !users.some((user) => user.id === preview.authorMappings[author]),
+                  )}
+                  aria-describedby={
+                    preview.authorMappings[author] &&
+                    !users.some((user) => user.id === preview.authorMappings[author])
+                      ? `docx-author-${index}-error`
+                      : undefined
+                  }
+                  onChange={(event) => onMappingChange(author, event.target.value)}
+                >
+                  <option value="">不关联站内用户</option>
+                  {preview.authorMappings[author] &&
+                  !users.some((user) => user.id === preview.authorMappings[author]) ? (
+                    <option value={preview.authorMappings[author]}>原关联用户已不可用</option>
+                  ) : null}
+                  {users.map((user) => (
+                    <option key={user.id} value={user.id}>
+                      {user.displayName}
+                    </option>
+                  ))}
+                </select>
+                {preview.authorMappings[author] &&
+                !users.some((user) => user.id === preview.authorMappings[author]) ? (
+                  <small id={`docx-author-${index}-error`} className="form-error">
+                    原关联用户已不可用，请重新选择。
+                  </small>
+                ) : null}
+              </label>
+            ))}
+          </div>
+        </section>
+
+        <section className="docx-import-panel docx-import-warning-summary">
+          <div className="section-heading">
+            <h2>导入提醒</h2>
+            <span>{warningDetails.reduce((total, item) => total + item.count, 0)} 项</span>
+          </div>
+          {visibleWarnings.length === 0 ? (
+            <p className="docx-import-clear-state">没有需要处理的降级提醒。</p>
+          ) : (
+            <ul>
+              {visibleWarnings.map((item) => (
+                <li key={item.key} data-severity={item.severity}>
+                  <strong>
+                    {item.label}
+                    {item.count > 1 ? ` × ${item.count}` : ""}
+                  </strong>
+                  {item.detail && <span>{item.detail}</span>}
+                </li>
+              ))}
+            </ul>
+          )}
+          {hiddenWarningCount > 0 && (
+            <details className="docx-import-warning-groups">
+              <summary>另有 {hiddenWarningCount} 项，按类别汇总</summary>
+              <ul>
+                {hiddenWarningGroups.map(([label, count]) => (
+                  <li key={label}>
+                    <strong>
+                      {label} × {count}
+                    </strong>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
+        </section>
+
+        {!validation.ok && (
+          <section
+            className="docx-import-panel docx-import-validation"
+            role="alert"
+            aria-labelledby="docx-validation-heading"
           >
-            <option value="">不关联站内用户</option>
-            {preview.authorMappings[author] && !users.some((user) => user.id === preview.authorMappings[author])
-              ? <option value={preview.authorMappings[author]}>原关联用户已不可用</option>
-              : null}
-            {users.map((user) => <option key={user.id} value={user.id}>{user.displayName}</option>)}
-          </select>
-          {preview.authorMappings[author] && !users.some((user) => user.id === preview.authorMappings[author])
-            ? <small id={`docx-author-${index}-error`} className="form-error">原关联用户已不可用，请重新选择。</small>
-            : null}
-        </label>)}</div>
-      </section>
-
-      <section className="docx-import-panel docx-import-warning-summary">
-        <div className="section-heading"><h2>导入提醒</h2><span>{warningDetails.reduce((total, item) => total + item.count, 0)} 项</span></div>
-        {visibleWarnings.length === 0
-          ? <p className="docx-import-clear-state">没有需要处理的降级提醒。</p>
-          : <ul>{visibleWarnings.map((item) => <li key={item.key} data-severity={item.severity}>
-            <strong>{item.label}{item.count > 1 ? ` × ${item.count}` : ""}</strong>
-            {item.detail && <span>{item.detail}</span>}
-          </li>)}</ul>}
-        {hiddenWarningCount > 0 && <details className="docx-import-warning-groups"><summary>另有 {hiddenWarningCount} 项，按类别汇总</summary><ul>{hiddenWarningGroups.map(([label, count]) => <li key={label}><strong>{label} × {count}</strong></li>)}</ul></details>}
-      </section>
-
-      {!validation.ok && <section className="docx-import-panel docx-import-validation" role="alert" aria-labelledby="docx-validation-heading">
-        <h2 id="docx-validation-heading">需要先修正</h2>
-        <ul>{validation.errors.map((error, index) => <li key={`${error.code}:${error.annotationId ?? ""}:${index}`}>{validationLabels[error.code] ?? "预览内容不符合导入要求。"}</li>)}</ul>
-      </section>}
-    </aside>
-  </div>;
+            <h2 id="docx-validation-heading">需要先修正</h2>
+            <ul>
+              {validation.errors.map((error, index) => (
+                <li key={`${error.code}:${error.annotationId ?? ""}:${index}`}>
+                  {validationLabels[error.code] ?? "预览内容不符合导入要求。"}
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+      </aside>
+    </div>
+  );
 }
 
-function ImportedThreadPreview({ thread, selectedText }: { thread: ImportedThread; selectedText: string }) {
-  return <article className="docx-import-thread">
-    <header><strong>{thread.sourceAuthorName}</strong><span>Word 导入{thread.sourceResolved ? " · Word 中已解决" : ""}</span></header>
-    <blockquote>{selectedText}</blockquote>
-    <p>{markdownToPlainText(thread.bodyMarkdown)}</p>
-    {thread.replies.map((reply) => <div className="docx-import-thread-reply" key={reply.replyId}>
-      <strong>{reply.sourceAuthorName}</strong><span>{markdownToPlainText(reply.bodyMarkdown)}</span>
-    </div>)}
-  </article>;
+function ImportedThreadPreview({
+  thread,
+  selectedText,
+}: {
+  thread: ImportedThread;
+  selectedText: string;
+}) {
+  return (
+    <article className="docx-import-thread">
+      <header>
+        <strong>{thread.sourceAuthorName}</strong>
+        <span>Word 导入{thread.sourceResolved ? " · Word 中已解决" : ""}</span>
+      </header>
+      <blockquote>{selectedText}</blockquote>
+      <p>{markdownToPlainText(thread.bodyMarkdown)}</p>
+      {thread.replies.map((reply) => (
+        <div className="docx-import-thread-reply" key={reply.replyId}>
+          <strong>{reply.sourceAuthorName}</strong>
+          <span>{markdownToPlainText(reply.bodyMarkdown)}</span>
+        </div>
+      ))}
+    </article>
+  );
 }
 
 function importedAuthors(threads: ImportedThread[]): string[] {
-  return [...new Set(threads.flatMap((thread) => [thread.sourceAuthorName, ...thread.replies.map((reply) => reply.sourceAuthorName)]))].sort((a, b) => a.localeCompare(b, "zh-CN"));
+  return [
+    ...new Set(
+      threads.flatMap((thread) => [
+        thread.sourceAuthorName,
+        ...thread.replies.map((reply) => reply.sourceAuthorName),
+      ]),
+    ),
+  ].sort((a, b) => a.localeCompare(b, "zh-CN"));
 }

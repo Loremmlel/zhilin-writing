@@ -27,10 +27,11 @@ export type ImportedReplyStateSnapshot = {
 function assertMatchingAnnotationIds(label: string, left: string[], right: string[]) {
   const a = [...left].sort();
   const b = [...right].sort();
-  const consistent = a.length === new Set(a).size
-    && b.length === new Set(b).size
-    && a.length === b.length
-    && a.every((id, index) => id === b[index]);
+  const consistent =
+    a.length === new Set(a).size &&
+    b.length === new Set(b).size &&
+    a.length === b.length &&
+    a.every((id, index) => id === b[index]);
   if (!consistent) throw new Error(`${label}批注状态不一致`);
 }
 
@@ -51,7 +52,11 @@ export function planAnnotationRestore(input: {
   actorUserId: string;
   at: Date;
 }) {
-  const currentMarkdownIds = validatedAnnotationIds("当前正文与锚点", input.currentMarkdown, input.currentAnchorIds);
+  const currentMarkdownIds = validatedAnnotationIds(
+    "当前正文与锚点",
+    input.currentMarkdown,
+    input.currentAnchorIds,
+  );
   const currentStateIds = input.currentStates.map((state) => state.annotationId);
   assertMatchingAnnotationIds("当前正文与快照", currentMarkdownIds, currentStateIds);
 
@@ -67,9 +72,16 @@ export function planAnnotationRestore(input: {
   return {
     sourceAnchorIds,
     exitingAnnotationIds,
-    restoredStates: sourceAnchorIds.map((id) => input.sourceStates.find((state) => state.annotationId === id)!),
+    restoredStates: sourceAnchorIds.map((id) =>
+      input.sourceStates.find((state) => state.annotationId === id)!,
+    ),
     restoredImportedReplyStates: sourceImportedReplyStates,
-    retirements: planAnnotationRetirement(exitingAnnotationIds, input.actorUserId, input.at, "REVISION_RESTORE"),
+    retirements: planAnnotationRetirement(
+      exitingAnnotationIds,
+      input.actorUserId,
+      input.at,
+      "REVISION_RESTORE",
+    ),
     restorations: planAnnotationRestoration(sourceAnchorIds),
   };
 }

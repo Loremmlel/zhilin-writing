@@ -38,7 +38,7 @@ test("uses semantic styles and accepted revision text without visual guessing", 
   assert.match(parsed.canonicalMarkdown, /e\u0301 保持分解/);
 
   const annotatedSegment = parsed.blocks
-    .flatMap((block) => "segments" in block ? block.segments : [])
+    .flatMap((block) => ("segments" in block ? block.segments : []))
     .find((segment) => segment.text === "批注范围");
   assert.deepEqual(annotatedSegment?.commentIds, ["7"]);
 
@@ -97,7 +97,9 @@ test("groups adjacent list items only when their numbering semantics match", asy
 
   assert.equal(lists.length, 2);
   assert.deepEqual(
-    lists.map((list) => list.items.map((item) => item.segments.map((segment) => segment.text).join(""))),
+    lists.map((list) =>
+      list.items.map((item) => item.segments.map((segment) => segment.text).join("")),
+    ),
     [["第一项", "第二项"], ["新的列表"]],
   );
   assert.match(parsed.canonicalMarkdown, /^- 第一项\n- 第二项\n\n- 新的列表$/);
@@ -105,24 +107,52 @@ test("groups adjacent list items only when their numbering semantics match", asy
 
 test("canonical Markdown escapes literal syntax without normalizing Unicode", () => {
   const text = "*字面* [括号] \\ e\u0301\n# 非标题\n- 非列表\n> 非引用";
-  const markdown = renderCanonicalImportMarkdown([
-    paragraph("block_1", text),
-  ], [], []);
-  assert.equal(
-    markdown,
-    "\\*字面\\* \\[括号\\] \\\\ e\u0301\n\\# 非标题\n\\- 非列表\n\\> 非引用",
+  const markdown = renderCanonicalImportMarkdown([paragraph("block_1", text)], [], []);
+  assert.equal(markdown, "\\*字面\\* \\[括号\\] \\\\ e\u0301\n\\# 非标题\n\\- 非列表\n\\> 非引用");
+  assert.equal(visiblePostText(parseAnnotationMarkdown(markdown)), text.replace(/\s+/g, " "));
+});
+
+test("canonical Markdown coalesces adjacent Word runs with identical formatting", () => {
+  const annotationId = "00000000-0000-4000-8000-000000000001";
+  const markdown = renderCanonicalImportMarkdown(
+    [
+      {
+        type: "paragraph",
+        id: "block_1",
+        segments: [
+          { text: "很多", marks: ["em"], commentIds: ["11"] },
+          { text: "人这辈子就再也见不到了", marks: ["em"], commentIds: ["11"] },
+        ],
+      },
+    ],
+    [],
+    [
+      {
+        annotationId,
+        sourceCommentId: "11",
+        blockId: "block_1",
+        blockLocalStart: 0,
+        blockLocalEnd: 13,
+        sourceAuthorName: "批注作者",
+        sourceDocumentOrder: 0,
+        sourceResolved: false,
+        bodyMarkdown: "批注正文",
+        replies: [],
+      },
+    ],
   );
-  assert.equal(
-    visiblePostText(parseAnnotationMarkdown(markdown)),
-    text.replace(/\s+/g, " "),
-  );
+
+  assert.equal(markdown, `:annotation[*很多人这辈子就再也见不到了*]{#${annotationId}}`);
 });
 
 test("canonical Markdown enforces the UTF-8 byte limit", () => {
   assert.throws(
-    () => renderCanonicalImportMarkdown([
-      paragraph("block_large", "a".repeat(DOCX_IMPORT_LIMITS.markdownUtf8Bytes + 1)),
-    ], [], []),
+    () =>
+      renderCanonicalImportMarkdown(
+        [paragraph("block_large", "a".repeat(DOCX_IMPORT_LIMITS.markdownUtf8Bytes + 1))],
+        [],
+        [],
+      ),
     (error: unknown) => error instanceof DocxImportError && error.code === "MARKDOWN_SIZE_LIMIT",
   );
 });

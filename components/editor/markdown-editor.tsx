@@ -51,14 +51,29 @@ type ImageUploadTask = {
   error?: string;
 };
 
-async function uploadImage(file: File, onProgress: (percent: number) => void, signal: AbortSignal, onAssetUploaded?: (asset: UploadedAsset) => void) {
+async function uploadImage(
+  file: File,
+  onProgress: (percent: number) => void,
+  signal: AbortSignal,
+  onAssetUploaded?: (asset: UploadedAsset) => void,
+) {
   const data = await uploadAsset(file, onProgress, signal);
   const asset = { ...data.asset, markdown: data.markdown ?? "" } as UploadedAsset;
   onAssetUploaded?.(asset);
   return asset.url;
 }
 
-function MarkdownEditorSession({ initialMarkdown, onMarkdownChange, onAssetUploaded, compact = false, allowImageUploads = true, annotationEditing, onEditorRootChange, onUploadStateChange, disabled = false }: MarkdownEditorProps) {
+function MarkdownEditorSession({
+  initialMarkdown,
+  onMarkdownChange,
+  onAssetUploaded,
+  compact = false,
+  allowImageUploads = true,
+  annotationEditing,
+  onEditorRootChange,
+  onUploadStateChange,
+  disabled = false,
+}: MarkdownEditorProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const initialMarkdownRef = useRef(initialMarkdown);
   const onChangeRef = useRef(onMarkdownChange);
@@ -72,17 +87,29 @@ function MarkdownEditorSession({ initialMarkdown, onMarkdownChange, onAssetUploa
   const queuedUploadCountRef = useRef(0);
   const failedImageFilesRef = useRef(new Map<string, File>());
   const retryImageUploadRef = useRef<((taskId: string) => Promise<void>) | null>(null);
-  const emittedConfirmedDeletionIdsRef = useRef(annotationEditing?.initialConfirmedAnnotationDeletionIds ?? []);
+  const emittedConfirmedDeletionIdsRef = useRef(
+    annotationEditing?.initialConfirmedAnnotationDeletionIds ?? [],
+  );
   const guardRef = useRef<ReturnType<typeof createAnnotationGuardPlugin> | null>(null);
   const [pendingImpact, setPendingImpact] = useState<PendingAnnotationImpact | null>(null);
   const [guardMessage, setGuardMessage] = useState<string | null>(null);
   const [imageUploadTasks, setImageUploadTasks] = useState<ImageUploadTask[]>([]);
 
-  useEffect(() => { onChangeRef.current = onMarkdownChange; }, [onMarkdownChange]);
-  useEffect(() => { uploadRef.current = onAssetUploaded; }, [onAssetUploaded]);
-  useEffect(() => { annotationEditingRef.current = annotationEditing; }, [annotationEditing]);
-  useEffect(() => { onEditorRootChangeRef.current = onEditorRootChange; }, [onEditorRootChange]);
-  useEffect(() => { onUploadStateChangeRef.current = onUploadStateChange; }, [onUploadStateChange]);
+  useEffect(() => {
+    onChangeRef.current = onMarkdownChange;
+  }, [onMarkdownChange]);
+  useEffect(() => {
+    uploadRef.current = onAssetUploaded;
+  }, [onAssetUploaded]);
+  useEffect(() => {
+    annotationEditingRef.current = annotationEditing;
+  }, [annotationEditing]);
+  useEffect(() => {
+    onEditorRootChangeRef.current = onEditorRootChange;
+  }, [onEditorRootChange]);
+  useEffect(() => {
+    onUploadStateChangeRef.current = onUploadStateChange;
+  }, [onUploadStateChange]);
   useEffect(() => {
     disabledRef.current = disabled;
     if (rootRef.current) rootRef.current.inert = disabled || uploadAbortRef.current !== null;
@@ -101,10 +128,11 @@ function MarkdownEditorSession({ initialMarkdown, onMarkdownChange, onAssetUploa
         rootRef.current!.inert = true;
         onUploadStateChangeRef.current?.(true);
       }
-      if (!disposed) setImageUploadTasks((current) => [
-        ...current.filter((task) => task.id !== taskId),
-        { id: taskId, filename: file.name, status: "uploading", percent: 0 },
-      ]);
+      if (!disposed)
+        setImageUploadTasks((current) => [
+          ...current.filter((task) => task.id !== taskId),
+          { id: taskId, filename: file.name, status: "uploading", percent: 0 },
+        ]);
       queuedUploadCountRef.current += 1;
       try {
         return await uploadQueueRef.current(async () => {
@@ -112,10 +140,15 @@ function MarkdownEditorSession({ initialMarkdown, onMarkdownChange, onAssetUploa
           return uploadImage(
             file,
             (percent) => {
-              if (!disposed) setImageUploadTasks((current) => current.map((task) => task.id === taskId ? { ...task, percent } : task));
+              if (!disposed)
+                setImageUploadTasks((current) =>
+                  current.map((task) => (task.id === taskId ? { ...task, percent } : task)),
+                );
             },
             controller.signal,
-            (asset) => { if (!disposed) uploadRef.current?.(asset); },
+            (asset) => {
+              if (!disposed) uploadRef.current?.(asset);
+            },
           );
         });
       } catch (caught) {
@@ -125,11 +158,17 @@ function MarkdownEditorSession({ initialMarkdown, onMarkdownChange, onAssetUploa
             setImageUploadTasks((current) => current.filter((task) => task.id !== taskId));
           } else {
             failedImageFilesRef.current.set(taskId, file);
-            setImageUploadTasks((current) => current.map((task) => task.id === taskId ? {
-              ...task,
-              status: "failed",
-              error: caught instanceof Error ? caught.message : "图片上传失败，请稍后重试",
-            } : task));
+            setImageUploadTasks((current) =>
+              current.map((task) =>
+                task.id === taskId
+                  ? {
+                      ...task,
+                      status: "failed",
+                      error: caught instanceof Error ? caught.message : "图片上传失败，请稍后重试",
+                    }
+                  : task,
+              ),
+            );
           }
         }
         throw caught;
@@ -148,7 +187,8 @@ function MarkdownEditorSession({ initialMarkdown, onMarkdownChange, onAssetUploa
       const taskId = crypto.randomUUID();
       try {
         const url = await performImageUpload(taskId, file);
-        if (!disposed) setImageUploadTasks((current) => current.filter((task) => task.id !== taskId));
+        if (!disposed)
+          setImageUploadTasks((current) => current.filter((task) => task.id !== taskId));
         return url;
       } catch (error) {
         throw error;
@@ -228,9 +268,14 @@ function MarkdownEditorSession({ initialMarkdown, onMarkdownChange, onAssetUploa
           if (disposed) return;
           setPendingImpact(pending);
           const previous = emittedConfirmedDeletionIdsRef.current;
-          if (previous.length !== confirmedAnnotationDeletionIds.length || previous.some((id, index) => id !== confirmedAnnotationDeletionIds[index])) {
+          if (
+            previous.length !== confirmedAnnotationDeletionIds.length ||
+            previous.some((id, index) => id !== confirmedAnnotationDeletionIds[index])
+          ) {
             emittedConfirmedDeletionIdsRef.current = confirmedAnnotationDeletionIds;
-            annotationEditingRef.current?.onConfirmedAnnotationDeletionIdsChange(confirmedAnnotationDeletionIds);
+            annotationEditingRef.current?.onConfirmedAnnotationDeletionIdsChange(
+              confirmedAnnotationDeletionIds,
+            );
           }
         },
       });
@@ -257,47 +302,98 @@ function MarkdownEditorSession({ initialMarkdown, onMarkdownChange, onAssetUploa
     };
   }, [allowImageUploads, compact]);
 
-  return <>
-    <div ref={rootRef} className={compact ? "markdown-editor markdown-editor--compact" : "markdown-editor"} aria-busy={imageUploadTasks.some((task) => task.status === "uploading")} aria-disabled={disabled} />
-    {imageUploadTasks.length > 0 && <div className="asset-upload-list asset-upload-list--editor" aria-label="图片上传状态" aria-live="polite">
-      {imageUploadTasks.map((task) => <div className="asset-upload-task" key={task.id}>
-        <div>
-          <strong>{task.filename}</strong>
-          {task.status === "uploading"
-            ? <><span>上传中 · {task.percent}%</span><progress max={100} value={task.percent} aria-label={`${task.filename} 上传进度`} /></>
-            : <span className="form-error" role="alert">上传失败 · {task.error}</span>}
+  return (
+    <>
+      <div
+        ref={rootRef}
+        className={compact ? "markdown-editor markdown-editor--compact" : "markdown-editor"}
+        aria-busy={imageUploadTasks.some((task) => task.status === "uploading")}
+        aria-disabled={disabled}
+      />
+      {imageUploadTasks.length > 0 && (
+        <div
+          className="asset-upload-list asset-upload-list--editor"
+          aria-label="图片上传状态"
+          aria-live="polite"
+        >
+          {imageUploadTasks.map((task) => (
+            <div className="asset-upload-task" key={task.id}>
+              <div>
+                <strong>{task.filename}</strong>
+                {task.status === "uploading" ? (
+                  <>
+                    <span>上传中 · {task.percent}%</span>
+                    <progress
+                      max={100}
+                      value={task.percent}
+                      aria-label={`${task.filename} 上传进度`}
+                    />
+                  </>
+                ) : (
+                  <span className="form-error" role="alert">
+                    上传失败 · {task.error}
+                  </span>
+                )}
+              </div>
+              {task.status === "failed" && (
+                <span className="asset-row-actions">
+                  <button
+                    type="button"
+                    className="text-button"
+                    onClick={() => void retryImageUploadRef.current?.(task.id)}
+                    disabled={disabled}
+                  >
+                    重试
+                  </button>
+                  <button
+                    type="button"
+                    className="text-button text-button--danger"
+                    onClick={() => {
+                      failedImageFilesRef.current.delete(task.id);
+                      setImageUploadTasks((current) =>
+                        current.filter((item) => item.id !== task.id),
+                      );
+                    }}
+                  >
+                    移除
+                  </button>
+                </span>
+              )}
+            </div>
+          ))}
         </div>
-        {task.status === "failed" && <span className="asset-row-actions">
-          <button type="button" className="text-button" onClick={() => void retryImageUploadRef.current?.(task.id)} disabled={disabled}>重试</button>
-          <button type="button" className="text-button text-button--danger" onClick={() => {
-            failedImageFilesRef.current.delete(task.id);
-            setImageUploadTasks((current) => current.filter((item) => item.id !== task.id));
-          }}>移除</button>
-        </span>}
-      </div>)}
-    </div>}
-    <AnnotationGuardDialog
-      pending={pendingImpact}
-      annotations={annotationEditing?.annotations ?? []}
-      message={guardMessage}
-      onCancel={() => {
-        if (pendingImpact) guardRef.current?.cancelPending(pendingImpact.token);
-        setPendingImpact(null);
-        setGuardMessage(null);
-      }}
-      onConfirm={() => {
-        if (!pendingImpact) return;
-        const result = guardRef.current?.confirmPending(pendingImpact.token);
-        if (result?.kind !== "CLIPBOARD_ERROR") setPendingImpact(null);
-        if (result?.kind === "STALE" || result?.kind === "REENTER_COMPOSITION" || result?.kind === "CLIPBOARD_ERROR") {
-          setGuardMessage(result.message);
-        } else {
+      )}
+      <AnnotationGuardDialog
+        pending={pendingImpact}
+        annotations={annotationEditing?.annotations ?? []}
+        message={guardMessage}
+        onCancel={() => {
+          if (pendingImpact) guardRef.current?.cancelPending(pendingImpact.token);
+          setPendingImpact(null);
           setGuardMessage(null);
-        }
-      }}
-    />
-    {guardMessage && !pendingImpact && <p className="annotation-guard-status" role="status">{guardMessage}</p>}
-  </>;
+        }}
+        onConfirm={() => {
+          if (!pendingImpact) return;
+          const result = guardRef.current?.confirmPending(pendingImpact.token);
+          if (result?.kind !== "CLIPBOARD_ERROR") setPendingImpact(null);
+          if (
+            result?.kind === "STALE" ||
+            result?.kind === "REENTER_COMPOSITION" ||
+            result?.kind === "CLIPBOARD_ERROR"
+          ) {
+            setGuardMessage(result.message);
+          } else {
+            setGuardMessage(null);
+          }
+        }}
+      />
+      {guardMessage && !pendingImpact && (
+        <p className="annotation-guard-status" role="status">
+          {guardMessage}
+        </p>
+      )}
+    </>
+  );
 }
 
 export function MarkdownEditor(props: MarkdownEditorProps) {

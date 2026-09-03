@@ -33,7 +33,13 @@ test("selection preview survives composer pending failure and retry until succes
 });
 
 test("cancel body click invalidation revision change and unmount clear preview", () => {
-  for (const event of ["cancel", "body-click", "invalidate", "revision-change", "unmount"] as const) {
+  for (const event of [
+    "cancel",
+    "body-click",
+    "invalidate",
+    "revision-change",
+    "unmount",
+  ] as const) {
     assert.equal(nextSelectionPreviewPhase("composer", event), "hidden");
   }
 });
@@ -46,7 +52,13 @@ test("saved selection remains authoritative after native DOM selection moves", (
   const first = root.querySelectorAll("p")[0]!.firstChild as unknown as Text;
   const second = root.querySelectorAll("p")[1]!.firstChild as unknown as Text;
   const range = selectedRange(window, first, 1, 5);
-  const descriptor = { blockOrdinal: 0, endBlockOrdinal: 0, blockTextFrom: 1, blockTextTo: 5, selectedText: "非常喜欢" };
+  const descriptor = {
+    blockOrdinal: 0,
+    endBlockOrdinal: 0,
+    blockTextFrom: 1,
+    blockTextTo: 5,
+    selectedText: "非常喜欢",
+  };
   const saved = captureSavedAnnotationSelection({
     postId: "post",
     baseRevisionId: "revision",
@@ -70,6 +82,22 @@ test("saved selection remains authoritative after native DOM selection moves", (
     epoch: 3,
   });
   assert.equal(restored?.toString(), "非常喜欢");
-  assert.equal(validateSavedAnnotationSelection(saved, { postId: "post", baseRevisionId: "new", root: root as unknown as Element, epoch: 3 }), null);
-  assert.equal(validateSavedAnnotationSelection(saved, { postId: "post", baseRevisionId: "revision", root: root as unknown as Element, epoch: 4 }), null);
+  assert.equal(
+    validateSavedAnnotationSelection(saved, {
+      postId: "post",
+      baseRevisionId: "new",
+      root: root as unknown as Element,
+      epoch: 3,
+    }),
+    null,
+  );
+  assert.equal(
+    validateSavedAnnotationSelection(saved, {
+      postId: "post",
+      baseRevisionId: "revision",
+      root: root as unknown as Element,
+      epoch: 4,
+    }),
+    null,
+  );
 });

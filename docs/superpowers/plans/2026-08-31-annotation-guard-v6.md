@@ -60,12 +60,14 @@
 ### Task 1: Define Canonical Annotation Invariants and Markdown Validation
 
 **Files:**
+
 - Create: `lib/annotations/invariants.ts`
 - Modify: `lib/annotations/markdown.ts`
 - Modify: `lib/annotations/policy.ts`
 - Create: `tests/annotation-invariants.test.ts`
 
 **Interfaces:**
+
 - Produces `scanCanonicalAnnotationAnchors(markdown): CanonicalAnnotationAnchor[]`.
 - Produces `validateCanonicalAnnotationDocument(markdown, knownIds): AnnotationDocumentValidation`.
 - Produces stable issue codes `DUPLICATE`, `EMPTY`, `MULTI_BLOCK`, `OVERLAP`, `NESTED`, `UNKNOWN_ID`, and `MISSING_ACTIVE_ID`.
@@ -127,6 +129,7 @@ Run `git diff --check`, commit as `feat: validate annotation document invariants
 ### Task 2: Add Anchor-Retirement Lifecycle and Restore Planning
 
 **Files:**
+
 - Modify: `db/schema.ts`
 - Create: `drizzle/0006_mushy_smasher.sql`
 - Modify: `drizzle/meta/_journal.json`
@@ -140,6 +143,7 @@ Run `git diff --check`, commit as `feat: validate annotation document invariants
 - Modify: `tests/annotation-revision.test.ts`
 
 **Interfaces:**
+
 - Adds nullable `anchorRetiredAt`, `anchorRetiredByUserId`, and `anchorRetiredReason` (`POST_EDIT` or `REVISION_RESTORE`) to `annotations`.
 - Produces `computeAnnotationDelta(baseIds, submittedIds)` returning sorted `retained`, `removed`, and `unexpected` arrays.
 - Produces `planAnnotationRetirement(...)` and `planAnnotationRestore(...)` without database access.
@@ -151,10 +155,11 @@ Assert migration SQL has all three columns, a reason check, and no destructive t
 
 ```ts
 test("computes retained, removed, and unexpected annotation IDs", () => {
-  assert.deepEqual(
-    computeAnnotationDelta(["a", "b"], ["b", "c"]),
-    { retained: ["b"], removed: ["a"], unexpected: ["c"] },
-  );
+  assert.deepEqual(computeAnnotationDelta(["a", "b"], ["b", "c"]), {
+    retained: ["b"],
+    removed: ["a"],
+    unexpected: ["c"],
+  });
 });
 ```
 
@@ -193,6 +198,7 @@ Run `git diff --check`, commit as `feat: model annotation anchor retirement`, an
 ### Task 3: Make Annotated Post Save Atomic and Server-Authoritative
 
 **Files:**
+
 - Modify: `lib/posts/service.ts`
 - Modify: `lib/posts/save-transaction.ts`
 - Modify: `lib/annotations/save-plan.ts`
@@ -205,6 +211,7 @@ Run `git diff --check`, commit as `feat: model annotation anchor retirement`, an
 - Modify: `tests/annotation-edit-lock.test.ts`
 
 **Interfaces:**
+
 - Extends update input with `confirmedAnnotationDeletionIds?: string[]`.
 - Produces `AnnotationIntegrityError` with public code `ANNOTATION_INTEGRITY_ERROR`.
 - Extends `EditConflictSnapshot` with `annotationStateChanged: boolean` and `forceOverwriteAllowed: boolean`.
@@ -218,8 +225,8 @@ Cover retained internal edits, confirmed removal, unconfirmed removal, unknown s
 test("rejects an anchor loss the client did not confirm", () => {
   assert.throws(
     () => assertConfirmedAnnotationRemovals(["ann-a"], []),
-    (error: unknown) => error instanceof AnnotationIntegrityError &&
-      error.code === "ANNOTATION_INTEGRITY_ERROR",
+    (error: unknown) =>
+      error instanceof AnnotationIntegrityError && error.code === "ANNOTATION_INTEGRITY_ERROR",
   );
 });
 ```
@@ -269,11 +276,13 @@ Run `git diff --check`, commit as `feat: save annotated posts atomically`, and p
 ### Task 4: Build the Pure ProseMirror AnnotationGuard Inspector
 
 **Files:**
+
 - Create: `lib/editor/annotation-ranges.ts`
 - Create: `lib/editor/annotation-guard.ts`
 - Create: `tests/annotation-guard-inspector.test.ts`
 
 **Interfaces:**
+
 - Produces `scanAnnotationRanges(doc): EditorAnnotationRange[]` with `annotationId`, `from`, `to`, `blockFrom`, `blockTo`, `blockType`, `text`, `firstEndpoint`, and `lastEndpoint`.
 - Produces `inspectAnnotationTransaction(beforeDoc, transaction): AnnotationGuardResult`.
 - Returns `{ kind: "SAFE" }` or `{ kind: "ANNOTATION_IMPACT", affectedAnnotationIds, reasons, destructive: true }`.
@@ -346,6 +355,7 @@ Run `git diff --check`, commit as `feat: inspect annotation editor transactions`
 ### Task 5: Integrate Guard Confirmation, History, Clipboard, Drag/Drop, and IME
 
 **Files:**
+
 - Create: `lib/editor/annotation-session.ts`
 - Create: `lib/editor/annotation-clipboard.ts`
 - Create: `lib/editor/annotation-guard-plugin.ts`
@@ -360,6 +370,7 @@ Run `git diff --check`, commit as `feat: inspect annotation editor transactions`
 - Modify: `app/globals.css`
 
 **Interfaces:**
+
 - `annotationGuardPlugin(options)` emits one pending impact and blocks unsafe transactions.
 - `confirmPendingAnnotationImpact(token)` revalidates document hash, epoch, selection, step signature, and affected IDs before composite execution.
 - `stripAnnotationMarksFromSlice(slice, annotationMarkType)` recursively removes only Annotation Marks.
@@ -420,6 +431,7 @@ Run `git diff --check`, commit as `feat: protect annotation editing interactions
 ### Task 6: Add the Read-Only Live Annotation Sidebar to the Editor
 
 **Files:**
+
 - Create: `components/editor/annotated-editor-layout.tsx`
 - Create: `components/annotations/annotation-readonly-thread.tsx`
 - Modify: `components/annotations/annotation-reading-layout.tsx`
@@ -435,6 +447,7 @@ Run `git diff --check`, commit as `feat: protect annotation editing interactions
 - Modify: `app/globals.css`
 
 **Interfaces:**
+
 - Editor exposes current anchor rectangles and active Annotation ID from the live ProseMirror document.
 - `AnnotationReadonlyThread` renders root/replies without mutation controls.
 - Confirmed local retirement hides the current card/connector; Undo restores both.
@@ -477,6 +490,7 @@ Run `git diff --check`, commit as `feat: show read-only annotations while editin
 ### Task 7: Preserve Annotation Selection Preview and Move the Shared Reply Composer
 
 **Files:**
+
 - Create: `lib/annotations/selection-preview.ts`
 - Modify: `components/annotations/annotation-reading-layout.tsx`
 - Modify: `components/annotations/annotation-thread.tsx`
@@ -488,6 +502,7 @@ Run `git diff --check`, commit as `feat: show read-only annotations while editin
 - Modify: `app/globals.css`
 
 **Interfaces:**
+
 - Saved selection contains post ID, base revision ID, selected text, canonical block/path descriptor, serialized DOM Range endpoints, and a validity epoch.
 - CSS Custom Highlight API is preferred; an overlay made from `Range.getClientRects()` is the fallback.
 - One root reply composer sits immediately after root content and before the replies list; reply-to-reply actions retarget that same composer.
@@ -537,6 +552,7 @@ Run `git diff --check`, commit as `fix: preserve annotation context while compos
 ### Task 8: Add Global Route Loading, Segment Skeletons, and Error Boundaries
 
 **Files:**
+
 - Modify: `package.json`
 - Modify: `package-lock.json`
 - Create: `components/loading/route-progress.tsx`
@@ -563,6 +579,7 @@ Run `git diff --check`, commit as `fix: preserve annotation context while compos
 - Modify: `tests/rendered-html.test.mjs`
 
 **Interfaces:**
+
 - Uses Vinext's instrumentation hook and navigation promise bridge; no third-party trickle loader.
 - Top bar is 2px, uses the existing accent token, never blocks interaction, follows real navigation
   response/settle phases, and respects reduced motion.
@@ -621,6 +638,7 @@ Run `git diff --check`, commit as `feat: add route loading and error feedback`, 
 ### Task 9: Complete Immediate Mutation Pending States
 
 **Files:**
+
 - Create: `components/pending/pending-submit-button.tsx`
 - Modify: `components/editor/post-editor-form.tsx`
 - Modify: `components/annotations/annotation-reading-layout.tsx`
@@ -638,6 +656,7 @@ Run `git diff --check`, commit as `feat: add route loading and error feedback`, 
 - Create: `tests/mutation-pending.test.ts`
 
 **Interfaces:**
+
 - Every named mutation changes visible state in the same event turn, disables duplicate submission, preserves composer content until success, and exposes `aria-busy`/status text.
 - Image/attachment upload reports real byte progress where the endpoint supports it; DOCX retains Parsing/Extracting images/Building preview/Uploading assets/Ready stages and only adopts shared visual tokens.
 
@@ -674,6 +693,7 @@ Run `git diff --check`, commit as `feat: finish immediate mutation feedback`, an
 ### Task 10: Unlock Annotated Editing, Run the Full Matrix, and Save the V6 Sites Version
 
 **Files:**
+
 - Modify: `app/(site)/posts/[id]/edit/page.tsx`
 - Modify: `lib/posts/service.ts`
 - Modify: `lib/annotations/policy.ts`
@@ -683,6 +703,7 @@ Run `git diff --check`, commit as `feat: finish immediate mutation feedback`, an
 - Modify: `README.md`
 
 **Interfaces:**
+
 - Removes the V5 UI and service edit lock only after all earlier tests pass.
 - Annotated edit route loads current threads, base revision identity, and the read-only edit Sidebar.
 - Final report records automated evidence and explicitly labels unavailable true-device IME checks as pending manual acceptance.

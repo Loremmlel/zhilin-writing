@@ -1,8 +1,4 @@
-import {
-  IMPORT_PREVIEW_STORE_NAME,
-  openLocalDatabase,
-  withLocalStore,
-} from "../indexed-db.ts";
+import { IMPORT_PREVIEW_STORE_NAME, openLocalDatabase, withLocalStore } from "../indexed-db.ts";
 import { DOCX_IMPORT_LIMITS } from "./limits.ts";
 import { DocxImportError, type DocxPreviewRecord } from "./types.ts";
 
@@ -14,10 +10,8 @@ export async function saveImportPreview(
   signal?.throwIfAborted();
   const persisted = normalizePreview(preview, now);
   assertPersistable(persisted);
-  await withLocalStore<IDBValidKey>(
-    IMPORT_PREVIEW_STORE_NAME,
-    "readwrite",
-    (store) => store.put(persisted),
+  await withLocalStore<IDBValidKey>(IMPORT_PREVIEW_STORE_NAME, "readwrite", (store) =>
+    store.put(persisted),
   );
   if (signal?.aborted) {
     await removeImportPreview(persisted.importBatchId);
@@ -49,10 +43,8 @@ export async function listImportPreviews(now = Date.now()): Promise<DocxPreviewR
 }
 
 export async function removeImportPreview(importBatchId: string): Promise<void> {
-  await withLocalStore<undefined>(
-    IMPORT_PREVIEW_STORE_NAME,
-    "readwrite",
-    (store) => store.delete(importBatchId),
+  await withLocalStore<undefined>(IMPORT_PREVIEW_STORE_NAME, "readwrite", (store) =>
+    store.delete(importBatchId),
   );
 }
 
@@ -67,9 +59,8 @@ export async function purgeExpiredImportPreviews(now = Date.now()): Promise<numb
       const cursor = request.result;
       if (!cursor) return;
       const value = cursor.value as Partial<DocxPreviewRecord>;
-      const expiry = typeof value.expiresAt === "string"
-        ? parseCanonicalTimestamp(value.expiresAt)
-        : undefined;
+      const expiry =
+        typeof value.expiresAt === "string" ? parseCanonicalTimestamp(value.expiresAt) : undefined;
       if (expiry === undefined || expiry <= now) {
         cursor.delete();
         removed += 1;
@@ -94,9 +85,8 @@ export async function purgeExpiredImportPreviews(now = Date.now()): Promise<numb
 
 function normalizePreview(preview: DocxPreviewRecord, now: number): DocxPreviewRecord {
   const requestedCreatedAt = parseCanonicalTimestamp(preview.createdAt);
-  const createdAt = requestedCreatedAt !== undefined && requestedCreatedAt <= now
-    ? requestedCreatedAt
-    : now;
+  const createdAt =
+    requestedCreatedAt !== undefined && requestedCreatedAt <= now ? requestedCreatedAt : now;
   return {
     version: 1,
     importBatchId: preview.importBatchId,

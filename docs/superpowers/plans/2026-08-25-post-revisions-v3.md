@@ -24,10 +24,12 @@
 ### Task 1: Revision and conflict policy
 
 **Files:**
+
 - Create: `tests/revision-policy.test.ts`
 - Create: `lib/revisions/policy.ts`
 
 **Interfaces:**
+
 - Produces: `extractMarkdownAssetIds(markdown)`, `classifyPostChange(current, next)`, `resolveSaveBase(currentRevisionId, submittedBaseRevisionId, overwriteBaseRevisionId?)`, and `EditConflictError`.
 
 - [ ] Write tests proving title/Markdown/inline/attachment changes are content changes, tags are ignored, Markdown asset IDs are stable/deduplicated, and stale bases produce `EDIT_CONFLICT`.
@@ -38,11 +40,13 @@
 ### Task 2: Revision schema and safe migration
 
 **Files:**
+
 - Modify: `db/schema.ts`
 - Create: generated `drizzle/0002_*.sql` and snapshot metadata
 - Create: `tests/revision-migration.test.ts`
 
 **Interfaces:**
+
 - Produces: `postRevisions`, `postAssetRefs`, `revisionAssetRefs`, and `posts.currentRevisionId`.
 
 - [ ] Write a migration test that requires revision tables, deterministic existing-post backfill, current pointers, and asset-ref backfill.
@@ -53,12 +57,14 @@
 ### Task 3: Transactional publish, edit, and restore services
 
 **Files:**
+
 - Create: `lib/revisions/service.ts`
 - Modify: `lib/posts/service.ts`
 - Modify: `db/queries.ts`
 - Create: `tests/revision-service-policy.test.ts`
 
 **Interfaces:**
+
 - Produces: `listPostRevisions(postId)`, `getPostRevision(postId, revisionId)`, `restorePostRevision(postId, revisionId, administratorId)`, and revision-aware `createPost()`/`updatePost()`.
 
 - [ ] Write tests for initial v1, one revision per content save, tags-only behavior, stale-base rejection, explicit overwrite as a new revision, restore as a new revision, asset retention, and unchanged activity timestamps.
@@ -69,6 +75,7 @@
 ### Task 4: Draft recovery and conflict UI
 
 **Files:**
+
 - Modify: `lib/drafts/indexed-db.ts`
 - Create: `lib/editor/conflict.ts`
 - Modify: `components/editor/post-editor-form.tsx`
@@ -77,6 +84,7 @@
 - Create: `tests/editor-conflict.test.ts`
 
 **Interfaces:**
+
 - Consumes: revision-aware `updatePost()` and `EditConflictError`.
 - Produces: `PostActionState` conflict payload and explicit online/manual/overwrite flows.
 
@@ -88,6 +96,7 @@
 ### Task 5: Administrator revision history and restore
 
 **Files:**
+
 - Modify: `app/(site)/admin/page.tsx`
 - Create: `app/(site)/admin/revisions/[postId]/page.tsx`
 - Create: `app/(site)/admin/revisions/[postId]/actions.ts`
@@ -95,6 +104,7 @@
 - Modify: `tests/rendered-html.test.mjs`
 
 **Interfaces:**
+
 - Consumes: administrator-only revision queries and `restorePostRevision()`.
 
 - [ ] Add failing artifact assertions for the history list, rendered preview, restore confirmation, and administrator-only route boundary.
@@ -104,11 +114,13 @@
 ### Task 6: Account-menu outside dismissal
 
 **Files:**
+
 - Create: `components/account-menu.tsx`
 - Modify: `components/site-header.tsx`
 - Create: `tests/account-menu.test.ts`
 
 **Interfaces:**
+
 - Produces: reusable `AccountMenu` client component with outside pointer/focus dismissal and Escape handling.
 
 - [ ] Add a failing test that exercises the dismissal policy and verifies the interactive component contract.
@@ -118,6 +130,7 @@
 ### Task 7: Full verification and private checkpoint deployment
 
 **Files:**
+
 - Modify or create: `DESIGN.md` only as required by the existing UI contract.
 
 - [ ] Run Drizzle generation/inspection and confirm the migration preserves old rows.

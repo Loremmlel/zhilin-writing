@@ -1,10 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import {
-  computeAnnotationDelta,
-  planAnnotationRetirement,
-} from "../lib/annotations/save-plan.ts";
+import { computeAnnotationDelta, planAnnotationRetirement } from "../lib/annotations/save-plan.ts";
 
 const A = "ann_550e8400-e29b-41d4-a716-446655440000";
 const B = "ann_123e4567-e89b-42d3-a456-426614174000";

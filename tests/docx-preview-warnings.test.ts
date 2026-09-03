@@ -19,8 +19,8 @@ test("keeps each skipped Word comment warning only in its detailed entry", () =>
     },
   ];
 
-  assert.deepEqual(
-    warningsWithoutSkippedThreadDuplicates(warnings, skippedThreads),
-    [warnings[0], warnings[2]],
-  );
+  assert.deepEqual(warningsWithoutSkippedThreadDuplicates(warnings, skippedThreads), [
+    warnings[0],
+    warnings[2],
+  ]);
 });

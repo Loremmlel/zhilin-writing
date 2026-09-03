@@ -16,23 +16,23 @@ V5.5 要求 Word comment 的 anchor 在正文单遍解析中精确落到 inline 
 
 Fixtures 由 `scripts/fixtures/generate-docx-fixtures.mjs` 以固定 XML、固定 ZIP entry 顺序、固定时间和 STORE 压缩确定性生成。
 
-| Fixture | SHA-256 | 用途 |
-| --- | --- | --- |
-| `probe-adjacent.docx` | `892d6335d2e44a301bc435ea328eea551a9a87cbb39056b7decaf1c25488e6f5` | 两个端点相接的 comment ranges |
-| `probe-overlap-nested.docx` | `7b1ed2197744d1b16000a918e34d7c9cec9f53d3d15c0a07890f6c4f8bab05e4` | 外层、嵌套及交叠 ranges |
+| Fixture                        | SHA-256                                                            | 用途                                         |
+| ------------------------------ | ------------------------------------------------------------------ | -------------------------------------------- |
+| `probe-adjacent.docx`          | `892d6335d2e44a301bc435ea328eea551a9a87cbb39056b7decaf1c25488e6f5` | 两个端点相接的 comment ranges                |
+| `probe-overlap-nested.docx`    | `7b1ed2197744d1b16000a918e34d7c9cec9f53d3d15c0a07890f6c4f8bab05e4` | 外层、嵌套及交叠 ranges                      |
 | `probe-threaded-resolved.docx` | `93ccf246ae05a50f5d3e8200bd72e68d06304e68dd56a31361c928bd147f9a3d` | `w14:paraId`、`w15:paraIdParent`、`w15:done` |
 
 ## Gate 结果
 
-| Gate | 结果 | 实际证据 |
-| --- | --- | --- |
-| inline range 精确性 | FAIL | 期望 `10=ABCDE, 11=BC, 12=CD`；AST 仅得到 `10=E, 11=C, 12=D`。comment 被挂到 range end 前的 text node，完整选区丢失。 |
-| adjacent comments 不合并 | PASS | `0=alpha`、`1=beta`，两个相邻 comment 保持独立。 |
-| nested/overlapping 可区分 | FAIL | ID `10,11,12` 尚在，但三个 range 均缩成结束前的单个 text node，不能区分真实嵌套/交叠范围。 |
-| comment ID 稳定 | PASS | 同一 fixture 独立解析两次均得到 `0,1`。 |
-| threaded reply immediate parent | FAIL | AST 只返回 root comment `20`；reply comment `21` 及其 parent 不存在。 |
-| resolved state | FAIL | root metadata 只有 `commentId/author/date/initials`，没有 `w15:done` 对应状态。 |
-| 不依赖 selectedText 反向搜索 | FAIL | AST 无法直接还原完整 range；只能重新解析 raw OOXML 或猜选中文本，均不满足 gate。 |
+| Gate                            | 结果 | 实际证据                                                                                                              |
+| ------------------------------- | ---- | --------------------------------------------------------------------------------------------------------------------- |
+| inline range 精确性             | FAIL | 期望 `10=ABCDE, 11=BC, 12=CD`；AST 仅得到 `10=E, 11=C, 12=D`。comment 被挂到 range end 前的 text node，完整选区丢失。 |
+| adjacent comments 不合并        | PASS | `0=alpha`、`1=beta`，两个相邻 comment 保持独立。                                                                      |
+| nested/overlapping 可区分       | FAIL | ID `10,11,12` 尚在，但三个 range 均缩成结束前的单个 text node，不能区分真实嵌套/交叠范围。                            |
+| comment ID 稳定                 | PASS | 同一 fixture 独立解析两次均得到 `0,1`。                                                                               |
+| threaded reply immediate parent | FAIL | AST 只返回 root comment `20`；reply comment `21` 及其 parent 不存在。                                                 |
+| resolved state                  | FAIL | root metadata 只有 `commentId/author/date/initials`，没有 `w15:done` 对应状态。                                       |
+| 不依赖 selectedText 反向搜索    | FAIL | AST 无法直接还原完整 range；只能重新解析 raw OOXML 或猜选中文本，均不满足 gate。                                      |
 
 最终结果：`productionEligible=false`。
 

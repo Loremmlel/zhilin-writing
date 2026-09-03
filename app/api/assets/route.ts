@@ -11,7 +11,11 @@ export async function POST(request: Request) {
   let actorUserId: string | undefined;
   try {
     const access = await getApiMemberAccess();
-    if (!access.ok) return Response.json({ error: accessErrorMessage(access.code), code: access.code }, { status: access.status });
+    if (!access.ok)
+      return Response.json(
+        { error: accessErrorMessage(access.code), code: access.code },
+        { status: access.status },
+      );
     const { member } = access;
     actorUserId = member.id;
     const formData = await request.formData();
@@ -22,17 +26,31 @@ export async function POST(request: Request) {
     const kind = formData.get("kind") === "avatar" ? "avatar" : undefined;
     const asset = await storeTemporaryAsset(member.id, value, kind);
     const url = `/api/assets/${asset.id}`;
-    return Response.json({
-      asset: { ...asset, url },
-      markdown: asset.kind === "avatar" ? null : assetMarkdown({ kind: asset.kind, filename: asset.filename, url }),
-    }, { status: 201 });
+    return Response.json(
+      {
+        asset: { ...asset, url },
+        markdown:
+          asset.kind === "avatar"
+            ? null
+            : assetMarkdown({ kind: asset.kind, filename: asset.filename, url }),
+      },
+      { status: 201 },
+    );
   } catch (error) {
     if (error instanceof AssetStorageError) {
       const status = error.code === "SERVER_FAILURE" ? 503 : 400;
       if (status >= 500) logServerError({ operation: "asset.upload", userId: actorUserId, error });
       return Response.json({ error: error.message, code: error.code }, { status });
     }
-    logServerError({ operation: "asset.upload", userId: actorUserId, error, errorCode: "ASSET_UPLOAD_FAILED" });
-    return Response.json({ error: "文件上传失败，请稍后重试", code: "SERVER_FAILURE" }, { status: 500 });
+    logServerError({
+      operation: "asset.upload",
+      userId: actorUserId,
+      error,
+      errorCode: "ASSET_UPLOAD_FAILED",
+    });
+    return Response.json(
+      { error: "文件上传失败，请稍后重试", code: "SERVER_FAILURE" },
+      { status: 500 },
+    );
   }
 }

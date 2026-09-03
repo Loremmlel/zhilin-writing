@@ -24,6 +24,7 @@
 ### Task 1: Lifecycle policy and migration contract
 
 **Files:**
+
 - Create: `lib/lifecycle/policy.ts`
 - Create: `tests/lifecycle-policy.test.ts`
 - Modify: `db/schema.ts`
@@ -31,6 +32,7 @@
 - Create: `drizzle/0003_*.sql` and matching Drizzle metadata
 
 **Interfaces:**
+
 - Produces: `contentState()`, `shouldRenderReplyPlaceholder()`, `isPostDiscussionReachable()`, `deriveLastActivityAt()`, `assetGcEligibility()`, and `adminAuditDedupeKey()`.
 - Produces schema fields `deletedByUserId`, `hiddenByUserId`, `hiddenReason`, `replyToReplyId`, and table `adminAuditLog`.
 
@@ -44,6 +46,7 @@
 ### Task 2: Lifecycle service, permissions, and last activity
 
 **Files:**
+
 - Create: `lib/lifecycle/service.ts`
 - Modify: `lib/posts/service.ts`
 - Modify: `lib/revisions/service.ts`
@@ -52,6 +55,7 @@
 - Create: `tests/lifecycle-service-plan.test.ts`
 
 **Interfaces:**
+
 - Produces: `deletePostByAuthor`, `deleteReplyByAuthor`, `restorePostByAdmin`, `restoreReplyByAdmin`, `hidePostByAdmin`, `unhidePostByAdmin`, `hideReplyByAdmin`, and `unhideReplyByAdmin`.
 - Consumes: pure policy functions from Task 1.
 
@@ -65,6 +69,7 @@
 ### Task 3: Safe ordinary/admin read models
 
 **Files:**
+
 - Modify: `db/queries.ts`
 - Create: `lib/lifecycle/views.ts`
 - Create: `tests/lifecycle-views.test.ts`
@@ -73,6 +78,7 @@
 - Modify: `app/(site)/notifications/[id]/page.tsx`
 
 **Interfaces:**
+
 - Produces ordinary `PostDetailView`/`ReplyLifecycleView` values that never carry rendered unavailable Markdown.
 - Produces admin content rows and bounded audit rows.
 
@@ -85,6 +91,7 @@
 ### Task 4: Asset access and isolated garbage collection
 
 **Files:**
+
 - Create: `lib/assets/access.ts`
 - Create: `lib/assets/gc.ts`
 - Modify: `lib/assets/storage.ts`
@@ -92,6 +99,7 @@
 - Create: `tests/asset-lifecycle.test.ts`
 
 **Interfaces:**
+
 - Produces `resolveAssetReadAccess(assetId, member)` and `collectEligibleAssetGarbage({ now, limit })`.
 - Consumes current refs, revision refs, avatar refs, asset status/expiry, and post lifecycle state.
 
@@ -104,6 +112,7 @@
 ### Task 5: Member lifecycle UI and placeholders
 
 **Files:**
+
 - Create: `components/lifecycle/post-delete-control.tsx`
 - Create: `components/lifecycle/reply-delete-control.tsx`
 - Modify: `components/reply-list.tsx`
@@ -113,6 +122,7 @@
 - Create: `tests/lifecycle-ui-contract.test.ts`
 
 **Interfaces:**
+
 - Consumes server actions and safe ordinary views.
 - Produces app-owned confirmations, post/reply placeholders, and disabled discussion state for unavailable posts.
 
@@ -126,6 +136,7 @@
 ### Task 6: Administrator content management and audit
 
 **Files:**
+
 - Create: `components/admin/content-lifecycle-control.tsx`
 - Modify: `app/(site)/admin/page.tsx`
 - Modify: `app/(site)/admin/actions.ts`
@@ -135,6 +146,7 @@
 - Modify: `tests/rendered-html.test.mjs`
 
 **Interfaces:**
+
 - Consumes administrator-only queries and lifecycle actions.
 - Produces URL-addressable type/status filters, original-content inspection, restore/hide/unhide actions, and audit timeline.
 
@@ -147,9 +159,11 @@
 ### Task 7: Final verification and private checkpoint
 
 **Files:**
+
 - Modify only files required to fix verification defects.
 
 **Interfaces:**
+
 - Produces a validated V4 source state and a new private Sites version.
 
 - [ ] Run `npm run test:unit`, `npx tsc --noEmit`, `npm run lint`, and `npm test`; fix and rerun every failure.

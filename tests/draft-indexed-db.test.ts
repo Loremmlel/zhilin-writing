@@ -57,7 +57,10 @@ test("normalizes and persists confirmed annotation removals with the same local 
   };
 
   await saveDraft("user-1", "post-1", draft);
-  assert.deepEqual((await loadDraft("user-1", "post-1"))?.confirmedAnnotationDeletionIds, ["a", "b"]);
+  assert.deepEqual((await loadDraft("user-1", "post-1"))?.confirmedAnnotationDeletionIds, [
+    "a",
+    "b",
+  ]);
 });
 
 test("persists the creation submission key with a recoverable new-post draft", async () => {
@@ -72,7 +75,10 @@ test("persists the creation submission key with a recoverable new-post draft", a
   };
 
   await saveDraft("user-1", "new", draft);
-  assert.equal((await loadDraft("user-1", "new"))?.creationSubmissionKey, draft.creationSubmissionKey);
+  assert.equal(
+    (await loadDraft("user-1", "new"))?.creationSubmissionKey,
+    draft.creationSubmissionKey,
+  );
 });
 
 function openVersionOneDatabase(): Promise<IDBDatabase> {

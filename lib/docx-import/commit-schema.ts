@@ -4,8 +4,12 @@ import type { CommitSafeImportPreview } from "./preview-validation.ts";
 import type { DocxPreviewRecord, ImportBlock, ImportWarning, ListBlock } from "./types.ts";
 import { DOCX_IMPORT_LIMITS } from "./limits.ts";
 
-const uuidV4 = z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
-const annotationId = z.string().regex(/^ann_[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+const uuidV4 = z
+  .string()
+  .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+const annotationId = z
+  .string()
+  .regex(/^ann_[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
 const sourceId = z.string().min(1).max(200);
 const sourceName = z.string().min(1).max(300);
 const isoDate = z.string().datetime({ offset: true });
@@ -42,7 +46,11 @@ export async function readDocxImportCommitBody(request: Request): Promise<string
       if (!value) continue;
       byteLength += value.byteLength;
       if (byteLength > DOCX_IMPORT_LIMITS.commitBodyBytes) {
-        try { await reader.cancel(); } catch { /* The size error is authoritative. */ }
+        try {
+          await reader.cancel();
+        } catch {
+          /* The size error is authoritative. */
+        }
         throw new DocxImportBodyError("COMMIT_BODY_SIZE_LIMIT");
       }
       chunks.push(value);
@@ -75,18 +83,34 @@ export function parseDocxImportCommitBody(body: string): unknown {
   }
 }
 
-const warningPayload = z.record(
-  z.string().min(1).max(100),
-  z.union([z.string().max(2_000), z.number().finite(), z.boolean(), z.null()]),
-).refine((payload) => Object.keys(payload).length <= 20);
+const warningPayload = z
+  .record(
+    z.string().min(1).max(100),
+    z.union([z.string().max(2_000), z.number().finite(), z.boolean(), z.null()]),
+  )
+  .refine((payload) => Object.keys(payload).length <= 20);
 const warningCode = z.enum([
-  "HEADING_LEVEL_CLAMPED", "LIST_DEPTH_CLAMPED", "VISUAL_FORMATTING_DROPPED",
-  "HYPERLINK_UNSAFE_DROPPED", "TOC_SKIPPED", "TRACK_CHANGES_FLATTENED",
-  "TABLE_HEADER_SYNTHESIZED", "TABLE_CELL_FLATTENED", "TABLE_MERGED_CELLS_FLATTENED",
-  "FLOATING_IMAGE_FLATTENED", "IMAGE_FORMAT_UNSUPPORTED", "TEXTBOX_FLATTENED",
-  "EQUATION_SKIPPED", "SHAPE_CONTENT_SKIPPED", "NOTES_FLATTENED_TO_APPENDIX",
-  "ANNOTATION_EMPTY_RANGE", "ANNOTATION_CROSS_BLOCK", "ANNOTATION_NON_TEXT_RANGE",
-  "ANNOTATION_TABLE_UNSUPPORTED", "ANNOTATION_OVERLAP_SKIPPED", "ANNOTATION_ORPHAN_DEFINITION",
+  "HEADING_LEVEL_CLAMPED",
+  "LIST_DEPTH_CLAMPED",
+  "VISUAL_FORMATTING_DROPPED",
+  "HYPERLINK_UNSAFE_DROPPED",
+  "TOC_SKIPPED",
+  "TRACK_CHANGES_FLATTENED",
+  "TABLE_HEADER_SYNTHESIZED",
+  "TABLE_CELL_FLATTENED",
+  "TABLE_MERGED_CELLS_FLATTENED",
+  "FLOATING_IMAGE_FLATTENED",
+  "IMAGE_FORMAT_UNSUPPORTED",
+  "TEXTBOX_FLATTENED",
+  "EQUATION_SKIPPED",
+  "SHAPE_CONTENT_SKIPPED",
+  "NOTES_FLATTENED_TO_APPENDIX",
+  "ANNOTATION_EMPTY_RANGE",
+  "ANNOTATION_CROSS_BLOCK",
+  "ANNOTATION_NON_TEXT_RANGE",
+  "ANNOTATION_TABLE_UNSUPPORTED",
+  "ANNOTATION_OVERLAP_SKIPPED",
+  "ANNOTATION_ORPHAN_DEFINITION",
   "ANNOTATION_THREAD_SKIPPED",
 ]);
 
@@ -104,30 +128,69 @@ const listBlock: z.ZodType<ListBlock> = z.strictObject({
   ordered: z.boolean(),
   start: z.number().int().positive().optional(),
   depth: z.union([z.literal(0), z.literal(1), z.literal(2)]),
-  items: z.array(z.strictObject({
-    id: sourceId,
-    segments: z.array(inlineSegment).max(10_000),
-    children: z.array(z.never()).max(0),
-  })).max(10_000),
+  items: z
+    .array(
+      z.strictObject({
+        id: sourceId,
+        segments: z.array(inlineSegment).max(10_000),
+        children: z.array(z.never()).max(0),
+      }),
+    )
+    .max(10_000),
 });
 
 const block: z.ZodType<ImportBlock> = z.union([
-  z.strictObject({ id: sourceId, type: z.literal("paragraph"), segments: z.array(inlineSegment).max(10_000) }),
-  z.strictObject({ id: sourceId, type: z.literal("heading"), level: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]), segments: z.array(inlineSegment).max(10_000) }),
-  z.strictObject({ id: sourceId, type: z.literal("quote"), segments: z.array(inlineSegment).max(10_000) }),
+  z.strictObject({
+    id: sourceId,
+    type: z.literal("paragraph"),
+    segments: z.array(inlineSegment).max(10_000),
+  }),
+  z.strictObject({
+    id: sourceId,
+    type: z.literal("heading"),
+    level: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]),
+    segments: z.array(inlineSegment).max(10_000),
+  }),
+  z.strictObject({
+    id: sourceId,
+    type: z.literal("quote"),
+    segments: z.array(inlineSegment).max(10_000),
+  }),
   listBlock,
   z.strictObject({
     id: sourceId,
     type: z.literal("table"),
-    header: z.strictObject({ cells: z.array(z.strictObject({ segments: z.array(inlineSegment).max(10_000) })).max(1_000) }),
-    rows: z.array(z.strictObject({ cells: z.array(z.strictObject({ segments: z.array(inlineSegment).max(10_000) })).max(1_000) })).max(10_000),
+    header: z.strictObject({
+      cells: z.array(z.strictObject({ segments: z.array(inlineSegment).max(10_000) })).max(1_000),
+    }),
+    rows: z
+      .array(
+        z.strictObject({
+          cells: z
+            .array(z.strictObject({ segments: z.array(inlineSegment).max(10_000) }))
+            .max(1_000),
+        }),
+      )
+      .max(10_000),
   }),
-  z.strictObject({ id: sourceId, type: z.literal("image"), assetId: sourceId, alt: z.string().max(2_000) }),
+  z.strictObject({
+    id: sourceId,
+    type: z.literal("image"),
+    assetId: sourceId,
+    alt: z.string().max(2_000),
+  }),
   z.strictObject({
     id: sourceId,
     type: z.literal("notesAppendix"),
     title: z.string().min(1).max(500),
-    notes: z.array(z.strictObject({ number: z.number().int().positive(), segments: z.array(inlineSegment).max(10_000) })).max(10_000),
+    notes: z
+      .array(
+        z.strictObject({
+          number: z.number().int().positive(),
+          segments: z.array(inlineSegment).max(10_000),
+        }),
+      )
+      .max(10_000),
   }),
 ]);
 
@@ -150,6 +213,7 @@ const importedThread = z.strictObject({
   authorId: z.string().nullable().optional(),
   sourceCommentId: sourceId,
   blockId: sourceId,
+  endBlockId: sourceId.optional(),
   blockLocalStart: z.number().int().nonnegative(),
   blockLocalEnd: z.number().int().nonnegative(),
   sourceAuthorName: sourceName,
@@ -187,30 +251,42 @@ export const DocxImportCommitSchema = z.strictObject({
     source: source.extend({ producer: z.string().max(500).optional() }),
     suggestedTitle: z.string().max(500),
     blocks: z.array(block).max(10_000),
-    assets: z.array(z.strictObject({
-      id: sourceId,
-      filename: z.string().min(1).max(255),
-      mimeType: imageMime,
-      alt: z.string().max(2_000),
-      sourceRelationshipId: sourceId,
-      floating: z.boolean(),
-    })).max(200),
+    assets: z
+      .array(
+        z.strictObject({
+          id: sourceId,
+          filename: z.string().min(1).max(255),
+          mimeType: imageMime,
+          alt: z.string().max(2_000),
+          sourceRelationshipId: sourceId,
+          floating: z.boolean(),
+        }),
+      )
+      .max(200),
     threads: z.array(importedThread).max(500),
-    skippedThreads: z.array(z.strictObject({
-      sourceCommentId: sourceId,
-      sourceAuthorName: sourceName.optional(),
-      sourceDocumentOrder: z.number().int().nonnegative(),
-      warning,
-    })).max(500),
+    skippedThreads: z
+      .array(
+        z.strictObject({
+          sourceCommentId: sourceId,
+          sourceAuthorName: sourceName.optional(),
+          sourceDocumentOrder: z.number().int().nonnegative(),
+          warning,
+        }),
+      )
+      .max(500),
     warnings: z.array(warning).max(500),
     canonicalMarkdown: z.string().max(1_500_000),
   }),
-  temporaryAssets: z.array(z.strictObject({
-    assetId: uuidV4,
-    temporaryUrl: z.string().max(500),
-    filename: z.string().min(1).max(255),
-    mimeType: imageMime,
-  })).max(200),
+  temporaryAssets: z
+    .array(
+      z.strictObject({
+        assetId: uuidV4,
+        temporaryUrl: z.string().max(500),
+        filename: z.string().min(1).max(255),
+        mimeType: imageMime,
+      }),
+    )
+    .max(200),
   authorMappings: z.record(z.string().min(1).max(300), uuidV4),
 });
 
@@ -221,7 +297,9 @@ export type PreparedDocxImportSubmission = {
   preview: DocxPreviewRecord;
 };
 
-export function prepareDocxImportSubmission(preview: CommitSafeImportPreview): PreparedDocxImportSubmission {
+export function prepareDocxImportSubmission(
+  preview: CommitSafeImportPreview,
+): PreparedDocxImportSubmission {
   const payload = toDocxImportCommitPayload(preview);
   return {
     body: JSON.stringify(payload),
@@ -272,9 +350,14 @@ export function toDocxImportCommitPayload(preview: CommitSafeImportPreview): Doc
 
 function toCommitWarning(warning: ImportWarning): DocxImportCommitInput["ir"]["warnings"][number] {
   const payload = warning.payload
-    ? Object.fromEntries(Object.entries(warning.payload).filter(([, value]) => (
-      value === null || ["string", "number", "boolean"].includes(typeof value)
-    ))) as Record<string, string | number | boolean | null>
+    ? (Object.fromEntries(
+        Object.entries(warning.payload).filter(
+          ([, value]) => value === null || ["string", "number", "boolean"].includes(typeof value),
+        ),
+      ) as Record<string, string | number | boolean | null>)
     : undefined;
-  return { ...warning, ...(payload && Object.keys(payload).length > 0 ? { payload } : { payload: undefined }) };
+  return {
+    ...warning,
+    ...(payload && Object.keys(payload).length > 0 ? { payload } : { payload: undefined }),
+  };
 }

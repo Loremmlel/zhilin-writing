@@ -1,6 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 
 import { AnnotationReadonlyThread } from "@/components/annotations/annotation-readonly-thread";
 import { AnnotationSheet } from "@/components/annotations/annotation-sheet";
@@ -17,7 +25,11 @@ import {
   type AnnotationConnector,
   visibleAnnotationIds,
 } from "@/lib/annotations/layout";
-import { annotationLayoutMode, resolveAnnotationSheetId, type AnnotationLayoutMode } from "@/lib/annotations/responsive";
+import {
+  annotationLayoutMode,
+  resolveAnnotationSheetId,
+  type AnnotationLayoutMode,
+} from "@/lib/annotations/responsive";
 
 function syncActiveAnchors(root: Element, activeId: string | null) {
   root.querySelectorAll<HTMLElement>("[data-annotation-id]").forEach((element) => {
@@ -25,7 +37,12 @@ function syncActiveAnchors(root: Element, activeId: string | null) {
   });
 }
 
-export function AnnotatedEditorLayout({ children, editorRoot, annotations, pendingRetiredAnnotationIds }: {
+export function AnnotatedEditorLayout({
+  children,
+  editorRoot,
+  annotations,
+  pendingRetiredAnnotationIds,
+}: {
   children: ReactNode;
   editorRoot: HTMLElement | null;
   annotations: AnnotationCardView[];
@@ -42,7 +59,11 @@ export function AnnotatedEditorLayout({ children, editorRoot, annotations, pendi
   const [sidebarHeight, setSidebarHeight] = useState(0);
   const [layoutMode, setLayoutMode] = useState<AnnotationLayoutMode>("compact");
   const visibleIds = useMemo(
-    () => visibleAnnotationIds(annotations.map((annotation) => annotation.id), pendingRetiredAnnotationIds),
+    () =>
+      visibleAnnotationIds(
+        annotations.map((annotation) => annotation.id),
+        pendingRetiredAnnotationIds,
+      ),
     [annotations, pendingRetiredAnnotationIds],
   );
   const visibleIdSet = useMemo(() => new Set(visibleIds), [visibleIds]);
@@ -69,9 +90,9 @@ export function AnnotatedEditorLayout({ children, editorRoot, annotations, pendi
       return;
     }
     if (layoutMode === "compact") {
-      setCardTops((current) => Object.keys(current).length === 0 ? current : {});
-      setConnectors((current) => current.length === 0 ? current : []);
-      setSidebarHeight((current) => current === 0 ? current : 0);
+      setCardTops((current) => (Object.keys(current).length === 0 ? current : {}));
+      setConnectors((current) => (current.length === 0 ? current : []));
+      setSidebarHeight((current) => (current === 0 ? current : 0));
       return;
     }
     const layoutRect = layout.getBoundingClientRect();
@@ -103,12 +124,17 @@ export function AnnotatedEditorLayout({ children, editorRoot, annotations, pendi
       const startY = anchor.top + anchor.height / 2;
       const endX = sidebarRect.left - layoutRect.left - 7;
       const endY = placed.top + Math.min(42, card.offsetHeight / 2);
-      nextConnectors.push({ annotationId: placed.annotationId, path: annotationConnectorPath({ startX, startY, endX, endY }) });
+      nextConnectors.push({
+        annotationId: placed.annotationId,
+        path: annotationConnectorPath({ startX, startY, endX, endY }),
+      });
     }
-    setCardTops((current) => sameAnnotationCardTops(current, tops) ? current : tops);
-    setConnectors((current) => sameAnnotationConnectors(current, nextConnectors) ? current : nextConnectors);
+    setCardTops((current) => (sameAnnotationCardTops(current, tops) ? current : tops));
+    setConnectors((current) =>
+      sameAnnotationConnectors(current, nextConnectors) ? current : nextConnectors,
+    );
     const nextHeight = Math.max(editorRoot.offsetHeight, placement.height);
-    setSidebarHeight((current) => current === nextHeight ? current : nextHeight);
+    setSidebarHeight((current) => (current === nextHeight ? current : nextHeight));
   }, [editorRoot, layoutMode, visibleAnnotations]);
 
   useLayoutEffect(() => {
@@ -116,13 +142,15 @@ export function AnnotatedEditorLayout({ children, editorRoot, annotations, pendi
     const sidebar = sidebarRef.current;
     if (!layout || !sidebar) return;
     const scheduler = createAnnotationLayoutScheduler(measure);
-    const resizeObserver = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(() => scheduler.schedule());
-    const mutationObserver = editorRoot && typeof MutationObserver !== "undefined"
-      ? new MutationObserver(() => {
-        syncActiveAnchors(editorRoot, activeIdRef.current);
-        scheduler.schedule();
-      })
-      : null;
+    const resizeObserver =
+      typeof ResizeObserver === "undefined" ? null : new ResizeObserver(() => scheduler.schedule());
+    const mutationObserver =
+      editorRoot && typeof MutationObserver !== "undefined"
+        ? new MutationObserver(() => {
+            syncActiveAnchors(editorRoot, activeIdRef.current);
+            scheduler.schedule();
+          })
+        : null;
     resizeObserver?.observe(layout);
     resizeObserver?.observe(sidebar);
     if (editorRoot) resizeObserver?.observe(editorRoot);
@@ -130,7 +158,9 @@ export function AnnotatedEditorLayout({ children, editorRoot, annotations, pendi
     mutationObserver?.observe(editorRoot!, { childList: true, characterData: true, subtree: true });
     const schedule = () => scheduler.schedule();
     let cancelled = false;
-    document.fonts?.ready.then(() => { if (!cancelled) schedule(); });
+    document.fonts?.ready.then(() => {
+      if (!cancelled) schedule();
+    });
     editorRoot?.addEventListener("load", schedule, true);
     window.addEventListener("resize", schedule);
     scheduler.schedule();
@@ -152,7 +182,9 @@ export function AnnotatedEditorLayout({ children, editorRoot, annotations, pendi
       if (annotationId && visibleIdSet.has(annotationId)) setActiveId(annotationId);
       return annotationId;
     };
-    const activateFromEvent = (event: Event) => { activateTarget(event.target); };
+    const activateFromEvent = (event: Event) => {
+      activateTarget(event.target);
+    };
     const activateFromSelection = () => {
       const selection = document.getSelection();
       const node = selection?.anchorNode;
@@ -182,34 +214,82 @@ export function AnnotatedEditorLayout({ children, editorRoot, annotations, pendi
     };
   }, [editorRoot, layoutMode, visibleIdSet]);
 
-  const locateAnnotation = useCallback((annotationId: string) => {
-    if (!editorRoot || !visibleIdSet.has(annotationId)) return;
-    const anchor = findAnnotationAnchorElements(editorRoot, annotationId)[0];
-    if (!anchor) return;
-    setActiveId(annotationId);
-    setSheetId(null);
-    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    anchor.scrollIntoView({ block: "center", behavior: reducedMotion ? "auto" : "smooth" });
-    anchor.focus({ preventScroll: true });
-  }, [editorRoot, visibleIdSet]);
+  const locateAnnotation = useCallback(
+    (annotationId: string) => {
+      if (!editorRoot || !visibleIdSet.has(annotationId)) return;
+      const anchor = findAnnotationAnchorElements(editorRoot, annotationId)[0];
+      if (!anchor) return;
+      setActiveId(annotationId);
+      setSheetId(null);
+      const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      anchor.scrollIntoView({ block: "center", behavior: reducedMotion ? "auto" : "smooth" });
+      anchor.focus({ preventScroll: true });
+    },
+    [editorRoot, visibleIdSet],
+  );
 
-  const sheetAnnotation = visibleAnnotations.find((annotation) => annotation.id === resolvedSheetId) ?? null;
+  const sheetAnnotation =
+    visibleAnnotations.find((annotation) => annotation.id === resolvedSheetId) ?? null;
   const mobileTargetId = resolvedActiveId ?? visibleIds[0] ?? null;
 
-  return <div className="annotated-editor-layout" data-annotation-layout={layoutMode} ref={layoutRef}>
-    <div className="annotated-editor-main">{children}</div>
-    <svg className="annotation-connectors" aria-hidden="true">{connectors.map((connector) => <path key={connector.annotationId} d={connector.path} className={resolvedActiveId === connector.annotationId ? "is-active" : ""} />)}</svg>
-    <aside ref={sidebarRef} className="annotation-sidebar annotation-editor-sidebar" aria-label={`正文批注，只读，共 ${visibleAnnotations.length} 条`} style={{ minHeight: sidebarHeight || undefined }}>
-      {layoutMode === "desktop" && visibleAnnotations.map((annotation) => <article id={`annotation-editor-card-${annotation.id}`} key={annotation.id} ref={(element) => {
-        if (element) cardRefs.current.set(annotation.id, element);
-        else cardRefs.current.delete(annotation.id);
-      }} className={`annotation-card${resolvedActiveId === annotation.id ? " is-active" : ""}`} style={{ top: cardTops[annotation.id] ?? 0 }} tabIndex={-1} onFocusCapture={() => setActiveId(annotation.id)} onPointerEnter={() => setActiveId(annotation.id)}>
-        <AnnotationReadonlyThread annotation={annotation} onLocate={() => locateAnnotation(annotation.id)} />
-      </article>)}
-    </aside>
-    {mobileTargetId && <button type="button" className="annotation-editor-sheet-trigger" onClick={() => setSheetId(mobileTargetId)}>
-      {resolvedActiveId === mobileTargetId ? "查看当前批注" : `查看正文批注（${visibleAnnotations.length}）`}
-    </button>}
-    <AnnotationSheet annotation={sheetAnnotation} open={Boolean(resolvedSheetId)} onClose={() => setSheetId(null)} onLocate={() => sheetAnnotation && locateAnnotation(sheetAnnotation.id)} readOnly />
-  </div>;
+  return (
+    <div className="annotated-editor-layout" data-annotation-layout={layoutMode} ref={layoutRef}>
+      <div className="annotated-editor-main">{children}</div>
+      <svg className="annotation-connectors" aria-hidden="true">
+        {connectors.map((connector) => (
+          <path
+            key={connector.annotationId}
+            d={connector.path}
+            className={resolvedActiveId === connector.annotationId ? "is-active" : ""}
+          />
+        ))}
+      </svg>
+      <aside
+        ref={sidebarRef}
+        className="annotation-sidebar annotation-editor-sidebar"
+        aria-label={`正文批注，只读，共 ${visibleAnnotations.length} 条`}
+        style={{ minHeight: sidebarHeight || undefined }}
+      >
+        {layoutMode === "desktop" &&
+          visibleAnnotations.map((annotation) => (
+            <article
+              id={`annotation-editor-card-${annotation.id}`}
+              key={annotation.id}
+              ref={(element) => {
+                if (element) cardRefs.current.set(annotation.id, element);
+                else cardRefs.current.delete(annotation.id);
+              }}
+              className={`annotation-card${resolvedActiveId === annotation.id ? " is-active" : ""}`}
+              style={{ top: cardTops[annotation.id] ?? 0 }}
+              tabIndex={-1}
+              onFocusCapture={() => setActiveId(annotation.id)}
+              onPointerEnter={() => setActiveId(annotation.id)}
+            >
+              <AnnotationReadonlyThread
+                annotation={annotation}
+                onLocate={() => locateAnnotation(annotation.id)}
+              />
+            </article>
+          ))}
+      </aside>
+      {mobileTargetId && (
+        <button
+          type="button"
+          className="annotation-editor-sheet-trigger"
+          onClick={() => setSheetId(mobileTargetId)}
+        >
+          {resolvedActiveId === mobileTargetId
+            ? "查看当前批注"
+            : `查看正文批注（${visibleAnnotations.length}）`}
+        </button>
+      )}
+      <AnnotationSheet
+        annotation={sheetAnnotation}
+        open={Boolean(resolvedSheetId)}
+        onClose={() => setSheetId(null)}
+        onLocate={() => sheetAnnotation && locateAnnotation(sheetAnnotation.id)}
+        readOnly
+      />
+    </div>
+  );
 }

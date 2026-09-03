@@ -2,14 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { DOCX_IMPORT_LIMITS } from "../lib/docx-import/limits.ts";
-import {
-  DocxImportError,
-  type DocxImportErrorCode,
-} from "../lib/docx-import/types.ts";
-import {
-  openDocxPackage,
-  type DocxPackageReader,
-} from "../lib/docx-import/package.ts";
+import { DocxImportError, type DocxImportErrorCode } from "../lib/docx-import/types.ts";
+import { openDocxPackage, type DocxPackageReader } from "../lib/docx-import/package.ts";
 import {
   parseOrderedXml,
   xmlAttr,
@@ -54,10 +48,10 @@ test("opens a minimum DOCX and exposes bounded package reads", async () => {
   try {
     assert.equal(pkg.has("[Content_Types].xml"), true);
     assert.equal(pkg.has("word/document.xml"), true);
-    assert.deepEqual(pkg.entries.map((entry) => entry.path), [
-      "[Content_Types].xml",
-      "word/document.xml",
-    ]);
+    assert.deepEqual(
+      pkg.entries.map((entry) => entry.path),
+      ["[Content_Types].xml", "word/document.xml"],
+    );
     assert.equal(await pkg.readText("word/document.xml"), MINIMAL_DOCUMENT);
     assert.deepEqual(
       await pkg.readBytes("[Content_Types].xml"),
@@ -70,13 +64,18 @@ test("opens a minimum DOCX and exposes bounded package reads", async () => {
 });
 
 test("allows explicit safe directory entries used by some DOCX producers", async () => {
-  const pkg = await openDocxPackage(await makeDocxFixture({}, {
-    entries: [
-      { name: "[Content_Types].xml", value: MINIMAL_CONTENT_TYPES },
-      { name: "word/", value: "" },
-      { name: "word/document.xml", value: MINIMAL_DOCUMENT },
-    ],
-  }));
+  const pkg = await openDocxPackage(
+    await makeDocxFixture(
+      {},
+      {
+        entries: [
+          { name: "[Content_Types].xml", value: MINIMAL_CONTENT_TYPES },
+          { name: "word/", value: "" },
+          { name: "word/document.xml", value: MINIMAL_DOCUMENT },
+        ],
+      },
+    ),
+  );
   try {
     assert.equal(pkg.has("word/document.xml"), true);
     assert.equal(pkg.has("word/"), false);
@@ -93,10 +92,7 @@ test("requires a .docx filename before opening package bytes", async () => {
 });
 
 test("rejects the compressed DOCX size limit before ZIP parsing", async () => {
-  const file = new File(
-    [new Uint8Array(DOCX_IMPORT_LIMITS.compressedBytes + 1)],
-    "oversized.docx",
-  );
+  const file = new File([new Uint8Array(DOCX_IMPORT_LIMITS.compressedBytes + 1)], "oversized.docx");
   await expectImportError(() => openDocxPackage(file), "FILE_SIZE_LIMIT");
 });
 
@@ -117,23 +113,36 @@ test("requires the DOCX package content-types and main-document parts", async ()
     "REQUIRED_PART_MISSING",
   );
   await expectImportError(
-    async () => openDocxPackage(await makeDocxFixture({ "[Content_Types].xml": MINIMAL_CONTENT_TYPES })),
+    async () =>
+      openDocxPackage(await makeDocxFixture({ "[Content_Types].xml": MINIMAL_CONTENT_TYPES })),
     "REQUIRED_PART_MISSING",
   );
 });
 
 test("rejects encrypted and symbolic-link entries from central-directory metadata", async () => {
   await expectImportError(
-    async () => openDocxPackage(await makeDocxFixture({}, {
-      entries: minimumEntries({ password: "secret" }),
-    })),
+    async () =>
+      openDocxPackage(
+        await makeDocxFixture(
+          {},
+          {
+            entries: minimumEntries({ password: "secret" }),
+          },
+        ),
+      ),
     "ZIP_ENCRYPTED_ENTRY",
   );
 
   await expectImportError(
-    async () => openDocxPackage(await makeDocxFixture({}, {
-      entries: minimumEntries(undefined, { unixMode: 0o120777 }),
-    })),
+    async () =>
+      openDocxPackage(
+        await makeDocxFixture(
+          {},
+          {
+            entries: minimumEntries(undefined, { unixMode: 0o120777 }),
+          },
+        ),
+      ),
     "ZIP_SYMLINK_ENTRY",
   );
 });
@@ -148,11 +157,14 @@ test("rejects traversal paths and case-folded duplicate package names", async ()
   await expectImportError(() => openDocxPackage(traversing), "ZIP_PATH_UNSAFE");
 
   await expectImportError(
-    async () => openDocxPackage(await makeDocxFixture({
-      "[Content_Types].xml": MINIMAL_CONTENT_TYPES,
-      "word/document.xml": MINIMAL_DOCUMENT,
-      "word/Document.xml": "<duplicate/>",
-    })),
+    async () =>
+      openDocxPackage(
+        await makeDocxFixture({
+          "[Content_Types].xml": MINIMAL_CONTENT_TYPES,
+          "word/document.xml": MINIMAL_DOCUMENT,
+          "word/Document.xml": "<duplicate/>",
+        }),
+      ),
     "ZIP_DUPLICATE_ENTRY",
   );
 });
@@ -180,20 +192,24 @@ test("rejects a compression ratio above 100 to 1", async () => {
 
 test("enforces total uncompressed and single XML part metadata limits before extraction", async () => {
   const totalLimitFixture = await makeDocxFixture(undefined, {
-    patchSizes: [{
-      name: "word/document.xml",
-      compressedSize: Math.ceil((DOCX_IMPORT_LIMITS.uncompressedBytes + 1) / 100),
-      uncompressedSize: DOCX_IMPORT_LIMITS.uncompressedBytes + 1,
-    }],
+    patchSizes: [
+      {
+        name: "word/document.xml",
+        compressedSize: Math.ceil((DOCX_IMPORT_LIMITS.uncompressedBytes + 1) / 100),
+        uncompressedSize: DOCX_IMPORT_LIMITS.uncompressedBytes + 1,
+      },
+    ],
   });
   await expectImportError(() => openDocxPackage(totalLimitFixture), "ZIP_UNCOMPRESSED_LIMIT");
 
   const xmlLimitFixture = await makeDocxFixture(undefined, {
-    patchSizes: [{
-      name: "word/document.xml",
-      compressedSize: Math.ceil((DOCX_IMPORT_LIMITS.xmlPartBytes + 1) / 100),
-      uncompressedSize: DOCX_IMPORT_LIMITS.xmlPartBytes + 1,
-    }],
+    patchSizes: [
+      {
+        name: "word/document.xml",
+        compressedSize: Math.ceil((DOCX_IMPORT_LIMITS.xmlPartBytes + 1) / 100),
+        uncompressedSize: DOCX_IMPORT_LIMITS.xmlPartBytes + 1,
+      },
+    ],
   });
   await expectImportError(() => openDocxPackage(xmlLimitFixture), "XML_PART_SIZE_LIMIT");
 });
@@ -248,18 +264,12 @@ test("rejects undeclared and invalid numeric entity references", async () => {
     "<root>&#0;</root>",
     '<root value="&#xD800;"/>',
   ]) {
-    await expectImportError(
-      () => parseOrderedXml(malformed, "word/document.xml"),
-      "XML_MALFORMED",
-    );
+    await expectImportError(() => parseOrderedXml(malformed, "word/document.xml"), "XML_MALFORMED");
   }
 });
 
 test("preserves CDATA without interpreting entity-shaped content", () => {
-  const nodes = parseOrderedXml(
-    "<root><![CDATA[&foo;&amp;]]></root>",
-    "word/document.xml",
-  );
+  const nodes = parseOrderedXml("<root><![CDATA[&foo;&amp;]]></root>", "word/document.xml");
   assert.equal(xmlText(xmlChild(nodes, "root")!), "&foo;&amp;");
 });
 
@@ -273,7 +283,10 @@ test("ordered XML helpers preserve source order and ignore namespace prefixes", 
   assert.equal(xmlAttr(document, "kind"), "main");
   const paragraphs = xmlChildren(document, "p");
   assert.equal(paragraphs.length, 2);
-  assert.deepEqual(paragraphs.map((node) => xmlText(node)), ["A", "BC"]);
+  assert.deepEqual(
+    paragraphs.map((node) => xmlText(node)),
+    ["A", "BC"],
+  );
   assert.equal(xmlText(document), "ABC");
 });
 

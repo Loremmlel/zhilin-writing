@@ -14,7 +14,9 @@ export function openLocalDatabase(): Promise<IDBDatabase> {
         db.createObjectStore(DRAFT_STORE_NAME);
       }
       if (!db.objectStoreNames.contains(IMPORT_PREVIEW_STORE_NAME)) {
-        const previews = db.createObjectStore(IMPORT_PREVIEW_STORE_NAME, { keyPath: "importBatchId" });
+        const previews = db.createObjectStore(IMPORT_PREVIEW_STORE_NAME, {
+          keyPath: "importBatchId",
+        });
         previews.createIndex(IMPORT_PREVIEW_EXPIRY_INDEX, "expiresAt");
       }
     };

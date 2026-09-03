@@ -41,10 +41,7 @@ test("the commit schema rejects unknown fields and forged native authorship", ()
 
   const forged = commitFixture();
   forged.ir.threads[0]!.authorId = MEMBER_ID;
-  assert.throws(
-    () => validateDocxImportCommitPayload(forged),
-    /IMPORTED_AUTHOR_MUST_BE_NULL/,
-  );
+  assert.throws(() => validateDocxImportCommitPayload(forged), /IMPORTED_AUTHOR_MUST_BE_NULL/);
 });
 
 test("the trust boundary enforces title, Markdown, UUID, uniqueness, and item limits", () => {
@@ -80,8 +77,16 @@ test("the trust boundary enforces title, Markdown, UUID, uniqueness, and item li
 
   const oversizedIrText = commitFixture();
   oversizedIrText.ir.blocks.push(
-    { id: "large-1", type: "paragraph", segments: [{ text: "a".repeat(800_000), marks: [], commentIds: [] }] },
-    { id: "large-2", type: "paragraph", segments: [{ text: "b".repeat(800_000), marks: [], commentIds: [] }] },
+    {
+      id: "large-1",
+      type: "paragraph",
+      segments: [{ text: "a".repeat(800_000), marks: [], commentIds: [] }],
+    },
+    {
+      id: "large-2",
+      type: "paragraph",
+      segments: [{ text: "b".repeat(800_000), marks: [], commentIds: [] }],
+    },
   );
   assert.throws(() => validateDocxImportCommitPayload(oversizedIrText), /IR_TEXT_SIZE_LIMIT/);
 
@@ -112,7 +117,9 @@ test("the trust boundary enforces title, Markdown, UUID, uniqueness, and item li
   warningExpansion.ir.warnings.push({
     code: "VISUAL_FORMATTING_DROPPED",
     severity: "warning",
-    payload: Object.fromEntries(Array.from({ length: 20_000 }, (_, index) => [`field-${index}`, index])),
+    payload: Object.fromEntries(
+      Array.from({ length: 20_000 }, (_, index) => [`field-${index}`, index]),
+    ),
   });
   assert.throws(() => validateDocxImportCommitPayload(warningExpansion), /COMMIT_SCHEMA_INVALID/);
 
@@ -120,10 +127,12 @@ test("the trust boundary enforces title, Markdown, UUID, uniqueness, and item li
   aggregateWarnings.ir.warnings = Array.from({ length: 500 }, (_, warningIndex) => ({
     code: "VISUAL_FORMATTING_DROPPED" as const,
     severity: "warning" as const,
-    payload: Object.fromEntries(Array.from({ length: 20 }, (_, fieldIndex) => [
-      `field-${warningIndex}-${fieldIndex}`,
-      fieldIndex,
-    ])),
+    payload: Object.fromEntries(
+      Array.from({ length: 20 }, (_, fieldIndex) => [
+        `field-${warningIndex}-${fieldIndex}`,
+        fieldIndex,
+      ]),
+    ),
   }));
   assert.throws(() => validateDocxImportCommitPayload(aggregateWarnings), /IR_NODE_LIMIT/);
 });
@@ -133,23 +142,27 @@ test("the IR budget counts repeated segment links and comment IDs", () => {
   const linkedParagraph = linked.ir.blocks[0]!;
   assert.equal(linkedParagraph.type, "paragraph");
   if (linkedParagraph.type !== "paragraph") return;
-  linkedParagraph.segments.push(...Array.from({ length: 400 }, (_, index) => ({
-    text: "x",
-    marks: [],
-    link: `https://${"a".repeat(4_070)}${index.toString(36)}`,
-    commentIds: [],
-  })));
+  linkedParagraph.segments.push(
+    ...Array.from({ length: 400 }, (_, index) => ({
+      text: "x",
+      marks: [],
+      link: `https://${"a".repeat(4_070)}${index.toString(36)}`,
+      commentIds: [],
+    })),
+  );
   assert.throws(() => validateDocxImportCommitPayload(linked), /IR_TEXT_SIZE_LIMIT/);
 
   const commented = commitFixture();
   const commentedParagraph = commented.ir.blocks[0]!;
   assert.equal(commentedParagraph.type, "paragraph");
   if (commentedParagraph.type !== "paragraph") return;
-  commentedParagraph.segments.push(...Array.from({ length: 16 }, () => ({
-    text: "x",
-    marks: [],
-    commentIds: Array.from({ length: 500 }, () => "c".repeat(200)),
-  })));
+  commentedParagraph.segments.push(
+    ...Array.from({ length: 16 }, () => ({
+      text: "x",
+      marks: [],
+      commentIds: Array.from({ length: 500 }, () => "c".repeat(200)),
+    })),
+  );
   assert.throws(() => validateDocxImportCommitPayload(commented), /IR_TEXT_SIZE_LIMIT/);
 });
 
@@ -158,12 +171,14 @@ test("the raw commit body is size-limited before JSON parsing", () => {
   const paragraph = oversized.ir.blocks[0]!;
   assert.equal(paragraph.type, "paragraph");
   if (paragraph.type !== "paragraph") return;
-  paragraph.segments.push(...Array.from({ length: 1_600 }, (_, index) => ({
-    text: "x",
-    marks: [],
-    link: `https://${"a".repeat(4_070)}${index.toString(36)}`,
-    commentIds: [],
-  })));
+  paragraph.segments.push(
+    ...Array.from({ length: 1_600 }, (_, index) => ({
+      text: "x",
+      marks: [],
+      link: `https://${"a".repeat(4_070)}${index.toString(36)}`,
+      commentIds: [],
+    })),
+  );
   const body = JSON.stringify(oversized);
   assert.ok(new TextEncoder().encode(body).byteLength > 6 * 1024 * 1024);
   assert.throws(() => parseDocxImportCommitBody(body), /COMMIT_BODY_SIZE_LIMIT/);
@@ -207,10 +222,20 @@ test("the browser synchronously locks Confirm before its first durable checkpoin
   const lock = { current: false };
   let phase = "previewing";
 
-  assert.equal(beginDocxImportCommit(lock, () => { phase = "committing"; }), true);
+  assert.equal(
+    beginDocxImportCommit(lock, () => {
+      phase = "committing";
+    }),
+    true,
+  );
   assert.equal(lock.current, true);
   assert.equal(phase, "committing");
-  assert.equal(beginDocxImportCommit(lock, () => { phase = "previewing"; }), false);
+  assert.equal(
+    beginDocxImportCommit(lock, () => {
+      phase = "previewing";
+    }),
+    false,
+  );
   assert.equal(phase, "committing");
 });
 
@@ -328,7 +353,11 @@ test("the service keeps every lookup and batch statement within D1's 100-bind ce
     async first<T>(sql: string, params: readonly SqlValue[]) {
       parameterCounts.push(params.length);
       if (params.length > 100) throw new Error("D1_BIND_LIMIT");
-      return (sql.includes("INNER JOIN allowed_users") ? { id: IMPORTER_ID, displayName: "Importer" } : null) as T | null;
+      return (
+        sql.includes("INNER JOIN allowed_users")
+          ? { id: IMPORTER_ID, displayName: "Importer" }
+          : null
+      ) as T | null;
     },
     async all<T>(sql: string, params: readonly SqlValue[]) {
       parameterCounts.push(params.length);
@@ -372,13 +401,17 @@ test("the service rejects non-members, invalid attribution, and unclaimable asse
       /ASSET_NOT_CLAIMABLE/,
     );
 
-    harness.db.prepare("UPDATE assets SET owner_id = ?, status = 'permanent' WHERE id = ?").run(IMPORTER_ID, ASSET_ID);
+    harness.db
+      .prepare("UPDATE assets SET owner_id = ?, status = 'permanent' WHERE id = ?")
+      .run(IMPORTER_ID, ASSET_ID);
     await assert.rejects(
       commitDocxImport(IMPORTER_ID, commitFixture({ withAsset: true }), harness.adapter),
       /ASSET_NOT_CLAIMABLE/,
     );
 
-    harness.db.prepare("UPDATE assets SET status = 'temporary', mime_type = 'image/jpeg' WHERE id = ?").run(ASSET_ID);
+    harness.db
+      .prepare("UPDATE assets SET status = 'temporary', mime_type = 'image/jpeg' WHERE id = ?")
+      .run(ASSET_ID);
     await assert.rejects(
       commitDocxImport(IMPORTER_ID, commitFixture({ withAsset: true }), harness.adapter),
       /ASSET_NOT_CLAIMABLE/,
@@ -407,7 +440,11 @@ test("an atomic commit persists one complete initial state and exact retry retur
     assert.equal(count(harness.db, "activity_events"), 1);
     assert.equal(count(harness.db, "notifications"), 1);
     assert.deepEqual(
-      { ...harness.db.prepare("SELECT status, post_id, expires_at FROM assets WHERE id = ?").get(ASSET_ID) },
+      {
+        ...harness.db
+          .prepare("SELECT status, post_id, expires_at FROM assets WHERE id = ?")
+          .get(ASSET_ID),
+      },
       { status: "permanent", post_id: first.postId, expires_at: null },
     );
   } finally {
@@ -421,7 +458,10 @@ test("same batch with another importer, source hash, or durable payload conflict
     const input = commitFixture();
     await commitDocxImport(IMPORTER_ID, input, harness.adapter);
 
-    await assert.rejects(commitDocxImport(MEMBER_ID, input, harness.adapter), /IMPORT_BATCH_CONFLICT/);
+    await assert.rejects(
+      commitDocxImport(MEMBER_ID, input, harness.adapter),
+      /IMPORT_BATCH_CONFLICT/,
+    );
     const changedSource = structuredClone(input);
     changedSource.source.sha256 = "b".repeat(64);
     changedSource.ir.source.sha256 = changedSource.source.sha256;
@@ -445,8 +485,12 @@ test("a concurrent unique-key race returns one commit and one exact idempotent r
     let batchLookups = 0;
     let releasePrecheck!: () => void;
     let resolvePrecheck!: () => void;
-    const precheckReached = new Promise<void>((resolve) => { resolvePrecheck = resolve; });
-    const precheckGate = new Promise<void>((resolve) => { releasePrecheck = resolve; });
+    const precheckReached = new Promise<void>((resolve) => {
+      resolvePrecheck = resolve;
+    });
+    const precheckGate = new Promise<void>((resolve) => {
+      releasePrecheck = resolve;
+    });
     const adapter: DocxImportCommitDatabase = {
       async first<T>(sql: string, params: readonly SqlValue[]) {
         if (sql.includes("FROM import_batches") && batchLookups < 2) {
@@ -471,7 +515,10 @@ test("a concurrent unique-key race returns one commit and one exact idempotent r
       await Promise.race([
         precheckReached,
         new Promise<never>((_, reject) => {
-          timeoutId = setTimeout(() => reject(new Error("concurrent precheck did not rendezvous")), 2_000);
+          timeoutId = setTimeout(
+            () => reject(new Error("concurrent precheck did not rendezvous")),
+            2_000,
+          );
         }),
       ]);
     } finally {
@@ -499,10 +546,20 @@ test("a mid-batch failure rolls back every D1 relation and leaves assets tempora
       /IMPORT_COMMIT_FAILED/,
     );
     for (const table of [
-      "import_batches", "posts", "post_revisions", "annotations", "annotation_replies",
-      "post_annotation_anchors", "revision_annotation_states", "revision_imported_reply_states",
-      "post_asset_refs", "revision_asset_refs", "activity_events", "notifications",
-    ]) assert.equal(count(harness.db, table), 0, table);
+      "import_batches",
+      "posts",
+      "post_revisions",
+      "annotations",
+      "annotation_replies",
+      "post_annotation_anchors",
+      "revision_annotation_states",
+      "revision_imported_reply_states",
+      "post_asset_refs",
+      "revision_asset_refs",
+      "activity_events",
+      "notifications",
+    ])
+      assert.equal(count(harness.db, table), 0, table);
     assert.deepEqual(
       { ...harness.db.prepare("SELECT status, post_id FROM assets WHERE id = ?").get(ASSET_ID) },
       { status: "temporary", post_id: null },
@@ -526,39 +583,69 @@ function commitFixture(options: { withAsset?: boolean } = {}): DocxImportCommitI
       source: { filename: "source.docx", sha256: SHA256, producer: "Word" },
       suggestedTitle: "导入标题",
       blocks: [
-        { id: "p1", type: "paragraph" as const, segments: [{ text: "正文", marks: [], commentIds: ["10"] }] },
-        ...(withAsset ? [{ id: "image-block", type: "image" as const, assetId: "docx-image-1", alt: "image" }] : []),
+        {
+          id: "p1",
+          type: "paragraph" as const,
+          segments: [{ text: "正文", marks: [], commentIds: ["10"] }],
+        },
+        ...(withAsset
+          ? [{ id: "image-block", type: "image" as const, assetId: "docx-image-1", alt: "image" }]
+          : []),
       ],
-      assets: withAsset ? [{ id: "docx-image-1", filename: "image.png", mimeType: "image/png" as const, alt: "image", sourceRelationshipId: "rImage", floating: false }] : [],
-      threads: [{
-        annotationId: ROOT_ID,
-        authorId: null as string | null,
-        sourceCommentId: "10",
-        blockId: "p1",
-        blockLocalStart: 0,
-        blockLocalEnd: 2,
-        sourceAuthorName: "Author",
-        sourceInitials: "AU",
-        sourceCreatedAt: "2026-08-29T00:00:00.000Z",
-        sourceDocumentOrder: 0,
-        sourceResolved: false,
-        bodyMarkdown: "Root",
-        replies: [{
-          replyId: REPLY_ID,
+      assets: withAsset
+        ? [
+            {
+              id: "docx-image-1",
+              filename: "image.png",
+              mimeType: "image/png" as const,
+              alt: "image",
+              sourceRelationshipId: "rImage",
+              floating: false,
+            },
+          ]
+        : [],
+      threads: [
+        {
+          annotationId: ROOT_ID,
           authorId: null as string | null,
-          sourceCommentId: "11",
-          parentSourceCommentId: "10",
-          sourceAuthorName: "Reply Author",
-          sourceDocumentOrder: 1,
+          sourceCommentId: "10",
+          blockId: "p1",
+          blockLocalStart: 0,
+          blockLocalEnd: 2,
+          sourceAuthorName: "Author",
+          sourceInitials: "AU",
+          sourceCreatedAt: "2026-08-29T00:00:00.000Z",
+          sourceDocumentOrder: 0,
           sourceResolved: false,
-          bodyMarkdown: "Reply",
-        }],
-      }],
+          bodyMarkdown: "Root",
+          replies: [
+            {
+              replyId: REPLY_ID,
+              authorId: null as string | null,
+              sourceCommentId: "11",
+              parentSourceCommentId: "10",
+              sourceAuthorName: "Reply Author",
+              sourceDocumentOrder: 1,
+              sourceResolved: false,
+              bodyMarkdown: "Reply",
+            },
+          ],
+        },
+      ],
       skippedThreads: [],
       warnings: [],
       canonicalMarkdown: `:annotation[正文]{#${ROOT_ID}}${withAsset ? `\n\n![image](/api/assets/${ASSET_ID})` : ""}`,
     },
-    temporaryAssets: withAsset ? [{ assetId: ASSET_ID, temporaryUrl: `/api/assets/${ASSET_ID}`, filename: "image.png", mimeType: "image/png" as const }] : [],
+    temporaryAssets: withAsset
+      ? [
+          {
+            assetId: ASSET_ID,
+            temporaryUrl: `/api/assets/${ASSET_ID}`,
+            filename: "image.png",
+            mimeType: "image/png" as const,
+          },
+        ]
+      : [],
     authorMappings: { Author: MEMBER_ID },
   };
 }
@@ -633,47 +720,78 @@ function nestedListBlock(depth: 0 | 1 | 2, remaining: number): ListBlock {
     type: "list",
     ordered: false,
     depth,
-    items: [{
-      id: `list-item-${remaining}`,
-      segments: [{ text: "item", marks: [], commentIds: [] }],
-      children: remaining > 0 ? [nestedListBlock(Math.min(depth + 1, 2) as 0 | 1 | 2, remaining - 1)] : [],
-    }],
+    items: [
+      {
+        id: `list-item-${remaining}`,
+        segments: [{ text: "item", marks: [], commentIds: [] }],
+        children:
+          remaining > 0
+            ? [nestedListBlock(Math.min(depth + 1, 2) as 0 | 1 | 2, remaining - 1)]
+            : [],
+      },
+    ],
   };
 }
 
 async function createHarness(failAfterStatement?: number) {
   const db = new DatabaseSync(":memory:");
   db.exec("PRAGMA foreign_keys = ON");
-  for (const prefix of ["0000_", "0001_", "0002_", "0003_", "0004_", "0005_", "0006_", "0007_", "0008_", "0009_"]) {
-    const filename = (await readdir(new URL("../drizzle/", import.meta.url))).find((item) => item.startsWith(prefix) && item.endsWith(".sql"));
+  for (const prefix of [
+    "0000_",
+    "0001_",
+    "0002_",
+    "0003_",
+    "0004_",
+    "0005_",
+    "0006_",
+    "0007_",
+    "0008_",
+    "0009_",
+  ]) {
+    const filename = (await readdir(new URL("../drizzle/", import.meta.url))).find(
+      (item) => item.startsWith(prefix) && item.endsWith(".sql"),
+    );
     assert.ok(filename, `${prefix} migration must exist`);
     const migration = await readFile(new URL(`../drizzle/${filename}`, import.meta.url), "utf8");
-    for (const statement of migration.split("--> statement-breakpoint").map((value) => value.trim()).filter(Boolean)) db.exec(statement);
+    for (const statement of migration
+      .split("--> statement-breakpoint")
+      .map((value) => value.trim())
+      .filter(Boolean))
+      db.exec(statement);
   }
   const now = Date.parse("2026-08-29T00:00:00.000Z");
-  const insertAllowed = db.prepare("INSERT INTO allowed_users (id, email, is_admin, added_at) VALUES (?, ?, 0, ?)");
-  const insertUser = db.prepare("INSERT INTO users (id, email_key, display_name, bio, joined_at, updated_at) VALUES (?, ?, ?, '', ?, ?)");
+  const insertAllowed = db.prepare(
+    "INSERT INTO allowed_users (id, email, is_admin, added_at) VALUES (?, ?, 0, ?)",
+  );
+  const insertUser = db.prepare(
+    "INSERT INTO users (id, email_key, display_name, bio, joined_at, updated_at) VALUES (?, ?, ?, '', ?, ?)",
+  );
   insertAllowed.run("allowed-importer", "importer@example.com", now);
   insertAllowed.run("allowed-member", "member@example.com", now);
   insertUser.run(IMPORTER_ID, "importer@example.com", "Importer", now, now);
   insertUser.run(MEMBER_ID, "member@example.com", "Member", now, now);
-  db.prepare("INSERT INTO assets (id, owner_id, r2_key, kind, filename, mime_type, byte_size, status, created_at, expires_at) VALUES (?, ?, ?, 'image', 'image.png', 'image/png', 3, 'temporary', ?, ?)")
-    .run(ASSET_ID, IMPORTER_ID, `${IMPORTER_ID}/image/${ASSET_ID}`, now, now + 86_400_000);
+  db.prepare(
+    "INSERT INTO assets (id, owner_id, r2_key, kind, filename, mime_type, byte_size, status, created_at, expires_at) VALUES (?, ?, ?, 'image', 'image.png', 'image/png', 3, 'temporary', ?, ?)",
+  ).run(ASSET_ID, IMPORTER_ID, `${IMPORTER_ID}/image/${ASSET_ID}`, now, now + 86_400_000);
 
   let batchAttempt = 0;
   const adapter: DocxImportCommitDatabase = {
     async first<T>(sql: string, params: readonly unknown[]) {
-      return (db.prepare(sql).get(...params as []) as T | undefined) ?? null;
+      return (db.prepare(sql).get(...(params as [])) as T | undefined) ?? null;
     },
     async all<T>(sql: string, params: readonly unknown[]) {
-      return db.prepare(sql).all(...params as []) as T[];
+      return db.prepare(sql).all(...(params as [])) as T[];
     },
     async batch(statements: readonly D1StatementPlan[]) {
       db.exec("BEGIN");
       try {
         for (const [index, statement] of statements.entries()) {
-          db.prepare(statement.sql).run(...statement.params as []);
-          if (batchAttempt === 0 && failAfterStatement !== undefined && index + 1 === failAfterStatement) {
+          db.prepare(statement.sql).run(...(statement.params as []));
+          if (
+            batchAttempt === 0 &&
+            failAfterStatement !== undefined &&
+            index + 1 === failAfterStatement
+          ) {
             throw new Error("injected batch failure");
           }
         }
@@ -690,7 +808,9 @@ async function createHarness(failAfterStatement?: number) {
 }
 
 function count(db: DatabaseSync, table: string): number {
-  return Number((db.prepare(`SELECT COUNT(*) AS value FROM ${table}`).get() as { value: number }).value);
+  return Number(
+    (db.prepare(`SELECT COUNT(*) AS value FROM ${table}`).get() as { value: number }).value,
+  );
 }
 
 function uuid(value: number): string {

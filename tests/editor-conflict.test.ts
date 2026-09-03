@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { availableConflictChoices, chooseConflictResolution, hasRecoverablePublishedDraft } from "../lib/editor/conflict.ts";
+import {
+  availableConflictChoices,
+  chooseConflictResolution,
+  hasRecoverablePublishedDraft,
+} from "../lib/editor/conflict.ts";
 
 const local = {
   title: "我的标题",
@@ -19,13 +23,16 @@ const online = {
 };
 
 test("published drafts prompt only when local content differs from the loaded server version", () => {
-  assert.equal(hasRecoverablePublishedDraft(local, {
-    title: "线上标题",
-    markdown: "线上正文",
-    tags: "线上标签",
-    attachmentIds: ["file-online"],
-    baseRevisionId: "revision-18",
-  }), true);
+  assert.equal(
+    hasRecoverablePublishedDraft(local, {
+      title: "线上标题",
+      markdown: "线上正文",
+      tags: "线上标签",
+      attachmentIds: ["file-online"],
+      baseRevisionId: "revision-18",
+    }),
+    true,
+  );
   assert.equal(hasRecoverablePublishedDraft(local, { ...local }), false);
 });
 
@@ -64,18 +71,25 @@ test("explicit overwrite keeps local content and resubmits against the latest re
 });
 
 test("annotation transitions prohibit force overwrite while preserving the local draft", () => {
-  assert.throws(() => chooseConflictResolution("overwrite", local, {
-    ...online,
-    forceOverwriteAllowed: false,
-    annotationStateChanged: true,
-  }), /批注状态/);
+  assert.throws(
+    () =>
+      chooseConflictResolution("overwrite", local, {
+        ...online,
+        forceOverwriteAllowed: false,
+        annotationStateChanged: true,
+      }),
+    /批注状态/,
+  );
 });
 
 test("annotation transitions remove the force-overwrite choice from the conflict dialog", () => {
   assert.deepEqual(availableConflictChoices(online), ["online", "manual", "overwrite"]);
-  assert.deepEqual(availableConflictChoices({
-    ...online,
-    forceOverwriteAllowed: false,
-    annotationStateChanged: true,
-  }), ["online", "manual"]);
+  assert.deepEqual(
+    availableConflictChoices({
+      ...online,
+      forceOverwriteAllowed: false,
+      annotationStateChanged: true,
+    }),
+    ["online", "manual"],
+  );
 });

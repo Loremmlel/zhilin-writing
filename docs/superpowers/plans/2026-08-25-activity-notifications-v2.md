@@ -24,10 +24,12 @@
 ### Task 1: Testable event and notification policy
 
 **Files:**
+
 - Create: `lib/activity/policy.ts`
 - Test: `tests/activity-policy.test.ts`
 
 **Interfaces:**
+
 - Produces: `activityEventId`, `notificationId`, `resolveReplyRecipient`, `truncateActivityPreview`, and `replyTargetHref`.
 
 - [ ] Write failing tests proving deterministic IDs, direct-target recipient selection, self-notification suppression, Unicode-safe preview truncation, and stable `#reply-<id>` URLs.
@@ -38,6 +40,7 @@
 ### Task 2: Durable schema, indexes, and atomic write path
 
 **Files:**
+
 - Modify: `db/schema.ts`
 - Modify: `db/queries.ts`
 - Modify: `lib/posts/service.ts`
@@ -47,6 +50,7 @@
 - Test: `tests/activity-policy.test.ts`
 
 **Interfaces:**
+
 - Consumes: deterministic IDs and recipient policy from Task 1.
 - Produces: `activity_events`, `notifications`, author-scoped reply idempotency, `listUserActivity`, `listNotifications`, `countUnreadNotifications`, `findOwnedNotification`, `markNotificationRead`, and `markAllNotificationsRead`.
 
@@ -59,6 +63,7 @@
 ### Task 3: Activity tab and notification center
 
 **Files:**
+
 - Create: `components/activity-list.tsx`
 - Create: `components/notification-list.tsx`
 - Create: `app/(site)/notifications/page.tsx`
@@ -72,6 +77,7 @@
 - Test: `tests/rendered-html.test.mjs`
 
 **Interfaces:**
+
 - Consumes: activity and notification queries from Task 2.
 - Produces: `/users/:id?tab=activity`, `/notifications?tab=unread`, owned notification open/mark-read flow, mark-all-read server action, deletion notices, and animated reply anchors.
 
@@ -86,9 +92,11 @@
 ### Task 4: Verification and private checkpoint deployment
 
 **Files:**
+
 - Verify all modified and generated files.
 
 **Interfaces:**
+
 - Consumes: complete V2 implementation.
 - Produces: a new immutable private Sites version and verified production URL.
 

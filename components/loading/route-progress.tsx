@@ -34,7 +34,8 @@ function isRscRequest(input: RequestInfo | URL, init?: RequestInit) {
 
 function isServerActionRequest(input: RequestInfo | URL, init?: RequestInit) {
   const headers = requestHeaders(input, init);
-  const requestMethod = typeof Request !== "undefined" && input instanceof Request ? input.method : "GET";
+  const requestMethod =
+    typeof Request !== "undefined" && input instanceof Request ? input.method : "GET";
   const method = (init?.method ?? requestMethod).toUpperCase();
   return method === "POST" && (headers.has("x-rsc-action") || headers.has("next-action"));
 }
@@ -68,7 +69,7 @@ function installNavigationBridge(controller: RouteProgressController) {
     }
   };
 
-  const wrappedFetch: typeof window.fetch = async function(this: Window, input, init) {
+  const wrappedFetch: typeof window.fetch = async function (this: Window, input, init) {
     const isAction = isServerActionRequest(input, init);
     const tracksNavigation = isRscRequest(input, init) && !isAction;
     const tokens = isAction
@@ -93,9 +94,11 @@ function installNavigationBridge(controller: RouteProgressController) {
   return () => {
     bridge.controllers.delete(controller);
     if (bridge.controllers.size > 0) return;
-    if (browserWindow.__VINEXT_RSC_NAVIGATE__ === bridge.wrappedNavigate) browserWindow.__VINEXT_RSC_NAVIGATE__ = bridge.originalNavigate;
+    if (browserWindow.__VINEXT_RSC_NAVIGATE__ === bridge.wrappedNavigate)
+      browserWindow.__VINEXT_RSC_NAVIGATE__ = bridge.originalNavigate;
     if (browserWindow.fetch === bridge.wrappedFetch) browserWindow.fetch = bridge.originalFetch;
-    if (browserWindow.__ZHILIN_ROUTE_PROGRESS_BRIDGE__ === bridge) delete browserWindow.__ZHILIN_ROUTE_PROGRESS_BRIDGE__;
+    if (browserWindow.__ZHILIN_ROUTE_PROGRESS_BRIDGE__ === bridge)
+      delete browserWindow.__ZHILIN_ROUTE_PROGRESS_BRIDGE__;
   };
 }
 

@@ -7,7 +7,11 @@ import { TextSelection, type EditorState, type Transaction } from "@milkdown/kit
 import { createAnnotationGuardSession } from "../lib/editor/annotation-session.ts";
 import { annotationMark, annotationTestSchema, editorState } from "./annotation-test-schema.ts";
 
-function applyAccepted(session: ReturnType<typeof createAnnotationGuardSession>, state: EditorState, transaction: Transaction) {
+function applyAccepted(
+  session: ReturnType<typeof createAnnotationGuardSession>,
+  state: EditorState,
+  transaction: Transaction,
+) {
   const next = state.apply(transaction);
   session.acceptTransaction(state, transaction, next);
   return next;
@@ -15,15 +19,25 @@ function applyAccepted(session: ReturnType<typeof createAnnotationGuardSession>,
 
 function historyTransaction(state: EditorState, command: typeof undo | typeof redo) {
   let transaction: Transaction | undefined;
-  assert.equal(command(state, (next) => { transaction = next; }), true);
+  assert.equal(
+    command(state, (next) => {
+      transaction = next;
+    }),
+    true,
+  );
   assert.ok(transaction);
   return transaction;
 }
 
 test("confirm applies one composite history operation while cancel leaves the document untouched", () => {
   const pending = [];
-  const session = createAnnotationGuardSession({ baseAnnotationIds: ["a"], onPendingImpact: (value) => pending.push(value) });
-  const initial = editorState([{ text: "AAA", marks: [annotationMark("a")] }], { from: 1, to: 4 }, [history()]);
+  const session = createAnnotationGuardSession({
+    baseAnnotationIds: ["a"],
+    onPendingImpact: (value) => pending.push(value),
+  });
+  const initial = editorState([{ text: "AAA", marks: [annotationMark("a")] }], { from: 1, to: 4 }, [
+    history(),
+  ]);
 
   const first = session.inspectTransaction(initial, initial.tr.deleteSelection());
   assert.equal(first.kind, "BLOCK");
@@ -56,23 +70,33 @@ test("confirm applies one composite history operation while cancel leaves the do
 
 test("one confirmation covers multiple annotations and stale state is never replayed", () => {
   const session = createAnnotationGuardSession({ baseAnnotationIds: ["a", "b"] });
-  const state = editorState([
-    { text: "AAA", marks: [annotationMark("a")] },
-    { text: " gap " },
-    { text: "BBB", marks: [annotationMark("b")] },
-  ], { from: 1, to: 12 });
+  const state = editorState(
+    [
+      { text: "AAA", marks: [annotationMark("a")] },
+      { text: " gap " },
+      { text: "BBB", marks: [annotationMark("b")] },
+    ],
+    { from: 1, to: 12 },
+  );
   const decision = session.inspectTransaction(state, state.tr.insertText("替换"));
   assert.equal(decision.kind, "BLOCK");
   assert.deepEqual(decision.pending.affectedAnnotationIds, ["a", "b"]);
 
-  const moved = applyAccepted(session, state, state.tr.setSelection(TextSelection.create(state.doc, 2)));
+  const moved = applyAccepted(
+    session,
+    state,
+    state.tr.setSelection(TextSelection.create(state.doc, 2)),
+  );
   const result = session.confirmPendingAnnotationImpact(decision.pending.token, moved);
   assert.deepEqual(result, { kind: "STALE", message: "正文已经变化，请重新执行刚才的操作" });
   assert.equal(moved.doc.textContent, "AAA gap BBB");
 });
 
 test("discard clears pending impact confirmed removals and redo authorization", () => {
-  const session = createAnnotationGuardSession({ baseAnnotationIds: ["a"], initialConfirmedAnnotationDeletionIds: ["a"] });
+  const session = createAnnotationGuardSession({
+    baseAnnotationIds: ["a"],
+    initialConfirmedAnnotationDeletionIds: ["a"],
+  });
   const state = editorState([{ text: "正文" }]);
   assert.deepEqual(session.confirmedAnnotationDeletionIds(state.doc), ["a"]);
   session.discard();

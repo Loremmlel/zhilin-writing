@@ -20,7 +20,12 @@ import {
 } from "@/db/schema";
 import { markdownToPlainText } from "@/lib/markdown/render";
 import { hasAnnotationTransition } from "@/lib/annotations/save-plan";
-import { planAnnotationRestore, type AnnotationStateSnapshot, type AssetSnapshotRef, type ImportedReplyStateSnapshot } from "./policy";
+import {
+  planAnnotationRestore,
+  type AnnotationStateSnapshot,
+  type AssetSnapshotRef,
+  type ImportedReplyStateSnapshot,
+} from "./policy";
 import { planRestore } from "./save-plan";
 
 export type RevisionSnapshot = {
@@ -68,7 +73,9 @@ export async function getRevisionAssetRefs(revisionId: string): Promise<AssetSna
     .orderBy(asc(revisionAssetRefs.assetId), asc(revisionAssetRefs.usage));
 }
 
-export async function getRevisionAnnotationStates(revisionId: string): Promise<AnnotationStateSnapshot[]> {
+export async function getRevisionAnnotationStates(
+  revisionId: string,
+): Promise<AnnotationStateSnapshot[]> {
   return getDb()
     .select({
       annotationId: revisionAnnotationStates.annotationId,
@@ -82,7 +89,9 @@ export async function getRevisionAnnotationStates(revisionId: string): Promise<A
     .orderBy(asc(revisionAnnotationStates.annotationId));
 }
 
-export async function getRevisionImportedReplyStates(revisionId: string): Promise<ImportedReplyStateSnapshot[]> {
+export async function getRevisionImportedReplyStates(
+  revisionId: string,
+): Promise<ImportedReplyStateSnapshot[]> {
   return getDb()
     .select({
       annotationReplyId: revisionImportedReplyStates.annotationReplyId,
@@ -96,7 +105,9 @@ export async function getRevisionImportedReplyStates(revisionId: string): Promis
     .orderBy(asc(revisionImportedReplyStates.annotationReplyId));
 }
 
-export async function getCurrentImportedReplyStates(postId: string): Promise<ImportedReplyStateSnapshot[]> {
+export async function getCurrentImportedReplyStates(
+  postId: string,
+): Promise<ImportedReplyStateSnapshot[]> {
   return getDb()
     .select({
       annotationReplyId: annotationReplies.id,
@@ -106,8 +117,16 @@ export async function getCurrentImportedReplyStates(postId: string): Promise<Imp
       hiddenByUserId: annotationReplies.hiddenByUserId,
     })
     .from(postAnnotationAnchors)
-    .innerJoin(annotationReplies, eq(postAnnotationAnchors.annotationId, annotationReplies.annotationId))
-    .where(and(eq(postAnnotationAnchors.postId, postId), eq(annotationReplies.sourceType, "DOCX_IMPORT")))
+    .innerJoin(
+      annotationReplies,
+      eq(postAnnotationAnchors.annotationId, annotationReplies.annotationId),
+    )
+    .where(
+      and(
+        eq(postAnnotationAnchors.postId, postId),
+        eq(annotationReplies.sourceType, "DOCX_IMPORT"),
+      ),
+    )
     .orderBy(asc(annotationReplies.id));
 }
 
@@ -122,16 +141,30 @@ export async function getCurrentImportedReplySaveStates(postId: string) {
       hiddenByUserId: annotationReplies.hiddenByUserId,
     })
     .from(postAnnotationAnchors)
-    .innerJoin(annotationReplies, eq(postAnnotationAnchors.annotationId, annotationReplies.annotationId))
-    .where(and(eq(postAnnotationAnchors.postId, postId), eq(annotationReplies.sourceType, "DOCX_IMPORT")))
+    .innerJoin(
+      annotationReplies,
+      eq(postAnnotationAnchors.annotationId, annotationReplies.annotationId),
+    )
+    .where(
+      and(
+        eq(postAnnotationAnchors.postId, postId),
+        eq(annotationReplies.sourceType, "DOCX_IMPORT"),
+      ),
+    )
     .orderBy(asc(annotationReplies.id));
 }
 
-export async function getRevisionSnapshot(postId: string, revisionId: string): Promise<RevisionSnapshot | null> {
-  const revision = (await getDb().select().from(postRevisions).where(and(
-    eq(postRevisions.id, revisionId),
-    eq(postRevisions.postId, postId),
-  )).limit(1))[0];
+export async function getRevisionSnapshot(
+  postId: string,
+  revisionId: string,
+): Promise<RevisionSnapshot | null> {
+  const revision = (
+    await getDb()
+      .select()
+      .from(postRevisions)
+      .where(and(eq(postRevisions.id, revisionId), eq(postRevisions.postId, postId)))
+      .limit(1)
+  )[0];
   if (!revision) return null;
   const [assetRefs, annotationStates, importedReplyStates] = await Promise.all([
     getRevisionAssetRefs(revision.id),
@@ -139,64 +172,94 @@ export async function getRevisionSnapshot(postId: string, revisionId: string): P
     getRevisionImportedReplyStates(revision.id),
   ]);
   const assetIds = [...new Set(assetRefs.map((ref) => ref.assetId))];
-  const rows = assetIds.length === 0
-    ? []
-    : await getDb().select().from(assets).where(and(inArray(assets.id, assetIds), isNull(assets.deletedAt)));
+  const rows =
+    assetIds.length === 0
+      ? []
+      : await getDb()
+          .select()
+          .from(assets)
+          .where(and(inArray(assets.id, assetIds), isNull(assets.deletedAt)));
   return { revision, assetRefs, assets: rows, annotationStates, importedReplyStates };
 }
 
-export async function hasAnnotationTransitionBetweenRevisions(postId: string, baseRevisionId: string, currentRevisionId: string): Promise<boolean> {
+export async function hasAnnotationTransitionBetweenRevisions(
+  postId: string,
+  baseRevisionId: string,
+  currentRevisionId: string,
+): Promise<boolean> {
   const db = getDb();
-  const bounds = await db.select({
-    id: postRevisions.id,
-    revisionNumber: postRevisions.revisionNumber,
-  }).from(postRevisions).where(and(
-    eq(postRevisions.postId, postId),
-    inArray(postRevisions.id, [baseRevisionId, currentRevisionId]),
-  ));
+  const bounds = await db
+    .select({
+      id: postRevisions.id,
+      revisionNumber: postRevisions.revisionNumber,
+    })
+    .from(postRevisions)
+    .where(
+      and(
+        eq(postRevisions.postId, postId),
+        inArray(postRevisions.id, [baseRevisionId, currentRevisionId]),
+      ),
+    );
   const base = bounds.find((revision) => revision.id === baseRevisionId);
   const current = bounds.find((revision) => revision.id === currentRevisionId);
   if (!base || !current || base.revisionNumber > current.revisionNumber) return true;
   const [revisions, states, importedReplyStates] = await Promise.all([
-    db.select({
-      id: postRevisions.id,
-      markdown: postRevisions.markdown,
-      revisionNumber: postRevisions.revisionNumber,
-    }).from(postRevisions).where(and(
-      eq(postRevisions.postId, postId),
-      gte(postRevisions.revisionNumber, base.revisionNumber),
-      lte(postRevisions.revisionNumber, current.revisionNumber),
-    )).orderBy(asc(postRevisions.revisionNumber)),
-    db.select({
-      revisionId: revisionAnnotationStates.revisionId,
-      annotationId: revisionAnnotationStates.annotationId,
-      deletedAt: revisionAnnotationStates.deletedAt,
-      deletedByUserId: revisionAnnotationStates.deletedByUserId,
-      hiddenAt: revisionAnnotationStates.hiddenAt,
-      hiddenByUserId: revisionAnnotationStates.hiddenByUserId,
-    }).from(revisionAnnotationStates)
+    db
+      .select({
+        id: postRevisions.id,
+        markdown: postRevisions.markdown,
+        revisionNumber: postRevisions.revisionNumber,
+      })
+      .from(postRevisions)
+      .where(
+        and(
+          eq(postRevisions.postId, postId),
+          gte(postRevisions.revisionNumber, base.revisionNumber),
+          lte(postRevisions.revisionNumber, current.revisionNumber),
+        ),
+      )
+      .orderBy(asc(postRevisions.revisionNumber)),
+    db
+      .select({
+        revisionId: revisionAnnotationStates.revisionId,
+        annotationId: revisionAnnotationStates.annotationId,
+        deletedAt: revisionAnnotationStates.deletedAt,
+        deletedByUserId: revisionAnnotationStates.deletedByUserId,
+        hiddenAt: revisionAnnotationStates.hiddenAt,
+        hiddenByUserId: revisionAnnotationStates.hiddenByUserId,
+      })
+      .from(revisionAnnotationStates)
       .innerJoin(postRevisions, eq(revisionAnnotationStates.revisionId, postRevisions.id))
-      .where(and(
-        eq(postRevisions.postId, postId),
-        gte(postRevisions.revisionNumber, base.revisionNumber),
-        lte(postRevisions.revisionNumber, current.revisionNumber),
-      )),
-    db.select({
-      revisionId: revisionImportedReplyStates.revisionId,
-      annotationReplyId: revisionImportedReplyStates.annotationReplyId,
-      annotationId: annotationReplies.annotationId,
-      deletedAt: revisionImportedReplyStates.deletedAt,
-      deletedByUserId: revisionImportedReplyStates.deletedByUserId,
-      hiddenAt: revisionImportedReplyStates.hiddenAt,
-      hiddenByUserId: revisionImportedReplyStates.hiddenByUserId,
-    }).from(revisionImportedReplyStates)
+      .where(
+        and(
+          eq(postRevisions.postId, postId),
+          gte(postRevisions.revisionNumber, base.revisionNumber),
+          lte(postRevisions.revisionNumber, current.revisionNumber),
+        ),
+      ),
+    db
+      .select({
+        revisionId: revisionImportedReplyStates.revisionId,
+        annotationReplyId: revisionImportedReplyStates.annotationReplyId,
+        annotationId: annotationReplies.annotationId,
+        deletedAt: revisionImportedReplyStates.deletedAt,
+        deletedByUserId: revisionImportedReplyStates.deletedByUserId,
+        hiddenAt: revisionImportedReplyStates.hiddenAt,
+        hiddenByUserId: revisionImportedReplyStates.hiddenByUserId,
+      })
+      .from(revisionImportedReplyStates)
       .innerJoin(postRevisions, eq(revisionImportedReplyStates.revisionId, postRevisions.id))
-      .innerJoin(annotationReplies, eq(revisionImportedReplyStates.annotationReplyId, annotationReplies.id))
-      .where(and(
-        eq(postRevisions.postId, postId),
-        gte(postRevisions.revisionNumber, base.revisionNumber),
-        lte(postRevisions.revisionNumber, current.revisionNumber),
-      )),
+      .innerJoin(
+        annotationReplies,
+        eq(revisionImportedReplyStates.annotationReplyId, annotationReplies.id),
+      )
+      .where(
+        and(
+          eq(postRevisions.postId, postId),
+          gte(postRevisions.revisionNumber, base.revisionNumber),
+          lte(postRevisions.revisionNumber, current.revisionNumber),
+        ),
+      ),
   ]);
   const statesByRevision = new Map<string, typeof states>();
   for (const state of states) {
@@ -210,27 +273,33 @@ export async function hasAnnotationTransitionBetweenRevisions(postId: string, ba
     list.push(state);
     importedRepliesByRevision.set(state.revisionId, list);
   }
-  return hasAnnotationTransition(revisions.map((revision) => ({
-    markdown: revision.markdown,
-    states: (statesByRevision.get(revision.id) ?? []).map((state) => ({
-      annotationId: state.annotationId,
-      deletedAt: state.deletedAt,
-      deletedByUserId: state.deletedByUserId,
-      hiddenAt: state.hiddenAt,
-      hiddenByUserId: state.hiddenByUserId,
+  return hasAnnotationTransition(
+    revisions.map((revision) => ({
+      markdown: revision.markdown,
+      states: (statesByRevision.get(revision.id) ?? []).map((state) => ({
+        annotationId: state.annotationId,
+        deletedAt: state.deletedAt,
+        deletedByUserId: state.deletedByUserId,
+        hiddenAt: state.hiddenAt,
+        hiddenByUserId: state.hiddenByUserId,
+      })),
+      importedReplyStates: (importedRepliesByRevision.get(revision.id) ?? []).map((state) => ({
+        annotationId: state.annotationId,
+        annotationReplyId: state.annotationReplyId,
+        deletedAt: state.deletedAt,
+        deletedByUserId: state.deletedByUserId,
+        hiddenAt: state.hiddenAt,
+        hiddenByUserId: state.hiddenByUserId,
+      })),
     })),
-    importedReplyStates: (importedRepliesByRevision.get(revision.id) ?? []).map((state) => ({
-      annotationId: state.annotationId,
-      annotationReplyId: state.annotationReplyId,
-      deletedAt: state.deletedAt,
-      deletedByUserId: state.deletedByUserId,
-      hiddenAt: state.hiddenAt,
-      hiddenByUserId: state.hiddenByUserId,
-    })),
-  })));
+  );
 }
 
-export async function getConflictSnapshot(postId: string, revisionId: string, baseRevisionId = revisionId): Promise<EditConflictSnapshot> {
+export async function getConflictSnapshot(
+  postId: string,
+  revisionId: string,
+  baseRevisionId = revisionId,
+): Promise<EditConflictSnapshot> {
   const snapshot = await getRevisionSnapshot(postId, revisionId);
   if (!snapshot) throw new Error("当前帖子版本不存在");
   const [currentTags, annotationStateChanged] = await Promise.all([
@@ -242,7 +311,9 @@ export async function getConflictSnapshot(postId: string, revisionId: string, ba
       .orderBy(asc(tags.name)),
     hasAnnotationTransitionBetweenRevisions(postId, baseRevisionId, revisionId),
   ]);
-  const attachmentIds = new Set(snapshot.assetRefs.filter((ref) => ref.usage === "attachment").map((ref) => ref.assetId));
+  const attachmentIds = new Set(
+    snapshot.assetRefs.filter((ref) => ref.usage === "attachment").map((ref) => ref.assetId),
+  );
   return {
     revisionId: snapshot.revision.id,
     revisionNumber: snapshot.revision.revisionNumber,
@@ -252,7 +323,12 @@ export async function getConflictSnapshot(postId: string, revisionId: string, ba
     assetRefs: snapshot.assetRefs,
     attachments: snapshot.assets
       .filter((asset) => attachmentIds.has(asset.id))
-      .map((asset) => ({ id: asset.id, filename: asset.filename, mimeType: asset.mimeType, byteSize: asset.byteSize })),
+      .map((asset) => ({
+        id: asset.id,
+        filename: asset.filename,
+        mimeType: asset.mimeType,
+        byteSize: asset.byteSize,
+      })),
     annotationStateChanged,
     forceOverwriteAllowed: !annotationStateChanged,
   };
@@ -272,10 +348,17 @@ function asBatch(items: BatchItem<"sqlite">[]) {
   return items as [BatchItem<"sqlite">, ...BatchItem<"sqlite">[]];
 }
 
-export async function restorePostRevision(postId: string, sourceRevisionId: string, administratorId: string, operationId: string) {
+export async function restorePostRevision(
+  postId: string,
+  sourceRevisionId: string,
+  administratorId: string,
+  operationId: string,
+) {
   const db = getDb();
   const dedupeKey = `REVISION_RESTORED:POST:${postId}:${sourceRevisionId}:${operationId}`;
-  const existingAudit = (await db.select().from(adminAuditLog).where(eq(adminAuditLog.dedupeKey, dedupeKey)).limit(1))[0];
+  const existingAudit = (
+    await db.select().from(adminAuditLog).where(eq(adminAuditLog.dedupeKey, dedupeKey)).limit(1)
+  )[0];
   if (existingAudit?.metadataJson) {
     const metadata = JSON.parse(existingAudit.metadataJson) as { newRevisionId?: string };
     if (metadata.newRevisionId) return metadata.newRevisionId;
@@ -289,7 +372,8 @@ export async function restorePostRevision(postId: string, sourceRevisionId: stri
   ]);
   if (!current || !source) throw new Error("历史版本不存在");
 
-  const currentAnchorIds = await db.select({ annotationId: postAnnotationAnchors.annotationId })
+  const currentAnchorIds = await db
+    .select({ annotationId: postAnnotationAnchors.annotationId })
     .from(postAnnotationAnchors)
     .where(eq(postAnnotationAnchors.postId, postId))
     .orderBy(asc(postAnnotationAnchors.annotationId))
@@ -307,7 +391,8 @@ export async function restorePostRevision(postId: string, sourceRevisionId: stri
     at: now,
   });
   if (annotationRestore.sourceAnchorIds.length > 0) {
-    const sourceRows = await db.select({ id: annotations.id, postId: annotations.postId })
+    const sourceRows = await db
+      .select({ id: annotations.id, postId: annotations.postId })
       .from(annotations)
       .where(inArray(annotations.id, annotationRestore.sourceAnchorIds));
     const sourceById = new Map(sourceRows.map((row) => [row.id, row]));
@@ -316,11 +401,19 @@ export async function restorePostRevision(postId: string, sourceRevisionId: stri
     }
   }
   if (annotationRestore.restoredImportedReplyStates.length > 0) {
-    const replyIds = annotationRestore.restoredImportedReplyStates.map((state) => state.annotationReplyId);
-    const sourceRows = await db.select({ id: annotationReplies.id, postId: annotations.postId })
+    const replyIds = annotationRestore.restoredImportedReplyStates.map(
+      (state) => state.annotationReplyId,
+    );
+    const sourceRows = await db
+      .select({ id: annotationReplies.id, postId: annotations.postId })
       .from(annotationReplies)
       .innerJoin(annotations, eq(annotationReplies.annotationId, annotations.id))
-      .where(and(inArray(annotationReplies.id, replyIds), eq(annotationReplies.sourceType, "DOCX_IMPORT")));
+      .where(
+        and(
+          inArray(annotationReplies.id, replyIds),
+          eq(annotationReplies.sourceType, "DOCX_IMPORT"),
+        ),
+      );
     const sourceById = new Map(sourceRows.map((row) => [row.id, row]));
     if (replyIds.some((id) => sourceById.get(id)?.postId !== postId)) {
       throw new Error("历史版本包含不存在或不属于当前帖子的导入批注回复");
@@ -328,24 +421,31 @@ export async function restorePostRevision(postId: string, sourceRevisionId: stri
   }
 
   const revisionId = crypto.randomUUID();
-  const restorePlan = planRestore({
-    revisionId: current.revision.id,
-    revisionNumber: current.revision.revisionNumber,
-    title: current.revision.title,
-    markdown: current.revision.markdown,
-    assetRefs: current.assetRefs,
-    editedAt: post.editedAt,
-    lastActivityAt: post.lastActivityAt,
-  }, {
-    id: source.revision.id,
-    title: source.revision.title,
-    markdown: source.revision.markdown,
-    assetRefs: source.assetRefs,
-  }, now);
+  const restorePlan = planRestore(
+    {
+      revisionId: current.revision.id,
+      revisionNumber: current.revision.revisionNumber,
+      title: current.revision.title,
+      markdown: current.revision.markdown,
+      assetRefs: current.assetRefs,
+      editedAt: post.editedAt,
+      lastActivityAt: post.lastActivityAt,
+    },
+    {
+      id: source.revision.id,
+      title: source.revision.title,
+      markdown: source.revision.markdown,
+      assetRefs: source.assetRefs,
+    },
+    now,
+  );
   const operations: BatchItem<"sqlite">[] = [
-    db.update(posts).set({
-      title: sql<string>`CASE WHEN ${posts.currentRevisionId} = ${current.revision.id} THEN ${posts.title} ELSE NULL END`,
-    }).where(eq(posts.id, postId)),
+    db
+      .update(posts)
+      .set({
+        title: sql<string>`CASE WHEN ${posts.currentRevisionId} = ${current.revision.id} THEN ${posts.title} ELSE NULL END`,
+      })
+      .where(eq(posts.id, postId)),
     db.insert(postRevisions).values({
       id: revisionId,
       postId,
@@ -357,41 +457,71 @@ export async function restorePostRevision(postId: string, sourceRevisionId: stri
       createdByUserId: administratorId,
       restoreSourceRevisionId: restorePlan.restoreSourceRevisionId,
     }),
-    db.update(posts).set({
-      title: restorePlan.title,
-      markdown: restorePlan.markdown,
-      searchText: markdownToPlainText(restorePlan.markdown),
-      currentRevisionId: revisionId,
-      editedAt: restorePlan.editedAt,
-      deletedAt: null,
-      deletedByUserId: null,
-    }).where(and(eq(posts.id, postId), eq(posts.currentRevisionId, current.revision.id))),
+    db
+      .update(posts)
+      .set({
+        title: restorePlan.title,
+        markdown: restorePlan.markdown,
+        searchText: markdownToPlainText(restorePlan.markdown),
+        currentRevisionId: revisionId,
+        editedAt: restorePlan.editedAt,
+        deletedAt: null,
+        deletedByUserId: null,
+      })
+      .where(and(eq(posts.id, postId), eq(posts.currentRevisionId, current.revision.id))),
     db.delete(postAssetRefs).where(eq(postAssetRefs.postId, postId)),
     ...restorePlan.assetRefs.map((ref) => db.insert(postAssetRefs).values({ postId, ...ref })),
-    ...restorePlan.assetRefs.map((ref) => db.insert(revisionAssetRefs).values({ revisionId, ...ref })),
+    ...restorePlan.assetRefs.map((ref) =>
+      db.insert(revisionAssetRefs).values({ revisionId, ...ref }),
+    ),
     db.delete(postAnnotationAnchors).where(eq(postAnnotationAnchors.postId, postId)),
-    ...annotationRestore.sourceAnchorIds.map((annotationId) => db.insert(postAnnotationAnchors).values({ postId, annotationId })),
-    ...annotationRestore.retirements.map(({ annotationId, patch }) => db.update(annotations).set(patch)
-      .where(and(eq(annotations.id, annotationId), eq(annotations.postId, postId)))),
-    ...annotationRestore.restoredStates.map((state) => db.update(annotations).set({
-      deletedAt: state.deletedAt,
-      deletedByUserId: state.deletedByUserId,
-      hiddenAt: state.hiddenAt,
-      hiddenByUserId: state.hiddenByUserId,
-      hiddenReason: null,
-      anchorRetiredAt: null,
-      anchorRetiredByUserId: null,
-      anchorRetiredReason: null,
-    }).where(and(eq(annotations.id, state.annotationId), eq(annotations.postId, postId)))),
-    ...annotationRestore.restoredStates.map((state) => db.insert(revisionAnnotationStates).values({ revisionId, ...state })),
-    ...annotationRestore.restoredImportedReplyStates.map((state) => db.update(annotationReplies).set({
-      deletedAt: state.deletedAt,
-      deletedByUserId: state.deletedByUserId,
-      hiddenAt: state.hiddenAt,
-      hiddenByUserId: state.hiddenByUserId,
-      hiddenReason: null,
-    }).where(and(eq(annotationReplies.id, state.annotationReplyId), eq(annotationReplies.sourceType, "DOCX_IMPORT")))),
-    ...annotationRestore.restoredImportedReplyStates.map((state) => db.insert(revisionImportedReplyStates).values({ revisionId, ...state })),
+    ...annotationRestore.sourceAnchorIds.map((annotationId) =>
+      db.insert(postAnnotationAnchors).values({ postId, annotationId }),
+    ),
+    ...annotationRestore.retirements.map(({ annotationId, patch }) =>
+      db
+        .update(annotations)
+        .set(patch)
+        .where(and(eq(annotations.id, annotationId), eq(annotations.postId, postId))),
+    ),
+    ...annotationRestore.restoredStates.map((state) =>
+      db
+        .update(annotations)
+        .set({
+          deletedAt: state.deletedAt,
+          deletedByUserId: state.deletedByUserId,
+          hiddenAt: state.hiddenAt,
+          hiddenByUserId: state.hiddenByUserId,
+          hiddenReason: null,
+          anchorRetiredAt: null,
+          anchorRetiredByUserId: null,
+          anchorRetiredReason: null,
+        })
+        .where(and(eq(annotations.id, state.annotationId), eq(annotations.postId, postId))),
+    ),
+    ...annotationRestore.restoredStates.map((state) =>
+      db.insert(revisionAnnotationStates).values({ revisionId, ...state }),
+    ),
+    ...annotationRestore.restoredImportedReplyStates.map((state) =>
+      db
+        .update(annotationReplies)
+        .set({
+          deletedAt: state.deletedAt,
+          deletedByUserId: state.deletedByUserId,
+          hiddenAt: state.hiddenAt,
+          hiddenByUserId: state.hiddenByUserId,
+          hiddenReason: null,
+        })
+        .where(
+          and(
+            eq(annotationReplies.id, state.annotationReplyId),
+            eq(annotationReplies.sourceType, "DOCX_IMPORT"),
+          ),
+        ),
+    ),
+    ...annotationRestore.restoredImportedReplyStates.map((state) =>
+      db.insert(revisionImportedReplyStates).values({ revisionId, ...state }),
+    ),
     db.insert(adminAuditLog).values({
       id: crypto.randomUUID(),
       adminUserId: administratorId,
@@ -413,13 +543,22 @@ export async function restorePostRevision(postId: string, sourceRevisionId: stri
   try {
     await db.batch(asBatch(operations));
   } catch (error) {
-    const completedAudit = (await db.select().from(adminAuditLog).where(eq(adminAuditLog.dedupeKey, dedupeKey)).limit(1))[0];
+    const completedAudit = (
+      await db.select().from(adminAuditLog).where(eq(adminAuditLog.dedupeKey, dedupeKey)).limit(1)
+    )[0];
     if (completedAudit?.metadataJson) {
       const metadata = JSON.parse(completedAudit.metadataJson) as { newRevisionId?: string };
       if (metadata.newRevisionId) return metadata.newRevisionId;
     }
-    const latest = (await db.select({ currentRevisionId: posts.currentRevisionId }).from(posts).where(eq(posts.id, postId)).limit(1))[0];
-    if (latest?.currentRevisionId !== current.revision.id) throw new Error("帖子已更新，请刷新历史记录后重试");
+    const latest = (
+      await db
+        .select({ currentRevisionId: posts.currentRevisionId })
+        .from(posts)
+        .where(eq(posts.id, postId))
+        .limit(1)
+    )[0];
+    if (latest?.currentRevisionId !== current.revision.id)
+      throw new Error("帖子已更新，请刷新历史记录后重试");
     throw error;
   }
   return revisionId;

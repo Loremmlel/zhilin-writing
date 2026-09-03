@@ -31,11 +31,13 @@ function stableIds(ids: string[]): string {
 }
 
 export function hasRecoverablePublishedDraft(local: EditorDraft, server: EditorDraft): boolean {
-  return local.title !== server.title ||
+  return (
+    local.title !== server.title ||
     local.markdown !== server.markdown ||
     local.tags !== server.tags ||
     stableIds(local.attachmentIds) !== stableIds(server.attachmentIds) ||
-    local.baseRevisionId !== server.baseRevisionId;
+    local.baseRevisionId !== server.baseRevisionId
+  );
 }
 
 export function chooseConflictResolution(
@@ -56,7 +58,8 @@ export function chooseConflictResolution(
     };
   }
   if (choice === "overwrite") {
-    if (online.forceOverwriteAllowed === false) throw new Error("线上批注状态已经变化，不能使用旧正文覆盖");
+    if (online.forceOverwriteAllowed === false)
+      throw new Error("线上批注状态已经变化，不能使用旧正文覆盖");
     return {
       mode: "overwrite" as const,
       ...local,

@@ -17,14 +17,24 @@ export function createSerialUploadQueue() {
   let tail = Promise.resolve();
   return function enqueue<T>(task: () => Promise<T>): Promise<T> {
     const result = tail.then(task, task);
-    tail = result.then(() => undefined, () => undefined);
+    tail = result.then(
+      () => undefined,
+      () => undefined,
+    );
     return result;
   };
 }
 
-export function uploadAsset(file: File, onProgress: (percent: number) => void, signal?: AbortSignal): Promise<BrowserAssetUploadResult & { asset: NonNullable<BrowserAssetUploadResult["asset"]> }> {
+export function uploadAsset(
+  file: File,
+  onProgress: (percent: number) => void,
+  signal?: AbortSignal,
+): Promise<BrowserAssetUploadResult & { asset: NonNullable<BrowserAssetUploadResult["asset"]> }> {
   return new Promise((resolve, reject) => {
-    const validation = validateAssetUpload({ size: file.size, mimeType: file.type || "application/octet-stream" });
+    const validation = validateAssetUpload({
+      size: file.size,
+      mimeType: file.type || "application/octet-stream",
+    });
     if (validation) {
       reject(new BrowserAssetUploadError(validation.code, validation.message));
       return;
@@ -50,7 +60,12 @@ export function uploadAsset(file: File, onProgress: (percent: number) => void, s
       stopListening();
       const data = (request.response ?? {}) as BrowserAssetUploadResult;
       if (request.status < 200 || request.status >= 300 || !data.asset) {
-        reject(new BrowserAssetUploadError(data.code ?? "SERVER_FAILURE", data.error ?? "文件上传失败，请稍后重试"));
+        reject(
+          new BrowserAssetUploadError(
+            data.code ?? "SERVER_FAILURE",
+            data.error ?? "文件上传失败，请稍后重试",
+          ),
+        );
         return;
       }
       resolve({ ...data, asset: data.asset });

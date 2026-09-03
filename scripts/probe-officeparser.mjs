@@ -31,20 +31,33 @@ function commentsIn(ast) {
 }
 
 function commentIds(ast) {
-  return [...new Set(commentsIn(ast)
-    .map((comment) => comment.metadata?.commentId)
-    .filter((id) => typeof id === "string"))].sort();
+  return [
+    ...new Set(
+      commentsIn(ast)
+        .map((comment) => comment.metadata?.commentId)
+        .filter((id) => typeof id === "string"),
+    ),
+  ].sort();
 }
 
 function hasImmediateParent(comment, parentId) {
   const metadata = comment?.metadata ?? {};
-  return [metadata.parentCommentId, metadata.parentId, metadata.replyTo, metadata.paraIdParent]
-    .some((value) => String(value) === parentId);
+  return [
+    metadata.parentCommentId,
+    metadata.parentId,
+    metadata.replyTo,
+    metadata.paraIdParent,
+  ].some((value) => String(value) === parentId);
 }
 
 function isResolved(comment) {
   const metadata = comment?.metadata ?? {};
-  return metadata.resolved === true || metadata.sourceResolved === true || metadata.done === true || metadata.done === "1";
+  return (
+    metadata.resolved === true ||
+    metadata.sourceResolved === true ||
+    metadata.done === true ||
+    metadata.done === "1"
+  );
 }
 
 export async function runOfficeparserProbe(fixtureDirectory = DEFAULT_FIXTURE_DIRECTORY) {
@@ -57,16 +70,15 @@ export async function runOfficeparserProbe(fixtureDirectory = DEFAULT_FIXTURE_DI
   ]);
 
   const overlapRanges = {
-    "10": observedAnchorText(overlap, "10"),
-    "11": observedAnchorText(overlap, "11"),
-    "12": observedAnchorText(overlap, "12"),
+    10: observedAnchorText(overlap, "10"),
+    11: observedAnchorText(overlap, "11"),
+    12: observedAnchorText(overlap, "12"),
   };
-  const exactOverlapRanges = overlapRanges["10"] === "ABCDE"
-    && overlapRanges["11"] === "BC"
-    && overlapRanges["12"] === "CD";
+  const exactOverlapRanges =
+    overlapRanges["10"] === "ABCDE" && overlapRanges["11"] === "BC" && overlapRanges["12"] === "CD";
   const adjacentRanges = {
-    "0": observedAnchorText(adjacent, "0"),
-    "1": observedAnchorText(adjacent, "1"),
+    0: observedAnchorText(adjacent, "0"),
+    1: observedAnchorText(adjacent, "1"),
   };
   const root = commentsIn(threaded).find((comment) => comment.metadata?.commentId === "20");
   const reply = commentsIn(threaded).find((comment) => comment.metadata?.commentId === "21");
@@ -91,8 +103,12 @@ export async function runOfficeparserProbe(fixtureDirectory = DEFAULT_FIXTURE_DI
       adjacentDistinct: `observed ${JSON.stringify(adjacentRanges)}`,
       nestedOverlapDistinct: `IDs ${commentIds(overlap).join(",") || "none"}; ranges ${JSON.stringify(overlapRanges)}`,
       stableCommentId: `first ${firstIds.join(",") || "none"}; second ${secondIds.join(",") || "none"}`,
-      immediateReplyParent: reply ? `reply metadata ${JSON.stringify(reply.metadata ?? {})}` : "reply comment 21 absent from AST",
-      resolvedState: root ? `root metadata ${JSON.stringify(root.metadata ?? {})}` : "root comment 20 absent from AST",
+      immediateReplyParent: reply
+        ? `reply metadata ${JSON.stringify(reply.metadata ?? {})}`
+        : "reply comment 21 absent from AST",
+      resolvedState: root
+        ? `root metadata ${JSON.stringify(root.metadata ?? {})}`
+        : "root comment 20 absent from AST",
       noSelectedTextSearch: exactOverlapRanges
         ? "exact ranges are directly reconstructable from AST comment membership"
         : "exact ranges require reparsing raw OOXML or guessing from selected text",

@@ -5,7 +5,13 @@ import { planAnnotationRestore, type AnnotationStateSnapshot } from "../lib/revi
 
 const A = "ann_550e8400-e29b-41d4-a716-446655440000";
 const B = "ann_123e4567-e89b-42d3-a456-426614174000";
-const active = (annotationId: string): AnnotationStateSnapshot => ({ annotationId, deletedAt: null, deletedByUserId: null, hiddenAt: null, hiddenByUserId: null });
+const active = (annotationId: string): AnnotationStateSnapshot => ({
+  annotationId,
+  deletedAt: null,
+  deletedByUserId: null,
+  hiddenAt: null,
+  hiddenByUserId: null,
+});
 
 test("restoring v2 from v3 retains A and exits B without changing thread history", () => {
   const at = new Date("2026-08-31T10:00:00.000Z");
@@ -21,22 +27,26 @@ test("restoring v2 from v3 retains A and exits B without changing thread history
   assert.deepEqual(result.sourceAnchorIds, [A]);
   assert.deepEqual(result.exitingAnnotationIds, [B]);
   assert.deepEqual(result.restoredStates, [active(A)]);
-  assert.deepEqual(result.retirements, [{
-    annotationId: B,
-    patch: {
-      anchorRetiredAt: at,
-      anchorRetiredByUserId: "administrator",
-      anchorRetiredReason: "REVISION_RESTORE",
+  assert.deepEqual(result.retirements, [
+    {
+      annotationId: B,
+      patch: {
+        anchorRetiredAt: at,
+        anchorRetiredByUserId: "administrator",
+        anchorRetiredReason: "REVISION_RESTORE",
+      },
     },
-  }]);
-  assert.deepEqual(result.restorations, [{
-    annotationId: A,
-    patch: {
-      anchorRetiredAt: null,
-      anchorRetiredByUserId: null,
-      anchorRetiredReason: null,
+  ]);
+  assert.deepEqual(result.restorations, [
+    {
+      annotationId: A,
+      patch: {
+        anchorRetiredAt: null,
+        anchorRetiredByUserId: null,
+        anchorRetiredReason: null,
+      },
     },
-  }]);
+  ]);
 });
 
 test("pre-V5 revisions naturally restore an empty annotation snapshot", () => {
@@ -58,11 +68,18 @@ test("pre-V5 revisions naturally restore an empty annotation snapshot", () => {
 
 test("restore rejects orphan marks, orphan rows, and inconsistent current state", () => {
   const base = {
-    currentMarkdown: `:annotation[A]{#${A}}`, currentAnchorIds: [A], currentStates: [active(A)],
-    sourceMarkdown: `:annotation[A]{#${A}}`, sourceStates: [active(A)],
-    actorUserId: "administrator", at: new Date("2026-08-31T10:00:00.000Z"),
+    currentMarkdown: `:annotation[A]{#${A}}`,
+    currentAnchorIds: [A],
+    currentStates: [active(A)],
+    sourceMarkdown: `:annotation[A]{#${A}}`,
+    sourceStates: [active(A)],
+    actorUserId: "administrator",
+    at: new Date("2026-08-31T10:00:00.000Z"),
   };
   assert.throws(() => planAnnotationRestore({ ...base, sourceStates: [] }), /历史版本.*不一致/);
-  assert.throws(() => planAnnotationRestore({ ...base, sourceMarkdown: "无批注" }), /历史版本.*不一致/);
+  assert.throws(
+    () => planAnnotationRestore({ ...base, sourceMarkdown: "无批注" }),
+    /历史版本.*不一致/,
+  );
   assert.throws(() => planAnnotationRestore({ ...base, currentAnchorIds: [] }), /当前正文.*不一致/);
 });

@@ -108,7 +108,7 @@ components:
 
 ### Annotation reading
 
-正文范围、右侧卡片、SVG connector 与移动端 Sheet 全部用稳定 `annotation_id` 联动。正文 mark 可聚焦，卡片可键盘访问；内部普通链接仍保持导航语义。桌面卡片按文档位置排列并避免重叠；字体、图片、容器和卡片尺寸变化才合并重测几何，普通 scroll 不触发 React 布局更新，也不重新解析 Markdown。删除或隐藏的根内容只显示占位，其他成员讨论不被连带移除。
+正文范围、右侧卡片、SVG connector 与移动端 Sheet 全部用稳定 `annotation_id` 联动。同一逻辑批注可以由连续正文块中的多个 inline mark 表达；所有同 ID mark 必须一起高亮、激活和定位，桌面 connector 与卡片以第一段可见范围为稳定锚点。正文 mark 可聚焦，卡片可键盘访问；内部普通链接仍保持导航语义。桌面卡片按文档位置排列并避免重叠；字体、图片、容器和卡片尺寸变化才合并重测几何，普通 scroll 不触发 React 布局更新，也不重新解析 Markdown。删除或隐藏的根内容只显示占位，其他成员讨论不被连带移除。
 
 合法正文选区在“添加批注”入口、输入弹窗和发布 pending/失败期间必须持续可见；以已保存且含 revision/epoch 的 range 为权威，原生 Selection 只负责最初捕获。视觉优先使用 CSS Custom Highlight，fallback overlay 仍需同时具备背景与点状下划线，不能只靠颜色。每个 thread 只有一个回复输入区，固定放在根批注正文之后、回复计数和列表之前；回复某条回复只重定向并聚焦这个输入区，失败保留草稿，成功后才清空。
 
@@ -116,7 +116,7 @@ components:
 
 ### DOCX import workspace
 
-DOCX 导入是现有写作表面的受控入口，不是营销上传页。初始态使用清楚的文件选择区说明浏览器解析、20 MB 限制与原始文件不上传；解析态保持固定布局并显示分阶段进度、取消和 typed error；Preview 在桌面使用校刊正文纸面与批注/警告右栏，在移动端按现有 Annotation Sheet 语义堆叠。Word author mapping 明示“Word 导入”和可选站内关联，不能把关联用户渲染成原作者。warnings 使用既有 info/warning/danger 层级和可展开分类，不用装饰性仪表盘。包含正文批注时必须说明导入后仍可继续编辑；只有修改受保护端点或破坏 anchor 结构时才会要求确认。
+DOCX 导入是现有写作表面的受控入口，不是营销上传页。初始态使用清楚的文件选择区说明浏览器解析、20 MB 限制与原始文件不上传；解析态保持固定布局并显示分阶段进度、取消和 typed error；Preview 在桌面使用校刊正文纸面与批注/警告右栏，在移动端按现有 Annotation Sheet 语义堆叠。Word author mapping 明示“Word 导入”和可选站内关联，不能把关联用户渲染成原作者。warnings 使用既有 info/warning/danger 层级和可展开分类，不用装饰性仪表盘。跨连续正文段落的 Word 批注按正式帖子相同的多段 mark 语义导入；穿过代码、表格、图片或其他不支持块的范围仍以明确 warning 跳过。包含正文批注时必须说明导入后仍可继续编辑；只有修改逻辑批注的最外侧受保护端点或破坏 anchor 结构时才会要求确认。
 
 ### Iconography
 

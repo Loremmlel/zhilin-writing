@@ -1,11 +1,11 @@
 import { parseAnnotationMarkdown } from "../annotations/markdown.ts";
+import {
+  validateCanonicalAnnotationDocument,
+  type AnnotationInvariantIssueCode,
+} from "../annotations/invariants.ts";
 import { DOCX_IMPORT_LIMITS } from "./limits.ts";
-import type {
-  DocxImportIR,
-  DocxPreviewRecord,
-  ImportBlock,
-  InlineSegment,
-} from "./types.ts";
+import { importedThreadSelectedText, importedThreadSlices } from "./thread-range.ts";
+import type { DocxImportIR, DocxPreviewRecord, ImportBlock } from "./types.ts";
 
 export type ImportPreviewValidationCode =
   | "TITLE_REQUIRED"
@@ -20,6 +20,7 @@ export type ImportPreviewValidationCode =
   | "ANNOTATION_TEXT_CHANGED"
   | "ANNOTATION_NESTED"
   | "ANNOTATION_NON_TEXT_RANGE"
+  | "ANNOTATION_CROSS_BLOCK"
   | "ANNOTATION_OVERLAP"
   | "UNSAFE_EXTERNAL_URL"
   | "IMPORT_WARNING_ERROR"
@@ -79,8 +80,8 @@ export function validateEditedImportPreview(
     errors.push({ code: "PREVIEW_EXPIRED" });
   }
   if (
-    preview.ir.warnings.some((warning) => warning.severity === "error")
-    || preview.ir.skippedThreads.some((thread) => thread.warning.severity === "error")
+    preview.ir.warnings.some((warning) => warning.severity === "error") ||
+    preview.ir.skippedThreads.some((thread) => thread.warning.severity === "error")
   ) {
     errors.push({ code: "IMPORT_WARNING_ERROR" });
   }
@@ -117,13 +118,18 @@ function validateAuthorMappings(
   validUserIds: ReadonlySet<string> | undefined,
   errors: ImportPreviewValidationError[],
 ) {
-  const authors = new Set(ir.threads.flatMap((thread) => [
-    thread.sourceAuthorName,
-    ...thread.replies.map((reply) => reply.sourceAuthorName),
-  ]));
-  if (Object.entries(authorMappings).some(([author, userId]) => (
-    !authors.has(author) || (validUserIds ? !validUserIds.has(userId) : false)
-  ))) {
+  const authors = new Set(
+    ir.threads.flatMap((thread) => [
+      thread.sourceAuthorName,
+      ...thread.replies.map((reply) => reply.sourceAuthorName),
+    ]),
+  );
+  if (
+    Object.entries(authorMappings).some(
+      ([author, userId]) =>
+        !authors.has(author) || (validUserIds ? !validUserIds.has(userId) : false),
+    )
+  ) {
     errors.push({ code: "AUTHOR_MAPPING_INVALID" });
   }
 }
@@ -141,12 +147,21 @@ function validateTemporaryAssets(
   if (preview.ir.assets.length > preview.temporaryAssets.length) {
     errors.push({ code: "ASSET_UPLOAD_MISSING" });
   }
-  if (preview.ir.assets.length !== preview.temporaryAssets.length || preview.markdown.includes("docx-asset:")) {
+  if (
+    preview.ir.assets.length !== preview.temporaryAssets.length ||
+    preview.markdown.includes("docx-asset:")
+  ) {
     errors.push({ code: "ASSET_REFERENCE_INVALID" });
   }
   for (const [index, asset] of preview.temporaryAssets.entries()) {
     const source = preview.ir.assets[index];
-    if (!asset.assetId || asset.temporaryUrl !== `/api/assets/${asset.assetId}` || !source || source.filename !== asset.filename || source.mimeType !== asset.mimeType) {
+    if (
+      !asset.assetId ||
+      asset.temporaryUrl !== `/api/assets/${asset.assetId}` ||
+      !source ||
+      source.filename !== asset.filename ||
+      source.mimeType !== asset.mimeType
+    ) {
       errors.push({ code: "ASSET_REFERENCE_INVALID" });
     }
   }
@@ -159,108 +174,102 @@ function validateMarkdownTree(
 ) {
   const { ir } = preview;
   const expected = new Map(ir.threads.map((thread) => [thread.annotationId, thread]));
-  const counts = new Map<string, number>();
   const referencedAssets = new Set<string>();
-  walk(tree, [], (node, ancestors) => {
+  walk(tree, (node) => {
     if ((node.type === "link" || node.type === "image") && node.url && !isSafeUrl(node.url)) {
       errors.push({ code: "UNSAFE_EXTERNAL_URL", url: node.url });
     }
     if ((node.type === "link" || node.type === "image") && node.url?.startsWith("/api/assets/")) {
       referencedAssets.add(node.url);
     }
-    if (node.type === "image") {
-      const owner = [...ancestors].reverse().find((ancestor) => ancestor.type === "textDirective" && ancestor.name === "annotation");
-      if (owner) errors.push({ code: "ANNOTATION_NON_TEXT_RANGE", annotationId: owner.attributes?.id ?? undefined });
-    }
-    if (node.type !== "textDirective" || node.name !== "annotation") return;
-    const id = node.attributes?.id;
-    if (!id) {
-      errors.push({ code: "ANNOTATION_ANCHOR_UNKNOWN" });
-      return;
-    }
-    counts.set(id, (counts.get(id) ?? 0) + 1);
-    const thread = expected.get(id);
-    if (!thread) errors.push({ code: "ANNOTATION_ANCHOR_UNKNOWN", annotationId: id });
-    if (ancestors.some((ancestor) => ancestor.type === "textDirective" && ancestor.name === "annotation")) {
-      errors.push({ code: "ANNOTATION_NESTED", annotationId: id });
-    }
-    if (thread) {
-      const expectedText = getImportedThreadSelectedText(ir.blocks, thread.blockId, thread.blockLocalStart, thread.blockLocalEnd);
-      if (visibleNodeText(node) !== expectedText) {
-        errors.push({ code: "ANNOTATION_TEXT_CHANGED", annotationId: id });
-      }
-    }
   });
-  for (const id of expected.keys()) {
-    const count = counts.get(id) ?? 0;
-    if (count === 0) errors.push({ code: "ANNOTATION_ANCHOR_MISSING", annotationId: id });
-    else if (count > 1) errors.push({ code: "ANNOTATION_ANCHOR_DUPLICATE", annotationId: id });
+  const issueCode: Record<AnnotationInvariantIssueCode, ImportPreviewValidationCode> = {
+    DUPLICATE: "ANNOTATION_ANCHOR_DUPLICATE",
+    EMPTY: "ANNOTATION_TEXT_CHANGED",
+    MULTI_BLOCK: "ANNOTATION_CROSS_BLOCK",
+    OVERLAP: "ANNOTATION_OVERLAP",
+    NESTED: "ANNOTATION_NESTED",
+    INVALID_BLOCK: "ANNOTATION_NON_TEXT_RANGE",
+    UNKNOWN_ID: "ANNOTATION_ANCHOR_UNKNOWN",
+    MISSING_ACTIVE_ID: "ANNOTATION_ANCHOR_MISSING",
+  };
+  const validation = validateCanonicalAnnotationDocument(preview.markdown, expected.keys());
+  for (const issue of validation.issues) {
+    errors.push({ code: issueCode[issue.code], annotationId: issue.annotationId ?? undefined });
+  }
+  for (const anchor of validation.anchors) {
+    const thread = expected.get(anchor.annotationId);
+    if (thread && anchor.text !== importedThreadSelectedText(ir.blocks, thread)) {
+      errors.push({ code: "ANNOTATION_TEXT_CHANGED", annotationId: anchor.annotationId });
+    }
   }
   const manifestAssets = new Set(preview.temporaryAssets.map((asset) => asset.temporaryUrl));
   if (
-    referencedAssets.size !== manifestAssets.size
-    || [...referencedAssets].some((url) => !manifestAssets.has(url))
+    referencedAssets.size !== manifestAssets.size ||
+    [...referencedAssets].some((url) => !manifestAssets.has(url))
   ) {
     errors.push({ code: "ASSET_REFERENCE_INVALID" });
   }
 }
 
 function validateSourceRanges(ir: DocxImportIR, errors: ImportPreviewValidationError[]) {
-  const byBlock = new Map<string, typeof ir.threads>();
+  const byBlock = new Map<string, Array<{ annotationId: string; from: number; to: number }>>();
+  const annotationIds = new Set<string>();
   for (const thread of ir.threads) {
-    const threads = byBlock.get(thread.blockId) ?? [];
-    threads.push(thread);
-    byBlock.set(thread.blockId, threads);
+    if (annotationIds.has(thread.annotationId)) {
+      errors.push({ code: "ANNOTATION_ANCHOR_DUPLICATE", annotationId: thread.annotationId });
+    }
+    annotationIds.add(thread.annotationId);
+    const slices = importedThreadSlices(ir.blocks, thread);
+    if (!slices) {
+      errors.push({ code: "ANNOTATION_CROSS_BLOCK", annotationId: thread.annotationId });
+      continue;
+    }
+    if (slices.some((slice) => slice.segments.some((segment) => segment.marks.includes("code")))) {
+      errors.push({ code: "ANNOTATION_NON_TEXT_RANGE", annotationId: thread.annotationId });
+    }
+    for (const slice of slices) {
+      const ranges = byBlock.get(slice.blockId) ?? [];
+      ranges.push({ annotationId: thread.annotationId, from: slice.from, to: slice.to });
+      byBlock.set(slice.blockId, ranges);
+    }
   }
-  for (const threads of byBlock.values()) {
-    const ordered = [...threads].sort((left, right) => left.blockLocalStart - right.blockLocalStart || left.blockLocalEnd - right.blockLocalEnd);
+  for (const ranges of byBlock.values()) {
+    const ordered = [...ranges].sort((left, right) => left.from - right.from || left.to - right.to);
     for (let index = 1; index < ordered.length; index += 1) {
-      if (ordered[index]!.blockLocalStart < ordered[index - 1]!.blockLocalEnd) {
+      if (ordered[index]!.from < ordered[index - 1]!.to) {
         errors.push({ code: "ANNOTATION_OVERLAP", annotationId: ordered[index]!.annotationId });
       }
     }
   }
 }
 
-export function getImportedThreadSelectedText(blocks: ImportBlock[], blockId: string, start: number, end: number): string {
-  const segments = findSegments(blocks, blockId);
-  if (!segments) return "";
-  const value = segments.map((segment) => segment.text).join("");
-  return value.slice(start, end);
+export function getImportedThreadSelectedText(
+  blocks: ImportBlock[],
+  blockId: string,
+  start: number,
+  end: number,
+  endBlockId?: string,
+): string {
+  return importedThreadSelectedText(blocks, {
+    blockId,
+    endBlockId,
+    blockLocalStart: start,
+    blockLocalEnd: end,
+  });
 }
 
-function findSegments(blocks: ImportBlock[], blockId: string): InlineSegment[] | null {
-  for (const block of blocks) {
-    if (block.id === blockId && "segments" in block) return block.segments;
-    if (block.type !== "list") continue;
-    for (const item of block.items) {
-      if (item.id === blockId) return item.segments;
-      const nested = findSegments(item.children, blockId);
-      if (nested) return nested;
-    }
-  }
-  return null;
-}
-
-function visibleNodeText(node: PreviewNode): string {
-  if (node.type === "text" || node.type === "inlineCode" || node.type === "code") return node.value ?? "";
-  if (node.type === "image") return node.alt ?? "";
-  return node.children?.map(visibleNodeText).join("") ?? "";
-}
-
-function walk(
-  node: PreviewNode,
-  ancestors: PreviewNode[],
-  callback: (node: PreviewNode, ancestors: PreviewNode[]) => void,
-) {
-  callback(node, ancestors);
-  node.children?.forEach((child) => walk(child, [...ancestors, node], callback));
+function walk(node: PreviewNode, callback: (node: PreviewNode) => void) {
+  callback(node);
+  node.children?.forEach((child) => walk(child, callback));
 }
 
 function isSafeUrl(value: string): boolean {
   if (value.startsWith("/") || value.startsWith("#")) return true;
   try {
-    return ["http:", "https:", "mailto:"].includes(new URL(value, "https://invalid.local").protocol);
+    return ["http:", "https:", "mailto:"].includes(
+      new URL(value, "https://invalid.local").protocol,
+    );
   } catch {
     return false;
   }

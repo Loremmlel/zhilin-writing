@@ -16,12 +16,22 @@ import {
   unhideReplyByAdmin,
 } from "@/lib/lifecycle/service";
 import { validateLifecycleOperationId } from "@/lib/lifecycle/policy";
-import { moderateAnnotationByAdmin, moderateAnnotationReplyByAdmin } from "@/lib/annotations/service";
+import {
+  moderateAnnotationByAdmin,
+  moderateAnnotationReplyByAdmin,
+} from "@/lib/annotations/service";
 import { logServerError } from "@/lib/logging";
 
-export type AllowlistActionState = { success?: boolean; error?: string; code?: ActionAccessErrorCode };
+export type AllowlistActionState = {
+  success?: boolean;
+  error?: string;
+  code?: ActionAccessErrorCode;
+};
 
-export async function addAllowlistAction(_state: AllowlistActionState, formData: FormData): Promise<AllowlistActionState> {
+export async function addAllowlistAction(
+  _state: AllowlistActionState,
+  formData: FormData,
+): Promise<AllowlistActionState> {
   const access = await getActionAdministratorAccess();
   if (!access.ok) return actionAccessFailure(access.code);
   const { member } = access;
@@ -30,14 +40,22 @@ export async function addAllowlistAction(_state: AllowlistActionState, formData:
   try {
     if (!(await findAllowedUser(email))) await addAllowedUser(email, false, member.id);
   } catch (error) {
-    logServerError({ operation: "allowlist.add", userId: member.id, error, errorCode: "ALLOWLIST_ADD_FAILED" });
+    logServerError({
+      operation: "allowlist.add",
+      userId: member.id,
+      error,
+      errorCode: "ALLOWLIST_ADD_FAILED",
+    });
     return { error: "白名单更新失败，请稍后重试" };
   }
   revalidatePath("/admin");
   return { success: true };
 }
 
-export async function removeAllowlistAction(_state: AllowlistActionState, formData: FormData): Promise<AllowlistActionState> {
+export async function removeAllowlistAction(
+  _state: AllowlistActionState,
+  formData: FormData,
+): Promise<AllowlistActionState> {
   const access = await getActionAdministratorAccess();
   if (!access.ok) return actionAccessFailure(access.code);
   const { member } = access;
@@ -45,7 +63,13 @@ export async function removeAllowlistAction(_state: AllowlistActionState, formDa
   try {
     if (id) await removeAllowedUser(id);
   } catch (error) {
-    logServerError({ operation: "allowlist.remove", entityId: id, userId: member.id, error, errorCode: "ALLOWLIST_REMOVE_FAILED" });
+    logServerError({
+      operation: "allowlist.remove",
+      entityId: id,
+      userId: member.id,
+      error,
+      errorCode: "ALLOWLIST_REMOVE_FAILED",
+    });
     return { error: "白名单更新失败，请稍后重试" };
   }
   revalidatePath("/admin");
@@ -73,7 +97,13 @@ export async function moderatePostAction(
     revalidatePath("/", "layout");
     return { success: true };
   } catch (error) {
-    logServerError({ operation: `post.admin-${operation}`, entityId: postId, userId: actorUserId, error, errorCode: "POST_MODERATION_FAILED" });
+    logServerError({
+      operation: `post.admin-${operation}`,
+      entityId: postId,
+      userId: actorUserId,
+      error,
+      errorCode: "POST_MODERATION_FAILED",
+    });
     return { error: "帖子状态更新失败，请稍后重试" };
   }
 }
@@ -99,7 +129,13 @@ export async function moderateReplyAction(
     revalidatePath("/", "layout");
     return { success: true };
   } catch (error) {
-    logServerError({ operation: `post-reply.admin-${operation}`, entityId: replyId, userId: actorUserId, error, errorCode: "POST_REPLY_MODERATION_FAILED" });
+    logServerError({
+      operation: `post-reply.admin-${operation}`,
+      entityId: replyId,
+      userId: actorUserId,
+      error,
+      errorCode: "POST_REPLY_MODERATION_FAILED",
+    });
     return { error: "回复状态更新失败，请稍后重试" };
   }
 }
@@ -128,7 +164,13 @@ export async function moderateAnnotationAction(
     revalidatePath("/", "layout");
     return { success: true };
   } catch (error) {
-    logServerError({ operation: `annotation.admin-${operation}`, entityId: annotationId, userId: actorUserId, error, errorCode: "ANNOTATION_MODERATION_FAILED" });
+    logServerError({
+      operation: `annotation.admin-${operation}`,
+      entityId: annotationId,
+      userId: actorUserId,
+      error,
+      errorCode: "ANNOTATION_MODERATION_FAILED",
+    });
     return { error: "批注状态更新失败，请稍后重试" };
   }
 }
@@ -157,7 +199,13 @@ export async function moderateAnnotationReplyAction(
     revalidatePath("/", "layout");
     return { success: true };
   } catch (error) {
-    logServerError({ operation: `annotation-reply.admin-${operation}`, entityId: replyId, userId: actorUserId, error, errorCode: "ANNOTATION_REPLY_MODERATION_FAILED" });
+    logServerError({
+      operation: `annotation-reply.admin-${operation}`,
+      entityId: replyId,
+      userId: actorUserId,
+      error,
+      errorCode: "ANNOTATION_REPLY_MODERATION_FAILED",
+    });
     return { error: "批注回复状态更新失败，请稍后重试" };
   }
 }

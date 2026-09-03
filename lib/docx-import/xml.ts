@@ -12,7 +12,7 @@ const PREDEFINED_XML_ENTITIES: Readonly<Record<string, string>> = {
   "&amp;": "&",
   "&lt;": "<",
   "&gt;": ">",
-  "&quot;": "\"",
+  "&quot;": '"',
   "&apos;": "'",
 };
 
@@ -46,11 +46,12 @@ export function parseOrderedXml(xml: string, partName: string): OrderedXmlNodes 
   assertSafeXmlText(xml, partName);
   const validation = XMLValidator.validate(xml, { allowBooleanAttributes: false });
   if (validation !== true) {
-    throw new DocxImportError(
-      "XML_MALFORMED",
-      "DOCX XML is malformed",
-      { partName, reason: validation.err.msg, line: validation.err.line, column: validation.err.col },
-    );
+    throw new DocxImportError("XML_MALFORMED", "DOCX XML is malformed", {
+      partName,
+      reason: validation.err.msg,
+      line: validation.err.line,
+      column: validation.err.col,
+    });
   }
 
   try {
@@ -167,20 +168,21 @@ function decodeXmlEntities(value: string, partName: string): string {
 }
 
 function invalidEntity(partName: string, entity: string): DocxImportError {
-  return new DocxImportError(
-    "XML_MALFORMED",
-    "DOCX XML contains an invalid entity reference",
-    { partName, entity },
-  );
+  return new DocxImportError("XML_MALFORMED", "DOCX XML contains an invalid entity reference", {
+    partName,
+    entity,
+  });
 }
 
 function isXmlCodePoint(value: number): boolean {
-  return value === 0x9
-    || value === 0xA
-    || value === 0xD
-    || (value >= 0x20 && value <= 0xD7FF)
-    || (value >= 0xE000 && value <= 0xFFFD)
-    || (value >= 0x10000 && value <= 0x10FFFF);
+  return (
+    value === 0x9 ||
+    value === 0xa ||
+    value === 0xd ||
+    (value >= 0x20 && value <= 0xd7ff) ||
+    (value >= 0xe000 && value <= 0xfffd) ||
+    (value >= 0x10000 && value <= 0x10ffff)
+  );
 }
 
 export function xmlName(node: OrderedXmlNode): string | undefined {
@@ -191,7 +193,7 @@ function childNodeArray(node: OrderedXmlNode): OrderedXmlNodes {
   const name = tagName(node);
   if (!name) return [];
   const value = node[name];
-  return Array.isArray(value) ? value as OrderedXmlNodes : [];
+  return Array.isArray(value) ? (value as OrderedXmlNodes) : [];
 }
 
 function tagName(node: OrderedXmlNode): string | undefined {
@@ -245,12 +247,12 @@ function measureXmlDepth(xml: string): number {
 }
 
 function findTagEnd(xml: string, start: number): number {
-  let quote: "\"" | "'" | undefined;
+  let quote: '"' | "'" | undefined;
   for (let cursor = start; cursor < xml.length; cursor += 1) {
     const character = xml[cursor];
     if (quote) {
       if (character === quote) quote = undefined;
-    } else if (character === "\"" || character === "'") {
+    } else if (character === '"' || character === "'") {
       quote = character;
     } else if (character === ">") {
       return cursor;

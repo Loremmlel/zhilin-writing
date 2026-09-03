@@ -114,18 +114,18 @@ V6 必须正视以下基线：
 
 ## 架构分层
 
-| 层 | 职责 | 不负责 |
-| --- | --- | --- |
-| Anchor scanner | 从 ProseMirror Doc 或 Markdown AST 生成稳定 anchor 描述 | UI、数据库 |
-| Transaction inspector | 比较 before Doc 与 proposed transaction，输出 SAFE 或影响集合 | 弹窗、异步重放 |
-| Guard plugin | 拦截、排队确认、clipboard strip、history metadata、IME 状态 | 服务端信任 |
-| Editor bridge | 暴露 EditorView、root DOM、实时 anchors 与 Guard 状态 | 业务保存 |
-| Guard dialog controller | 展示一次确认、校验 stale state、触发受控重放 | 修改服务器 |
-| Draft adapter | 保存 Markdown、base revision 和当前确认删除集合 | 决定服务器 delta |
-| Server validator | 重新解析 Markdown、验证 ID 与结构、计算 delta | 信任客户端 Guard |
-| Save planner/service | 构建一个 D1 batch 并处理 CAS conflict | 自动 rebase |
-| Reading selection preview | 保留只读 DOM selection 的视觉反馈 | 写入 Markdown |
-| Loading primitives | Route progress bridge、Skeleton、Pending 和 Error UI | 改变业务语义 |
+| 层                        | 职责                                                          | 不负责           |
+| ------------------------- | ------------------------------------------------------------- | ---------------- |
+| Anchor scanner            | 从 ProseMirror Doc 或 Markdown AST 生成稳定 anchor 描述       | UI、数据库       |
+| Transaction inspector     | 比较 before Doc 与 proposed transaction，输出 SAFE 或影响集合 | 弹窗、异步重放   |
+| Guard plugin              | 拦截、排队确认、clipboard strip、history metadata、IME 状态   | 服务端信任       |
+| Editor bridge             | 暴露 EditorView、root DOM、实时 anchors 与 Guard 状态         | 业务保存         |
+| Guard dialog controller   | 展示一次确认、校验 stale state、触发受控重放                  | 修改服务器       |
+| Draft adapter             | 保存 Markdown、base revision 和当前确认删除集合               | 决定服务器 delta |
+| Server validator          | 重新解析 Markdown、验证 ID 与结构、计算 delta                 | 信任客户端 Guard |
+| Save planner/service      | 构建一个 D1 batch 并处理 CAS conflict                         | 自动 rebase      |
+| Reading selection preview | 保留只读 DOM selection 的视觉反馈                             | 写入 Markdown    |
+| Loading primitives        | Route progress bridge、Skeleton、Pending 和 Error UI          | 改变业务语义     |
 
 实现应沿用现有 lib/annotations、lib/editor、lib/posts、lib/revisions 和现有 UI primitives。不得建立第二套编辑器或第二套 Annotation 数据模型。
 
@@ -133,7 +133,7 @@ V6 必须正视以下基线：
 
 ProseMirror scanner 为每个 ID 产生：
 
-~~~ts
+```ts
 type EditorAnchorDescriptor = {
   annotationId: string;
   from: number;
@@ -145,7 +145,7 @@ type EditorAnchorDescriptor = {
   firstEndpoint: { from: number; to: number; text: string };
   lastEndpoint: { from: number; to: number; text: string };
 };
-~~~
+```
 
 端点使用用户可见 grapheme，而不是任意 UTF-16 半字符。实现优先使用 Intl.Segmenter；不可用时至少按 Unicode code point 回退，绝不能拆开 surrogate pair。ProseMirror position 仍作为 transaction mapping 的坐标。格式 Mark 拆分 text node 不改变端点身份。
 
@@ -163,7 +163,7 @@ Scanner 必须拒绝：
 
 核心 API：
 
-~~~ts
+```ts
 type AnnotationImpactReason =
   | "PROTECTED_LEFT_ENDPOINT"
   | "PROTECTED_RIGHT_ENDPOINT"
@@ -184,7 +184,7 @@ type AnnotationTransactionInspection =
     };
 
 inspectAnnotationTransaction(beforeDoc, transaction): AnnotationTransactionInspection;
-~~~
+```
 
 Inspector 是纯函数，不读取 DOM、不弹窗、不访问 React state 或数据库。测试直接构造 ProseMirror transaction。
 
@@ -423,7 +423,7 @@ AnnotationThread 调整为：
 
 LocalDraft 升级为包含：
 
-~~~ts
+```ts
 type LocalDraft = {
   title: string;
   markdown: string;
@@ -434,7 +434,7 @@ type LocalDraft = {
   confirmedAnnotationDeletionIds?: string[];
   updatedAt: number;
 };
-~~~
+```
 
 confirmedAnnotationDeletionIds 保存当前 Doc 相对 base Doc 已确认且仍然缺失的 ID。它不是数据库 mutation，也不改变线上 Annotation。
 
@@ -468,14 +468,14 @@ confirmedAnnotationDeletionIds 保存当前 Doc 相对 base Doc 已确认且仍�
 
 以服务器当前 revision 为 base：
 
-~~~text
+```text
 baseIds      = 当前 post_annotation_anchors
 submittedIds = 提交 Markdown 中的合法唯一 IDs
 
 retained   = baseIds ∩ submittedIds
 removed    = baseIds - submittedIds
 unexpected = submittedIds - baseIds
-~~~
+```
 
 规则：
 
@@ -986,7 +986,7 @@ prefers-reduced-motion: reduce 时：
 
 V6 只有在以下整体行为成立时完成：
 
-~~~text
+```text
 普通编辑
 → 不打扰
 
@@ -1016,6 +1016,6 @@ Conflict
 
 明显等待
 → 立即出现 route progress、Skeleton 或局部 Pending
-~~~
+```
 
 V6 不以“能打开 annotated Post 编辑页”为成功，而以普通写作无感、真正破坏才介入、保存绝不失去批注语义为成功。

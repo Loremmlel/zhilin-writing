@@ -75,9 +75,7 @@ export function draftKey(userId: string, postId: string): string {
 }
 
 export function classifyUpload(mimeType: string): "image" | "attachment" {
-  return mimeType.toLocaleLowerCase("en-US").startsWith("image/")
-    ? "image"
-    : "attachment";
+  return mimeType.toLocaleLowerCase("en-US").startsWith("image/") ? "image" : "attachment";
 }
 
 export function assetMarkdown(asset: {
@@ -86,9 +84,7 @@ export function assetMarkdown(asset: {
   url: string;
 }): string {
   const label = asset.filename.replace(/[\[\]]/g, "");
-  return asset.kind === "image"
-    ? `![${label}](${asset.url})`
-    : `[${label}](${asset.url})`;
+  return asset.kind === "image" ? `![${label}](${asset.url})` : `[${label}](${asset.url})`;
 }
 
 export function validateUpload(file: { size: number; mimeType: string }): string | null {

@@ -20,12 +20,32 @@ test("shared submit feedback is immediate, duplicate-safe, and accessible", asyn
 
 test("post, annotation, reply, delete, and moderation mutations expose their existing pending state", async () => {
   const contracts = [
-    ["../components/editor/post-editor-form.tsx", /pending\s*\?\s*"保存中…"/, /aria-busy=\{pending\}/],
-    ["../components/annotations/annotation-reading-layout.tsx", /pending\s*\?\s*"发布中…"/, /aria-busy=\{pending\}/],
+    [
+      "../components/editor/post-editor-form.tsx",
+      /pending\s*\?\s*"保存中…"/,
+      /aria-busy=\{pending\}/,
+    ],
+    [
+      "../components/annotations/annotation-reading-layout.tsx",
+      /pending\s*\?\s*"发布中…"/,
+      /aria-busy=\{pending\}/,
+    ],
     ["../components/reply-form.tsx", /pending\s*\?\s*"发布中…"/, /aria-busy=\{pending\}/],
-    ["../components/annotations/annotation-reply-form.tsx", /pending\s*\?\s*"发布中…"/, /aria-busy=\{pending\}/],
-    ["../components/lifecycle/delete-content-control.tsx", /pending\s*\?\s*pendingLabel/, /aria-busy=\{pending\}/],
-    ["../components/admin/content-lifecycle-control.tsx", /pending\s*\?\s*"正在更新…"/, /aria-busy=\{pending\}/],
+    [
+      "../components/annotations/annotation-reply-form.tsx",
+      /pending\s*\?\s*"发布中…"/,
+      /aria-busy=\{pending\}/,
+    ],
+    [
+      "../components/lifecycle/delete-content-control.tsx",
+      /pending\s*\?\s*pendingLabel/,
+      /aria-busy=\{pending\}/,
+    ],
+    [
+      "../components/admin/content-lifecycle-control.tsx",
+      /pending\s*\?\s*"正在更新…"/,
+      /aria-busy=\{pending\}/,
+    ],
   ] as const;
 
   for (const [path, label, busy] of contracts) {
@@ -45,13 +65,23 @@ test("reply drafts clear only after a successful server result", async () => {
 
   assert.match(postReply, /if\s*\(!state\.replyId\)\s*return/);
   assert.match(annotationReply, /if\s*\(!annotationReplyId\)\s*return/);
-  assert.match(annotationReply, /replyMarkdownAfterResult\(current,\s*\{\s*annotationReplyId\s*\}\)/);
+  assert.match(
+    annotationReply,
+    /replyMarkdownAfterResult\(current,\s*\{\s*annotationReplyId\s*\}\)/,
+  );
   assert.match(annotationComposer, /state\.annotationId/);
   assert.match(annotationComposer, /else if\s*\(state\.error\)/);
 });
 
 test("profile, notification, and revision forms keep context while showing pending feedback", async () => {
-  const [profilePage, profileForm, profileAction, notificationsPage, notificationForm, restoreForm] = await Promise.all([
+  const [
+    profilePage,
+    profileForm,
+    profileAction,
+    notificationsPage,
+    notificationForm,
+    restoreForm,
+  ] = await Promise.all([
     source("../app/(site)/settings/profile/page.tsx"),
     source("../components/profile/profile-form.tsx"),
     source("../app/(site)/settings/profile/actions.ts"),
@@ -79,22 +109,32 @@ test("profile, notification, and revision forms keep context while showing pendi
 });
 
 test("pending editors and moderation fields cannot diverge from the submitted snapshot", async () => {
-  const [editor, post, postReply, annotationReply, annotationCreate, moderation] = await Promise.all([
-    source("../components/editor/markdown-editor.tsx"),
-    source("../components/editor/post-editor-form.tsx"),
-    source("../components/reply-form.tsx"),
-    source("../components/annotations/annotation-reply-form.tsx"),
-    source("../components/annotations/annotation-reading-layout.tsx"),
-    source("../components/admin/content-lifecycle-control.tsx"),
-  ]);
+  const [editor, post, postReply, annotationReply, annotationCreate, moderation] =
+    await Promise.all([
+      source("../components/editor/markdown-editor.tsx"),
+      source("../components/editor/post-editor-form.tsx"),
+      source("../components/reply-form.tsx"),
+      source("../components/annotations/annotation-reply-form.tsx"),
+      source("../components/annotations/annotation-reading-layout.tsx"),
+      source("../components/admin/content-lifecycle-control.tsx"),
+    ]);
 
   assert.match(editor, /disabled\?: boolean/);
   assert.match(editor, /rootRef\.current\.inert/);
   assert.match(post, /<MarkdownEditor[\s\S]*?disabled=\{pending \|\| accessBlocked\}/);
   assert.match(post, /id="post-title"[\s\S]*?disabled=\{pending \|\| accessBlocked\}/);
-  assert.match(postReply, /<(?:Lazy)?MarkdownEditor[\s\S]*?disabled=\{pending \|\| accessBlocked\}/);
-  assert.match(annotationReply, /<(?:Lazy)?MarkdownEditor[\s\S]*?disabled=\{pending \|\| accessBlocked\}/);
-  assert.match(annotationCreate, /<(?:Lazy)?MarkdownEditor[\s\S]*?disabled=\{pending \|\| accessBlocked\}/);
+  assert.match(
+    postReply,
+    /<(?:Lazy)?MarkdownEditor[\s\S]*?disabled=\{pending \|\| accessBlocked\}/,
+  );
+  assert.match(
+    annotationReply,
+    /<(?:Lazy)?MarkdownEditor[\s\S]*?disabled=\{pending \|\| accessBlocked\}/,
+  );
+  assert.match(
+    annotationCreate,
+    /<(?:Lazy)?MarkdownEditor[\s\S]*?disabled=\{pending \|\| accessBlocked\}/,
+  );
   assert.match(moderation, /value=\{reason\}/);
   assert.match(moderation, /setReason/);
 });
@@ -116,13 +156,16 @@ test("image and attachment uploads report real request-body byte progress", asyn
   assert.match(editor, /uploadAbortRef/);
   assert.match(editor, /createSerialUploadQueue/);
   assert.match(editor, /Promise\.allSettled/);
-  assert.match(editor, />重试</);
-  assert.match(editor, />移除</);
+  assert.match(editor, />\s*重试\s*</);
+  assert.match(editor, />\s*移除\s*</);
   assert.match(postForm, /attachmentUploadTasks/);
   assert.match(postForm, /附件上传状态/);
-  assert.match(postForm, /type="file" multiple/);
+  assert.match(postForm, /type="file"\s+multiple/);
   assert.match(postForm, /imageUploadPending/);
-  assert.match(postForm, /disabled=\{pending \|\| accessBlocked \|\| saveBlocked \|\| !hydrated \|\| uploadPending\}/);
+  assert.match(
+    postForm,
+    /disabled=\{\s*pending\s*\|\|\s*accessBlocked\s*\|\|\s*saveBlocked\s*\|\|\s*!hydrated\s*\|\|\s*uploadPending\s*\}/,
+  );
 });
 
 test("asset upload progress is calculated from the browser request body bytes", async () => {
@@ -151,12 +194,17 @@ test("asset upload progress is calculated from the browser request body bytes", 
     listeners = new Map<string, EventListenerOrEventListenerObject>();
 
     open() {}
-    addEventListener(type: string, listener: EventListenerOrEventListenerObject) { this.listeners.set(type, listener); }
+    addEventListener(type: string, listener: EventListenerOrEventListenerObject) {
+      this.listeners.set(type, listener);
+    }
     send() {
       this.upload.emit(5, 10);
       this.upload.emit(10, 10);
       this.status = 201;
-      this.response = { asset: { id: "asset-1", filename: "photo.png", kind: "image", url: "/api/assets/asset-1" }, markdown: "![photo.png](/api/assets/asset-1)" };
+      this.response = {
+        asset: { id: "asset-1", filename: "photo.png", kind: "image", url: "/api/assets/asset-1" },
+        markdown: "![photo.png](/api/assets/asset-1)",
+      };
       const listener = this.listeners.get("load");
       const event = new Event("load");
       if (typeof listener === "function") listener(event);
@@ -164,14 +212,25 @@ test("asset upload progress is calculated from the browser request body bytes", 
     }
   }
 
-  Object.defineProperty(globalThis, "XMLHttpRequest", { configurable: true, writable: true, value: FakeRequest });
+  Object.defineProperty(globalThis, "XMLHttpRequest", {
+    configurable: true,
+    writable: true,
+    value: FakeRequest,
+  });
   try {
     const { uploadAsset } = await import("../lib/assets/browser-upload.ts");
-    const result = await uploadAsset(new File(["1234567890"], "photo.png", { type: "image/png" }), (value) => progress.push(value));
+    const result = await uploadAsset(
+      new File(["1234567890"], "photo.png", { type: "image/png" }),
+      (value) => progress.push(value),
+    );
     assert.deepEqual(progress, [0, 50, 100]);
     assert.equal(result.asset.id, "asset-1");
   } finally {
-    Object.defineProperty(globalThis, "XMLHttpRequest", { configurable: true, writable: true, value: originalRequest });
+    Object.defineProperty(globalThis, "XMLHttpRequest", {
+      configurable: true,
+      writable: true,
+      value: originalRequest,
+    });
   }
 });
 
@@ -185,7 +244,9 @@ test("asset uploads abort when their editor session is discarded", async () => {
 
     open() {}
     send() {}
-    addEventListener(type: string, listener: EventListenerOrEventListenerObject) { this.listeners.set(type, listener); }
+    addEventListener(type: string, listener: EventListenerOrEventListenerObject) {
+      this.listeners.set(type, listener);
+    }
     abort() {
       const listener = this.listeners.get("abort");
       const event = new Event("abort");
@@ -194,15 +255,30 @@ test("asset uploads abort when their editor session is discarded", async () => {
     }
   }
 
-  Object.defineProperty(globalThis, "XMLHttpRequest", { configurable: true, writable: true, value: AbortableRequest });
+  Object.defineProperty(globalThis, "XMLHttpRequest", {
+    configurable: true,
+    writable: true,
+    value: AbortableRequest,
+  });
   try {
     const { uploadAsset } = await import("../lib/assets/browser-upload.ts");
     const controller = new AbortController();
-    const result = uploadAsset(new File(["image"], "photo.png", { type: "image/png" }), () => {}, controller.signal);
+    const result = uploadAsset(
+      new File(["image"], "photo.png", { type: "image/png" }),
+      () => {},
+      controller.signal,
+    );
     controller.abort();
-    await assert.rejects(result, (error: unknown) => error instanceof DOMException && error.name === "AbortError");
+    await assert.rejects(
+      result,
+      (error: unknown) => error instanceof DOMException && error.name === "AbortError",
+    );
   } finally {
-    Object.defineProperty(globalThis, "XMLHttpRequest", { configurable: true, writable: true, value: originalRequest });
+    Object.defineProperty(globalThis, "XMLHttpRequest", {
+      configurable: true,
+      writable: true,
+      value: originalRequest,
+    });
   }
 });
 
@@ -214,7 +290,9 @@ test("multi-image uploads are serialized in source order", async () => {
 
   const first = enqueue(async () => {
     started.push("first");
-    await new Promise<void>((resolve) => { releaseFirst = resolve; });
+    await new Promise<void>((resolve) => {
+      releaseFirst = resolve;
+    });
     return "first-result";
   });
   const second = enqueue(async () => {
@@ -232,11 +310,20 @@ test("multi-image uploads are serialized in source order", async () => {
 test("DOCX import keeps staged, cancellable progress and its recoverable source file", async () => {
   const workspace = await source("../components/docx-import/docx-import-workspace.tsx");
 
-  for (const label of ["检查 DOCX 文件结构", "解析正文、表格与图片", "生成 Markdown 预览", "上传预览图片", "正在保存帖子"]) {
+  for (const label of [
+    "检查 DOCX 文件结构",
+    "解析正文、表格与图片",
+    "生成 Markdown 预览",
+    "上传预览图片",
+    "正在保存帖子",
+  ]) {
     assert.match(workspace, new RegExp(label));
   }
   assert.match(workspace, /setLastFile\(file\)/);
   assert.match(workspace, /lastFile/);
-  assert.match(workspace, /aria-busy=\{phase === "parsing" \|\| phase === "uploading" \|\| phase === "committing"\}/);
+  assert.match(
+    workspace,
+    /aria-busy=\{phase === "parsing" \|\| phase === "uploading" \|\| phase === "committing"\}/,
+  );
   assert.match(workspace, /cancelActiveImport/);
 });

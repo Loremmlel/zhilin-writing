@@ -24,20 +24,32 @@ const errorMessages: Record<string, string> = {
 export async function POST(request: Request) {
   const access = await getApiMemberAccess();
   if (!access.ok) {
-    return Response.json({
-      error: { code: access.code, message: errorMessages[access.code] },
-    }, { status: access.status });
+    return Response.json(
+      {
+        error: { code: access.code, message: errorMessages[access.code] },
+      },
+      { status: access.status },
+    );
   }
   let input: unknown;
   let importBatchId: string | undefined;
   try {
     input = parseDocxImportCommitBody(await readDocxImportCommitBody(request));
-    importBatchId = typeof input === "object" && input && "importBatchId" in input ? String(input.importBatchId) : undefined;
+    importBatchId =
+      typeof input === "object" && input && "importBatchId" in input
+        ? String(input.importBatchId)
+        : undefined;
   } catch (error) {
     if (error instanceof DocxImportBodyError && error.code === "COMMIT_BODY_SIZE_LIMIT") {
-      return Response.json({ error: { code: error.code, message: errorMessages[error.code] } }, { status: 413 });
+      return Response.json(
+        { error: { code: error.code, message: errorMessages[error.code] } },
+        { status: 413 },
+      );
     }
-    return Response.json({ error: { code: "COMMIT_SCHEMA_INVALID", message: "导入请求格式无效。" } }, { status: 400 });
+    return Response.json(
+      { error: { code: "COMMIT_SCHEMA_INVALID", message: "导入请求格式无效。" } },
+      { status: 400 },
+    );
   }
 
   try {
@@ -45,15 +57,35 @@ export async function POST(request: Request) {
     return Response.json({ result }, { status: result.alreadyCommitted ? 200 : 201 });
   } catch (error) {
     if (error instanceof DocxImportCommitError) {
-      if (error.status >= 500) logServerError({ operation: "docx.commit", entityId: importBatchId, userId: access.member.id, error });
-      return Response.json({
-        error: {
-          code: error.code,
-          message: errorMessages[error.code] ?? (error.status >= 500 ? "未能完成导入，请稍后重试。" : "导入内容未通过校验。"),
+      if (error.status >= 500)
+        logServerError({
+          operation: "docx.commit",
+          entityId: importBatchId,
+          userId: access.member.id,
+          error,
+        });
+      return Response.json(
+        {
+          error: {
+            code: error.code,
+            message:
+              errorMessages[error.code] ??
+              (error.status >= 500 ? "未能完成导入，请稍后重试。" : "导入内容未通过校验。"),
+          },
         },
-      }, { status: error.status });
+        { status: error.status },
+      );
     }
-    logServerError({ operation: "docx.commit", entityId: importBatchId, userId: access.member.id, error, errorCode: "IMPORT_COMMIT_FAILED" });
-    return Response.json({ error: { code: "IMPORT_COMMIT_FAILED", message: "未能完成导入，请稍后重试。" } }, { status: 500 });
+    logServerError({
+      operation: "docx.commit",
+      entityId: importBatchId,
+      userId: access.member.id,
+      error,
+      errorCode: "IMPORT_COMMIT_FAILED",
+    });
+    return Response.json(
+      { error: { code: "IMPORT_COMMIT_FAILED", message: "未能完成导入，请稍后重试。" } },
+      { status: 500 },
+    );
   }
 }
