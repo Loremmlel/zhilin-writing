@@ -458,17 +458,30 @@ export function AnnotationReadingLayout({
   );
 
   useEffect(() => {
-    const schedule = (event: Event) => {
-      const target = event.type === "selectionchange" ? null : event.target;
+    const root = bodyRef.current;
+    if (!root) return;
+    let pointerStartedInBody = false;
+    const startPointerSelection = (event: PointerEvent) => {
+      pointerStartedInBody = event.target instanceof Node && root.contains(event.target);
+    };
+    const finishPointerSelection = () => {
+      const shouldInspect = pointerStartedInBody;
+      pointerStartedInBody = false;
+      if (shouldInspect) window.setTimeout(() => inspectSelection(), 0);
+    };
+    const inspectKeyboardSelection = (event: KeyboardEvent) => {
+      const target = event.target;
       window.setTimeout(() => inspectSelection(target), 0);
     };
-    document.addEventListener("pointerup", schedule);
-    document.addEventListener("keyup", schedule);
-    document.addEventListener("selectionchange", schedule);
+    document.addEventListener("pointerdown", startPointerSelection);
+    document.addEventListener("pointerup", finishPointerSelection);
+    document.addEventListener("pointercancel", finishPointerSelection);
+    document.addEventListener("keyup", inspectKeyboardSelection);
     return () => {
-      document.removeEventListener("pointerup", schedule);
-      document.removeEventListener("keyup", schedule);
-      document.removeEventListener("selectionchange", schedule);
+      document.removeEventListener("pointerdown", startPointerSelection);
+      document.removeEventListener("pointerup", finishPointerSelection);
+      document.removeEventListener("pointercancel", finishPointerSelection);
+      document.removeEventListener("keyup", inspectKeyboardSelection);
     };
   }, [inspectSelection]);
 

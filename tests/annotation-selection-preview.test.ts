@@ -103,11 +103,16 @@ test("saved selection remains authoritative after native DOM selection moves", (
   );
 });
 
-test("reading layout inspects native selection changes", async () => {
+test("reading layout inspects a pointer selection only after it finishes", async () => {
   const source = await readFile(
     new URL("../components/annotations/annotation-reading-layout.tsx", import.meta.url),
     "utf8",
   );
-  assert.match(source, /addEventListener\("selectionchange", schedule\)/);
-  assert.match(source, /event\.type === "selectionchange" \? null : event\.target/);
+  assert.match(source, /addEventListener\("pointerdown", startPointerSelection\)/);
+  assert.match(source, /addEventListener\("pointercancel", finishPointerSelection\)/);
+  assert.match(
+    source,
+    /if \(shouldInspect\) window\.setTimeout\(\(\) => inspectSelection\(\), 0\)/,
+  );
+  assert.doesNotMatch(source, /addEventListener\("selectionchange"/);
 });
