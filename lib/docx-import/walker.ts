@@ -176,9 +176,10 @@ export function walkMainDocument(
 
     const numbering = lookups.numbering(semantics.numbering);
     if (numbering && numbering.level > 2) warnings.add("LIST_DEPTH_CLAMPED");
-    const content = numbering && state.assetReferences.length > 0
-      ? listParagraphContent(segments, state.assetReferences)
-      : splitParagraphContent(segments, state.assetReferences);
+    const content =
+      numbering && state.assetReferences.length > 0
+        ? listParagraphContent(segments, state.assetReferences)
+        : splitParagraphContent(segments, state.assetReferences);
     let textChunkIndex = 0;
     for (const item of content) {
       if (item.type === "asset") {
@@ -210,7 +211,13 @@ export function walkMainDocument(
           blocks.push(block);
           adjacentList = { key, block };
         }
-        commentRanges.recordBlock(listItem.id, "list", item.segments, markers, state.specialTouches);
+        commentRanges.recordBlock(
+          listItem.id,
+          "list",
+          item.segments,
+          markers,
+          state.specialTouches,
+        );
       } else if (semantics.headingLevel !== undefined && textChunkIndex === 0) {
         adjacentList = undefined;
         const level = Math.min(Math.max(semantics.headingLevel, 1), 4) as 1 | 2 | 3 | 4;
@@ -230,13 +237,10 @@ export function walkMainDocument(
     }
     if (textChunkIndex === 0) {
       for (const marker of state.commentMarkers) {
-        commentRanges.recordMarker(
-          marker.sourceCommentId,
-          marker.kind,
-          marker.location ?? "image",
-        );
+        commentRanges.recordMarker(marker.sourceCommentId, marker.kind, marker.location ?? "image");
       }
-      for (const touch of state.specialTouches) commentRanges.touch(touch.sourceCommentId, touch.location);
+      for (const touch of state.specialTouches)
+        commentRanges.touch(touch.sourceCommentId, touch.location);
     }
   }
 
@@ -250,7 +254,12 @@ export function walkMainDocument(
     () => `block_${String(++blockSequence).padStart(6, "0")}`,
   );
 
-  return { blocks, assetReferences, warnings: warnings.values(), commentRanges: commentRanges.values() };
+  return {
+    blocks,
+    assetReferences,
+    warnings: warnings.values(),
+    commentRanges: commentRanges.values(),
+  };
 }
 
 function walkInline(
@@ -283,7 +292,15 @@ function walkInline(
   }
   if (name === "ins" || name === "moveTo") {
     warnings.add("TRACK_CHANGES_FLATTENED");
-    walkChildren(node, { ...context, revision: "accepted" }, state, segments, activeCommentIds, lookups, warnings);
+    walkChildren(
+      node,
+      { ...context, revision: "accepted" },
+      state,
+      segments,
+      activeCommentIds,
+      lookups,
+      warnings,
+    );
     return;
   }
   if (name === "del" || name === "moveFrom") {
@@ -292,10 +309,12 @@ function walkInline(
   }
   if (name === "hyperlink") {
     const relationship = lookups.relationship(xmlAttr(node, "id"));
-    const link = relationship?.type.endsWith("/hyperlink") && relationship.external
-      ? sanitizeExternalLink(relationship.target)
-      : undefined;
-    if (relationship?.type.endsWith("/hyperlink") && !link) warnings.add("HYPERLINK_UNSAFE_DROPPED");
+    const link =
+      relationship?.type.endsWith("/hyperlink") && relationship.external
+        ? sanitizeExternalLink(relationship.target)
+        : undefined;
+    if (relationship?.type.endsWith("/hyperlink") && !link)
+      warnings.add("HYPERLINK_UNSAFE_DROPPED");
     walkChildren(node, { ...context, link }, state, segments, activeCommentIds, lookups, warnings);
     return;
   }
@@ -311,10 +330,20 @@ function walkInline(
       parseRunProperties(runPropertiesNode),
     );
     if (effective.visualFormatting) warnings.add("VISUAL_FORMATTING_DROPPED");
-    const marks = MARK_ORDER.filter((mark) => mark === "code" ? effective.codeStyle : effective.marks[mark]);
+    const marks = MARK_ORDER.filter((mark) =>
+      mark === "code" ? effective.codeStyle : effective.marks[mark],
+    );
     for (const child of xmlChildren(node)) {
       if (localName(xmlName(child)) === "rPr") continue;
-      walkInline(child, { ...context, marks }, state, segments, activeCommentIds, lookups, warnings);
+      walkInline(
+        child,
+        { ...context, marks },
+        state,
+        segments,
+        activeCommentIds,
+        lookups,
+        warnings,
+      );
     }
     return;
   }
@@ -384,7 +413,8 @@ function walkDrawing(
   for (const sourceCommentId of activeCommentIds) {
     state.specialTouches.push({ sourceCommentId, location });
   }
-  for (const child of xmlChildren(node)) walkInlineUnsupported(child, location, state, activeCommentIds);
+  for (const child of xmlChildren(node))
+    walkInlineUnsupported(child, location, state, activeCommentIds);
 
   const floating = descendants(node, "anchor").length > 0;
   const documentProperties = descendants(node, "docPr")[0];
@@ -392,9 +422,10 @@ function walkDrawing(
     const sourceRelationshipId = xmlAttr(blip, "embed");
     const sequence = state.assetSequence.next();
     const relationship = lookups.relationship(sourceRelationshipId);
-    const packagePath = relationship && !relationship.external && relationship.type.endsWith("/image")
-      ? resolveEmbeddedMediaPath(relationship.target)
-      : undefined;
+    const packagePath =
+      relationship && !relationship.external && relationship.type.endsWith("/image")
+        ? resolveEmbeddedMediaPath(relationship.target)
+        : undefined;
     const filename = packagePath?.split("/").at(-1);
     const extensionMimeType = filename ? imageMimeFromFilename(filename) : undefined;
     const declaredMimeType = packagePath ? lookups.contentType(packagePath) : undefined;
@@ -405,10 +436,11 @@ function walkDrawing(
     }
     const id = `asset_${String(sequence).padStart(6, "0")}`;
     if (state.acceptedAssetIds && !state.acceptedAssetIds.has(id)) continue;
-    const alt = xmlAttr(documentProperties ?? {}, "descr")
-      || xmlAttr(documentProperties ?? {}, "title")
-      || filename
-      || "image";
+    const alt =
+      xmlAttr(documentProperties ?? {}, "descr") ||
+      xmlAttr(documentProperties ?? {}, "title") ||
+      filename ||
+      "image";
     state.assetReferences.push({
       id,
       filename,
@@ -592,13 +624,23 @@ function splitParagraphContent(
   for (const asset of assets) {
     const offset = Math.min(Math.max(asset.blockLocalOffset, cursor), totalLength);
     if (offset > cursor) {
-      result.push({ type: "text", start: cursor, end: offset, segments: sliceSegments(segments, cursor, offset) });
+      result.push({
+        type: "text",
+        start: cursor,
+        end: offset,
+        segments: sliceSegments(segments, cursor, offset),
+      });
     }
     result.push({ type: "asset", asset });
     cursor = offset;
   }
   if (cursor < totalLength) {
-    result.push({ type: "text", start: cursor, end: totalLength, segments: sliceSegments(segments, cursor, totalLength) });
+    result.push({
+      type: "text",
+      start: cursor,
+      end: totalLength,
+      segments: sliceSegments(segments, cursor, totalLength),
+    });
   }
   return result;
 }
@@ -644,11 +686,13 @@ function markersForChunk(
     if (!marker.location && start === end && marker.offset === start) {
       return [{ ...marker, offset: 0 }];
     }
-    if (marker.location || (
-      marker.kind === "start"
+    if (
+      marker.location ||
+      (marker.kind === "start"
         ? marker.offset < start || marker.offset >= end
-        : marker.offset <= start || marker.offset > end
-    )) return [];
+        : marker.offset <= start || marker.offset > end)
+    )
+      return [];
     return [{ ...marker, offset: marker.offset - start }];
   });
 }
@@ -698,8 +742,9 @@ function walkTable(
     const properties = xmlChild(row, "trPr");
     const leading = nonnegativeAttribute(xmlChild(properties ?? {}, "gridBefore"), "val");
     const trailing = nonnegativeAttribute(xmlChild(properties ?? {}, "gridAfter"), "val");
-    const sourceCells = xmlChildren(row, "tc")
-      .map((cell) => tableCell(cell, lookups, warnings, noteSequence));
+    const sourceCells = xmlChildren(row, "tc").map((cell) =>
+      tableCell(cell, lookups, warnings, noteSequence),
+    );
     return {
       explicitHeader: xmlChild(properties ?? {}, "tblHeader") !== undefined,
       sourceCells,
@@ -723,7 +768,10 @@ function walkTable(
     return rows.map((row) => ({
       type: "paragraph",
       id: nextBlockId(),
-      segments: joinSegmentGroups(row.sourceCells.map((cell) => cell.segments), " | "),
+      segments: joinSegmentGroups(
+        row.sourceCells.map((cell) => cell.segments),
+        " | ",
+      ),
     }));
   }
 
@@ -735,14 +783,20 @@ function walkTable(
   const first = normalizedRows[0];
   const hasHeader = first.explicitHeader;
   if (!hasHeader) warnings.add("TABLE_HEADER_SYNTHESIZED");
-  return [{
-    type: "table",
-    id: nextBlockId(),
-    header: hasHeader ? { cells: first.cells } : {
-      cells: Array.from({ length: width }, emptyTableCell),
+  return [
+    {
+      type: "table",
+      id: nextBlockId(),
+      header: hasHeader
+        ? { cells: first.cells }
+        : {
+            cells: Array.from({ length: width }, emptyTableCell),
+          },
+      rows: (hasHeader ? normalizedRows.slice(1) : normalizedRows).map((row) => ({
+        cells: row.cells,
+      })),
     },
-    rows: (hasHeader ? normalizedRows.slice(1) : normalizedRows).map((row) => ({ cells: row.cells })),
-  }];
+  ];
 }
 
 function tableCell(
@@ -822,15 +876,21 @@ function appendNotesAppendix(
   if (references.length === 0) return;
   const notes = references.map((reference) => {
     const nodes = reference.kind === "footnote" ? parts.footnotes : parts.endnotes;
-    const root = nodes ? xmlChild(nodes, reference.kind === "footnote" ? "footnotes" : "endnotes") : undefined;
+    const root = nodes
+      ? xmlChild(nodes, reference.kind === "footnote" ? "footnotes" : "endnotes")
+      : undefined;
     const note = root
-      ? xmlChildren(root, reference.kind).find((candidate) => xmlAttr(candidate, "id") === reference.sourceId)
+      ? xmlChildren(root, reference.kind).find(
+          (candidate) => xmlAttr(candidate, "id") === reference.sourceId,
+        )
       : undefined;
     const segments = note
       ? joinSegmentGroups(
-        xmlChildren(note, "p").map((paragraph) => paragraphSegments(paragraph, lookups, warnings, sequence)),
-        " / ",
-      )
+          xmlChildren(note, "p").map((paragraph) =>
+            paragraphSegments(paragraph, lookups, warnings, sequence),
+          ),
+          " / ",
+        )
       : [];
     return { number: reference.number, segments };
   });
@@ -838,10 +898,7 @@ function appendNotesAppendix(
   warnings.add("NOTES_FLATTENED_TO_APPENDIX");
 }
 
-function recordAllNoteCommentLocations(
-  parts: DocxNoteParts,
-  ranges: CommentRangeCollector,
-): void {
+function recordAllNoteCommentLocations(parts: DocxNoteParts, ranges: CommentRangeCollector): void {
   for (const [nodes, rootName, entryName] of [
     [parts.footnotes, "footnotes", "footnote"],
     [parts.endnotes, "endnotes", "endnote"],
@@ -893,7 +950,11 @@ class WarningCollector {
         existing.count = (existing.count ?? 1) + 1;
       }
     } else {
-      this.#warnings.push({ code, severity: INFO_WARNING_CODES.has(code) ? "info" : "warning", count: 1 });
+      this.#warnings.push({
+        code,
+        severity: INFO_WARNING_CODES.has(code) ? "info" : "warning",
+        count: 1,
+      });
     }
   }
 
@@ -902,9 +963,7 @@ class WarningCollector {
   }
 }
 
-const PRESENCE_ONLY_WARNING_CODES = new Set<ImportWarningCode>([
-  "VISUAL_FORMATTING_DROPPED",
-]);
+const PRESENCE_ONLY_WARNING_CODES = new Set<ImportWarningCode>(["VISUAL_FORMATTING_DROPPED"]);
 
 const INFO_WARNING_CODES = new Set<ImportWarningCode>([
   "TABLE_HEADER_SYNTHESIZED",

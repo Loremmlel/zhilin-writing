@@ -45,7 +45,9 @@ export function buildAnnotationAuthorView(
     displayName: record.sourceAuthorName ?? "Word 作者",
     avatarAssetId: null,
     initials: record.sourceInitials,
-    attributedUser: attributedUser ? { id: attributedUser.id, displayName: attributedUser.displayName } : null,
+    attributedUser: attributedUser
+      ? { id: attributedUser.id, displayName: attributedUser.displayName }
+      : null,
     sourceResolved: Boolean(record.sourceResolved),
   };
 }
@@ -57,5 +59,7 @@ export function annotationSourceMetadata(author: AnnotationAuthorView): string |
     author.initials ? `缩写 ${author.initials}` : null,
     author.sourceResolved ? "Word 中已解决" : null,
     author.attributedUser ? `关联 ${author.attributedUser.displayName}` : null,
-  ].filter((value): value is string => Boolean(value)).join(" · ");
+  ]
+    .filter((value): value is string => Boolean(value))
+    .join(" · ");
 }

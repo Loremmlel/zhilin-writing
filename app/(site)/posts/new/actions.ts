@@ -9,17 +9,25 @@ import { logServerError } from "@/lib/logging";
 import { createPost } from "@/lib/posts/service";
 
 function parseTags(value: FormDataEntryValue | null): string[] {
-  return String(value ?? "").split(/[，,]/).map((tag) => tag.trim()).filter(Boolean);
+  return String(value ?? "")
+    .split(/[，,]/)
+    .map((tag) => tag.trim())
+    .filter(Boolean);
 }
 
 function parseAttachmentIds(value: FormDataEntryValue | null): string[] {
   try {
     const parsed = JSON.parse(String(value ?? "[]"));
     return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === "string") : [];
-  } catch { return []; }
+  } catch {
+    return [];
+  }
 }
 
-export async function createPostAction(_state: PostActionState, formData: FormData): Promise<PostActionState> {
+export async function createPostAction(
+  _state: PostActionState,
+  formData: FormData,
+): Promise<PostActionState> {
   let actorUserId: string | undefined;
   try {
     const access = await getApiMemberAccess();
@@ -36,7 +44,12 @@ export async function createPostAction(_state: PostActionState, formData: FormDa
     revalidatePath("/");
     return { postId };
   } catch (error) {
-    logServerError({ operation: "post.create", userId: actorUserId, error, errorCode: "POST_CREATE_FAILED" });
+    logServerError({
+      operation: "post.create",
+      userId: actorUserId,
+      error,
+      errorCode: "POST_CREATE_FAILED",
+    });
     return { error: "发布失败，请稍后重试" };
   }
 }

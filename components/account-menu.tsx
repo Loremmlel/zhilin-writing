@@ -16,7 +16,11 @@ export function AccountMenu({ member, isAdmin }: { member: SiteUser; isAdmin: bo
   useEffect(() => {
     if (!open) return;
     const handlePointerDown = (event: PointerEvent) => {
-      if (rootRef.current && event.target instanceof Node && isOutsideAccountMenu(rootRef.current, event.target)) {
+      if (
+        rootRef.current &&
+        event.target instanceof Node &&
+        isOutsideAccountMenu(rootRef.current, event.target)
+      ) {
         setOpen(false);
       }
     };
@@ -46,13 +50,25 @@ export function AccountMenu({ member, isAdmin }: { member: SiteUser; isAdmin: bo
         <Avatar name={member.displayName} assetId={member.avatarAssetId} size="small" />
         <span>{member.displayName}</span>
       </button>
-      {open && <div className="account-popover" aria-label="账户选项">
-        <Link href={`/users/${member.id}`} onClick={() => setOpen(false)}>我的主页</Link>
-        <Link href="/settings/profile" onClick={() => setOpen(false)}>编辑资料</Link>
-        <Link href="/tags" onClick={() => setOpen(false)}>全部标签</Link>
-        {isAdmin && <Link href="/admin" onClick={() => setOpen(false)}>管理后台</Link>}
-        <a href={chatGPTSignOutPath("/")}>退出登录</a>
-      </div>}
+      {open && (
+        <div className="account-popover" aria-label="账户选项">
+          <Link href={`/users/${member.id}`} onClick={() => setOpen(false)}>
+            我的主页
+          </Link>
+          <Link href="/settings/profile" onClick={() => setOpen(false)}>
+            编辑资料
+          </Link>
+          <Link href="/tags" onClick={() => setOpen(false)}>
+            全部标签
+          </Link>
+          {isAdmin && (
+            <Link href="/admin" onClick={() => setOpen(false)}>
+              管理后台
+            </Link>
+          )}
+          <a href={chatGPTSignOutPath("/")}>退出登录</a>
+        </div>
+      )}
     </div>
   );
 }

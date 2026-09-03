@@ -8,7 +8,17 @@ type AvatarProps = {
 export function Avatar({ name, assetId, size = "medium" }: AvatarProps) {
   const label = Array.from(name.trim())[0] ?? "知";
   if (assetId) {
-    return <img className={`avatar avatar--${size}`} src={`/api/assets/${assetId}`} alt={`${name}的头像`} />;
+    return (
+      <img
+        className={`avatar avatar--${size}`}
+        src={`/api/assets/${assetId}`}
+        alt={`${name}的头像`}
+      />
+    );
   }
-  return <span className={`avatar avatar--${size} avatar--fallback`} aria-label={`${name}的头像`}>{label}</span>;
+  return (
+    <span className={`avatar avatar--${size} avatar--fallback`} aria-label={`${name}的头像`}>
+      {label}
+    </span>
+  );
 }

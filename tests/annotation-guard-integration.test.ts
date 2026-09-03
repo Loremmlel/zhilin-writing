@@ -36,10 +36,15 @@ test("an internal annotated edit remains silent and retains the same server anch
   const transaction = state.tr.insertText("非常");
 
   assert.deepEqual(inspectAnnotationTransaction(state.doc, transaction), { kind: "SAFE" });
-  assert.deepEqual(scanAnnotationRanges(transaction.doc).map(({ annotationId, text }) => ({ annotationId, text })), [{
-    annotationId: A,
-    text: "我非常喜欢你",
-  }]);
+  assert.deepEqual(
+    scanAnnotationRanges(transaction.doc).map(({ annotationId, text }) => ({ annotationId, text })),
+    [
+      {
+        annotationId: A,
+        text: "我非常喜欢你",
+      },
+    ],
+  );
   assert.deepEqual(savePlan(`:annotation[我非常喜欢你]{#${A}}`, []).delta, {
     retained: [A],
     removed: [],
@@ -63,7 +68,8 @@ test("endpoint loss requires one local confirmation before the server retirement
 
   assert.throws(
     () => savePlan("喜欢你", []),
-    (error: unknown) => error instanceof AnnotationIntegrityError && error.code === "ANNOTATION_INTEGRITY_ERROR",
+    (error: unknown) =>
+      error instanceof AnnotationIntegrityError && error.code === "ANNOTATION_INTEGRITY_ERROR",
   );
   const confirmed = savePlan("喜欢你", session.confirmedAnnotationDeletionIds(edited.doc));
   assert.deepEqual(confirmed.delta, { retained: [], removed: [A], unexpected: [] });
@@ -103,5 +109,7 @@ test("ordinary unannotated editing keeps the original create-path validation", (
   const markdown = "普通 **正文**";
   assert.equal(assertOrdinaryPostMarkdown(markdown), markdown);
   const state = editorState([{ text: "普通正文" }], { from: 3 });
-  assert.deepEqual(inspectAnnotationTransaction(state.doc, state.tr.insertText("继续")), { kind: "SAFE" });
+  assert.deepEqual(inspectAnnotationTransaction(state.doc, state.tr.insertText("继续")), {
+    kind: "SAFE",
+  });
 });

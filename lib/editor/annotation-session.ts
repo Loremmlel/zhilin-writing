@@ -38,7 +38,10 @@ type SessionOptions = {
   baseAnnotationIds: string[];
   initialConfirmedAnnotationDeletionIds?: string[];
   onPendingImpact?: (pending: PendingAnnotationImpact) => void;
-  onStateChange?: (state: { pending: PendingAnnotationImpact | null; confirmedAnnotationDeletionIds: string[] }) => void;
+  onStateChange?: (state: {
+    pending: PendingAnnotationImpact | null;
+    confirmedAnnotationDeletionIds: string[];
+  }) => void;
 };
 
 export type AnnotationTransactionDecision =
@@ -75,7 +78,8 @@ function normalizedIds(ids: Iterable<string>) {
 
 function annotationMarkType(state: EditorState): MarkType {
   const markType = state.schema.marks.annotation;
-  if (!markType) throw new Error("AnnotationGuard requires the annotation mark in the editor schema");
+  if (!markType)
+    throw new Error("AnnotationGuard requires the annotation mark in the editor schema");
   return markType;
 }
 
@@ -83,7 +87,8 @@ function affectedExcerpts(doc: ProseMirrorNode, ids: string[]) {
   const wanted = new Set(ids);
   const grouped = new Map<string, string[]>();
   for (const range of analyzeAnnotationRanges(doc).ranges) {
-    if (wanted.has(range.annotationId)) grouped.set(range.annotationId, [...(grouped.get(range.annotationId) ?? []), range.text]);
+    if (wanted.has(range.annotationId))
+      grouped.set(range.annotationId, [...(grouped.get(range.annotationId) ?? []), range.text]);
   }
   return ids.flatMap((annotationId) => {
     const parts = grouped.get(annotationId);
@@ -91,7 +96,11 @@ function affectedExcerpts(doc: ProseMirrorNode, ids: string[]) {
   });
 }
 
-function compositeTransaction(state: EditorState, proposed: Transaction, affectedIds: string[]): Transaction {
+function compositeTransaction(
+  state: EditorState,
+  proposed: Transaction,
+  affectedIds: string[],
+): Transaction {
   const transaction = state.tr;
   const wanted = new Set(affectedIds);
   const markType = annotationMarkType(state);
@@ -108,13 +117,18 @@ function compositeTransaction(state: EditorState, proposed: Transaction, affecte
     if (value !== undefined) transaction.setMeta(key, value);
   }
   transaction.setMeta("addToHistory", true);
-  transaction.setMeta("annotationGuard", { confirmed: true, affectedAnnotationIds: normalizedIds(affectedIds) });
+  transaction.setMeta("annotationGuard", {
+    confirmed: true,
+    affectedAnnotationIds: normalizedIds(affectedIds),
+  });
   return transaction;
 }
 
 export function createAnnotationGuardSession(options: SessionOptions) {
   const baseAnnotationIds = new Set(normalizedIds(options.baseAnnotationIds));
-  const approvedDeletionIds = new Set(normalizedIds(options.initialConfirmedAnnotationDeletionIds ?? []));
+  const approvedDeletionIds = new Set(
+    normalizedIds(options.initialConfirmedAnnotationDeletionIds ?? []),
+  );
   let pending: PendingRecord | null = null;
   let epoch = 0;
   let token = 0;
@@ -125,7 +139,9 @@ export function createAnnotationGuardSession(options: SessionOptions) {
 
   function confirmedAnnotationDeletionIds(doc: ProseMirrorNode) {
     const present = new Set(analyzeAnnotationRanges(doc).ranges.map((range) => range.annotationId));
-    return normalizedIds([...approvedDeletionIds].filter((id) => baseAnnotationIds.has(id) && !present.has(id)));
+    return normalizedIds(
+      [...approvedDeletionIds].filter((id) => baseAnnotationIds.has(id) && !present.has(id)),
+    );
   }
 
   function notify(doc: ProseMirrorNode | null) {
@@ -135,7 +151,11 @@ export function createAnnotationGuardSession(options: SessionOptions) {
     });
   }
 
-  function capturePending(state: EditorState, proposedTransaction: Transaction, source: PendingAnnotationImpact["source"]) {
+  function capturePending(
+    state: EditorState,
+    proposedTransaction: Transaction,
+    source: PendingAnnotationImpact["source"],
+  ) {
     const impact = inspectAnnotationTransaction(state.doc, proposedTransaction);
     if (impact.kind === "SAFE") return null;
     const record: PendingRecord = {
@@ -160,16 +180,23 @@ export function createAnnotationGuardSession(options: SessionOptions) {
 
   function isCurrent(record: PendingRecord, state: EditorState) {
     const impact = inspectAnnotationTransaction(state.doc, record.proposedTransaction);
-    return impact.kind === "ANNOTATION_IMPACT"
-      && JSON.stringify(impact.affectedAnnotationIds) === JSON.stringify(record.affectedAnnotationIds)
-      && record.epoch === epoch
-      && record.beforeDoc.eq(state.doc)
-      && record.beforeDocSignature === docSignature(state.doc)
-      && record.selectionSignature === selectionSignature(state)
-      && record.stepSignature === transactionStepSignature(record.proposedTransaction);
+    return (
+      impact.kind === "ANNOTATION_IMPACT" &&
+      JSON.stringify(impact.affectedAnnotationIds) ===
+        JSON.stringify(record.affectedAnnotationIds) &&
+      record.epoch === epoch &&
+      record.beforeDoc.eq(state.doc) &&
+      record.beforeDocSignature === docSignature(state.doc) &&
+      record.selectionSignature === selectionSignature(state) &&
+      record.stepSignature === transactionStepSignature(record.proposedTransaction)
+    );
   }
 
-  function registerTransition(before: ProseMirrorNode, transaction: Transaction, affectedAnnotationIds: string[]) {
+  function registerTransition(
+    before: ProseMirrorNode,
+    transaction: Transaction,
+    affectedAnnotationIds: string[],
+  ) {
     transitions.push({
       beforeDocSignature: docSignature(before),
       afterDocSignature: docSignature(transaction.doc),
@@ -179,17 +206,29 @@ export function createAnnotationGuardSession(options: SessionOptions) {
     if (transitions.length > transitionLimit) transitions.shift();
   }
 
-  function isRegisteredTransition(state: EditorState, transaction: Transaction, affectedAnnotationIds: string[]) {
+  function isRegisteredTransition(
+    state: EditorState,
+    transaction: Transaction,
+    affectedAnnotationIds: string[],
+  ) {
     const before = docSignature(state.doc);
     const after = docSignature(transaction.doc);
     const steps = transactionStepSignature(transaction);
-    return transitions.some((transition) => transition.beforeDocSignature === before
-      && transition.afterDocSignature === after
-      && transition.stepSignature === steps
-      && JSON.stringify(transition.affectedAnnotationIds) === JSON.stringify(normalizedIds(affectedAnnotationIds)));
+    return transitions.some(
+      (transition) =>
+        transition.beforeDocSignature === before &&
+        transition.afterDocSignature === after &&
+        transition.stepSignature === steps &&
+        JSON.stringify(transition.affectedAnnotationIds) ===
+          JSON.stringify(normalizedIds(affectedAnnotationIds)),
+    );
   }
 
-  function replaceConfirmedTransaction(state: EditorState, transaction: Transaction, affectedIds: string[]) {
+  function replaceConfirmedTransaction(
+    state: EditorState,
+    transaction: Transaction,
+    affectedIds: string[],
+  ) {
     const replacement = compositeTransaction(state, transaction, affectedIds);
     for (const id of affectedIds) approvedDeletionIds.add(id);
     registerTransition(state.doc, replacement, affectedIds);
@@ -203,16 +242,28 @@ export function createAnnotationGuardSession(options: SessionOptions) {
   ): AnnotationTransactionDecision {
     const impact = inspectAnnotationTransaction(state.doc, transaction);
     if (impact.kind === "SAFE") return { kind: "ALLOW" };
-    if (isRegisteredTransition(state, transaction, impact.affectedAnnotationIds)) return { kind: "ALLOW_CONFIRMED" };
-    if (context.source === "composition" && compositionMode === "authorized" && compositionAuthorization
-      && compositionAuthorization.epoch === epoch
-      && compositionAuthorization.beforeDocSignature === docSignature(state.doc)
-      && compositionAuthorization.selectionSignature === selectionSignature(state)) {
+    if (isRegisteredTransition(state, transaction, impact.affectedAnnotationIds))
+      return { kind: "ALLOW_CONFIRMED" };
+    if (
+      context.source === "composition" &&
+      compositionMode === "authorized" &&
+      compositionAuthorization &&
+      compositionAuthorization.epoch === epoch &&
+      compositionAuthorization.beforeDocSignature === docSignature(state.doc) &&
+      compositionAuthorization.selectionSignature === selectionSignature(state)
+    ) {
       compositionMode = "applied";
       compositionAuthorization = null;
-      return { kind: "REPLACE", transaction: replaceConfirmedTransaction(state, transaction, impact.affectedAnnotationIds) };
+      return {
+        kind: "REPLACE",
+        transaction: replaceConfirmedTransaction(state, transaction, impact.affectedAnnotationIds),
+      };
     }
-    const nextPending = capturePending(state, transaction, context.source === "composition" ? "composition" : "transaction");
+    const nextPending = capturePending(
+      state,
+      transaction,
+      context.source === "composition" ? "composition" : "transaction",
+    );
     if (!nextPending) return { kind: "ALLOW" };
     return { kind: "BLOCK", pending: nextPending };
   }
@@ -225,7 +276,10 @@ export function createAnnotationGuardSession(options: SessionOptions) {
     notify(lastDoc);
   }
 
-  function confirmPendingAnnotationImpact(value: number, state: EditorState): AnnotationConfirmationResult {
+  function confirmPendingAnnotationImpact(
+    value: number,
+    state: EditorState,
+  ): AnnotationConfirmationResult {
     const record = pending;
     if (!record || record.token !== value || !isCurrent(record, state)) {
       pending = null;
@@ -246,17 +300,23 @@ export function createAnnotationGuardSession(options: SessionOptions) {
       notify(state.doc);
       return { kind: "REENTER_COMPOSITION", message: reenterMessage };
     }
-    const replacement = compositeTransaction(state, record.proposedTransaction, record.affectedAnnotationIds);
+    const replacement = compositeTransaction(
+      state,
+      record.proposedTransaction,
+      record.affectedAnnotationIds,
+    );
     registerTransition(state.doc, replacement, record.affectedAnnotationIds);
     notify(replacement.doc);
     return { kind: "APPLY", transaction: replacement };
   }
 
   function beginComposition(state: EditorState) {
-    if (compositionAuthorization
-      && compositionAuthorization.epoch === epoch
-      && compositionAuthorization.beforeDocSignature === docSignature(state.doc)
-      && compositionAuthorization.selectionSignature === selectionSignature(state)) {
+    if (
+      compositionAuthorization &&
+      compositionAuthorization.epoch === epoch &&
+      compositionAuthorization.beforeDocSignature === docSignature(state.doc) &&
+      compositionAuthorization.selectionSignature === selectionSignature(state)
+    ) {
       compositionMode = "authorized";
       return { kind: "AUTHORIZED" } as const;
     }
@@ -276,10 +336,12 @@ export function createAnnotationGuardSession(options: SessionOptions) {
   }
 
   function acceptTransaction(before: EditorState, _transaction: Transaction, after: EditorState) {
-    const selectionChanged = JSON.stringify(before.selection.toJSON()) !== JSON.stringify(after.selection.toJSON());
+    const selectionChanged =
+      JSON.stringify(before.selection.toJSON()) !== JSON.stringify(after.selection.toJSON());
     if (!before.doc.eq(after.doc) || selectionChanged) epoch += 1;
     lastDoc = after.doc;
-    if (compositionAuthorization && compositionAuthorization.epoch !== epoch) compositionAuthorization = null;
+    if (compositionAuthorization && compositionAuthorization.epoch !== epoch)
+      compositionAuthorization = null;
     notify(after.doc);
   }
 
@@ -295,7 +357,9 @@ export function createAnnotationGuardSession(options: SessionOptions) {
     endComposition: (cancelled: boolean) => {
       const restoreConfirmedComposition = cancelled && compositionMode === "applied";
       if (cancelled && pending?.source === "composition") pending = null;
-      const affectedAnnotationIds = restoreConfirmedComposition ? transitions.pop()?.affectedAnnotationIds ?? [] : [];
+      const affectedAnnotationIds = restoreConfirmedComposition
+        ? (transitions.pop()?.affectedAnnotationIds ?? [])
+        : [];
       compositionMode = "idle";
       if (cancelled) compositionAuthorization = null;
       notify(lastDoc);

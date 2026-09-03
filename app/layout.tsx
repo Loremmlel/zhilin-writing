@@ -12,7 +12,9 @@ export const metadata: Metadata = {
     title: "知临中学",
     description: "私人 Markdown 写作社区",
     type: "website",
-    images: [{ url: "/og.png", width: 1732, height: 910, alt: "知临中学 · 私人 Markdown 写作社区" }],
+    images: [
+      { url: "/og.png", width: 1732, height: 910, alt: "知临中学 · 私人 Markdown 写作社区" },
+    ],
   },
   twitter: {
     card: "summary_large_image",

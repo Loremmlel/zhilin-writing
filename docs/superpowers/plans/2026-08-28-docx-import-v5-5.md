@@ -52,6 +52,7 @@ UI files stay under `components/docx-import/`; existing V5 Annotation components
 ### Task 1: Lock dependencies and run the officeparser feature probe
 
 **Files:**
+
 - Modify: `package.json`
 - Modify: `package-lock.json`
 - Create: `scripts/fixtures/generate-docx-fixtures.mjs`
@@ -65,6 +66,7 @@ UI files stay under `components/docx-import/`; existing V5 Annotation components
 - Modify: `docs/v5-5-docx-import-progress.md`
 
 **Interfaces:**
+
 - Produces: `OFFICEPARSER_PROBE_GATES`, `officeparserProductionEligible(report)`, and a JSON-serializable `OfficeparserProbeReport`.
 - Produces: deterministic fixture generator `writeDocxFixture(path, parts)` used by later parser tests.
 - Decision output: ADR states the exact installed version, each observed gate, and the production-path decision.
@@ -88,10 +90,13 @@ Create a table-driven test that demands exactly seven named gates and makes elig
 test("officeparser is eligible only when every required comment capability passes", () => {
   const passing = Object.fromEntries(OFFICEPARSER_PROBE_GATES.map((gate) => [gate, true]));
   assert.equal(officeparserProductionEligible({ version: "7.8.0", gates: passing }), true);
-  assert.equal(officeparserProductionEligible({
-    version: "7.8.0",
-    gates: { ...passing, inlineRange: false },
-  }), false);
+  assert.equal(
+    officeparserProductionEligible({
+      version: "7.8.0",
+      gates: { ...passing, inlineRange: false },
+    }),
+    false,
+  );
 });
 ```
 
@@ -140,6 +145,7 @@ Write the actual version, gate evidence, and conclusion in the ADR. Update the p
 ### Task 2: Define the IR and enforce DOCX package/XML safety
 
 **Files:**
+
 - Create: `lib/docx-import/types.ts`
 - Create: `lib/docx-import/limits.ts`
 - Create: `lib/docx-import/xml.ts`
@@ -149,6 +155,7 @@ Write the actual version, gate evidence, and conclusion in the ADR. Update the p
 - Modify: `docs/v5-5-docx-import-progress.md`
 
 **Interfaces:**
+
 - Produces: `DocxImportError`, `DocxImportErrorCode`, `DOCX_IMPORT_LIMITS`, `ImportWarning`, `ImportBlock`, `InlineSegment`, `ParsedDocx`, `DocxImportIR`, and `DocxPreviewRecord`.
 - Produces: `openDocxPackage(file): Promise<DocxPackageReader>` with `has(path)`, `readText(path)`, `readBytes(path)`, `entries`, and `close()`.
 - Produces: `parseOrderedXml(xml, partName)` and namespace-tolerant helpers `xmlChildren`, `xmlChild`, `xmlAttr`, `xmlText`.
@@ -164,14 +171,18 @@ test("rejects DTD before the XML parser sees it", async () => {
     "[Content_Types].xml": MINIMAL_CONTENT_TYPES,
     "word/document.xml": "<!DOCTYPE w:document><w:document/>",
   });
-  await assert.rejects(() => openAndReadMainDocument(file),
-    (error: unknown) => error instanceof DocxImportError && error.code === "XML_DTD_FORBIDDEN");
+  await assert.rejects(
+    () => openAndReadMainDocument(file),
+    (error: unknown) => error instanceof DocxImportError && error.code === "XML_DTD_FORBIDDEN",
+  );
 });
 
 test("rejects a compression ratio above 100 to 1", async () => {
   const file = await makeHighlyCompressibleDocx(2_000_000);
-  await assert.rejects(() => openDocxPackage(file),
-    (error: unknown) => error instanceof DocxImportError && error.code === "ZIP_RATIO_LIMIT");
+  await assert.rejects(
+    () => openDocxPackage(file),
+    (error: unknown) => error instanceof DocxImportError && error.code === "ZIP_RATIO_LIMIT",
+  );
 });
 ```
 
@@ -208,14 +219,26 @@ Define `ImportWarning` as `{ code, severity, sourceRef?, count?, payload? }` and
 
 ```ts
 type ImportWarningCode =
-  | "HEADING_LEVEL_CLAMPED" | "LIST_DEPTH_CLAMPED"
-  | "VISUAL_FORMATTING_DROPPED" | "TOC_SKIPPED" | "TRACK_CHANGES_FLATTENED"
-  | "TABLE_HEADER_SYNTHESIZED" | "TABLE_CELL_FLATTENED" | "TABLE_MERGED_CELLS_FLATTENED"
-  | "FLOATING_IMAGE_FLATTENED" | "IMAGE_FORMAT_UNSUPPORTED"
-  | "TEXTBOX_FLATTENED" | "EQUATION_SKIPPED" | "NOTES_FLATTENED_TO_APPENDIX"
-  | "ANNOTATION_EMPTY_RANGE" | "ANNOTATION_CROSS_BLOCK" | "ANNOTATION_NON_TEXT_RANGE"
-  | "ANNOTATION_TABLE_UNSUPPORTED" | "ANNOTATION_OVERLAP_SKIPPED"
-  | "ANNOTATION_ORPHAN_DEFINITION" | "ANNOTATION_THREAD_SKIPPED";
+  | "HEADING_LEVEL_CLAMPED"
+  | "LIST_DEPTH_CLAMPED"
+  | "VISUAL_FORMATTING_DROPPED"
+  | "TOC_SKIPPED"
+  | "TRACK_CHANGES_FLATTENED"
+  | "TABLE_HEADER_SYNTHESIZED"
+  | "TABLE_CELL_FLATTENED"
+  | "TABLE_MERGED_CELLS_FLATTENED"
+  | "FLOATING_IMAGE_FLATTENED"
+  | "IMAGE_FORMAT_UNSUPPORTED"
+  | "TEXTBOX_FLATTENED"
+  | "EQUATION_SKIPPED"
+  | "NOTES_FLATTENED_TO_APPENDIX"
+  | "ANNOTATION_EMPTY_RANGE"
+  | "ANNOTATION_CROSS_BLOCK"
+  | "ANNOTATION_NON_TEXT_RANGE"
+  | "ANNOTATION_TABLE_UNSUPPORTED"
+  | "ANNOTATION_OVERLAP_SKIPPED"
+  | "ANNOTATION_ORPHAN_DEFINITION"
+  | "ANNOTATION_THREAD_SKIPPED";
 ```
 
 Cosmetic codes aggregate by code/count. Every skipped Annotation thread retains its own `sourceRef` and structured conflict/reply payload.
@@ -242,6 +265,7 @@ Update progress with each safety case and the exact dependency APIs used. Run `g
 ### Task 3: Parse styles, numbering, body text, links, fields, and tracked changes
 
 **Files:**
+
 - Create: `lib/docx-import/lookups.ts`
 - Create: `lib/docx-import/walker.ts`
 - Create: `lib/docx-import/markdown.ts`
@@ -251,6 +275,7 @@ Update progress with each safety case and the exact dependency APIs used. Run `g
 - Modify: `docs/v5-5-docx-import-progress.md`
 
 **Interfaces:**
+
 - Produces: `loadDocxLookups(pkg): Promise<DocxLookups>`.
 - Produces: `walkMainDocument(documentNodes, lookups): WalkedDocument`.
 - Produces: `renderCanonicalImportMarkdown(blocks, assets, threads): string`.
@@ -271,7 +296,9 @@ test("uses semantic styles and accepted revision text without visual guessing", 
   assert.match(parsed.canonicalMarkdown, /保留的插入/);
   assert.doesNotMatch(parsed.canonicalMarkdown, /已删除修订|TOC 1-3/);
   assert.deepEqual(warningCodes(parsed), [
-    "HEADING_LEVEL_CLAMPED", "TOC_SKIPPED", "TRACK_CHANGES_FLATTENED",
+    "HEADING_LEVEL_CLAMPED",
+    "TOC_SKIPPED",
+    "TRACK_CHANGES_FLATTENED",
     "VISUAL_FORMATTING_DROPPED",
   ]);
 });
@@ -327,6 +354,7 @@ Update progress with supported style/list/field rules and warning evidence. Comm
 ### Task 4: Form comment ranges, threaded replies, and deterministic overlap results
 
 **Files:**
+
 - Create: `lib/docx-import/annotations.ts`
 - Create: `tests/docx-import-comments.test.ts`
 - Modify: `lib/docx-import/lookups.ts`
@@ -336,6 +364,7 @@ Update progress with supported style/list/field rules and warning evidence. Comm
 - Modify: `docs/v5-5-docx-import-progress.md`
 
 **Interfaces:**
+
 - Produces: `parseWordComments(commentsXml, commentsExtendedXml): WordCommentCatalog`.
 - Produces: `buildWordThreads(catalog): WordThread[]` with immediate parents, source order, and resolved state.
 - Produces: `resolveAnnotationThreads(walked, threads): { accepted; skipped; warnings }`.
@@ -348,14 +377,25 @@ Cover one, adjacent, overlap, nested, empty, cross-paragraph, list-item, table-c
 ```ts
 test("keeps adjacent ranges and greedily skips an intersecting candidate", async () => {
   const parsed = await parseDocx(await adjacentAndOverlapFixture());
-  assert.deepEqual(parsed.threads.map((thread) => [
-    thread.sourceCommentId, thread.blockLocalStart, thread.blockLocalEnd,
-  ]), [["1", 0, 2], ["2", 2, 4]]);
-  assert.deepEqual(parsed.skippedThreads.map((thread) => ({
-    source: thread.sourceCommentId,
-    code: thread.warning.code,
-    conflict: thread.warning.payload?.conflictsWithSourceCommentId,
-  })), [{ source: "3", code: "ANNOTATION_OVERLAP_SKIPPED", conflict: "1" }]);
+  assert.deepEqual(
+    parsed.threads.map((thread) => [
+      thread.sourceCommentId,
+      thread.blockLocalStart,
+      thread.blockLocalEnd,
+    ]),
+    [
+      ["1", 0, 2],
+      ["2", 2, 4],
+    ],
+  );
+  assert.deepEqual(
+    parsed.skippedThreads.map((thread) => ({
+      source: thread.sourceCommentId,
+      code: thread.warning.code,
+      conflict: thread.warning.payload?.conflictsWithSourceCommentId,
+    })),
+    [{ source: "3", code: "ANNOTATION_OVERLAP_SKIPPED", conflict: "1" }],
+  );
 });
 ```
 
@@ -403,6 +443,7 @@ Update progress with the single-pass proof, UTF-16 cases, graph fallback, and ov
 ### Task 5: Import tables, images, notes, text boxes, equations, and deterministic degradation
 
 **Files:**
+
 - Create: `tests/docx-import-rich-content.test.ts`
 - Modify: `lib/docx-import/types.ts`
 - Modify: `lib/docx-import/lookups.ts`
@@ -413,6 +454,7 @@ Update progress with the single-pass proof, UTF-16 cases, graph fallback, and ov
 - Modify: `docs/v5-5-docx-import-progress.md`
 
 **Interfaces:**
+
 - Produces: `ImportAssetCandidate` values containing local asset ID, filename, MIME, bytes, alt text, source relationship, and floating flag.
 - Produces: rectangular `TableBlock`, flattened merged-table paragraphs, and one `NotesAppendixBlock`.
 - Preserves: table/image/note location facts consumed by the thread resolver.
@@ -441,7 +483,7 @@ Expected: FAIL on missing table/image/note behavior.
 
 - [ ] **Step 3: Implement table semantics**
 
-Detect explicit header semantics from row properties. Otherwise synthesize an empty Markdown header and emit `TABLE_HEADER_SYNTHESIZED`. Join multiple cell paragraphs with ` / ` and emit one counted `TABLE_CELL_FLATTENED`. On `gridSpan`, `vMerge`, rowSpan, or colSpan, flatten the entire table to source-order row text joined with ` | ` and emit one `TABLE_MERGED_CELLS_FLATTENED`. Escape pipes and newlines; emit no raw HTML. Mark all comments located in tables as thread-level `ANNOTATION_TABLE_UNSUPPORTED`.
+Detect explicit header semantics from row properties. Otherwise synthesize an empty Markdown header and emit `TABLE_HEADER_SYNTHESIZED`. Join multiple cell paragraphs with `/` and emit one counted `TABLE_CELL_FLATTENED`. On `gridSpan`, `vMerge`, rowSpan, or colSpan, flatten the entire table to source-order row text joined with `|` and emit one `TABLE_MERGED_CELLS_FLATTENED`. Escape pipes and newlines; emit no raw HTML. Mark all comments located in tables as thread-level `ANNOTATION_TABLE_UNSUPPORTED`.
 
 - [ ] **Step 4: Implement assets and special-content degradation**
 
@@ -471,6 +513,7 @@ Update progress with table/image/note behavior and limit evidence. Commit as `fe
 ### Task 6: Add the Worker boundary and recoverable 24-hour Preview storage
 
 **Files:**
+
 - Create: `lib/indexed-db.ts`
 - Modify: `lib/drafts/indexed-db.ts`
 - Create: `lib/docx-import/worker-protocol.ts`
@@ -482,6 +525,7 @@ Update progress with table/image/note behavior and limit evidence. Commit as `fe
 - Modify: `docs/v5-5-docx-import-progress.md`
 
 **Interfaces:**
+
 - `parseDocxWithWorker(file, { onProgress, signal, timeoutMs: 20_000 })` resolves a structured parse result or rejects a typed import error.
 - `finalizeDocxPreview(parsed, { importBatchId, sourceSha256, idFactory })` mints all final root/reply UUIDs before Preview.
 - `saveImportPreview`, `loadImportPreview`, `removeImportPreview`, and `purgeExpiredImportPreviews` share IndexedDB version 2 with the existing draft store.
@@ -539,6 +583,7 @@ Update progress with protocol states, cancellation/timeout evidence, IndexedDB m
 ### Task 7: Build the import workspace and validated Preview
 
 **Files:**
+
 - Create: `app/(site)/posts/import/page.tsx`
 - Create: `components/docx-import/docx-import-workspace.tsx`
 - Create: `components/docx-import/docx-import-preview.tsx`
@@ -550,6 +595,7 @@ Update progress with protocol states, cancellation/timeout evidence, IndexedDB m
 - Modify: `docs/v5-5-docx-import-progress.md`
 
 **Interfaces:**
+
 - Server page calls `requireMember("/posts/import")` and supplies the current site users for explicit Word-author attribution.
 - Client state machine: `selecting → parsing → uploading → previewing → committing → complete`, with cancel and recoverable error states.
 - `validateEditedImportPreview(preview)` returns typed blocking errors and a commit-safe canonical payload.
@@ -605,6 +651,7 @@ Update progress with the state machine, validation rules, warning cap, restore b
 ### Task 8: Extend the durable model for imported identity and full initial snapshots
 
 **Files:**
+
 - Modify: `db/schema.ts`
 - Create: `drizzle/0005_docx_import.sql`
 - Modify: `drizzle/meta/_journal.json`
@@ -613,6 +660,7 @@ Update progress with the state machine, validation rules, warning cap, restore b
 - Modify: `docs/v5-5-docx-import-progress.md`
 
 **Schema changes:**
+
 - `import_batches`: batch ID, importer, source filename/hash, post, revision, committed timestamp; batch ID is the idempotency key.
 - Imported source columns on roots and replies: source type, author name, initials, source timestamp/comment ID/document order/resolved flag, import batch, importer, and nullable attributed user.
 - Existing `author_id` becomes nullable; native rows retain `source_type='NATIVE'`, imported rows require `author_id IS NULL` and `source_type='DOCX_IMPORT'`.
@@ -656,6 +704,7 @@ Update progress with migration replay and constraint evidence. Commit as `feat: 
 ### Task 9: Validate untrusted IR and atomically commit an idempotent import
 
 **Files:**
+
 - Create: `lib/docx-import/commit-schema.ts`
 - Create: `lib/docx-import/commit-plan.ts`
 - Create: `lib/docx-import/commit-service.ts`
@@ -665,6 +714,7 @@ Update progress with migration replay and constraint evidence. Commit as `feat: 
 - Modify: `docs/v5-5-docx-import-progress.md`
 
 **Interfaces:**
+
 - `DocxImportCommitSchema` is a strict Zod schema; unknown fields fail.
 - `commitDocxImport(importerUserId: string, input: unknown): Promise<{ postId: string; revisionId: string; alreadyCommitted: boolean }>` owns all server validation and batch execution.
 - `planDocxImportCommit(validated, context)` produces bounded D1 statements and is testable without a live database.
@@ -725,6 +775,7 @@ Update progress with validation matrix, chunk size, rollback evidence, asset gua
 ### Task 10: Render source identity and enforce imported-thread permissions
 
 **Files:**
+
 - Modify: `lib/annotations/queries.ts`
 - Modify: `lib/annotations/policy.ts`
 - Modify: `lib/annotations/service.ts`
@@ -804,6 +855,7 @@ Update progress with identity rendering, ordering, permission matrix, and both s
 ### Task 11: Snapshot imported replies and send transparent attribution summaries
 
 **Files:**
+
 - Modify: `lib/revisions/policy.ts`
 - Modify: `lib/revisions/service.ts`
 - Modify: `lib/annotations/service.ts`
@@ -860,6 +912,7 @@ Update progress with snapshot round-trip and notification aggregation evidence. 
 ### Task 12: Add reproducible public producer fixtures and end-to-end import compatibility tests
 
 **Files:**
+
 - Create: `tests/fixtures/docx/public/manifest.json`
 - Create: `tests/fixtures/docx/public/PROVENANCE.md`
 - Create: `tests/fixtures/docx/public/word-desktop-comments.docx`
@@ -875,6 +928,7 @@ Update progress with snapshot round-trip and notification aggregation evidence. 
 - Modify: `docs/v5-5-docx-import-progress.md`
 
 **Pinned public sources:**
+
 - Microsoft Word Desktop comments: Mammoth MIT fixture `https://raw.githubusercontent.com/mwilliamson/mammoth.js/master/test/test-data/comments.docx`, SHA-256 `adc9f524d176f562db830c346c1e9e21c6a6aa6768d9c09892a423f1257fe17c`.
 - Microsoft Word Desktop footnotes: Mammoth MIT fixture `https://raw.githubusercontent.com/mwilliamson/mammoth.js/master/test/test-data/footnotes.docx`, SHA-256 `a3d786ba3ad53833dd3d5e01bd55e93b628c1287d8f9210eb94cb7533f270306`.
 - Google Docs export described by PDF Association: `https://docs.google.com/document/d/13VYmMbpzDUJuKloZY-vCmOdIZcafTcH1/export?format=docx`, SHA-256 `c77c29900f24e7548b1298fb8ef74500e83f50e075ed9c8798edd637cb03b409`, provenance page `https://pdfa.org/googles-pdf-preview-fails-including-with-pdfs-made-by-google-docs/`.
@@ -930,6 +984,7 @@ Update progress with a producer/version/feature/result table and any explicit ga
 ### Task 13: Perform final audit, publish the implementation report, and deploy privately
 
 **Files:**
+
 - Create: `docs/v5-5-docx-import-report.md`
 - Modify: `docs/v5-5-docx-import-progress.md`
 

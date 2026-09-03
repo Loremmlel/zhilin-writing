@@ -27,11 +27,7 @@ test("accepts one continuous active anchor and preserves its formatted visible t
 });
 
 test("accepts adjacent anchors and supported heading list and quote text blocks", () => {
-  const markdown = [
-    `# :annotation[标题]{#${A}}`,
-    "",
-    `- :annotation[列表]{#${B}}`,
-  ].join("\n");
+  const markdown = [`# :annotation[标题]{#${A}}`, "", `- :annotation[列表]{#${B}}`].join("\n");
 
   assert.deepEqual(scanCanonicalAnnotationAnchors(markdown), [
     { annotationId: A, text: "标题", blockIndex: 0 },
@@ -52,11 +48,13 @@ test("accepts one logical anchor split across consecutive text blocks", () => {
     `- :annotation[第三段]{#${A}} 结尾`,
   ].join("\n");
 
-  assert.deepEqual(scanCanonicalAnnotationAnchors(markdown), [{
-    annotationId: A,
-    text: "后半\n\n第二段\n\n第三段",
-    blockIndex: 0,
-  }]);
+  assert.deepEqual(scanCanonicalAnnotationAnchors(markdown), [
+    {
+      annotationId: A,
+      text: "后半\n\n第二段\n\n第三段",
+      blockIndex: 0,
+    },
+  ]);
   assert.equal(validateCanonicalAnnotationDocument(markdown, [A]).ok, true);
 });
 

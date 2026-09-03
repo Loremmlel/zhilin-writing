@@ -1,12 +1,11 @@
 import { parseAnnotationMarkdown } from "../annotations/markdown.ts";
-import { validateCanonicalAnnotationDocument, type AnnotationInvariantIssueCode } from "../annotations/invariants.ts";
+import {
+  validateCanonicalAnnotationDocument,
+  type AnnotationInvariantIssueCode,
+} from "../annotations/invariants.ts";
 import { DOCX_IMPORT_LIMITS } from "./limits.ts";
 import { importedThreadSelectedText, importedThreadSlices } from "./thread-range.ts";
-import type {
-  DocxImportIR,
-  DocxPreviewRecord,
-  ImportBlock,
-} from "./types.ts";
+import type { DocxImportIR, DocxPreviewRecord, ImportBlock } from "./types.ts";
 
 export type ImportPreviewValidationCode =
   | "TITLE_REQUIRED"
@@ -81,8 +80,8 @@ export function validateEditedImportPreview(
     errors.push({ code: "PREVIEW_EXPIRED" });
   }
   if (
-    preview.ir.warnings.some((warning) => warning.severity === "error")
-    || preview.ir.skippedThreads.some((thread) => thread.warning.severity === "error")
+    preview.ir.warnings.some((warning) => warning.severity === "error") ||
+    preview.ir.skippedThreads.some((thread) => thread.warning.severity === "error")
   ) {
     errors.push({ code: "IMPORT_WARNING_ERROR" });
   }
@@ -119,13 +118,18 @@ function validateAuthorMappings(
   validUserIds: ReadonlySet<string> | undefined,
   errors: ImportPreviewValidationError[],
 ) {
-  const authors = new Set(ir.threads.flatMap((thread) => [
-    thread.sourceAuthorName,
-    ...thread.replies.map((reply) => reply.sourceAuthorName),
-  ]));
-  if (Object.entries(authorMappings).some(([author, userId]) => (
-    !authors.has(author) || (validUserIds ? !validUserIds.has(userId) : false)
-  ))) {
+  const authors = new Set(
+    ir.threads.flatMap((thread) => [
+      thread.sourceAuthorName,
+      ...thread.replies.map((reply) => reply.sourceAuthorName),
+    ]),
+  );
+  if (
+    Object.entries(authorMappings).some(
+      ([author, userId]) =>
+        !authors.has(author) || (validUserIds ? !validUserIds.has(userId) : false),
+    )
+  ) {
     errors.push({ code: "AUTHOR_MAPPING_INVALID" });
   }
 }
@@ -143,12 +147,21 @@ function validateTemporaryAssets(
   if (preview.ir.assets.length > preview.temporaryAssets.length) {
     errors.push({ code: "ASSET_UPLOAD_MISSING" });
   }
-  if (preview.ir.assets.length !== preview.temporaryAssets.length || preview.markdown.includes("docx-asset:")) {
+  if (
+    preview.ir.assets.length !== preview.temporaryAssets.length ||
+    preview.markdown.includes("docx-asset:")
+  ) {
     errors.push({ code: "ASSET_REFERENCE_INVALID" });
   }
   for (const [index, asset] of preview.temporaryAssets.entries()) {
     const source = preview.ir.assets[index];
-    if (!asset.assetId || asset.temporaryUrl !== `/api/assets/${asset.assetId}` || !source || source.filename !== asset.filename || source.mimeType !== asset.mimeType) {
+    if (
+      !asset.assetId ||
+      asset.temporaryUrl !== `/api/assets/${asset.assetId}` ||
+      !source ||
+      source.filename !== asset.filename ||
+      source.mimeType !== asset.mimeType
+    ) {
       errors.push({ code: "ASSET_REFERENCE_INVALID" });
     }
   }
@@ -192,8 +205,8 @@ function validateMarkdownTree(
   }
   const manifestAssets = new Set(preview.temporaryAssets.map((asset) => asset.temporaryUrl));
   if (
-    referencedAssets.size !== manifestAssets.size
-    || [...referencedAssets].some((url) => !manifestAssets.has(url))
+    referencedAssets.size !== manifestAssets.size ||
+    [...referencedAssets].some((url) => !manifestAssets.has(url))
   ) {
     errors.push({ code: "ASSET_REFERENCE_INVALID" });
   }
@@ -246,10 +259,7 @@ export function getImportedThreadSelectedText(
   });
 }
 
-function walk(
-  node: PreviewNode,
-  callback: (node: PreviewNode) => void,
-) {
+function walk(node: PreviewNode, callback: (node: PreviewNode) => void) {
   callback(node);
   node.children?.forEach((child) => walk(child, callback));
 }
@@ -257,7 +267,9 @@ function walk(
 function isSafeUrl(value: string): boolean {
   if (value.startsWith("/") || value.startsWith("#")) return true;
   try {
-    return ["http:", "https:", "mailto:"].includes(new URL(value, "https://invalid.local").protocol);
+    return ["http:", "https:", "mailto:"].includes(
+      new URL(value, "https://invalid.local").protocol,
+    );
   } catch {
     return false;
   }

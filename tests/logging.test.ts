@@ -6,10 +6,19 @@ import { logServerError, serverErrorCode } from "../lib/logging.ts";
 test("production error logging keeps operational IDs and redacts payload details", () => {
   const lines: string[] = [];
   const original = console.error;
-  console.error = (value?: unknown) => { lines.push(String(value)); };
+  console.error = (value?: unknown) => {
+    lines.push(String(value));
+  };
   try {
-    const error = Object.assign(new Error("private post Markdown user@example.com"), { code: "R2_DELETE_FAILED" });
-    logServerError({ operation: "asset.gc.delete", entityId: "asset_123", userId: "user_456", error });
+    const error = Object.assign(new Error("private post Markdown user@example.com"), {
+      code: "R2_DELETE_FAILED",
+    });
+    logServerError({
+      operation: "asset.gc.delete",
+      entityId: "asset_123",
+      userId: "user_456",
+      error,
+    });
   } finally {
     console.error = original;
   }
@@ -30,6 +39,9 @@ test("production error logging keeps operational IDs and redacts payload details
 });
 
 test("unknown and unsafe error codes fall back without serializing the error", () => {
-  assert.equal(serverErrorCode(Object.assign(new Error("secret"), { code: "bad code" }), "POST_SAVE_FAILED"), "POST_SAVE_FAILED");
+  assert.equal(
+    serverErrorCode(Object.assign(new Error("secret"), { code: "bad code" }), "POST_SAVE_FAILED"),
+    "POST_SAVE_FAILED",
+  );
   assert.equal(serverErrorCode(null), "INTERNAL_ERROR");
 });

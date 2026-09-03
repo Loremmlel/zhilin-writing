@@ -27,10 +27,7 @@ export async function parseDocx(
     onProgress?.("lookups");
     const lookups = await loadDocxLookups(pkg);
     onProgress?.("document");
-    const document = parseOrderedXml(
-      await pkg.readText("word/document.xml"),
-      "word/document.xml",
-    );
+    const document = parseOrderedXml(await pkg.readText("word/document.xml"), "word/document.xml");
     const footnotes = pkg.has("word/footnotes.xml")
       ? parseOrderedXml(await pkg.readText("word/footnotes.xml"), "word/footnotes.xml")
       : undefined;
@@ -41,19 +38,22 @@ export async function parseDocx(
     const initialWalked = walkMainDocument(document, lookups, noteParts);
     const materialized = await materializeAssets(pkg, initialWalked.assetReferences);
     const acceptedAssetIds = new Set(materialized.assets.map((asset) => asset.id));
-    const walked = materialized.assets.length === initialWalked.assetReferences.length
-      ? initialWalked
-      : walkMainDocument(document, lookups, noteParts, { acceptedAssetIds });
-    const blocks = walked.blocks.filter((block) => block.type !== "image" || acceptedAssetIds.has(block.assetId));
+    const walked =
+      materialized.assets.length === initialWalked.assetReferences.length
+        ? initialWalked
+        : walkMainDocument(document, lookups, noteParts, { acceptedAssetIds });
+    const blocks = walked.blocks.filter(
+      (block) => block.type !== "image" || acceptedAssetIds.has(block.assetId),
+    );
     onProgress?.("comments");
     const comments = pkg.has("word/comments.xml")
       ? parseOrderedXml(await pkg.readText("word/comments.xml"), "word/comments.xml")
       : [];
     const commentsExtended = pkg.has("word/commentsExtended.xml")
       ? parseOrderedXml(
-        await pkg.readText("word/commentsExtended.xml"),
-        "word/commentsExtended.xml",
-      )
+          await pkg.readText("word/commentsExtended.xml"),
+          "word/commentsExtended.xml",
+        )
       : undefined;
     const resolved = resolveAnnotationThreads(
       walked,
@@ -61,11 +61,19 @@ export async function parseDocx(
       options,
     );
     onProgress?.("rendering");
-    const canonicalMarkdown = renderCanonicalImportMarkdown(blocks, materialized.assets, resolved.accepted);
+    const canonicalMarkdown = renderCanonicalImportMarkdown(
+      blocks,
+      materialized.assets,
+      resolved.accepted,
+    );
     const firstHeading = blocks.find((block) => block.type === "heading");
-    const suggestedTitle = firstHeading && "segments" in firstHeading
-      ? firstHeading.segments.map((segment) => segment.text).join("").trim()
-      : file.name.replace(/\.docx$/i, "");
+    const suggestedTitle =
+      firstHeading && "segments" in firstHeading
+        ? firstHeading.segments
+            .map((segment) => segment.text)
+            .join("")
+            .trim()
+        : file.name.replace(/\.docx$/i, "");
     return {
       version: 1,
       source: { filename: file.name },
@@ -130,9 +138,10 @@ async function materializeAssets(
   }
   return {
     assets,
-    warnings: unsupported > 0
-      ? [{ code: "IMAGE_FORMAT_UNSUPPORTED", severity: "warning", count: unsupported }]
-      : [],
+    warnings:
+      unsupported > 0
+        ? [{ code: "IMAGE_FORMAT_UNSUPPORTED", severity: "warning", count: unsupported }]
+        : [],
   };
 }
 
@@ -142,17 +151,22 @@ function hasImageSignature(bytes: Uint8Array, mimeType: ImportAsset["mimeType"])
   }
   if (mimeType === "image/jpeg") return startsWith(bytes, [0xff, 0xd8, 0xff]);
   if (mimeType === "image/gif") {
-    return new TextDecoder().decode(bytes.subarray(0, 6)) === "GIF87a"
-      || new TextDecoder().decode(bytes.subarray(0, 6)) === "GIF89a";
+    return (
+      new TextDecoder().decode(bytes.subarray(0, 6)) === "GIF87a" ||
+      new TextDecoder().decode(bytes.subarray(0, 6)) === "GIF89a"
+    );
   }
-  return bytes.byteLength >= 12
-    && new TextDecoder().decode(bytes.subarray(0, 4)) === "RIFF"
-    && new TextDecoder().decode(bytes.subarray(8, 12)) === "WEBP";
+  return (
+    bytes.byteLength >= 12 &&
+    new TextDecoder().decode(bytes.subarray(0, 4)) === "RIFF" &&
+    new TextDecoder().decode(bytes.subarray(8, 12)) === "WEBP"
+  );
 }
 
 function startsWith(bytes: Uint8Array, expected: number[]): boolean {
-  return bytes.byteLength >= expected.length
-    && expected.every((value, index) => bytes[index] === value);
+  return (
+    bytes.byteLength >= expected.length && expected.every((value, index) => bytes[index] === value)
+  );
 }
 
 function mergeWarnings(...groups: ImportWarning[][]): ImportWarning[] {
@@ -162,7 +176,9 @@ function mergeWarnings(...groups: ImportWarning[][]): ImportWarning[] {
       merged.push(warning);
       continue;
     }
-    const existing = merged.find((candidate) => candidate.code === warning.code && !candidate.sourceRef);
+    const existing = merged.find(
+      (candidate) => candidate.code === warning.code && !candidate.sourceRef,
+    );
     if (existing) existing.count = (existing.count ?? 1) + (warning.count ?? 1);
     else merged.push({ ...warning });
   }

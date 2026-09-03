@@ -78,13 +78,13 @@ IndexedDB `zhilin-writing` schema v2 新增 `docx-import-previews`，以 `import
 
 公开 fixture manifest、许可/provenance 与固定 SHA-256 位于 [`tests/fixtures/docx/public/manifest.json`](../tests/fixtures/docx/public/manifest.json) 和 [`tests/fixtures/docx/public/PROVENANCE.md`](../tests/fixtures/docx/public/PROVENANCE.md)。获取脚本 fail closed；generated semantic matrix 现在同时固定 extended timestamp 与 raw MS-DOS timestamp，UTC/Asia-Tokyo 双时区回归证明字节不随主机时区变化（[`scripts/fixtures/generate-docx-fixtures.mjs`](../scripts/fixtures/generate-docx-fixtures.mjs)、[`tests/docx-import-e2e.test.ts`](../tests/docx-import-e2e.test.ts)）。
 
-| Producer | 证据/能力 | 结果 |
-| --- | --- | --- |
-| Microsoft Office Word 14.0000 | Mammoth comments | PASS：正文批注可导入，孤儿定义稳定降级。 |
-| Microsoft Office Word 14.0000 | Mammoth footnotes | PASS：脚注/尾注进入统一附录。 |
-| Google Docs（版本未声明） | PDF Association 明确来源陈述 | PASS：标题与多级 heading 稳定；不伪造包内 producer。 |
-| LibreOffice 5.4.5.1 | mat2 dirty DOCX / floating image | PASS：正文、图片可读，floating image typed warning 降级。 |
-| Microsoft Word Online | 无合格公开 fixture | SKIP：用户已明确接受该已知限制。 |
+| Producer                      | 证据/能力                        | 结果                                                      |
+| ----------------------------- | -------------------------------- | --------------------------------------------------------- |
+| Microsoft Office Word 14.0000 | Mammoth comments                 | PASS：正文批注可导入，孤儿定义稳定降级。                  |
+| Microsoft Office Word 14.0000 | Mammoth footnotes                | PASS：脚注/尾注进入统一附录。                             |
+| Google Docs（版本未声明）     | PDF Association 明确来源陈述     | PASS：标题与多级 heading 稳定；不伪造包内 producer。      |
+| LibreOffice 5.4.5.1           | mat2 dirty DOCX / floating image | PASS：正文、图片可读，floating image typed warning 降级。 |
+| Microsoft Word Online         | 无合格公开 fixture               | SKIP：用户已明确接受该已知限制。                          |
 
 E2E 覆盖 `package → Worker → finalized Preview → temporary assets → commit schema/plan → reloaded canonical Markdown → V5 AST → ProseMirror document`；不同 deterministic ID factory 得到相同 normalized IR、Markdown、warnings 与 initial revision state。
 
@@ -100,27 +100,27 @@ E2E 覆盖 `package → Worker → finalized Preview → temporary assets → co
 
 ## 最终不变量审计
 
-| 审计项 | 结果 |
-| --- | --- |
-| `selectedText` / `indexOf` / `lastIndexOf` | 无正文反向搜索；命中均为 Preview/commit 校验、XML tokenizer、namespace 或进度枚举。 |
-| `officeparser` production import | 无；仅 probe 文件和脚本。 |
-| imported `author_id` | root/reply 均强制 `NULL`；schema/planner/DB constraint 三层保护。 |
-| historical annotation activity | 导入只产生一个 `POST_CREATED`；`annotationActivityCount=0`，归属使用 batch 聚合通知。 |
-| Worker/XML network access | 无 fetch/XHR/sendBeacon/WebSocket。 |
-| raw DOCX persistence | 无；Preview store 主动移除/拒绝原始 `File`、`Blob`、`ArrayBuffer`。 |
+| 审计项                                     | 结果                                                                                  |
+| ------------------------------------------ | ------------------------------------------------------------------------------------- |
+| `selectedText` / `indexOf` / `lastIndexOf` | 无正文反向搜索；命中均为 Preview/commit 校验、XML tokenizer、namespace 或进度枚举。   |
+| `officeparser` production import           | 无；仅 probe 文件和脚本。                                                             |
+| imported `author_id`                       | root/reply 均强制 `NULL`；schema/planner/DB constraint 三层保护。                     |
+| historical annotation activity             | 导入只产生一个 `POST_CREATED`；`annotationActivityCount=0`，归属使用 batch 聚合通知。 |
+| Worker/XML network access                  | 无 fetch/XHR/sendBeacon/WebSocket。                                                   |
+| raw DOCX persistence                       | 无；Preview store 主动移除/拒绝原始 `File`、`Blob`、`ArrayBuffer`。                   |
 
 ## 2026-08-31 验证记录
 
-| 命令 | 结果 |
-| --- | --- |
-| `npm run test:unit` | PASS：227 total，226 pass，1 explicit Word Online skip，0 fail。 |
-| `npx tsc --noEmit` | PASS。 |
-| `npm run lint` | PASS；仅保留既有 jsx-ast-utils parser 提示。 |
-| `npm test` | PASS：上述 226/1/0；生产构建成功；7/7 rendered artifact assertions 通过。 |
-| `git diff --check` | PASS。 |
-| `npx drizzle-kit check` | PASS：`Everything's fine`。 |
-| `node scripts/fixtures/fetch-public-docx-fixtures.mjs --verify` | PASS：4 个公开 fixture hash 验证；Word Online 明确跳过。 |
-| `node scripts/fixtures/generate-docx-fixtures.mjs --check` | PASS：4 个 generated fixture byte-for-byte current。 |
+| 命令                                                            | 结果                                                                      |
+| --------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| `npm run test:unit`                                             | PASS：227 total，226 pass，1 explicit Word Online skip，0 fail。          |
+| `npx tsc --noEmit`                                              | PASS。                                                                    |
+| `npm run lint`                                                  | PASS；仅保留既有 jsx-ast-utils parser 提示。                              |
+| `npm test`                                                      | PASS：上述 226/1/0；生产构建成功；7/7 rendered artifact assertions 通过。 |
+| `git diff --check`                                              | PASS。                                                                    |
+| `npx drizzle-kit check`                                         | PASS：`Everything's fine`。                                               |
+| `node scripts/fixtures/fetch-public-docx-fixtures.mjs --verify` | PASS：4 个公开 fixture hash 验证；Word Online 明确跳过。                  |
+| `node scripts/fixtures/generate-docx-fixtures.mjs --check`      | PASS：4 个 generated fixture byte-for-byte current。                      |
 
 既有非失败提示：npm `http-proxy` 配置弃用提示、构建代理提示、Vinext 路由静态分类提示与大 chunk warning。它们未造成测试、类型、Lint、schema、fixture、构建或 rendered artifact 失败。
 

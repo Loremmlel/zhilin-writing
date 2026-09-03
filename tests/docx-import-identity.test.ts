@@ -38,36 +38,46 @@ test("imported identities remain visible without a native user and keep attribut
     displayName: "关联用户",
   });
 
-  const native = buildAnnotationAuthorView({
-    sourceType: "NATIVE",
-    authorId: nativeUser.id,
-    sourceAuthorName: null,
-    sourceInitials: null,
-    sourceResolved: null,
-  }, nativeUser, null);
+  const native = buildAnnotationAuthorView(
+    {
+      sourceType: "NATIVE",
+      authorId: nativeUser.id,
+      sourceAuthorName: null,
+      sourceInitials: null,
+      sourceResolved: null,
+    },
+    nativeUser,
+    null,
+  );
   assert.equal(native.displayName, "站内作者");
   assert.equal(native.avatarAssetId, "avatar");
 });
 
 test("imported source metadata keeps Word identity, initials, resolution, and attribution visible", () => {
-  assert.equal(annotationSourceMetadata({
-    sourceType: "DOCX_IMPORT",
-    id: null,
-    displayName: "林柚子",
-    avatarAssetId: null,
-    initials: "LYZ",
-    attributedUser: { id: "mapped", displayName: "关联用户" },
-    sourceResolved: true,
-  }), "Word 导入 · 缩写 LYZ · Word 中已解决 · 关联 关联用户");
-  assert.equal(annotationSourceMetadata({
-    sourceType: "NATIVE",
-    id: "native",
-    displayName: "站内作者",
-    avatarAssetId: null,
-    initials: null,
-    attributedUser: null,
-    sourceResolved: false,
-  }), null);
+  assert.equal(
+    annotationSourceMetadata({
+      sourceType: "DOCX_IMPORT",
+      id: null,
+      displayName: "林柚子",
+      avatarAssetId: null,
+      initials: "LYZ",
+      attributedUser: { id: "mapped", displayName: "关联用户" },
+      sourceResolved: true,
+    }),
+    "Word 导入 · 缩写 LYZ · Word 中已解决 · 关联 关联用户",
+  );
+  assert.equal(
+    annotationSourceMetadata({
+      sourceType: "NATIVE",
+      id: "native",
+      displayName: "站内作者",
+      avatarAssetId: null,
+      initials: null,
+      attributedUser: null,
+      sourceResolved: false,
+    }),
+    null,
+  );
 });
 
 test("root order follows canonical Markdown anchor position", () => {
@@ -81,15 +91,37 @@ test("root order follows canonical Markdown anchor position", () => {
     `:annotation[第二]{#${second}}\n\n:annotation[第一]{#${first}}`,
     rows,
   );
-  assert.deepEqual(ordered.map((row) => row.annotation.id), [second, first]);
+  assert.deepEqual(
+    ordered.map((row) => row.annotation.id),
+    [second, first],
+  );
 });
 
 test("imported replies use Word time, document order, and source id while native order stays unchanged", () => {
-  const imported = (id: string, sourceCreatedAt: Date | null, sourceDocumentOrder: number, sourceCommentId: string) => ({
-    reply: { id, sourceType: "DOCX_IMPORT" as const, sourceCreatedAt, sourceDocumentOrder, sourceCommentId, createdAt: new Date(100) },
+  const imported = (
+    id: string,
+    sourceCreatedAt: Date | null,
+    sourceDocumentOrder: number,
+    sourceCommentId: string,
+  ) => ({
+    reply: {
+      id,
+      sourceType: "DOCX_IMPORT" as const,
+      sourceCreatedAt,
+      sourceDocumentOrder,
+      sourceCommentId,
+      createdAt: new Date(100),
+    },
   });
   const native = (id: string, createdAt: Date) => ({
-    reply: { id, sourceType: "NATIVE" as const, sourceCreatedAt: null, sourceDocumentOrder: null, sourceCommentId: null, createdAt },
+    reply: {
+      id,
+      sourceType: "NATIVE" as const,
+      sourceCreatedAt: null,
+      sourceDocumentOrder: null,
+      sourceCommentId: null,
+      createdAt,
+    },
   });
 
   assert.deepEqual(
@@ -108,7 +140,10 @@ test("imported replies use Word time, document order, and source id while native
     ["document-first", "source-b", "source-a"],
   );
   assert.deepEqual(
-    sortAnnotationReplyRows([native("later-native", new Date(20)), native("earlier-native", new Date(10))]).map((row) => row.reply.id),
+    sortAnnotationReplyRows([
+      native("later-native", new Date(20)),
+      native("earlier-native", new Date(10)),
+    ]).map((row) => row.reply.id),
     ["earlier-native", "later-native"],
   );
 });
@@ -145,12 +180,31 @@ test("mixed dated and undated Word replies have one deterministic total order", 
 });
 
 test("attribution grants no mutation permission while post author or importer may remove the imported thread", () => {
-  const imported = { sourceType: "DOCX_IMPORT" as const, authorId: null, importedByUserId: "importer" };
-  assert.deepEqual(getAnnotationMutationPermissions(imported, { actorUserId: "mapped", postAuthorId: "importer" }), {
-    canDelete: false,
-    canRemoveImportedThread: false,
-  });
-  assert.equal(getAnnotationMutationPermissions(imported, { actorUserId: "importer", postAuthorId: "importer" }).canRemoveImportedThread, true);
-  assert.equal(getAnnotationMutationPermissions(imported, { actorUserId: "post-author", postAuthorId: "post-author" }).canRemoveImportedThread, true);
+  const imported = {
+    sourceType: "DOCX_IMPORT" as const,
+    authorId: null,
+    importedByUserId: "importer",
+  };
+  assert.deepEqual(
+    getAnnotationMutationPermissions(imported, { actorUserId: "mapped", postAuthorId: "importer" }),
+    {
+      canDelete: false,
+      canRemoveImportedThread: false,
+    },
+  );
+  assert.equal(
+    getAnnotationMutationPermissions(imported, {
+      actorUserId: "importer",
+      postAuthorId: "importer",
+    }).canRemoveImportedThread,
+    true,
+  );
+  assert.equal(
+    getAnnotationMutationPermissions(imported, {
+      actorUserId: "post-author",
+      postAuthorId: "post-author",
+    }).canRemoveImportedThread,
+    true,
+  );
   assert.throws(() => assertNativeAnnotationMutation(imported), /Word 导入/);
 });

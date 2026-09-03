@@ -47,11 +47,13 @@ export async function commitDocxImport(
   input: unknown,
   database?: DocxImportCommitDatabase,
 ): Promise<{ postId: string; revisionId: string; alreadyCommitted: boolean }> {
-  const db = database ?? await runtimeDatabase();
+  const db = database ?? (await runtimeDatabase());
   let validated;
-  try { validated = validateDocxImportCommitPayload(input); }
-  catch (error) {
-    if (error instanceof DocxImportValidationError) throw new DocxImportCommitError(error.code, 400, { cause: error });
+  try {
+    validated = validateDocxImportCommitPayload(input);
+  } catch (error) {
+    if (error instanceof DocxImportValidationError)
+      throw new DocxImportCommitError(error.code, 400, { cause: error });
     throw error;
   }
   const payloadHash = await sha256(stableJson(validated));
@@ -59,11 +61,19 @@ export async function commitDocxImport(
   if (!importer) throw new DocxImportCommitError("ACCESS_REVOKED", 403);
 
   const existing = await findExistingBatch(db, validated.importBatchId);
-  if (existing) return assertMatchingBatch(existing, importerUserId, validated.source.filename, validated.source.sha256, payloadHash);
+  if (existing)
+    return assertMatchingBatch(
+      existing,
+      importerUserId,
+      validated.source.filename,
+      validated.source.sha256,
+      payloadHash,
+    );
 
   if (validated.attributedUserIds.length > 0) {
     const allowed = await allowedMemberIds(db, validated.attributedUserIds);
-    if (allowed.size !== validated.attributedUserIds.length) throw new DocxImportCommitError("ATTRIBUTED_USER_INVALID", 400);
+    if (allowed.size !== validated.attributedUserIds.length)
+      throw new DocxImportCommitError("ATTRIBUTED_USER_INVALID", 400);
   }
   const assets = await loadAssets(db, validated.assetIds);
   assertClaimableAssets(validated, importerUserId, assets);
@@ -85,7 +95,14 @@ export async function commitDocxImport(
     await db.batch(plan.statements);
   } catch (error) {
     const repeated = await findExistingBatch(db, validated.importBatchId);
-    if (repeated) return assertMatchingBatch(repeated, importerUserId, validated.source.filename, validated.source.sha256, payloadHash);
+    if (repeated)
+      return assertMatchingBatch(
+        repeated,
+        importerUserId,
+        validated.source.filename,
+        validated.source.sha256,
+        payloadHash,
+      );
     throw new DocxImportCommitError("IMPORT_COMMIT_FAILED", 500, { cause: error });
   }
   return { postId, revisionId, alreadyCommitted: false };
@@ -96,18 +113,29 @@ async function runtimeDatabase(): Promise<DocxImportCommitDatabase> {
   if (!env.DB) throw new DocxImportCommitError("DATABASE_UNAVAILABLE", 503);
   return {
     async first<T>(sql: string, params: readonly SqlValue[]) {
-      return await env.DB.prepare(sql).bind(...params).first<T>();
+      return await env.DB.prepare(sql)
+        .bind(...params)
+        .first<T>();
     },
     async all<T>(sql: string, params: readonly SqlValue[]) {
-      return (await env.DB.prepare(sql).bind(...params).all<T>()).results;
+      return (
+        await env.DB.prepare(sql)
+          .bind(...params)
+          .all<T>()
+      ).results;
     },
     async batch(statements) {
-      await env.DB.batch(statements.map((statement) => env.DB.prepare(statement.sql).bind(...statement.params)));
+      await env.DB.batch(
+        statements.map((statement) => env.DB.prepare(statement.sql).bind(...statement.params)),
+      );
     },
   };
 }
 
-async function loadImporterProfile(db: DocxImportCommitDatabase, userId: string): Promise<{ displayName: string } | null> {
+async function loadImporterProfile(
+  db: DocxImportCommitDatabase,
+  userId: string,
+): Promise<{ displayName: string } | null> {
   return db.first<{ displayName: string }>(
     "SELECT u.display_name AS displayName FROM users u INNER JOIN allowed_users au ON au.email = u.email_key WHERE u.id = ? LIMIT 1",
     [userId],
@@ -116,17 +144,23 @@ async function loadImporterProfile(db: DocxImportCommitDatabase, userId: string)
 
 async function allowedMemberIds(db: DocxImportCommitDatabase, ids: string[]): Promise<Set<string>> {
   if (ids.length === 0) return new Set();
-  const rows = await allByIds<{ id: string }>(db, ids, (placeholders) => (
-    `SELECT u.id AS id FROM users u INNER JOIN allowed_users au ON au.email = u.email_key WHERE u.id IN (${placeholders})`
-  ));
+  const rows = await allByIds<{ id: string }>(
+    db,
+    ids,
+    (placeholders) =>
+      `SELECT u.id AS id FROM users u INNER JOIN allowed_users au ON au.email = u.email_key WHERE u.id IN (${placeholders})`,
+  );
   return new Set(rows.map((row) => row.id));
 }
 
 async function loadAssets(db: DocxImportCommitDatabase, ids: string[]): Promise<AssetRow[]> {
   if (ids.length === 0) return [];
-  return allByIds<AssetRow>(db, ids, (placeholders) => (
-    `SELECT id, owner_id AS ownerId, kind, filename, mime_type AS mimeType, byte_size AS byteSize, status, deleted_at AS deletedAt, gc_claimed_at AS gcClaimedAt FROM assets WHERE id IN (${placeholders})`
-  ));
+  return allByIds<AssetRow>(
+    db,
+    ids,
+    (placeholders) =>
+      `SELECT id, owner_id AS ownerId, kind, filename, mime_type AS mimeType, byte_size AS byteSize, status, deleted_at AS deletedAt, gc_claimed_at AS gcClaimedAt FROM assets WHERE id IN (${placeholders})`,
+  );
 }
 
 async function allByIds<T>(
@@ -137,7 +171,7 @@ async function allByIds<T>(
   const rows: T[] = [];
   for (let index = 0; index < ids.length; index += D1_MAX_BOUND_PARAMETERS) {
     const chunk = ids.slice(index, index + D1_MAX_BOUND_PARAMETERS);
-    rows.push(...await db.all<T>(sql(chunk.map(() => "?").join(", ")), chunk));
+    rows.push(...(await db.all<T>(sql(chunk.map(() => "?").join(", ")), chunk)));
   }
   return rows;
 }
@@ -147,26 +181,31 @@ function assertClaimableAssets(
   importerUserId: string,
   assets: AssetRow[],
 ) {
-  if (assets.length !== validated.assetIds.length) throw new DocxImportCommitError("ASSET_NOT_CLAIMABLE", 400);
+  if (assets.length !== validated.assetIds.length)
+    throw new DocxImportCommitError("ASSET_NOT_CLAIMABLE", 400);
   const rows = new Map(assets.map((asset) => [asset.id, asset]));
   for (const manifest of validated.temporaryAssets) {
     const asset = rows.get(manifest.assetId);
     if (
-      !asset
-      || asset.ownerId !== importerUserId
-      || asset.kind !== "image"
-      || asset.status !== "temporary"
-      || asset.deletedAt !== null
-      || asset.gcClaimedAt != null
-      || asset.mimeType !== manifest.mimeType
-      || asset.filename !== manifest.filename
-      || asset.byteSize <= 0
-      || asset.byteSize > 10 * 1024 * 1024
-    ) throw new DocxImportCommitError("ASSET_NOT_CLAIMABLE", 400);
+      !asset ||
+      asset.ownerId !== importerUserId ||
+      asset.kind !== "image" ||
+      asset.status !== "temporary" ||
+      asset.deletedAt !== null ||
+      asset.gcClaimedAt != null ||
+      asset.mimeType !== manifest.mimeType ||
+      asset.filename !== manifest.filename ||
+      asset.byteSize <= 0 ||
+      asset.byteSize > 10 * 1024 * 1024
+    )
+      throw new DocxImportCommitError("ASSET_NOT_CLAIMABLE", 400);
   }
 }
 
-async function findExistingBatch(db: DocxImportCommitDatabase, batchId: string): Promise<ExistingBatch | null> {
+async function findExistingBatch(
+  db: DocxImportCommitDatabase,
+  batchId: string,
+): Promise<ExistingBatch | null> {
   return db.first<ExistingBatch>(
     `SELECT ib.importer_user_id AS importerUserId, ib.source_filename AS sourceFilename,
       ib.source_sha256 AS sourceSha256, ib.post_id AS postId, ib.revision_id AS revisionId,
@@ -187,17 +226,21 @@ function assertMatchingBatch(
 ) {
   let storedHash: string | null = null;
   try {
-    const metadata = existing.metadataJson ? JSON.parse(existing.metadataJson) as { docxImportPayloadHash?: unknown } : null;
-    storedHash = typeof metadata?.docxImportPayloadHash === "string" ? metadata.docxImportPayloadHash : null;
+    const metadata = existing.metadataJson
+      ? (JSON.parse(existing.metadataJson) as { docxImportPayloadHash?: unknown })
+      : null;
+    storedHash =
+      typeof metadata?.docxImportPayloadHash === "string" ? metadata.docxImportPayloadHash : null;
   } catch {
     storedHash = null;
   }
   if (
-    existing.importerUserId !== importerUserId
-    || existing.sourceFilename !== sourceFilename
-    || existing.sourceSha256 !== sourceSha256
-    || storedHash !== payloadHash
-  ) throw new DocxImportCommitError("IMPORT_BATCH_CONFLICT", 409);
+    existing.importerUserId !== importerUserId ||
+    existing.sourceFilename !== sourceFilename ||
+    existing.sourceSha256 !== sourceSha256 ||
+    storedHash !== payloadHash
+  )
+    throw new DocxImportCommitError("IMPORT_BATCH_CONFLICT", 409);
   return { postId: existing.postId, revisionId: existing.revisionId, alreadyCommitted: true };
 }
 

@@ -12,17 +12,17 @@
 
 ## Business-context sources
 
-| Domain / scope | Authoritative source | Source type | Reviewed date |
-|---|---|---|---|
-| V1 产品、权限与数据基础 | `docs/superpowers/specs/2026-08-25-private-markdown-community-design.md` | Product/design spec | 2026-08-25 |
-| V2 Activity 与通知 | `docs/superpowers/specs/2026-08-25-activity-notifications-v2-design.md` | Product/design spec | 2026-08-25 |
-| V3 revision、冲突与恢复 | `docs/superpowers/specs/2026-08-25-post-revisions-v3-design.md` | Product/design spec | 2026-08-25 |
-| V4 内容生命周期与资源回收 | `docs/superpowers/specs/2026-08-26-content-lifecycle-v4-design.md` | Product/design spec | 2026-08-26 |
-| V5 Annotation AST、正文批注与讨论 | `docs/superpowers/specs/2026-08-27-annotation-v5-design.md` | Product/design spec | 2026-08-27 |
-| V6 AnnotationGuard、批注编辑与 Loading | `docs/superpowers/specs/2026-08-31-annotation-guard-v6-design.md` | Product/design spec | 2026-08-31 |
-| V8 跨段批注 | `docs/superpowers/specs/2026-09-03-cross-block-annotation-v8-design.md` | Product/design spec | 2026-09-03 |
-| 服务器权限边界 | `lib/auth/access.ts` | Verified domain invariant | 2026-08-25 |
-| 保存、删除、隐藏与恢复状态机 | `lib/posts/service.ts`, `lib/lifecycle/service.ts`, `lib/revisions/service.ts`, `lib/annotations/service.ts` | Verified API/domain contract | 2026-08-27 |
+| Domain / scope                         | Authoritative source                                                                                         | Source type                  | Reviewed date |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------ | ---------------------------- | ------------- |
+| V1 产品、权限与数据基础                | `docs/superpowers/specs/2026-08-25-private-markdown-community-design.md`                                     | Product/design spec          | 2026-08-25    |
+| V2 Activity 与通知                     | `docs/superpowers/specs/2026-08-25-activity-notifications-v2-design.md`                                      | Product/design spec          | 2026-08-25    |
+| V3 revision、冲突与恢复                | `docs/superpowers/specs/2026-08-25-post-revisions-v3-design.md`                                              | Product/design spec          | 2026-08-25    |
+| V4 内容生命周期与资源回收              | `docs/superpowers/specs/2026-08-26-content-lifecycle-v4-design.md`                                           | Product/design spec          | 2026-08-26    |
+| V5 Annotation AST、正文批注与讨论      | `docs/superpowers/specs/2026-08-27-annotation-v5-design.md`                                                  | Product/design spec          | 2026-08-27    |
+| V6 AnnotationGuard、批注编辑与 Loading | `docs/superpowers/specs/2026-08-31-annotation-guard-v6-design.md`                                            | Product/design spec          | 2026-08-31    |
+| V8 跨段批注                            | `docs/superpowers/specs/2026-09-03-cross-block-annotation-v8-design.md`                                      | Product/design spec          | 2026-09-03    |
+| 服务器权限边界                         | `lib/auth/access.ts`                                                                                         | Verified domain invariant    | 2026-08-25    |
+| 保存、删除、隐藏与恢复状态机           | `lib/posts/service.ts`, `lib/lifecycle/service.ts`, `lib/revisions/service.ts`, `lib/annotations/service.ts` | Verified API/domain contract | 2026-08-27    |
 
 ## Visual contract
 
@@ -36,35 +36,35 @@
 
 ## Canonical UI Map
 
-| Capability | Canonical owner | Source of truth | Allowed variants | Verification |
-|---|---|---|---|---|
-| Form | `PostEditorForm` 与现有 server actions | `components/editor/post-editor-form.tsx` | new / edit / conflict | unit + build |
-| Scrollbar | global document baseline | `app/globals.css` | stable-gutter geometry only | static audit |
-| Dialog | `ModalDialog` | `components/modal-dialog.tsx` | dialog / alertdialog | keyboard policy + build |
-| CRUD | post/revision services | `lib/posts/service.ts`, `lib/revisions/service.ts` | create / edit / restore | unit + migration + build |
-| Upload | Markdown editor and attachment upload | `/api/assets`, `lib/assets/storage.ts` | inline image / attachment | service + build |
-| Account popover | `AccountMenu` | `components/account-menu.tsx` | member / administrator links | dismissal unit test |
-| Lifecycle | lifecycle policy/service | `lib/lifecycle/*` | normal / user deleted / admin hidden | unit + migration + build |
-| Moderation | administrator content management | `app/(site)/admin`, `components/admin/content-lifecycle-control.tsx` | posts / replies / audit | server permission + build |
-| Asset access and GC | reference-aware asset services | `lib/assets/access-service.ts`, `lib/assets/gc.ts` | active / historical / temporary / orphan | unit + service review |
-| Annotation AST/selection | annotation Markdown and structural selection | `lib/annotations/markdown.ts`, `lib/annotations/span.ts`, `lib/annotations/selection.ts` | single-block / consecutive cross-block | round-trip + selection unit |
-| Annotation reading | `AnnotationReadingLayout` | `components/annotations/annotation-reading-layout.tsx` | desktop sidebar / mobile sheet | unit + build + browser |
-| Annotation lifecycle | annotation service and shared moderation | `lib/annotations/service.ts`, `components/admin/content-lifecycle-control.tsx` | create / reply / delete / hide / unhide / restore | unit + transaction review |
-| Annotated editing | `AnnotationGuard` + authoritative post save | `lib/editor/annotation-guard.ts`, `lib/editor/annotation-session.ts`, `lib/posts/service.ts` | safe edit / confirmed retirement / conflict | inspector + integration + transaction tests |
-| Route loading and recovery | shared loading/error surfaces | `components/loading/*`, `components/error-state.tsx`, App Router `loading.tsx` / `error.tsx` | route / independent region / global recovery / not-found | static contract + build + rendered smoke |
+| Capability                 | Canonical owner                              | Source of truth                                                                              | Allowed variants                                         | Verification                                |
+| -------------------------- | -------------------------------------------- | -------------------------------------------------------------------------------------------- | -------------------------------------------------------- | ------------------------------------------- |
+| Form                       | `PostEditorForm` 与现有 server actions       | `components/editor/post-editor-form.tsx`                                                     | new / edit / conflict                                    | unit + build                                |
+| Scrollbar                  | global document baseline                     | `app/globals.css`                                                                            | stable-gutter geometry only                              | static audit                                |
+| Dialog                     | `ModalDialog`                                | `components/modal-dialog.tsx`                                                                | dialog / alertdialog                                     | keyboard policy + build                     |
+| CRUD                       | post/revision services                       | `lib/posts/service.ts`, `lib/revisions/service.ts`                                           | create / edit / restore                                  | unit + migration + build                    |
+| Upload                     | Markdown editor and attachment upload        | `/api/assets`, `lib/assets/storage.ts`                                                       | inline image / attachment                                | service + build                             |
+| Account popover            | `AccountMenu`                                | `components/account-menu.tsx`                                                                | member / administrator links                             | dismissal unit test                         |
+| Lifecycle                  | lifecycle policy/service                     | `lib/lifecycle/*`                                                                            | normal / user deleted / admin hidden                     | unit + migration + build                    |
+| Moderation                 | administrator content management             | `app/(site)/admin`, `components/admin/content-lifecycle-control.tsx`                         | posts / replies / audit                                  | server permission + build                   |
+| Asset access and GC        | reference-aware asset services               | `lib/assets/access-service.ts`, `lib/assets/gc.ts`                                           | active / historical / temporary / orphan                 | unit + service review                       |
+| Annotation AST/selection   | annotation Markdown and structural selection | `lib/annotations/markdown.ts`, `lib/annotations/span.ts`, `lib/annotations/selection.ts`     | single-block / consecutive cross-block                   | round-trip + selection unit                 |
+| Annotation reading         | `AnnotationReadingLayout`                    | `components/annotations/annotation-reading-layout.tsx`                                       | desktop sidebar / mobile sheet                           | unit + build + browser                      |
+| Annotation lifecycle       | annotation service and shared moderation     | `lib/annotations/service.ts`, `components/admin/content-lifecycle-control.tsx`               | create / reply / delete / hide / unhide / restore        | unit + transaction review                   |
+| Annotated editing          | `AnnotationGuard` + authoritative post save  | `lib/editor/annotation-guard.ts`, `lib/editor/annotation-session.ts`, `lib/posts/service.ts` | safe edit / confirmed retirement / conflict              | inspector + integration + transaction tests |
+| Route loading and recovery | shared loading/error surfaces                | `components/loading/*`, `components/error-state.tsx`, App Router `loading.tsx` / `error.tsx` | route / independent region / global recovery / not-found | static contract + build + rendered smoke    |
 
 ## Component behavior
 
-| Component | Default | Hover | Focus | Active | Disabled | Busy | Error |
-|---|---|---|---|---|---|---|---|
-| Button | labelled action | tone strengthens | visible native/project ring | slight press/selected state | non-interactive, reduced opacity | fixed width, progress copy | inline actionable copy |
-| Input | white paper field | border visible | green ring | n/a | non-interactive | submit owns pending | text + `aria-invalid` |
-| Search | explicit submit | border visible | green ring | n/a | n/a | route transition | results/empty state |
-| Textarea/editor | fixed authored surface | n/a | green boundary/editor focus | n/a | read-only when required | local draft status | retained content + inline error |
-| List/timeline | readable rows | border/tone change | link focus | selected green surface | n/a | stable footprint | empty explanatory copy |
-| Annotation range | one or more linked pale red marks + dotted underline | all same-ID marks strengthen | visible ring | linked card/all ranges highlight | creation menu withheld on overlap | composer submit disabled | explicit conflict/selection copy |
-| Annotation card/sheet | author, time, content, replies | linked range highlight | visible card focus | stable ID selected | unavailable content uses placeholder | fixed-size publish action | input retained with inline error |
-| Skeleton | final-layout geometry | n/a | n/a | static paper-tone surface | n/a | delayed subtle shimmer + `aria-busy` | replaced by safe recovery card |
+| Component             | Default                                              | Hover                        | Focus                       | Active                           | Disabled                             | Busy                                 | Error                            |
+| --------------------- | ---------------------------------------------------- | ---------------------------- | --------------------------- | -------------------------------- | ------------------------------------ | ------------------------------------ | -------------------------------- |
+| Button                | labelled action                                      | tone strengthens             | visible native/project ring | slight press/selected state      | non-interactive, reduced opacity     | fixed width, progress copy           | inline actionable copy           |
+| Input                 | white paper field                                    | border visible               | green ring                  | n/a                              | non-interactive                      | submit owns pending                  | text + `aria-invalid`            |
+| Search                | explicit submit                                      | border visible               | green ring                  | n/a                              | n/a                                  | route transition                     | results/empty state              |
+| Textarea/editor       | fixed authored surface                               | n/a                          | green boundary/editor focus | n/a                              | read-only when required              | local draft status                   | retained content + inline error  |
+| List/timeline         | readable rows                                        | border/tone change           | link focus                  | selected green surface           | n/a                                  | stable footprint                     | empty explanatory copy           |
+| Annotation range      | one or more linked pale red marks + dotted underline | all same-ID marks strengthen | visible ring                | linked card/all ranges highlight | creation menu withheld on overlap    | composer submit disabled             | explicit conflict/selection copy |
+| Annotation card/sheet | author, time, content, replies                       | linked range highlight       | visible card focus          | stable ID selected               | unavailable content uses placeholder | fixed-size publish action            | input retained with inline error |
+| Skeleton              | final-layout geometry                                | n/a                          | n/a                         | static paper-tone surface        | n/a                                  | delayed subtle shimmer + `aria-busy` | replaced by safe recovery card   |
 
 ## Dataset navigation
 
@@ -78,31 +78,31 @@
 
 ## Flow ledger
 
-| Operation | Trigger | Pending | Success destination | Success feedback | Failure recovery | Focus outcome | Source ref |
-|---|---|---|---|---|---|---|---|
-| Publish | 发布帖子 | disabled submit | new post | post page | editor retains draft/error | route heading | V1 spec |
-| Edit | 保存修改 | disabled submit | post page | edited time | IndexedDB + conflict UI | post heading | V3 + V6 spec |
-| Retire annotation by editing | 破坏受保护端点 → 确认 → 保存修改 | 本地待撤下，保存时 disabled submit | post page | anchor/thread 退出当前版本，revision 保留历史 | Undo/放弃草稿恢复；失败保留 IndexedDB | 安全取消按钮 / post heading | V6 spec |
-| Use online | conflict choice + confirm | local state replacement | editor | conflict clears | confirmation can cancel | editor | V3 spec |
-| Overwrite | conflict choice + confirm；仅基础区间无批注变化时提供 | disabled submit | post page | new revision | refreshed conflict if race repeats | post heading | V3 + V6 spec |
-| Annotation-change conflict | conflict dialog | local draft remains available | current editor | explains why overwrite is unavailable | load latest and manually reapply | safe/manual choice | V6 spec |
-| Restore | 恢复此版本 + confirm | form pending | new revision preview | status notice | history remains unchanged | page heading | V3 spec |
-| Delete post | 删除帖子 + confirm | disabled confirm | same URL with controlled placeholder | body removed; surviving discussion retained | retry is a no-op | refreshed article | V4 spec |
-| Delete reply | 删除这条回复 + confirm | disabled confirm | same discussion | reply disappears or becomes a placeholder | retry is a no-op | refreshed thread | V4 spec |
-| Hide/unhide | administrator action + confirm | disabled confirm | current admin filter | status badges and audit update | retry is a no-op | refreshed row | V4 spec |
-| Restore deleted | administrator action + confirm | disabled confirm | current admin filter | current content becomes active unless still hidden | retry is a no-op | refreshed row | V4 spec |
-| Upload | file input | local pending | editor | attachment row/inline image | inline upload error | file input/editor | V1 spec |
-| Account menu | avatar button | n/a | selected route | menu closes | outside/Escape close | trigger restored on Escape | V3 addendum |
-| Create annotation | select consecutive supported body text → 添加批注 | disabled duplicate publish | same post | linked ranges, one card/sheet, Activity and author notification | selection conflict keeps正文 unchanged; choose again | active thread/card | V5 + V8 spec |
-| Reply annotation | 回复批注 / 回复成员 | disabled duplicate publish | same thread | one-layer reply + direct-target notification | editor retains content/error | refreshed thread | V5 spec |
-| Delete annotation | 删除批注 + confirm | disabled confirm | same post | no-thread anchor exits; dependent thread becomes placeholder | retry is a no-op | refreshed article/thread | V5 spec |
-| Hide annotation | administrator action + confirm | disabled confirm | current admin filter | placeholder/audit; root creates annotation-state revision | retry is a no-op | refreshed row | V5 spec |
-| Restore annotated revision | 恢复此版本 + annotation impact confirm | disabled confirm | new revision preview |正文、assets、anchors、states一起恢复 | transaction rollback and stale-version error | page heading | V5 spec |
-| Parse DOCX | 选择 `.docx` | staged Worker progress + cancel | import Preview | canonical rendering, annotations and warnings | typed error; original file remains local | Preview heading | V5.5 spec |
-| Resume DOCX Preview | 打开导入页并选择 24h 内草稿 | local IndexedDB load | import Preview | same batch/UUIDs/assets restored | discard stale/invalid Preview | Preview heading | V5.5 spec |
-| Confirm DOCX import | 确认导入 | disabled duplicate submit | new post | one initial revision + POST_CREATED | Preview retained; R2 objects stay temporary | post heading | V5.5 spec |
-| Map Word author | 关联站内用户 | local validation | same Preview | source identity remains visible | mapping retained with inline error | mapping control | V5.5 spec |
-| Read DOCX attribution notice | 通知列表或详情 | 标记已读 | imported post | 汇总显示关联批注数量与导入者 | 帖子不可访问时保留历史通知占位 | 通知详情标题 | V5.5 spec |
+| Operation                    | Trigger                                               | Pending                            | Success destination                  | Success feedback                                                | Failure recovery                                     | Focus outcome               | Source ref   |
+| ---------------------------- | ----------------------------------------------------- | ---------------------------------- | ------------------------------------ | --------------------------------------------------------------- | ---------------------------------------------------- | --------------------------- | ------------ |
+| Publish                      | 发布帖子                                              | disabled submit                    | new post                             | post page                                                       | editor retains draft/error                           | route heading               | V1 spec      |
+| Edit                         | 保存修改                                              | disabled submit                    | post page                            | edited time                                                     | IndexedDB + conflict UI                              | post heading                | V3 + V6 spec |
+| Retire annotation by editing | 破坏受保护端点 → 确认 → 保存修改                      | 本地待撤下，保存时 disabled submit | post page                            | anchor/thread 退出当前版本，revision 保留历史                   | Undo/放弃草稿恢复；失败保留 IndexedDB                | 安全取消按钮 / post heading | V6 spec      |
+| Use online                   | conflict choice + confirm                             | local state replacement            | editor                               | conflict clears                                                 | confirmation can cancel                              | editor                      | V3 spec      |
+| Overwrite                    | conflict choice + confirm；仅基础区间无批注变化时提供 | disabled submit                    | post page                            | new revision                                                    | refreshed conflict if race repeats                   | post heading                | V3 + V6 spec |
+| Annotation-change conflict   | conflict dialog                                       | local draft remains available      | current editor                       | explains why overwrite is unavailable                           | load latest and manually reapply                     | safe/manual choice          | V6 spec      |
+| Restore                      | 恢复此版本 + confirm                                  | form pending                       | new revision preview                 | status notice                                                   | history remains unchanged                            | page heading                | V3 spec      |
+| Delete post                  | 删除帖子 + confirm                                    | disabled confirm                   | same URL with controlled placeholder | body removed; surviving discussion retained                     | retry is a no-op                                     | refreshed article           | V4 spec      |
+| Delete reply                 | 删除这条回复 + confirm                                | disabled confirm                   | same discussion                      | reply disappears or becomes a placeholder                       | retry is a no-op                                     | refreshed thread            | V4 spec      |
+| Hide/unhide                  | administrator action + confirm                        | disabled confirm                   | current admin filter                 | status badges and audit update                                  | retry is a no-op                                     | refreshed row               | V4 spec      |
+| Restore deleted              | administrator action + confirm                        | disabled confirm                   | current admin filter                 | current content becomes active unless still hidden              | retry is a no-op                                     | refreshed row               | V4 spec      |
+| Upload                       | file input                                            | local pending                      | editor                               | attachment row/inline image                                     | inline upload error                                  | file input/editor           | V1 spec      |
+| Account menu                 | avatar button                                         | n/a                                | selected route                       | menu closes                                                     | outside/Escape close                                 | trigger restored on Escape  | V3 addendum  |
+| Create annotation            | select consecutive supported body text → 添加批注     | disabled duplicate publish         | same post                            | linked ranges, one card/sheet, Activity and author notification | selection conflict keeps正文 unchanged; choose again | active thread/card          | V5 + V8 spec |
+| Reply annotation             | 回复批注 / 回复成员                                   | disabled duplicate publish         | same thread                          | one-layer reply + direct-target notification                    | editor retains content/error                         | refreshed thread            | V5 spec      |
+| Delete annotation            | 删除批注 + confirm                                    | disabled confirm                   | same post                            | no-thread anchor exits; dependent thread becomes placeholder    | retry is a no-op                                     | refreshed article/thread    | V5 spec      |
+| Hide annotation              | administrator action + confirm                        | disabled confirm                   | current admin filter                 | placeholder/audit; root creates annotation-state revision       | retry is a no-op                                     | refreshed row               | V5 spec      |
+| Restore annotated revision   | 恢复此版本 + annotation impact confirm                | disabled confirm                   | new revision preview                 | 正文、assets、anchors、states一起恢复                           | transaction rollback and stale-version error         | page heading                | V5 spec      |
+| Parse DOCX                   | 选择 `.docx`                                          | staged Worker progress + cancel    | import Preview                       | canonical rendering, annotations and warnings                   | typed error; original file remains local             | Preview heading             | V5.5 spec    |
+| Resume DOCX Preview          | 打开导入页并选择 24h 内草稿                           | local IndexedDB load               | import Preview                       | same batch/UUIDs/assets restored                                | discard stale/invalid Preview                        | Preview heading             | V5.5 spec    |
+| Confirm DOCX import          | 确认导入                                              | disabled duplicate submit          | new post                             | one initial revision + POST_CREATED                             | Preview retained; R2 objects stay temporary          | post heading                | V5.5 spec    |
+| Map Word author              | 关联站内用户                                          | local validation                   | same Preview                         | source identity remains visible                                 | mapping retained with inline error                   | mapping control             | V5.5 spec    |
+| Read DOCX attribution notice | 通知列表或详情                                        | 标记已读                           | imported post                        | 汇总显示关联批注数量与导入者                                    | 帖子不可访问时保留历史通知占位                       | 通知详情标题                | V5.5 spec    |
 
 ## Navigation and responsive behavior
 

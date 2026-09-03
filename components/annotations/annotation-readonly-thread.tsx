@@ -2,7 +2,10 @@
 
 import { AnnotationThread, type AnnotationCardView } from "./annotation-thread";
 
-export function AnnotationReadonlyThread({ annotation, onLocate }: {
+export function AnnotationReadonlyThread({
+  annotation,
+  onLocate,
+}: {
   annotation: AnnotationCardView;
   onLocate?: () => void;
 }) {

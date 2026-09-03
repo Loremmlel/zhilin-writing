@@ -65,16 +65,20 @@ test("duplicate imported reply snapshot rows are rejected instead of being synth
     hiddenByUserId: null,
   };
 
-  assert.throws(() => planAnnotationRestore({
-    ...restoreAudit,
-    currentMarkdown: `:annotation[正文]{#${ROOT_ID}}`,
-    currentAnchorIds: [ROOT_ID],
-    currentStates: [activeRoot()],
-    currentImportedReplyStates: [duplicate],
-    sourceMarkdown: `:annotation[正文]{#${ROOT_ID}}`,
-    sourceStates: [activeRoot()],
-    sourceImportedReplyStates: [duplicate, duplicate],
-  }), /导入批注回复快照不一致/);
+  assert.throws(
+    () =>
+      planAnnotationRestore({
+        ...restoreAudit,
+        currentMarkdown: `:annotation[正文]{#${ROOT_ID}}`,
+        currentAnchorIds: [ROOT_ID],
+        currentStates: [activeRoot()],
+        currentImportedReplyStates: [duplicate],
+        sourceMarkdown: `:annotation[正文]{#${ROOT_ID}}`,
+        sourceStates: [activeRoot()],
+        sourceImportedReplyStates: [duplicate, duplicate],
+      }),
+    /导入批注回复快照不一致/,
+  );
 });
 
 function activeRoot() {

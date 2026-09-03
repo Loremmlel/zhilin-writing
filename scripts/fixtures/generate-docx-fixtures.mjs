@@ -46,7 +46,7 @@ ${comments}
 }
 
 function comment(id, paraId, author, initials, text) {
-  return `  <w:comment w:id="${id}" w:author="${author}" w:initials="${initials}" w:date="2024-01-0${Number(id) % 9 + 1}T00:00:00Z">
+  return `  <w:comment w:id="${id}" w:author="${author}" w:initials="${initials}" w:date="2024-01-0${(Number(id) % 9) + 1}T00:00:00Z">
     <w:p w14:paraId="${paraId}"><w:r><w:t>${text}</w:t></w:r></w:p>
   </w:comment>`;
 }
@@ -72,13 +72,17 @@ export async function createDocxFixtureBytes(parts) {
   const writer = new ZipWriter(new Uint8ArrayWriter(), { level: 0 });
   for (const name of Object.keys(parts).sort()) {
     const value = parts[name];
-    await writer.add(name, typeof value === "string" ? new TextReader(value) : new Uint8ArrayReader(value), {
-      dataDescriptor: false,
-      lastModDate: FIXED_ZIP_DATE,
-      rawLastModDate: FIXED_ZIP_DOS_DATE,
-      level: 0,
-      useWebWorkers: false,
-    });
+    await writer.add(
+      name,
+      typeof value === "string" ? new TextReader(value) : new Uint8ArrayReader(value),
+      {
+        dataDescriptor: false,
+        lastModDate: FIXED_ZIP_DATE,
+        rawLastModDate: FIXED_ZIP_DOS_DATE,
+        level: 0,
+        useWebWorkers: false,
+      },
+    );
   }
   return writer.close();
 }
@@ -86,14 +90,17 @@ export async function createDocxFixtureBytes(parts) {
 export async function generateProbeFixtures(directory = GENERATED_DIRECTORY) {
   const fixtures = await generatedFixtureBytes();
   await mkdir(directory, { recursive: true });
-  await Promise.all([...fixtures].map(([filename, bytes]) => writeFile(resolve(directory, filename), bytes)));
+  await Promise.all(
+    [...fixtures].map(([filename, bytes]) => writeFile(resolve(directory, filename), bytes)),
+  );
 }
 
 export async function checkGeneratedFixtures(directory = GENERATED_DIRECTORY) {
   const fixtures = await generatedFixtureBytes();
   for (const [filename, expected] of fixtures) {
     const actual = await readFile(resolve(directory, filename));
-    if (!equalBytes(actual, expected)) throw new Error(`${filename} is not byte-for-byte current; regenerate fixtures`);
+    if (!equalBytes(actual, expected))
+      throw new Error(`${filename} is not byte-for-byte current; regenerate fixtures`);
   }
   process.stdout.write(`verified ${fixtures.size} generated DOCX fixtures\n`);
 }
@@ -105,10 +112,12 @@ async function generatedFixtureBytes() {
     <w:commentRangeStart w:id="1"/><w:r><w:t>beta</w:t></w:r><w:commentRangeEnd w:id="1"/><w:r><w:commentReference w:id="1"/></w:r>
     <w:r><w:t> after</w:t></w:r>
   </w:p>`);
-  const adjacentComments = commentsXml([
-    comment("0", "000000A0", "Adjacent A", "AA", "alpha comment"),
-    comment("1", "000000A1", "Adjacent B", "AB", "beta comment"),
-  ].join("\n"));
+  const adjacentComments = commentsXml(
+    [
+      comment("0", "000000A0", "Adjacent A", "AA", "alpha comment"),
+      comment("1", "000000A1", "Adjacent B", "AB", "beta comment"),
+    ].join("\n"),
+  );
   const overlapDocument = documentXml(`<w:p>
     <w:commentRangeStart w:id="10"/><w:r><w:t>A</w:t></w:r>
     <w:commentRangeStart w:id="11"/><w:r><w:t>B</w:t></w:r>
@@ -116,18 +125,22 @@ async function generatedFixtureBytes() {
     <w:r><w:t>D</w:t></w:r><w:commentRangeEnd w:id="12"/><w:r><w:commentReference w:id="12"/></w:r>
     <w:r><w:t>E</w:t></w:r><w:commentRangeEnd w:id="10"/><w:r><w:commentReference w:id="10"/></w:r>
   </w:p>`);
-  const overlapComments = commentsXml([
-    comment("10", "000000B0", "Outer", "O", "outer comment"),
-    comment("11", "000000B1", "Cross A", "CA", "crossing comment A"),
-    comment("12", "000000B2", "Cross B", "CB", "crossing comment B"),
-  ].join("\n"));
+  const overlapComments = commentsXml(
+    [
+      comment("10", "000000B0", "Outer", "O", "outer comment"),
+      comment("11", "000000B1", "Cross A", "CA", "crossing comment A"),
+      comment("12", "000000B2", "Cross B", "CB", "crossing comment B"),
+    ].join("\n"),
+  );
   const threadedDocument = documentXml(`<w:p>
     <w:r><w:t>thread </w:t></w:r><w:commentRangeStart w:id="20"/><w:r><w:t>anchor</w:t></w:r><w:commentRangeEnd w:id="20"/><w:r><w:commentReference w:id="20"/></w:r>
   </w:p>`);
-  const threadedComments = commentsXml([
-    comment("20", "AAA00020", "Root Author", "RA", "root comment"),
-    comment("21", "AAA00021", "Reply Author", "RP", "reply comment"),
-  ].join("\n"));
+  const threadedComments = commentsXml(
+    [
+      comment("20", "AAA00020", "Root Author", "RA", "root comment"),
+      comment("21", "AAA00021", "Reply Author", "RP", "reply comment"),
+    ].join("\n"),
+  );
   const threadedExtended = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <w15:commentsEx xmlns:w15="http://schemas.microsoft.com/office/word/2012/wordml">
   <w15:commentEx w15:paraId="AAA00020" w15:done="1"/>
@@ -136,13 +149,20 @@ async function generatedFixtureBytes() {
   const parts = new Map([
     ["probe-adjacent.docx", commonParts(adjacentDocument, adjacentComments)],
     ["probe-overlap-nested.docx", commonParts(overlapDocument, overlapComments)],
-    ["probe-threaded-resolved.docx", commonParts(threadedDocument, threadedComments, threadedExtended)],
+    [
+      "probe-threaded-resolved.docx",
+      commonParts(threadedDocument, threadedComments, threadedExtended),
+    ],
     ["semantic-matrix.docx", semanticMatrixParts()],
   ]);
-  return new Map(await Promise.all([...parts].map(async ([filename, fixtureParts]) => [
-    filename,
-    await createDocxFixtureBytes(fixtureParts),
-  ])));
+  return new Map(
+    await Promise.all(
+      [...parts].map(async ([filename, fixtureParts]) => [
+        filename,
+        await createDocxFixtureBytes(fixtureParts),
+      ]),
+    ),
+  );
 }
 
 function semanticMatrixParts() {
@@ -192,25 +212,28 @@ function semanticMatrixParts() {
   <Relationship Id="rUnsafe" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink" Target="javascript:alert(1)" TargetMode="External"/>
   <Relationship Id="rImage" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/matrix.png"/>
 </Relationships>`;
-  const comments = commentsXml([
-    semanticComment("1", "AAA00001", "甲", "J", "相邻一"),
-    semanticComment("2", "AAA00002", "乙", "Y", "相邻二"),
-    semanticComment("3", "AAA00003", "丙", "B", "相邻三"),
-    semanticComment("4", "AAA00004", "外层", "O", "外层批注"),
-    semanticComment("5", "AAA00005", "内层", "I", "内层批注"),
-    semanticComment("10", "AAA00010", "根作者", "RA", "根批注"),
-    semanticComment("11", "AAA00011", "回复作者", "RP", "回复正文"),
-    semanticComment("20", "AAA00020", "空范围", "E", "空范围批注"),
-    semanticComment("21", "AAA00021", "跨段", "X", "跨段批注"),
-    semanticComment("22", "AAA00022", "表格", "T", "表格批注"),
-    semanticComment("24", "AAA00024", "图片", "P", "图片批注"),
-    semanticComment("25", "AAA00025", "列表", "L", "列表批注"),
-    semanticComment("26", "AAA00026", "无扩展", "U", "缺少扩展记录"),
-    semanticComment("30", "AAA00030", "循环根", "C0", "循环根批注"),
-    semanticComment("31", "AAA00031", "循环回复", "C1", "循环回复"),
-  ].join("\n"));
+  const comments = commentsXml(
+    [
+      semanticComment("1", "AAA00001", "甲", "J", "相邻一"),
+      semanticComment("2", "AAA00002", "乙", "Y", "相邻二"),
+      semanticComment("3", "AAA00003", "丙", "B", "相邻三"),
+      semanticComment("4", "AAA00004", "外层", "O", "外层批注"),
+      semanticComment("5", "AAA00005", "内层", "I", "内层批注"),
+      semanticComment("10", "AAA00010", "根作者", "RA", "根批注"),
+      semanticComment("11", "AAA00011", "回复作者", "RP", "回复正文"),
+      semanticComment("20", "AAA00020", "空范围", "E", "空范围批注"),
+      semanticComment("21", "AAA00021", "跨段", "X", "跨段批注"),
+      semanticComment("22", "AAA00022", "表格", "T", "表格批注"),
+      semanticComment("24", "AAA00024", "图片", "P", "图片批注"),
+      semanticComment("25", "AAA00025", "列表", "L", "列表批注"),
+      semanticComment("26", "AAA00026", "无扩展", "U", "缺少扩展记录"),
+      semanticComment("30", "AAA00030", "循环根", "C0", "循环根批注"),
+      semanticComment("31", "AAA00031", "循环回复", "C1", "循环回复"),
+    ].join("\n"),
+  );
   const extendedRoots = ["1", "2", "3", "4", "5", "20", "21", "22", "24", "25"]
-    .map((id) => `  <w15:commentEx w15:paraId="AAA000${id.padStart(2, "0")}"/>`).join("\n");
+    .map((id) => `  <w15:commentEx w15:paraId="AAA000${id.padStart(2, "0")}"/>`)
+    .join("\n");
   const commentsExtended = `<?xml version="1.0" encoding="UTF-8"?>
 <w15:commentsEx xmlns:w15="http://schemas.microsoft.com/office/word/2012/wordml">
 ${extendedRoots}
@@ -301,7 +324,9 @@ function semanticNotes(root, item, id, text) {
 }
 
 function equalBytes(left, right) {
-  return left.byteLength === right.byteLength && left.every((value, index) => value === right[index]);
+  return (
+    left.byteLength === right.byteLength && left.every((value, index) => value === right[index])
+  );
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

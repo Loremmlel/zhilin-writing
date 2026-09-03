@@ -51,29 +51,36 @@ test("API member resolution returns typed outcomes without page redirects", asyn
     findMemberByEmail: async () => ({ id: "member-id" }),
   };
 
+  assert.deepEqual(await authModule.resolveApiMemberAccess(null, null, baseDependencies), {
+    ok: false,
+    code: "AUTH_EXPIRED",
+    status: 401,
+  });
   assert.deepEqual(
-    await authModule.resolveApiMemberAccess(null, null, baseDependencies),
-    { ok: false, code: "AUTH_EXPIRED", status: 401 },
+    await authModule.resolveApiMemberAccess({ email: "revoked@example.com" }, null, {
+      ...baseDependencies,
+      findAllowedUser: async () => null,
+    }),
+    { ok: false, code: "ACCESS_REVOKED", status: 403 },
   );
   assert.deepEqual(
-    await authModule.resolveApiMemberAccess(
-      { email: "revoked@example.com" },
-      null,
-      { ...baseDependencies, findAllowedUser: async () => null },
-    ),
-    { ok: false, code: "ACCESS_REVOKED", status: 403 },
+    await authModule.resolveApiMemberAccess({ email: "member@example.com" }, null, {
+      ...baseDependencies,
+      findMemberByEmail: async () => null,
+    }),
+    { ok: false, code: "ONBOARDING_REQUIRED", status: 403 },
   );
   assert.deepEqual(
     await authModule.resolveApiMemberAccess(
       { email: "member@example.com" },
       null,
-      { ...baseDependencies, findMemberByEmail: async () => null },
+      baseDependencies,
     ),
-    { ok: false, code: "ONBOARDING_REQUIRED", status: 403 },
-  );
-  assert.deepEqual(
-    await authModule.resolveApiMemberAccess({ email: "member@example.com" }, null, baseDependencies),
-    { ok: true, member: { id: "member-id" }, allowed: { email: "member@example.com", isAdmin: false } },
+    {
+      ok: true,
+      member: { id: "member-id" },
+      allowed: { email: "member@example.com", isAdmin: false },
+    },
   );
 });
 
@@ -102,7 +109,9 @@ test("mutations and asset APIs use typed access instead of navigation redirects"
     "app/api/assets/route.ts",
     "app/api/assets/[id]/route.ts",
   ];
-  const sources = await Promise.all(paths.map((path) => readFile(new URL(`../${path}`, import.meta.url), "utf8")));
+  const sources = await Promise.all(
+    paths.map((path) => readFile(new URL(`../${path}`, import.meta.url), "utf8")),
+  );
 
   for (const [index, source] of sources.entries()) {
     assert.doesNotMatch(source, /requireMember|requireAdministrator/, paths[index]);

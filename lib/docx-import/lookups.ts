@@ -1,12 +1,6 @@
 import type { DocxPackageReader } from "./package.ts";
 import type { InlineMark } from "./types.ts";
-import {
-  parseOrderedXml,
-  type OrderedXmlNode,
-  xmlAttr,
-  xmlChild,
-  xmlChildren,
-} from "./xml.ts";
+import { parseOrderedXml, type OrderedXmlNode, xmlAttr, xmlChild, xmlChildren } from "./xml.ts";
 
 export interface NumberingReference {
   numId?: string;
@@ -78,25 +72,34 @@ interface AbstractNumbering {
 const CODE_STYLE_NAMES = new Set(["code", "codechar", "sourcecode"]);
 
 export async function loadDocxLookups(pkg: DocxPackageReader): Promise<DocxLookups> {
-  const contentTypes = parseContentTypes(parseOrderedXml(
-    await pkg.readText("[Content_Types].xml"),
-    "[Content_Types].xml",
-  ));
+  const contentTypes = parseContentTypes(
+    parseOrderedXml(await pkg.readText("[Content_Types].xml"), "[Content_Types].xml"),
+  );
   const styles = pkg.has("word/styles.xml")
     ? parseStyles(parseOrderedXml(await pkg.readText("word/styles.xml"), "word/styles.xml"))
     : new Map<string, StyleDefinition>();
   const { abstractNumbering, numberingInstances } = pkg.has("word/numbering.xml")
-    ? parseNumbering(parseOrderedXml(await pkg.readText("word/numbering.xml"), "word/numbering.xml"))
-    : { abstractNumbering: new Map<string, AbstractNumbering>(), numberingInstances: new Map<string, string>() };
+    ? parseNumbering(
+        parseOrderedXml(await pkg.readText("word/numbering.xml"), "word/numbering.xml"),
+      )
+    : {
+        abstractNumbering: new Map<string, AbstractNumbering>(),
+        numberingInstances: new Map<string, string>(),
+      };
   const relationships = pkg.has("word/_rels/document.xml.rels")
-    ? parseRelationships(parseOrderedXml(
-      await pkg.readText("word/_rels/document.xml.rels"),
-      "word/_rels/document.xml.rels",
-    ))
+    ? parseRelationships(
+        parseOrderedXml(
+          await pkg.readText("word/_rels/document.xml.rels"),
+          "word/_rels/document.xml.rels",
+        ),
+      )
     : new Map<string, DocumentRelationship>();
   const resolvedStyles = new Map<string, ResolvedStyle>();
 
-  const resolveStyle = (styleId: string | undefined, visiting = new Set<string>()): ResolvedStyle | undefined => {
+  const resolveStyle = (
+    styleId: string | undefined,
+    visiting = new Set<string>(),
+  ): ResolvedStyle | undefined => {
     if (!styleId) return undefined;
     const cached = resolvedStyles.get(styleId);
     if (cached) return cached;
@@ -127,7 +130,9 @@ export async function loadDocxLookups(pkg: DocxPackageReader): Promise<DocxLooku
         .find((match) => match !== null);
       const headingLevel = explicitHeading
         ? Number(explicitHeading[1])
-        : effective.outlineLevel !== undefined ? effective.outlineLevel + 1 : undefined;
+        : effective.outlineLevel !== undefined
+          ? effective.outlineLevel + 1
+          : undefined;
       return {
         headingLevel,
         quote: (style?.labels ?? []).some((label) => label === "quote" || label === "intensequote"),
@@ -138,10 +143,7 @@ export async function loadDocxLookups(pkg: DocxPackageReader): Promise<DocxLooku
       const paragraphStyle = resolveStyle(paragraphStyleId);
       const characterStyle = resolveStyle(characterStyleId);
       return {
-        ...mergeRunProperties(
-          mergeRunProperties(paragraphStyle?.run, characterStyle?.run),
-          direct,
-        ),
+        ...mergeRunProperties(mergeRunProperties(paragraphStyle?.run, characterStyle?.run), direct),
         codeStyle: (characterStyle?.labels ?? []).some((label) => CODE_STYLE_NAMES.has(label)),
       };
     },
@@ -155,8 +157,10 @@ export async function loadDocxLookups(pkg: DocxPackageReader): Promise<DocxLooku
       return id ? relationships.get(id) : undefined;
     },
     contentType(path) {
-      return contentTypes.overrides.get(path)
-        ?? contentTypes.defaults.get(path.split(".").at(-1)?.toLocaleLowerCase("en-US") ?? "");
+      return (
+        contentTypes.overrides.get(path) ??
+        contentTypes.defaults.get(path.split(".").at(-1)?.toLocaleLowerCase("en-US") ?? "")
+      );
     },
   };
 }
@@ -197,10 +201,12 @@ export function parseParagraphProperties(node: OrderedXmlNode | undefined): Para
   return {
     styleId: xmlAttr(xmlChild(node, "pStyle") ?? {}, "val"),
     outlineLevel: integerAttribute(xmlChild(node, "outlineLvl"), "val"),
-    numbering: numberingNode ? {
-      numId: xmlAttr(xmlChild(numberingNode, "numId") ?? {}, "val"),
-      level: integerAttribute(xmlChild(numberingNode, "ilvl"), "val"),
-    } : undefined,
+    numbering: numberingNode
+      ? {
+          numId: xmlAttr(xmlChild(numberingNode, "numId") ?? {}, "val"),
+          level: integerAttribute(xmlChild(numberingNode, "ilvl"), "val"),
+        }
+      : undefined,
     run: parseRunProperties(xmlChild(node, "rPr")),
   };
 }
@@ -221,8 +227,12 @@ export function parseRunProperties(node: OrderedXmlNode | undefined): RunPropert
   };
 }
 
-export function characterStyleId(runPropertiesNode: OrderedXmlNode | undefined): string | undefined {
-  return runPropertiesNode ? xmlAttr(xmlChild(runPropertiesNode, "rStyle") ?? {}, "val") : undefined;
+export function characterStyleId(
+  runPropertiesNode: OrderedXmlNode | undefined,
+): string | undefined {
+  return runPropertiesNode
+    ? xmlAttr(xmlChild(runPropertiesNode, "rStyle") ?? {}, "val")
+    : undefined;
 }
 
 function parseStyles(nodes: OrderedXmlNode[]): Map<string, StyleDefinition> {
@@ -298,15 +308,20 @@ function mergeParagraphProperties(
   return {
     styleId: own?.styleId ?? base?.styleId,
     outlineLevel: own?.outlineLevel ?? base?.outlineLevel,
-    numbering: own?.numbering ? {
-      numId: own.numbering.numId ?? base?.numbering?.numId,
-      level: own.numbering.level ?? base?.numbering?.level,
-    } : base?.numbering,
+    numbering: own?.numbering
+      ? {
+          numId: own.numbering.numId ?? base?.numbering?.numId,
+          level: own.numbering.level ?? base?.numbering?.level,
+        }
+      : base?.numbering,
     run: mergeRunProperties(base?.run, own?.run),
   };
 }
 
-function mergeRunProperties(base: RunProperties | undefined, own: RunProperties | undefined): RunProperties {
+function mergeRunProperties(
+  base: RunProperties | undefined,
+  own: RunProperties | undefined,
+): RunProperties {
   return {
     marks: { ...(base?.marks ?? {}), ...(definedMarkValues(own?.marks) ?? {}) },
     visualFormatting: Boolean(base?.visualFormatting || own?.visualFormatting),

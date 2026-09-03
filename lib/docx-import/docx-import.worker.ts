@@ -44,9 +44,10 @@ export async function handleDocxWorkerRequest(
     post({ kind: "success", requestId, result }, resultTransferables(result));
   } catch (error) {
     if (cancelledRequests.has(requestId)) return;
-    const typed = error instanceof DocxImportError
-      ? error
-      : new DocxImportError("PARSE_FAILED", "DOCX import failed", undefined, { cause: error });
+    const typed =
+      error instanceof DocxImportError
+        ? error
+        : new DocxImportError("PARSE_FAILED", "DOCX import failed", undefined, { cause: error });
     post({
       kind: "failure",
       requestId,
@@ -74,7 +75,8 @@ export interface DocxWorkerScope {
 }
 
 export function registerDocxWorkerScope(scope: DocxWorkerScope): void {
-  if (typeof scope.addEventListener !== "function" || typeof scope.postMessage !== "function") return;
+  if (typeof scope.addEventListener !== "function" || typeof scope.postMessage !== "function")
+    return;
   scope.addEventListener("message", (event) => {
     void handleDocxWorkerRequest(event.data, (message, transfer) => {
       scope.postMessage!(message, transfer);

@@ -11,7 +11,12 @@ import { logServerError } from "@/lib/logging";
 
 export type RestoreRevisionActionState = { error?: string; code?: ActionAccessErrorCode };
 
-export async function restoreRevisionAction(postId: string, revisionId: string, _previous: RestoreRevisionActionState, formData: FormData): Promise<RestoreRevisionActionState> {
+export async function restoreRevisionAction(
+  postId: string,
+  revisionId: string,
+  _previous: RestoreRevisionActionState,
+  formData: FormData,
+): Promise<RestoreRevisionActionState> {
   void _previous;
   const access = await getActionAdministratorAccess();
   if (!access.ok) return actionAccessFailure(access.code);
@@ -21,7 +26,13 @@ export async function restoreRevisionAction(postId: string, revisionId: string, 
     const operationId = validateLifecycleOperationId(String(formData.get("operationId") ?? ""));
     newRevisionId = await restorePostRevision(postId, revisionId, member.id, operationId);
   } catch (error) {
-    logServerError({ operation: "revision.restore", entityId: revisionId, userId: member.id, error, errorCode: "REVISION_RESTORE_FAILED" });
+    logServerError({
+      operation: "revision.restore",
+      entityId: revisionId,
+      userId: member.id,
+      error,
+      errorCode: "REVISION_RESTORE_FAILED",
+    });
     return { error: "恢复失败，请稍后重试" };
   }
   revalidatePath(`/posts/${postId}`);

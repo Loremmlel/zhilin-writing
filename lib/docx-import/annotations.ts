@@ -1,6 +1,10 @@
 import { DOCX_IMPORT_LIMITS } from "./limits.ts";
 import { escapeMarkdownLiteral } from "./markdown.ts";
-import { importTextBlocks, importedThreadSlices, type ImportedThreadSlice } from "./thread-range.ts";
+import {
+  importTextBlocks,
+  importedThreadSlices,
+  type ImportedThreadSlice,
+} from "./thread-range.ts";
 import { DocxImportError } from "./types.ts";
 import type {
   ImportedReply,
@@ -11,13 +15,7 @@ import type {
   SkippedThread,
 } from "./types.ts";
 import type { WalkedCommentRange, WalkedDocument } from "./walker.ts";
-import {
-  type OrderedXmlNodes,
-  xmlAttr,
-  xmlChild,
-  xmlChildren,
-  xmlText,
-} from "./xml.ts";
+import { type OrderedXmlNodes, xmlAttr, xmlChild, xmlChildren, xmlText } from "./xml.ts";
 
 export interface WordComment {
   sourceCommentId: string;
@@ -41,10 +39,7 @@ export interface WordCommentCatalog {
 }
 
 export type WordThreadInvalidReason =
-  | "MISSING_PARENT"
-  | "DUPLICATE_PARA_ID"
-  | "UNBOUND_COMMENT_EX"
-  | "CYCLE";
+  "MISSING_PARENT" | "DUPLICATE_PARA_ID" | "UNBOUND_COMMENT_EX" | "CYCLE";
 
 export interface WordThread {
   root: WordComment;
@@ -118,23 +113,30 @@ export function parseWordComments(
       .map((paragraph) => escapeMarkdownLiteral(xmlText(paragraph).trim()))
       .join("\n\n");
     const paraId = paragraphs.length > 0 ? xmlAttr(paragraphs.at(-1)!, "paraId") : undefined;
-    const extendedRecords = paraId ? extendedByParaId.get(paraId) ?? [] : [];
+    const extendedRecords = paraId ? (extendedByParaId.get(paraId) ?? []) : [];
     const extended = extendedRecords[0];
-    const parentParaIds = [...new Set(extendedRecords.flatMap((record) =>
-      record.parentParaId ? [record.parentParaId] : []))];
-    return [{
-      sourceCommentId,
-      sourceAuthorName: xmlAttr(node, "author") ?? "",
-      sourceInitials: xmlAttr(node, "initials"),
-      sourceCreatedAt: xmlAttr(node, "date"),
-      sourceDocumentOrder,
-      sourceResolved: extended?.resolved ?? false,
-      bodyMarkdown,
-      paraId,
-      parentParaId: extended?.parentParaId,
-      ...(parentParaIds.length > 0 ? { parentParaIds } : {}),
-      commentExBound: commentsExtendedXml ? Boolean(paraId && extendedByParaId.get(paraId)?.length === 1) : undefined,
-    } satisfies WordComment];
+    const parentParaIds = [
+      ...new Set(
+        extendedRecords.flatMap((record) => (record.parentParaId ? [record.parentParaId] : [])),
+      ),
+    ];
+    return [
+      {
+        sourceCommentId,
+        sourceAuthorName: xmlAttr(node, "author") ?? "",
+        sourceInitials: xmlAttr(node, "initials"),
+        sourceCreatedAt: xmlAttr(node, "date"),
+        sourceDocumentOrder,
+        sourceResolved: extended?.resolved ?? false,
+        bodyMarkdown,
+        paraId,
+        parentParaId: extended?.parentParaId,
+        ...(parentParaIds.length > 0 ? { parentParaIds } : {}),
+        commentExBound: commentsExtendedXml
+          ? Boolean(paraId && extendedByParaId.get(paraId)?.length === 1)
+          : undefined,
+      } satisfies WordComment,
+    ];
   });
 
   const counts = new Map<string, number>();
@@ -160,7 +162,9 @@ export function buildWordThreads(catalog: WordCommentCatalog): WordThread[] {
     return catalog.comments.map((root) => ({ root, replies: [] }));
   }
 
-  const byId = new Map(catalog.comments.map((comment) => [comment.sourceCommentId, { ...comment }]));
+  const byId = new Map(
+    catalog.comments.map((comment) => [comment.sourceCommentId, { ...comment }]),
+  );
   const idsByParaId = new Map<string, string[]>();
   for (const comment of byId.values()) {
     if (!comment.paraId) continue;
@@ -201,8 +205,8 @@ export function buildWordThreads(catalog: WordCommentCatalog): WordThread[] {
     if (comment.parentSourceCommentId) {
       connect(comment.sourceCommentId, comment.parentSourceCommentId);
     } else {
-      const parentParaIds = comment.parentParaIds
-        ?? (comment.parentParaId ? [comment.parentParaId] : []);
+      const parentParaIds =
+        comment.parentParaIds ?? (comment.parentParaId ? [comment.parentParaId] : []);
       for (const parentParaId of parentParaIds) {
         for (const parentId of idsByParaId.get(parentParaId) ?? []) {
           connect(comment.sourceCommentId, parentId);
@@ -228,14 +232,13 @@ export function buildWordThreads(catalog: WordCommentCatalog): WordThread[] {
       componentIds.push(id);
       pending.push(...(adjacency.get(id) ?? []));
     }
-    const component = componentIds
-      .map((id) => byId.get(id)!)
-      .sort(compareCommentOrder);
-    const invalidReason = component
-      .map((member) => invalidById.get(member.sourceCommentId))
-      .find((reason) => reason === "DUPLICATE_PARA_ID")
-      ?? component.map((member) => invalidById.get(member.sourceCommentId)).find(Boolean)
-      ?? (hasParentCycle(component, byId) ? "CYCLE" : undefined);
+    const component = componentIds.map((id) => byId.get(id)!).sort(compareCommentOrder);
+    const invalidReason =
+      component
+        .map((member) => invalidById.get(member.sourceCommentId))
+        .find((reason) => reason === "DUPLICATE_PARA_ID") ??
+      component.map((member) => invalidById.get(member.sourceCommentId)).find(Boolean) ??
+      (hasParentCycle(component, byId) ? "CYCLE" : undefined);
     const roots = component.filter((member) => !member.parentSourceCommentId);
     const root = !invalidReason && roots.length === 1 ? roots[0] : component[0];
     threads.push({
@@ -252,16 +255,16 @@ export function resolveAnnotationThreads(
   threads: WordThread[],
   factories: AnnotationIdFactories = {},
 ): ResolvedAnnotationThreads {
-  const createAnnotationId = factories.createAnnotationId
-    ?? (() => `ann_${crypto.randomUUID()}`);
-  const createReplyId = factories.createReplyId
-    ?? (() => crypto.randomUUID());
+  const createAnnotationId = factories.createAnnotationId ?? (() => `ann_${crypto.randomUUID()}`);
+  const createReplyId = factories.createReplyId ?? (() => crypto.randomUUID());
   const traces = new Map(walked.commentRanges.map((range) => [range.sourceCommentId, range]));
   const supportedBlocks = supportedTextBlocks(walked);
-  const catalogIds = new Set(threads.flatMap((thread) => [
-    thread.root.sourceCommentId,
-    ...thread.replies.map((reply) => reply.sourceCommentId),
-  ]));
+  const catalogIds = new Set(
+    threads.flatMap((thread) => [
+      thread.root.sourceCommentId,
+      ...thread.replies.map((reply) => reply.sourceCommentId),
+    ]),
+  );
   const skipped: SkippedThread[] = [];
   const candidates: Array<{
     thread: WordThread;
@@ -274,15 +277,19 @@ export function resolveAnnotationThreads(
 
   for (const thread of threads) {
     if (thread.invalidReason) {
-      skipped.push(skipWordThread(thread, "ANNOTATION_THREAD_SKIPPED", {
-        reason: thread.invalidReason,
-      }));
+      skipped.push(
+        skipWordThread(thread, "ANNOTATION_THREAD_SKIPPED", {
+          reason: thread.invalidReason,
+        }),
+      );
       continue;
     }
     if (!thread.root.bodyMarkdown.trim()) {
-      skipped.push(skipWordThread(thread, "ANNOTATION_THREAD_SKIPPED", {
-        reason: "EMPTY_BODY",
-      }));
+      skipped.push(
+        skipWordThread(thread, "ANNOTATION_THREAD_SKIPPED", {
+          reason: "EMPTY_BODY",
+        }),
+      );
       continue;
     }
     const trace = traces.get(thread.root.sourceCommentId);
@@ -318,65 +325,85 @@ export function resolveAnnotationThreads(
   }
 
   const blockOrder = supportedBlocks.order;
-  candidates.sort((left, right) =>
-    (blockOrder.get(left.blockId) ?? Number.MAX_SAFE_INTEGER)
-    - (blockOrder.get(right.blockId) ?? Number.MAX_SAFE_INTEGER)
-    || left.start - right.start
-    || (blockOrder.get(right.endBlockId ?? right.blockId) ?? Number.MIN_SAFE_INTEGER)
-      - (blockOrder.get(left.endBlockId ?? left.blockId) ?? Number.MIN_SAFE_INTEGER)
-    || right.end - left.end
-    || compareSourceCommentId(left.thread.root.sourceCommentId, right.thread.root.sourceCommentId));
+  candidates.sort(
+    (left, right) =>
+      (blockOrder.get(left.blockId) ?? Number.MAX_SAFE_INTEGER) -
+        (blockOrder.get(right.blockId) ?? Number.MAX_SAFE_INTEGER) ||
+      left.start - right.start ||
+      (blockOrder.get(right.endBlockId ?? right.blockId) ?? Number.MIN_SAFE_INTEGER) -
+        (blockOrder.get(left.endBlockId ?? left.blockId) ?? Number.MIN_SAFE_INTEGER) ||
+      right.end - left.end ||
+      compareSourceCommentId(left.thread.root.sourceCommentId, right.thread.root.sourceCommentId),
+  );
 
   const acceptedCandidates: typeof candidates = [];
   for (const candidate of candidates) {
-    const conflict = acceptedCandidates.find((accepted) => accepted.slices.some((left) =>
-      candidate.slices.some((right) => left.blockId === right.blockId && left.from < right.to && right.from < left.to)));
+    const conflict = acceptedCandidates.find((accepted) =>
+      accepted.slices.some((left) =>
+        candidate.slices.some(
+          (right) => left.blockId === right.blockId && left.from < right.to && right.from < left.to,
+        ),
+      ),
+    );
     if (conflict) {
-      skipped.push(skipWordThread(candidate.thread, "ANNOTATION_OVERLAP_SKIPPED", {
-        conflictsWithSourceCommentId: conflict.thread.root.sourceCommentId,
-      }));
+      skipped.push(
+        skipWordThread(candidate.thread, "ANNOTATION_OVERLAP_SKIPPED", {
+          conflictsWithSourceCommentId: conflict.thread.root.sourceCommentId,
+        }),
+      );
     } else {
       acceptedCandidates.push(candidate);
     }
   }
 
-  const accepted = acceptedCandidates.map(({ thread, blockId, endBlockId, start, end }) => ({
-    annotationId: createAnnotationId(thread.root.sourceCommentId),
-    sourceCommentId: thread.root.sourceCommentId,
-    blockId,
-    ...(endBlockId && endBlockId !== blockId ? { endBlockId } : {}),
-    blockLocalStart: start,
-    blockLocalEnd: end,
-    sourceAuthorName: thread.root.sourceAuthorName,
-    sourceInitials: thread.root.sourceInitials,
-    sourceCreatedAt: thread.root.sourceCreatedAt,
-    sourceDocumentOrder: thread.root.sourceDocumentOrder,
-    sourceResolved: thread.root.sourceResolved,
-    bodyMarkdown: thread.root.bodyMarkdown,
-    replies: thread.replies.filter((reply) => reply.bodyMarkdown.trim()).map((reply): ImportedReply => ({
-      replyId: createReplyId(reply.sourceCommentId),
-      sourceCommentId: reply.sourceCommentId,
-      parentSourceCommentId: reply.parentSourceCommentId!,
-      sourceAuthorName: reply.sourceAuthorName,
-      sourceInitials: reply.sourceInitials,
-      sourceCreatedAt: reply.sourceCreatedAt,
-      sourceDocumentOrder: reply.sourceDocumentOrder,
-      sourceResolved: reply.sourceResolved,
-      bodyMarkdown: reply.bodyMarkdown,
-    })),
-  } satisfies ImportedThread));
+  const accepted = acceptedCandidates.map(
+    ({ thread, blockId, endBlockId, start, end }) =>
+      ({
+        annotationId: createAnnotationId(thread.root.sourceCommentId),
+        sourceCommentId: thread.root.sourceCommentId,
+        blockId,
+        ...(endBlockId && endBlockId !== blockId ? { endBlockId } : {}),
+        blockLocalStart: start,
+        blockLocalEnd: end,
+        sourceAuthorName: thread.root.sourceAuthorName,
+        sourceInitials: thread.root.sourceInitials,
+        sourceCreatedAt: thread.root.sourceCreatedAt,
+        sourceDocumentOrder: thread.root.sourceDocumentOrder,
+        sourceResolved: thread.root.sourceResolved,
+        bodyMarkdown: thread.root.bodyMarkdown,
+        replies: thread.replies
+          .filter((reply) => reply.bodyMarkdown.trim())
+          .map((reply): ImportedReply => ({
+            replyId: createReplyId(reply.sourceCommentId),
+            sourceCommentId: reply.sourceCommentId,
+            parentSourceCommentId: reply.parentSourceCommentId!,
+            sourceAuthorName: reply.sourceAuthorName,
+            sourceInitials: reply.sourceInitials,
+            sourceCreatedAt: reply.sourceCreatedAt,
+            sourceDocumentOrder: reply.sourceDocumentOrder,
+            sourceResolved: reply.sourceResolved,
+            bodyMarkdown: reply.bodyMarkdown,
+          })),
+      }) satisfies ImportedThread,
+  );
 
-  skipped.sort((left, right) =>
-    left.sourceDocumentOrder - right.sourceDocumentOrder
-    || compareSourceCommentId(left.sourceCommentId, right.sourceCommentId));
+  skipped.sort(
+    (left, right) =>
+      left.sourceDocumentOrder - right.sourceDocumentOrder ||
+      compareSourceCommentId(left.sourceCommentId, right.sourceCommentId),
+  );
   return { accepted, skipped, warnings: skipped.map((item) => item.warning) };
 }
 
 function legalRange(
   trace: WalkedCommentRange,
   segmentsByBlock: ReadonlyMap<string, InlineSegment[]>,
-  blockOrder: ReadonlyMap<string, number> = new Map([...segmentsByBlock.keys()].map((id, index) => [id, index])),
-): { blockId: string; endBlockId?: string; start: number; end: number } | { code: ImportWarningCode } {
+  blockOrder: ReadonlyMap<string, number> = new Map(
+    [...segmentsByBlock.keys()].map((id, index) => [id, index]),
+  ),
+):
+  | { blockId: string; endBlockId?: string; start: number; end: number }
+  | { code: ImportWarningCode } {
   if (trace.touchedLocations.includes("table")) return { code: "ANNOTATION_TABLE_UNSUPPORTED" };
   if (trace.touchedLocations.some((location) => location === "image" || location === "nonText")) {
     return { code: "ANNOTATION_NON_TEXT_RANGE" };
@@ -391,23 +418,44 @@ function legalRange(
   }
   const startIndex = blockOrder.get(start.blockId);
   const endIndex = blockOrder.get(end.blockId);
-  if (startIndex === undefined || endIndex === undefined || endIndex < startIndex) return { code: "ANNOTATION_CROSS_BLOCK" };
+  if (startIndex === undefined || endIndex === undefined || endIndex < startIndex)
+    return { code: "ANNOTATION_CROSS_BLOCK" };
   const selectedBlockIds = [...blockOrder]
     .filter(([, index]) => index >= startIndex && index <= endIndex)
     .sort((left, right) => left[1] - right[1])
     .map(([id]) => id);
   const selectedSegments = selectedBlockIds.map((id) => segmentsByBlock.get(id));
-  if (selectedSegments.some((segments) => !segments || segments.some((segment) => segment.marks.includes("code")))) {
+  if (
+    selectedSegments.some(
+      (segments) => !segments || segments.some((segment) => segment.marks.includes("code")),
+    )
+  ) {
     return { code: "ANNOTATION_NON_TEXT_RANGE" };
   }
-  const startLength = selectedSegments[0]!.reduce((total, segment) => total + segment.text.length, 0);
-  const endLength = selectedSegments.at(-1)!.reduce((total, segment) => total + segment.text.length, 0);
-  if (start.offset < 0 || start.offset >= startLength || end.offset <= 0 || end.offset > endLength) {
-    return { code: start.blockId === end.blockId && end.offset === start.offset ? "ANNOTATION_EMPTY_RANGE" : "ANNOTATION_NON_TEXT_RANGE" };
+  const startLength = selectedSegments[0]!.reduce(
+    (total, segment) => total + segment.text.length,
+    0,
+  );
+  const endLength = selectedSegments
+    .at(-1)!
+    .reduce((total, segment) => total + segment.text.length, 0);
+  if (
+    start.offset < 0 ||
+    start.offset >= startLength ||
+    end.offset <= 0 ||
+    end.offset > endLength
+  ) {
+    return {
+      code:
+        start.blockId === end.blockId && end.offset === start.offset
+          ? "ANNOTATION_EMPTY_RANGE"
+          : "ANNOTATION_NON_TEXT_RANGE",
+    };
   }
-  if (start.blockId === end.blockId && end.offset <= start.offset) return {
-    code: end.offset === start.offset ? "ANNOTATION_EMPTY_RANGE" : "ANNOTATION_NON_TEXT_RANGE",
-  };
+  if (start.blockId === end.blockId && end.offset <= start.offset)
+    return {
+      code: end.offset === start.offset ? "ANNOTATION_EMPTY_RANGE" : "ANNOTATION_NON_TEXT_RANGE",
+    };
   return {
     blockId: start.blockId,
     ...(start.blockId === end.blockId ? {} : { endBlockId: end.blockId }),
@@ -469,8 +517,10 @@ function hasParentCycle(component: WordComment[], byId: Map<string, WordComment>
 }
 
 function compareCommentOrder(left: WordComment, right: WordComment): number {
-  return left.sourceDocumentOrder - right.sourceDocumentOrder
-    || compareSourceCommentId(left.sourceCommentId, right.sourceCommentId);
+  return (
+    left.sourceDocumentOrder - right.sourceDocumentOrder ||
+    compareSourceCommentId(left.sourceCommentId, right.sourceCommentId)
+  );
 }
 
 function compareSourceCommentId(left: string, right: string): number {

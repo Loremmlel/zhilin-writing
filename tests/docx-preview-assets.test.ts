@@ -64,10 +64,13 @@ test("uploads DOCX assets one at a time in source order", async () => {
 
   assert.deepEqual(calls, ["first", "second"]);
   assert.deepEqual(progress, [1, 2]);
-  assert.deepEqual(result.map(({ source, uploaded }) => [source.id, uploaded.assetId]), [
-    ["first", "stored-first"],
-    ["second", "stored-second"],
-  ]);
+  assert.deepEqual(
+    result.map(({ source, uploaded }) => [source.id, uploaded.assetId]),
+    [
+      ["first", "stored-first"],
+      ["second", "stored-second"],
+    ],
+  );
 });
 
 test("stops when cancellation arrives during the final upload", async () => {

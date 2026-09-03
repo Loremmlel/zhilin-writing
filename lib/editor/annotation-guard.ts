@@ -35,12 +35,17 @@ export type AnnotationGuardResult =
 
 function rangesById(ranges: EditorAnnotationRange[]): Map<string, EditorAnnotationRange[]> {
   const result = new Map<string, EditorAnnotationRange[]>();
-  for (const range of ranges) result.set(range.annotationId, [...(result.get(range.annotationId) ?? []), range]);
+  for (const range of ranges)
+    result.set(range.annotationId, [...(result.get(range.annotationId) ?? []), range]);
   for (const grouped of result.values()) grouped.sort((left, right) => left.from - right.from);
   return result;
 }
 
-function endpointSurvives(endpoint: EditorAnnotationEndpoint, after: EditorAnnotationRange, transaction: Transaction): boolean {
+function endpointSurvives(
+  endpoint: EditorAnnotationEndpoint,
+  after: EditorAnnotationRange,
+  transaction: Transaction,
+): boolean {
   const from = transaction.mapping.mapResult(endpoint.from, 1);
   const to = transaction.mapping.mapResult(endpoint.to, -1);
   if (from.deleted || to.deleted || from.pos >= to.pos) return false;
@@ -85,19 +90,28 @@ export function inspectAnnotationTransaction(
     const previousLast = beforeRanges.at(-1)!;
     const nextFirst = afterRanges[0]!;
     const nextLast = afterRanges.at(-1)!;
-    if (!boundarySurvives(previousFirst.from, 1, nextFirst.from, transaction)
-      || !endpointSurvives(previousFirst.firstEndpoint, nextFirst, transaction)) {
+    if (
+      !boundarySurvives(previousFirst.from, 1, nextFirst.from, transaction) ||
+      !endpointSurvives(previousFirst.firstEndpoint, nextFirst, transaction)
+    ) {
       reasons.push({ annotationId, code: "LEFT_ENDPOINT_REMOVED" });
     }
-    if (!boundarySurvives(previousLast.to, -1, nextLast.to, transaction)
-      || !endpointSurvives(previousLast.lastEndpoint, nextLast, transaction)) {
+    if (
+      !boundarySurvives(previousLast.to, -1, nextLast.to, transaction) ||
+      !endpointSurvives(previousLast.lastEndpoint, nextLast, transaction)
+    ) {
       reasons.push({ annotationId, code: "RIGHT_ENDPOINT_REMOVED" });
     }
   }
 
   const uniqueReasons: AnnotationImpactReason[] = [];
   for (const reason of reasons) {
-    if (!uniqueReasons.some((candidate) => candidate.annotationId === reason.annotationId && candidate.code === reason.code)) {
+    if (
+      !uniqueReasons.some(
+        (candidate) =>
+          candidate.annotationId === reason.annotationId && candidate.code === reason.code,
+      )
+    ) {
       uniqueReasons.push(reason);
     }
   }
@@ -118,10 +132,18 @@ export function inspectAnnotationTransaction(
     NESTED: 7,
     INVALID_BLOCK: 8,
   };
-  uniqueReasons.sort((left, right) => (positionById.get(left.annotationId) ?? Number.MAX_SAFE_INTEGER)
-    - (positionById.get(right.annotationId) ?? Number.MAX_SAFE_INTEGER)
-    || left.annotationId.localeCompare(right.annotationId)
-    || codePriority[left.code] - codePriority[right.code]);
+  uniqueReasons.sort(
+    (left, right) =>
+      (positionById.get(left.annotationId) ?? Number.MAX_SAFE_INTEGER) -
+        (positionById.get(right.annotationId) ?? Number.MAX_SAFE_INTEGER) ||
+      left.annotationId.localeCompare(right.annotationId) ||
+      codePriority[left.code] - codePriority[right.code],
+  );
   const affectedAnnotationIds = [...new Set(uniqueReasons.map((reason) => reason.annotationId))];
-  return { kind: "ANNOTATION_IMPACT", affectedAnnotationIds, destructive: true, reasons: uniqueReasons };
+  return {
+    kind: "ANNOTATION_IMPACT",
+    affectedAnnotationIds,
+    destructive: true,
+    reasons: uniqueReasons,
+  };
 }

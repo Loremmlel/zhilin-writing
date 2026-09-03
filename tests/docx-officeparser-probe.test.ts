@@ -9,7 +9,10 @@ import {
   officeparserProductionEligible,
   type OfficeparserProbeReport,
 } from "../lib/docx-import/officeparser-probe.ts";
-import { generateProbeFixtures, writeDocxFixture } from "../scripts/fixtures/generate-docx-fixtures.mjs";
+import {
+  generateProbeFixtures,
+  writeDocxFixture,
+} from "../scripts/fixtures/generate-docx-fixtures.mjs";
 import { runOfficeparserProbe } from "../scripts/probe-officeparser.mjs";
 
 const EXPECTED_GATES = [
@@ -33,17 +36,23 @@ test("officeparser eligibility requires exactly the seven approved comment capab
 
   assert.equal(officeparserProductionEligible(passing), true);
   for (const failedGate of EXPECTED_GATES) {
-    assert.equal(officeparserProductionEligible({
-      ...passing,
-      gates: { ...passing.gates, [failedGate]: false },
-    }), false, failedGate);
+    assert.equal(
+      officeparserProductionEligible({
+        ...passing,
+        gates: { ...passing.gates, [failedGate]: false },
+      }),
+      false,
+      failedGate,
+    );
   }
 });
 
 test("officeparser probe reports remain JSON serializable", () => {
   const report: OfficeparserProbeReport = {
     version: "7.8.0",
-    gates: Object.fromEntries(EXPECTED_GATES.map((gate) => [gate, false])) as OfficeparserProbeReport["gates"],
+    gates: Object.fromEntries(
+      EXPECTED_GATES.map((gate) => [gate, false]),
+    ) as OfficeparserProbeReport["gates"],
     evidence: Object.fromEntries(EXPECTED_GATES.map((gate) => [gate, "not exposed"])),
     productionEligible: false,
   };

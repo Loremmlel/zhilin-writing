@@ -1,4 +1,5 @@
-export type ActionAccessErrorCode = "AUTH_EXPIRED" | "ACCESS_REVOKED" | "ONBOARDING_REQUIRED" | "ADMIN_REQUIRED";
+export type ActionAccessErrorCode =
+  "AUTH_EXPIRED" | "ACCESS_REVOKED" | "ONBOARDING_REQUIRED" | "ADMIN_REQUIRED";
 
 const accessMessages: Record<ActionAccessErrorCode, string> = {
   AUTH_EXPIRED: "登录状态已失效，请重新登录后继续。",
@@ -11,7 +12,10 @@ export function accessErrorMessage(code: ActionAccessErrorCode): string {
   return accessMessages[code];
 }
 
-export function actionAccessFailure(code: ActionAccessErrorCode): { error: string; code: ActionAccessErrorCode } {
+export function actionAccessFailure(code: ActionAccessErrorCode): {
+  error: string;
+  code: ActionAccessErrorCode;
+} {
   return { error: accessErrorMessage(code), code };
 }
 

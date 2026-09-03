@@ -139,20 +139,20 @@ IR 是 Word 语义的中间表示，不保存 HTML 或 DOCX source offsets。
 
 ```ts
 interface DocxImportIR {
-  version: 1
-  importBatchId: string
+  version: 1;
+  importBatchId: string;
   source: {
-    filename: string
-    sha256: string
-    producer?: string
-  }
-  suggestedTitle: string
-  blocks: ImportBlock[]
-  assets: ImportAsset[]
-  threads: ImportedThread[]
-  skippedThreads: SkippedThread[]
-  warnings: ImportWarning[]
-  canonicalMarkdown: string
+    filename: string;
+    sha256: string;
+    producer?: string;
+  };
+  suggestedTitle: string;
+  blocks: ImportBlock[];
+  assets: ImportAsset[];
+  threads: ImportedThread[];
+  skippedThreads: SkippedThread[];
+  warnings: ImportWarning[];
+  canonicalMarkdown: string;
 }
 
 type ImportBlock =
@@ -162,42 +162,42 @@ type ImportBlock =
   | ListBlock
   | TableBlock
   | ImageBlock
-  | NotesAppendixBlock
+  | NotesAppendixBlock;
 
 interface InlineSegment {
-  text: string
-  marks: Array<"strong" | "em" | "strike" | "code">
-  link?: string
-  commentIds: string[]
+  text: string;
+  marks: Array<"strong" | "em" | "strike" | "code">;
+  link?: string;
+  commentIds: string[];
 }
 
 interface ImportedThread {
-  annotationId: string
-  sourceCommentId: string
-  blockId: string
-  blockLocalStart: number
-  blockLocalEnd: number
-  sourceAuthorName: string
-  sourceInitials?: string
-  sourceCreatedAt?: string
-  sourceDocumentOrder: number
-  sourceResolved: boolean
-  attributedUserId?: string
-  bodyMarkdown: string
-  replies: ImportedReply[]
+  annotationId: string;
+  sourceCommentId: string;
+  blockId: string;
+  blockLocalStart: number;
+  blockLocalEnd: number;
+  sourceAuthorName: string;
+  sourceInitials?: string;
+  sourceCreatedAt?: string;
+  sourceDocumentOrder: number;
+  sourceResolved: boolean;
+  attributedUserId?: string;
+  bodyMarkdown: string;
+  replies: ImportedReply[];
 }
 
 interface ImportedReply {
-  replyId: string
-  sourceCommentId: string
-  parentSourceCommentId: string
-  sourceAuthorName: string
-  sourceInitials?: string
-  sourceCreatedAt?: string
-  sourceDocumentOrder: number
-  sourceResolved: boolean
-  attributedUserId?: string
-  bodyMarkdown: string
+  replyId: string;
+  sourceCommentId: string;
+  parentSourceCommentId: string;
+  sourceAuthorName: string;
+  sourceInitials?: string;
+  sourceCreatedAt?: string;
+  sourceDocumentOrder: number;
+  sourceResolved: boolean;
+  attributedUserId?: string;
+  bodyMarkdown: string;
 }
 ```
 
@@ -256,7 +256,7 @@ comments 出现在 table、image、footnote/endnote 或不支持容器时，walk
 - 第一行具有明确 Word header semantics 时作为 header；
 - 否则合成空 header，所有 Word rows 保持 data rows，并产生 `TABLE_HEADER_SYNTHESIZED`；
 - cell 内允许 text、strong/em/strike、link；
-- cell 多 paragraph 用 ` / ` 连接，并聚合 `TABLE_CELL_FLATTENED`；
+- cell 多 paragraph 用 `/` 连接，并聚合 `TABLE_CELL_FLATTENED`；
 - table cell 内 comment 对应整个 thread 跳过。
 
 发现 rowSpan、colSpan、`vMerge` 或 `gridSpan` 时，不输出 HTML table；整表按行变为 `cell A | cell B | cell C` 可读纯文本，并产生 `TABLE_MERGED_CELLS_FLATTENED`。
@@ -318,11 +318,11 @@ sourceCommentId ASC
 
 ```ts
 interface ImportWarning {
-  code: ImportWarningCode
-  severity: "info" | "warning" | "error"
-  sourceRef?: string
-  count?: number
-  payload?: Record<string, unknown>
+  code: ImportWarningCode;
+  severity: "info" | "warning" | "error";
+  sourceRef?: string;
+  count?: number;
+  payload?: Record<string, unknown>;
 }
 ```
 

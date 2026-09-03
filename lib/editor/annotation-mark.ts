@@ -9,16 +9,21 @@ export const annotationSchema = $markSchema("annotation", () => ({
   attrs: { annotationId: { validate: "string" } },
   inclusive: false,
   spanning: true,
-  parseDOM: [{
-    tag: "mark[data-annotation-id]",
-    getAttrs: (node: HTMLElement) => ({ annotationId: node.dataset.annotationId }),
-  }],
-  toDOM: (mark) => ["mark", {
-    class: "annotation-range",
-    "data-annotation-id": mark.attrs.annotationId,
-    tabindex: "0",
-    "aria-label": "带批注的文字，按回车查看批注",
-  }],
+  parseDOM: [
+    {
+      tag: "mark[data-annotation-id]",
+      getAttrs: (node: HTMLElement) => ({ annotationId: node.dataset.annotationId }),
+    },
+  ],
+  toDOM: (mark) => [
+    "mark",
+    {
+      class: "annotation-range",
+      "data-annotation-id": mark.attrs.annotationId,
+      tabindex: "0",
+      "aria-label": "带批注的文字，按回车查看批注",
+    },
+  ],
   parseMarkdown: {
     match: (node) => node.type === "textDirective" && node.name === "annotation",
     runner: (state, node, markType) => {

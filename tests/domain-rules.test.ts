@@ -30,7 +30,12 @@ test("validatePostInput accepts zero to five distinct tags", () => {
     { title: "雨天随笔", markdown: "一段正文", tags: ["生活", "随笔"] },
   );
   assert.throws(
-    () => validatePostInput({ title: "标题", markdown: "正文", tags: ["一", "二", "三", "四", "五", "六"] }),
+    () =>
+      validatePostInput({
+        title: "标题",
+        markdown: "正文",
+        tags: ["一", "二", "三", "四", "五", "六"],
+      }),
     /最多选择 5 个标签/,
   );
   assert.throws(
@@ -51,14 +56,16 @@ test("reply Markdown is required and bounded", () => {
 });
 
 test("nested targets remain at the root visual level", () => {
-  assert.deepEqual(
-    normalizeReplyTarget({ id: "top", rootReplyId: null, authorId: "user-a" }),
-    { rootReplyId: "top", replyToReplyId: "top", replyToUserId: "user-a" },
-  );
-  assert.deepEqual(
-    normalizeReplyTarget({ id: "nested", rootReplyId: "top", authorId: "user-b" }),
-    { rootReplyId: "top", replyToReplyId: "nested", replyToUserId: "user-b" },
-  );
+  assert.deepEqual(normalizeReplyTarget({ id: "top", rootReplyId: null, authorId: "user-a" }), {
+    rootReplyId: "top",
+    replyToReplyId: "top",
+    replyToUserId: "user-a",
+  });
+  assert.deepEqual(normalizeReplyTarget({ id: "nested", rootReplyId: "top", authorId: "user-b" }), {
+    rootReplyId: "top",
+    replyToReplyId: "nested",
+    replyToUserId: "user-b",
+  });
 });
 
 test("draft keys are stable and scoped to one user and post", () => {
@@ -69,13 +76,25 @@ test("draft keys are stable and scoped to one user and post", () => {
 test("uploads are classified and inserted with standard Markdown", () => {
   assert.equal(classifyUpload("image/jpeg"), "image");
   assert.equal(classifyUpload("application/pdf"), "attachment");
-  assert.equal(assetMarkdown({ kind: "image", filename: "雨.jpg", url: "/api/assets/a1" }), "![雨.jpg](/api/assets/a1)");
-  assert.equal(assetMarkdown({ kind: "attachment", filename: "日记.docx", url: "/api/assets/a2" }), "[日记.docx](/api/assets/a2)");
+  assert.equal(
+    assetMarkdown({ kind: "image", filename: "雨.jpg", url: "/api/assets/a1" }),
+    "![雨.jpg](/api/assets/a1)",
+  );
+  assert.equal(
+    assetMarkdown({ kind: "attachment", filename: "日记.docx", url: "/api/assets/a2" }),
+    "[日记.docx](/api/assets/a2)",
+  );
 });
 
 test("upload validation rejects empty and oversized files", () => {
   assert.equal(validateUpload({ size: 1024, mimeType: "image/png" }), null);
   assert.equal(validateUpload({ size: 0, mimeType: "image/png" }), "文件不能为空");
-  assert.equal(validateUpload({ size: 21 * 1024 * 1024, mimeType: "application/pdf" }), "文件不能超过 20 MB");
-  assert.equal(validateUpload({ size: 1024, mimeType: "image/svg+xml" }), "暂不支持此图片格式，请使用 PNG、JPEG、GIF 或 WebP");
+  assert.equal(
+    validateUpload({ size: 21 * 1024 * 1024, mimeType: "application/pdf" }),
+    "文件不能超过 20 MB",
+  );
+  assert.equal(
+    validateUpload({ size: 1024, mimeType: "image/svg+xml" }),
+    "暂不支持此图片格式，请使用 PNG、JPEG、GIF 或 WebP",
+  );
 });

@@ -34,13 +34,17 @@ test("the public DOCX acquisition command verifies every pinned local byte", asy
   const available = manifest.fixtures.filter((fixture) => fixture.status === "available");
   const unavailable = manifest.fixtures.filter((fixture) => fixture.status === "unavailable");
   assert.equal(available.length, 4);
-  assert.deepEqual(unavailable.map((fixture) => fixture.id), ["word-online"]);
+  assert.deepEqual(
+    unavailable.map((fixture) => fixture.id),
+    ["word-online"],
+  );
   assert.match(unavailable[0]?.skipReason ?? "", /provenance/i);
 
-  const result = spawnSync(process.execPath, [
-    "scripts/fixtures/fetch-public-docx-fixtures.mjs",
-    "--verify",
-  ], { cwd: resolve("."), encoding: "utf8" });
+  const result = spawnSync(
+    process.execPath,
+    ["scripts/fixtures/fetch-public-docx-fixtures.mjs", "--verify"],
+    { cwd: resolve("."), encoding: "utf8" },
+  );
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
   assert.match(result.stdout, /verified 4 public DOCX fixtures/);
   assert.match(result.stdout, /skipped word-online:/);
@@ -64,7 +68,8 @@ test("available public producers parse twice with stable order and typed output"
           new RegExp(escapeRegex(fixture.observedProducerEvidence.contains)),
           fixture.id,
         );
-        if (fixture.id.startsWith("word-desktop")) assert.match(evidence, /<AppVersion>14\.0000<\/AppVersion>/);
+        if (fixture.id.startsWith("word-desktop"))
+          assert.match(evidence, /<AppVersion>14\.0000<\/AppVersion>/);
         if (fixture.id === "libreoffice") assert.match(evidence, /LibreOffice\/5\.4\.5\.1/);
       } else {
         assert.match(fixture.evidenceNote ?? "", /metadata|evidence/i, fixture.id);
@@ -77,10 +82,23 @@ test("available public producers parse twice with stable order and typed output"
     const second = await parsePublicFixture(bytes, fixture);
     assert.equal(first.canonicalMarkdown, second.canonicalMarkdown, fixture.id);
     assert.equal(JSON.stringify(first.warnings), JSON.stringify(second.warnings), fixture.id);
-    assert.deepEqual(first.blocks.map((block) => block.id), second.blocks.map((block) => block.id), fixture.id);
-    assert.equal(new Set(first.blocks.map((block) => block.id)).size, first.blocks.length, fixture.id);
+    assert.deepEqual(
+      first.blocks.map((block) => block.id),
+      second.blocks.map((block) => block.id),
+      fixture.id,
+    );
+    assert.equal(
+      new Set(first.blocks.map((block) => block.id)).size,
+      first.blocks.length,
+      fixture.id,
+    );
     assert.ok(first.blocks.length > 0, fixture.id);
-    assert.ok(first.warnings.every((warning) => typeof warning.code === "string" && typeof warning.severity === "string"), fixture.id);
+    assert.ok(
+      first.warnings.every(
+        (warning) => typeof warning.code === "string" && typeof warning.severity === "string",
+      ),
+      fixture.id,
+    );
     assertProducerFeatures(fixture.id, first);
   }
 });
@@ -118,11 +136,17 @@ function assertProducerFeatures(id: string, parsed: Awaited<ReturnType<typeof pa
   if (id === "word-desktop-comments") {
     assert.equal(parsed.threads.length, 1);
     assert.equal(parsed.threads[0]?.sourceCommentId, "0");
-    assert.deepEqual(parsed.skippedThreads.map((thread) => thread.warning.code), ["ANNOTATION_ORPHAN_DEFINITION"]);
+    assert.deepEqual(
+      parsed.skippedThreads.map((thread) => thread.warning.code),
+      ["ANNOTATION_ORPHAN_DEFINITION"],
+    );
     return;
   }
   if (id === "word-desktop-footnotes") {
-    assert.deepEqual(parsed.blocks.map((block) => block.type), ["paragraph", "notesAppendix"]);
+    assert.deepEqual(
+      parsed.blocks.map((block) => block.type),
+      ["paragraph", "notesAppendix"],
+    );
     assert.ok(warningCodes.includes("NOTES_FLATTENED_TO_APPENDIX"));
     return;
   }

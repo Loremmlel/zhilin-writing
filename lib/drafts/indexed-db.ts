@@ -23,7 +23,13 @@ function normalizeDraft(draft: LocalDraft): LocalDraft {
   if (!Array.isArray(draft.confirmedAnnotationDeletionIds)) return draft;
   return {
     ...draft,
-    confirmedAnnotationDeletionIds: [...new Set(draft.confirmedAnnotationDeletionIds.filter((id) => typeof id === "string" && id.length > 0))].sort(),
+    confirmedAnnotationDeletionIds: [
+      ...new Set(
+        draft.confirmedAnnotationDeletionIds.filter(
+          (id) => typeof id === "string" && id.length > 0,
+        ),
+      ),
+    ].sort(),
   };
 }
 
@@ -37,17 +43,13 @@ export async function loadDraft(userId: string, postId: string): Promise<LocalDr
 }
 
 export async function saveDraft(userId: string, postId: string, draft: LocalDraft): Promise<void> {
-  await withLocalStore<IDBValidKey>(
-    DRAFT_STORE_NAME,
-    "readwrite",
-    (store) => store.put(normalizeDraft(draft), draftKey(userId, postId)),
+  await withLocalStore<IDBValidKey>(DRAFT_STORE_NAME, "readwrite", (store) =>
+    store.put(normalizeDraft(draft), draftKey(userId, postId)),
   );
 }
 
 export async function removeDraft(userId: string, postId: string): Promise<void> {
-  await withLocalStore<undefined>(
-    DRAFT_STORE_NAME,
-    "readwrite",
-    (store) => store.delete(draftKey(userId, postId)),
+  await withLocalStore<undefined>(DRAFT_STORE_NAME, "readwrite", (store) =>
+    store.delete(draftKey(userId, postId)),
   );
 }

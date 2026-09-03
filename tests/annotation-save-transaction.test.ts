@@ -27,10 +27,15 @@ test("accepts exactly the confirmed subset of current annotation removals", () =
 
 test("normalizes duplicate confirmations and rejects unconfirmed malformed or foreign IDs", () => {
   assert.deepEqual(assertConfirmedAnnotationRemovals([A, B], [A], [A, A]), [A]);
-  for (const confirmed of [[], ["not-an-annotation"], ["ann_6ba7b810-9dad-41d1-80b4-00c04fd430c8"]]) {
+  for (const confirmed of [
+    [],
+    ["not-an-annotation"],
+    ["ann_6ba7b810-9dad-41d1-80b4-00c04fd430c8"],
+  ]) {
     assert.throws(
       () => assertConfirmedAnnotationRemovals([A, B], [A], confirmed),
-      (error: unknown) => error instanceof AnnotationIntegrityError && error.code === "ANNOTATION_INTEGRITY_ERROR",
+      (error: unknown) =>
+        error instanceof AnnotationIntegrityError && error.code === "ANNOTATION_INTEGRITY_ERROR",
     );
   }
 });
@@ -46,25 +51,37 @@ test("validates submitted Markdown against owned IDs while allowing confirmed ID
 
 test("detects every annotation transition across a revision interval including net-zero changes", () => {
   const base = { markdown: `:annotation[A]{#${A}} 正文`, states: [active(A)] };
-  const withB = { markdown: `:annotation[A]{#${A}} :annotation[B]{#${B}} 正文`, states: [active(A), active(B)] };
+  const withB = {
+    markdown: `:annotation[A]{#${A}} :annotation[B]{#${B}} 正文`,
+    states: [active(A), active(B)],
+  };
   const backToA = { markdown: `:annotation[A]{#${A}} 正文`, states: [active(A)] };
   assert.equal(hasAnnotationTransition([base, withB, backToA]), true);
 });
 
 test("distinguishes ordinary body edits from anchor text or lifecycle changes", () => {
   const base = { markdown: `:annotation[A]{#${A}} 旧正文`, states: [active(A)] };
-  assert.equal(hasAnnotationTransition([
-    base,
-    { markdown: `:annotation[A]{#${A}} 新正文`, states: [active(A)] },
-  ]), false);
-  assert.equal(hasAnnotationTransition([
-    base,
-    { markdown: `:annotation[AA]{#${A}} 旧正文`, states: [active(A)] },
-  ]), true);
-  assert.equal(hasAnnotationTransition([
-    base,
-    { markdown: base.markdown, states: [{ ...active(A), hiddenAt: new Date(100) }] },
-  ]), true);
+  assert.equal(
+    hasAnnotationTransition([
+      base,
+      { markdown: `:annotation[A]{#${A}} 新正文`, states: [active(A)] },
+    ]),
+    false,
+  );
+  assert.equal(
+    hasAnnotationTransition([
+      base,
+      { markdown: `:annotation[AA]{#${A}} 旧正文`, states: [active(A)] },
+    ]),
+    true,
+  );
+  assert.equal(
+    hasAnnotationTransition([
+      base,
+      { markdown: base.markdown, states: [{ ...active(A), hiddenAt: new Date(100) }] },
+    ]),
+    true,
+  );
 });
 
 test("treats anchor block position type and inline structure as conflict transitions", () => {
@@ -106,8 +123,22 @@ test("plans retained snapshots and post-edit retirement without mutating retaine
     confirmedDeletionIds: [A],
     currentStates: [active(A), active(B)],
     currentImportedReplyStates: [
-      { annotationId: A, annotationReplyId: "reply-a", deletedAt: null, deletedByUserId: null, hiddenAt: null, hiddenByUserId: null },
-      { annotationId: B, annotationReplyId: "reply-b", deletedAt: null, deletedByUserId: null, hiddenAt: null, hiddenByUserId: null },
+      {
+        annotationId: A,
+        annotationReplyId: "reply-a",
+        deletedAt: null,
+        deletedByUserId: null,
+        hiddenAt: null,
+        hiddenByUserId: null,
+      },
+      {
+        annotationId: B,
+        annotationReplyId: "reply-b",
+        deletedAt: null,
+        deletedByUserId: null,
+        hiddenAt: null,
+        hiddenByUserId: null,
+      },
     ],
     actorUserId: "post-author",
     at,
@@ -115,8 +146,14 @@ test("plans retained snapshots and post-edit retirement without mutating retaine
 
   assert.deepEqual(result.delta, { retained: [B], removed: [A], unexpected: [] });
   assert.deepEqual(result.retainedStates, [active(B)]);
-  assert.deepEqual(result.retainedImportedReplyStates.map((state) => state.annotationReplyId), ["reply-b"]);
-  assert.deepEqual(result.retirements.map((retirement) => retirement.annotationId), [A]);
+  assert.deepEqual(
+    result.retainedImportedReplyStates.map((state) => state.annotationReplyId),
+    ["reply-b"],
+  );
+  assert.deepEqual(
+    result.retirements.map((retirement) => retirement.annotationId),
+    [A],
+  );
   assert.equal(result.retirements[0]?.annotationId, A);
   assert.equal(result.retirements[0]?.patch.anchorRetiredReason, "POST_EDIT");
 });

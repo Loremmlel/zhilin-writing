@@ -63,13 +63,14 @@ export async function makeDocxFixture(
   const writer = new ZipWriter(new Uint8ArrayWriter(), {
     level: options.level ?? 0,
   });
-  const entries: DocxFixtureEntry[] = options.entries
-    ?? Object.entries(parts).map(([name, value]) => ({ name, value }));
+  const entries: DocxFixtureEntry[] =
+    options.entries ?? Object.entries(parts).map(([name, value]) => ({ name, value }));
 
   for (const entry of entries) {
-    const reader = typeof entry.value === "string"
-      ? new TextReader(entry.value)
-      : new Uint8ArrayReader(entry.value);
+    const reader =
+      typeof entry.value === "string"
+        ? new TextReader(entry.value)
+        : new Uint8ArrayReader(entry.value);
     await writer.add(entry.name, reader, {
       dataDescriptor: false,
       lastModDate: FIXED_DATE,
@@ -90,11 +91,14 @@ export async function makeDocxFixture(
 }
 
 export async function makeHighlyCompressibleDocx(size: number): Promise<File> {
-  return makeDocxFixture({
-    "[Content_Types].xml": MINIMAL_CONTENT_TYPES,
-    "word/document.xml": MINIMAL_DOCUMENT,
-    "word/large.bin": new Uint8Array(size).fill(65),
-  }, { level: 9 });
+  return makeDocxFixture(
+    {
+      "[Content_Types].xml": MINIMAL_CONTENT_TYPES,
+      "word/document.xml": MINIMAL_DOCUMENT,
+      "word/large.bin": new Uint8Array(size).fill(65),
+    },
+    { level: 9 },
+  );
 }
 
 export function replaceZipEntryName(file: File, from: string, to: string): Promise<File> {
@@ -124,16 +128,20 @@ function patchEntrySizes(
     if (signature === 0x04034b50) {
       const nameLength = view.getUint16(offset + 26, true);
       if (equalBytes(bytes.subarray(offset + 30, offset + 30 + nameLength), expectedName)) {
-        if (sizes.compressedSize !== undefined) view.setUint32(offset + 18, sizes.compressedSize, true);
-        if (sizes.uncompressedSize !== undefined) view.setUint32(offset + 22, sizes.uncompressedSize, true);
+        if (sizes.compressedSize !== undefined)
+          view.setUint32(offset + 18, sizes.compressedSize, true);
+        if (sizes.uncompressedSize !== undefined)
+          view.setUint32(offset + 22, sizes.uncompressedSize, true);
         matchedLocal = true;
       }
     }
     if (signature === 0x02014b50) {
       const nameLength = view.getUint16(offset + 28, true);
       if (equalBytes(bytes.subarray(offset + 46, offset + 46 + nameLength), expectedName)) {
-        if (sizes.compressedSize !== undefined) view.setUint32(offset + 20, sizes.compressedSize, true);
-        if (sizes.uncompressedSize !== undefined) view.setUint32(offset + 24, sizes.uncompressedSize, true);
+        if (sizes.compressedSize !== undefined)
+          view.setUint32(offset + 20, sizes.compressedSize, true);
+        if (sizes.uncompressedSize !== undefined)
+          view.setUint32(offset + 24, sizes.uncompressedSize, true);
         matchedCentral = true;
       }
     }

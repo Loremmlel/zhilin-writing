@@ -1,6 +1,18 @@
-export type AnnotationAnchorBox = { annotationId: string; top: number; right: number; height: number };
+export type AnnotationAnchorBox = {
+  annotationId: string;
+  top: number;
+  right: number;
+  height: number;
+};
 export type AnnotationConnector = { annotationId: string; path: string };
-export type AnnotationClientRect = { top: number; right: number; bottom: number; left: number; width: number; height: number };
+export type AnnotationClientRect = {
+  top: number;
+  right: number;
+  bottom: number;
+  left: number;
+  width: number;
+  height: number;
+};
 
 export function annotationThreadCapabilities(mode: "interactive" | "readonly") {
   const mutable = mode === "interactive";
@@ -14,19 +26,23 @@ export function annotationThreadCapabilities(mode: "interactive" | "readonly") {
   };
 }
 
-export function visibleAnnotationIds(annotationIds: readonly string[], pendingRetiredIds: readonly string[]) {
+export function visibleAnnotationIds(
+  annotationIds: readonly string[],
+  pendingRetiredIds: readonly string[],
+) {
   const retired = new Set(pendingRetiredIds);
   return annotationIds.filter((annotationId) => !retired.has(annotationId));
 }
 
 export function findAnnotationAnchorElements(root: Element, annotationId: string): HTMLElement[] {
-  return [...root.querySelectorAll<HTMLElement>("[data-annotation-id]")]
-    .filter((element) => element.dataset.annotationId === annotationId);
+  return [...root.querySelectorAll<HTMLElement>("[data-annotation-id]")].filter(
+    (element) => element.dataset.annotationId === annotationId,
+  );
 }
 
 export function findAnnotationIdFromTarget(root: Element, target: Element | null): string | null {
   const anchor = target?.closest<HTMLElement>("[data-annotation-id]") ?? null;
-  return anchor && root.contains(anchor) ? anchor.dataset.annotationId ?? null : null;
+  return anchor && root.contains(anchor) ? (anchor.dataset.annotationId ?? null) : null;
 }
 
 export function annotationAnchorGeometry(
@@ -45,28 +61,46 @@ export function annotationAnchorGeometry(
   };
 }
 
-export function annotationConnectorPath(input: { startX: number; startY: number; endX: number; endY: number }): string {
+export function annotationConnectorPath(input: {
+  startX: number;
+  startY: number;
+  endX: number;
+  endY: number;
+}): string {
   const { startX, startY, endX, endY } = input;
   const distance = endX - startX;
   if (distance < 24) return `M ${startX} ${startY} L ${endX} ${endY}`;
-  const bend = distance * .42;
+  const bend = distance * 0.42;
   return `M ${startX} ${startY} C ${startX + bend} ${startY}, ${endX - bend} ${endY}, ${endX} ${endY}`;
 }
 
-export function sameAnnotationCardTops(left: Record<string, number>, right: Record<string, number>): boolean {
+export function sameAnnotationCardTops(
+  left: Record<string, number>,
+  right: Record<string, number>,
+): boolean {
   const leftKeys = Object.keys(left);
   const rightKeys = Object.keys(right);
   return leftKeys.length === rightKeys.length && leftKeys.every((key) => left[key] === right[key]);
 }
 
-export function sameAnnotationConnectors(left: AnnotationConnector[], right: AnnotationConnector[]): boolean {
-  return left.length === right.length
-    && left.every((connector, index) => connector.annotationId === right[index]?.annotationId && connector.path === right[index]?.path);
+export function sameAnnotationConnectors(
+  left: AnnotationConnector[],
+  right: AnnotationConnector[],
+): boolean {
+  return (
+    left.length === right.length &&
+    left.every(
+      (connector, index) =>
+        connector.annotationId === right[index]?.annotationId &&
+        connector.path === right[index]?.path,
+    )
+  );
 }
 
 export function createAnnotationLayoutScheduler(
   measure: () => void,
-  requestFrame: (callback: FrameRequestCallback) => number = (callback) => window.requestAnimationFrame(callback),
+  requestFrame: (callback: FrameRequestCallback) => number = (callback) =>
+    window.requestAnimationFrame(callback),
   cancelFrame: (id: number) => void = (id) => window.cancelAnimationFrame(id),
 ) {
   let frameId: number | null = null;
@@ -87,8 +121,14 @@ export function createAnnotationLayoutScheduler(
   };
 }
 
-export function layoutAnnotationCards(anchors: AnnotationAnchorBox[], cardHeights: Map<string, number>, gap: number) {
-  const sorted = [...anchors].sort((a, b) => a.top - b.top || a.annotationId.localeCompare(b.annotationId));
+export function layoutAnnotationCards(
+  anchors: AnnotationAnchorBox[],
+  cardHeights: Map<string, number>,
+  gap: number,
+) {
+  const sorted = [...anchors].sort(
+    (a, b) => a.top - b.top || a.annotationId.localeCompare(b.annotationId),
+  );
   let cursor = 0;
   const cards = sorted.map((anchor) => {
     const top = Math.max(anchor.top, cursor);

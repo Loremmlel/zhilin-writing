@@ -1,14 +1,14 @@
 import { validateAnnotationContent } from "../annotations/policy.ts";
 import { parseAnnotationMarkdown } from "../annotations/markdown.ts";
-import { validateCanonicalAnnotationDocument, type AnnotationInvariantIssueCode } from "../annotations/invariants.ts";
+import {
+  validateCanonicalAnnotationDocument,
+  type AnnotationInvariantIssueCode,
+} from "../annotations/invariants.ts";
 import { markdownToPlainText } from "../markdown/render.ts";
 import { buildDocxAttributionNotices } from "../notifications/policy.ts";
 import { DOCX_IMPORT_LIMITS } from "./limits.ts";
 import { importedThreadSlices } from "./thread-range.ts";
-import {
-  DocxImportCommitSchema,
-  type DocxImportCommitInput,
-} from "./commit-schema.ts";
+import { DocxImportCommitSchema, type DocxImportCommitInput } from "./commit-schema.ts";
 
 const ROW_CHUNK_SIZE = 32;
 export const D1_MAX_BOUND_PARAMETERS = 100;
@@ -91,18 +91,22 @@ export function validateDocxImportCommitPayload(input: unknown): ValidatedDocxIm
   if (!title) fail("TITLE_REQUIRED");
   if (Array.from(title).length > 120) fail("TITLE_TOO_LONG");
   if (!markdown) fail("MARKDOWN_REQUIRED");
-  if (encoder.encode(markdown).byteLength > DOCX_IMPORT_LIMITS.markdownUtf8Bytes) fail("MARKDOWN_SIZE_LIMIT");
-  if (!payload.source.filename.toLocaleLowerCase("en-US").endsWith(".docx")) fail("SOURCE_FILENAME_INVALID");
+  if (encoder.encode(markdown).byteLength > DOCX_IMPORT_LIMITS.markdownUtf8Bytes)
+    fail("MARKDOWN_SIZE_LIMIT");
+  if (!payload.source.filename.toLocaleLowerCase("en-US").endsWith(".docx"))
+    fail("SOURCE_FILENAME_INVALID");
   if (
-    payload.importBatchId !== payload.ir.importBatchId
-    || payload.source.filename !== payload.ir.source.filename
-    || payload.source.sha256 !== payload.ir.source.sha256
-    || markdown !== payload.ir.canonicalMarkdown.trim()
-  ) fail("IR_ENVELOPE_MISMATCH");
+    payload.importBatchId !== payload.ir.importBatchId ||
+    payload.source.filename !== payload.ir.source.filename ||
+    payload.source.sha256 !== payload.ir.source.sha256 ||
+    markdown !== payload.ir.canonicalMarkdown.trim()
+  )
+    fail("IR_ENVELOPE_MISMATCH");
   if (
-    payload.ir.warnings.some((warning) => warning.severity === "error")
-    || payload.ir.skippedThreads.some((thread) => thread.warning.severity === "error")
-  ) fail("IMPORT_WARNING_ERROR");
+    payload.ir.warnings.some((warning) => warning.severity === "error") ||
+    payload.ir.skippedThreads.some((thread) => thread.warning.severity === "error")
+  )
+    fail("IMPORT_WARNING_ERROR");
 
   validateBlocks(payload);
   validateImportedIdentities(payload);
@@ -122,7 +126,10 @@ export function planDocxImportCommit(
   const statements: D1StatementPlan[] = [];
   const rowChunks: Array<{ kind: string; rowCount: number }> = [];
   const addRows = (kind: string, table: string, columns: string[], rows: SqlValue[][]) => {
-    const rowsPerStatement = Math.min(ROW_CHUNK_SIZE, Math.floor(D1_MAX_BOUND_PARAMETERS / columns.length));
+    const rowsPerStatement = Math.min(
+      ROW_CHUNK_SIZE,
+      Math.floor(D1_MAX_BOUND_PARAMETERS / columns.length),
+    );
     for (let index = 0; index < rows.length; index += rowsPerStatement) {
       const chunk = rows.slice(index, index + rowsPerStatement);
       statements.push({
@@ -135,20 +142,96 @@ export function planDocxImportCommit(
     }
   };
 
-  addRows("post", "posts", [
-    "id", "author_id", "title", "markdown", "search_text", "current_revision_id", "published_at",
-    "edited_at", "last_activity_at", "deleted_at", "deleted_by_user_id", "hidden_at", "hidden_by_user_id", "hidden_reason",
-  ], [[
-    context.postId, context.importerUserId, validated.title, validated.markdown,
-    markdownToPlainText(validated.markdown), context.revisionId, now, null, now,
-    null, null, null, null, null,
-  ]]);
-  addRows("revision", "post_revisions", [
-    "id", "post_id", "revision_number", "kind", "title", "markdown", "created_at", "created_by_user_id", "restore_source_revision_id",
-  ], [[context.revisionId, context.postId, 1, "CONTENT_EDIT", validated.title, validated.markdown, now, context.importerUserId, null]]);
-  addRows("import-batch", "import_batches", [
-    "id", "importer_user_id", "source_filename", "source_sha256", "post_id", "revision_id", "committed_at",
-  ], [[validated.importBatchId, context.importerUserId, validated.source.filename, validated.source.sha256, context.postId, context.revisionId, now]]);
+  addRows(
+    "post",
+    "posts",
+    [
+      "id",
+      "author_id",
+      "title",
+      "markdown",
+      "search_text",
+      "current_revision_id",
+      "published_at",
+      "edited_at",
+      "last_activity_at",
+      "deleted_at",
+      "deleted_by_user_id",
+      "hidden_at",
+      "hidden_by_user_id",
+      "hidden_reason",
+    ],
+    [
+      [
+        context.postId,
+        context.importerUserId,
+        validated.title,
+        validated.markdown,
+        markdownToPlainText(validated.markdown),
+        context.revisionId,
+        now,
+        null,
+        now,
+        null,
+        null,
+        null,
+        null,
+        null,
+      ],
+    ],
+  );
+  addRows(
+    "revision",
+    "post_revisions",
+    [
+      "id",
+      "post_id",
+      "revision_number",
+      "kind",
+      "title",
+      "markdown",
+      "created_at",
+      "created_by_user_id",
+      "restore_source_revision_id",
+    ],
+    [
+      [
+        context.revisionId,
+        context.postId,
+        1,
+        "CONTENT_EDIT",
+        validated.title,
+        validated.markdown,
+        now,
+        context.importerUserId,
+        null,
+      ],
+    ],
+  );
+  addRows(
+    "import-batch",
+    "import_batches",
+    [
+      "id",
+      "importer_user_id",
+      "source_filename",
+      "source_sha256",
+      "post_id",
+      "revision_id",
+      "committed_at",
+    ],
+    [
+      [
+        validated.importBatchId,
+        context.importerUserId,
+        validated.source.filename,
+        validated.source.sha256,
+        context.postId,
+        context.revisionId,
+        now,
+      ],
+    ],
+  );
 
   const assetById = new Map(context.assets.map((asset) => [asset.id, asset]));
   for (const manifest of validated.temporaryAssets) {
@@ -163,50 +246,206 @@ export function planDocxImportCommit(
     rowChunks.push({ kind: "asset-claim", rowCount: 1 });
   }
   const assetRows = validated.assetIds.map((assetId) => [assetId] as const);
-  addRows("post-assets", "post_asset_refs", ["post_id", "asset_id", "usage"], assetRows.map(([assetId]) => [context.postId, assetId, "inline"]));
-  addRows("revision-assets", "revision_asset_refs", ["revision_id", "asset_id", "usage"], assetRows.map(([assetId]) => [context.revisionId, assetId, "inline"]));
+  addRows(
+    "post-assets",
+    "post_asset_refs",
+    ["post_id", "asset_id", "usage"],
+    assetRows.map(([assetId]) => [context.postId, assetId, "inline"]),
+  );
+  addRows(
+    "revision-assets",
+    "revision_asset_refs",
+    ["revision_id", "asset_id", "usage"],
+    assetRows.map(([assetId]) => [context.revisionId, assetId, "inline"]),
+  );
 
   const roots = validated.ir.threads;
-  addRows("annotations", "annotations", [
-    "id", "post_id", "author_id", "content_markdown", "original_selected_text", "created_at", "created_on_revision_id", "submission_key",
-    "deleted_at", "deleted_by_user_id", "hidden_at", "hidden_by_user_id", "hidden_reason", "source_type", "source_author_name",
-    "source_initials", "source_created_at", "source_comment_id", "source_document_order", "source_resolved", "import_batch_id",
-    "imported_by_user_id", "attributed_user_id",
-  ], roots.map((root) => [
-    root.annotationId, context.postId, null, root.bodyMarkdown.trim(), selectedTextFor(validated, root.annotationId), now,
-    context.revisionId, `docx:${validated.importBatchId}:${root.sourceCommentId}`, null, null, null, null, null,
-    "DOCX_IMPORT", root.sourceAuthorName, root.sourceInitials ?? null, sourceTime(root.sourceCreatedAt), root.sourceCommentId,
-    root.sourceDocumentOrder, root.sourceResolved ? 1 : 0, validated.importBatchId, context.importerUserId,
-    validated.authorMappings[root.sourceAuthorName] ?? root.attributedUserId ?? null,
-  ]));
+  addRows(
+    "annotations",
+    "annotations",
+    [
+      "id",
+      "post_id",
+      "author_id",
+      "content_markdown",
+      "original_selected_text",
+      "created_at",
+      "created_on_revision_id",
+      "submission_key",
+      "deleted_at",
+      "deleted_by_user_id",
+      "hidden_at",
+      "hidden_by_user_id",
+      "hidden_reason",
+      "source_type",
+      "source_author_name",
+      "source_initials",
+      "source_created_at",
+      "source_comment_id",
+      "source_document_order",
+      "source_resolved",
+      "import_batch_id",
+      "imported_by_user_id",
+      "attributed_user_id",
+    ],
+    roots.map((root) => [
+      root.annotationId,
+      context.postId,
+      null,
+      root.bodyMarkdown.trim(),
+      selectedTextFor(validated, root.annotationId),
+      now,
+      context.revisionId,
+      `docx:${validated.importBatchId}:${root.sourceCommentId}`,
+      null,
+      null,
+      null,
+      null,
+      null,
+      "DOCX_IMPORT",
+      root.sourceAuthorName,
+      root.sourceInitials ?? null,
+      sourceTime(root.sourceCreatedAt),
+      root.sourceCommentId,
+      root.sourceDocumentOrder,
+      root.sourceResolved ? 1 : 0,
+      validated.importBatchId,
+      context.importerUserId,
+      validated.authorMappings[root.sourceAuthorName] ?? root.attributedUserId ?? null,
+    ]),
+  );
 
-  const replyIdBySource = new Map(roots.flatMap((root) => root.replies.map((reply) => [reply.sourceCommentId, reply.replyId] as const)));
-  const replyRows = roots.flatMap((root) => root.replies.map((reply) => [
-    reply.replyId, root.annotationId, null, null,
-    reply.parentSourceCommentId === root.sourceCommentId ? null : replyIdBySource.get(reply.parentSourceCommentId) ?? null,
-    reply.bodyMarkdown.trim(), `docx:${validated.importBatchId}:${reply.sourceCommentId}`, now,
-    null, null, null, null, null, "DOCX_IMPORT", reply.sourceAuthorName, reply.sourceInitials ?? null,
-    sourceTime(reply.sourceCreatedAt), reply.sourceCommentId, reply.sourceDocumentOrder, reply.sourceResolved ? 1 : 0,
-    validated.importBatchId, context.importerUserId, validated.authorMappings[reply.sourceAuthorName] ?? reply.attributedUserId ?? null,
-  ]));
-  addRows("annotation-replies", "annotation_replies", [
-    "id", "annotation_id", "author_id", "reply_to_user_id", "reply_to_reply_id", "content_markdown", "submission_key", "created_at",
-    "deleted_at", "deleted_by_user_id", "hidden_at", "hidden_by_user_id", "hidden_reason", "source_type", "source_author_name",
-    "source_initials", "source_created_at", "source_comment_id", "source_document_order", "source_resolved", "import_batch_id",
-    "imported_by_user_id", "attributed_user_id",
-  ], replyRows);
-  addRows("anchors", "post_annotation_anchors", ["post_id", "annotation_id"], roots.map((root) => [context.postId, root.annotationId]));
-  addRows("annotation-snapshots", "revision_annotation_states", [
-    "revision_id", "annotation_id", "deleted_at", "deleted_by_user_id", "hidden_at", "hidden_by_user_id",
-  ], roots.map((root) => [context.revisionId, root.annotationId, null, null, null, null]));
-  addRows("reply-snapshots", "revision_imported_reply_states", [
-    "revision_id", "annotation_reply_id", "deleted_at", "deleted_by_user_id", "hidden_at", "hidden_by_user_id",
-  ], replyRows.map((row) => [context.revisionId, row[0]!, null, null, null, null]));
+  const replyIdBySource = new Map(
+    roots.flatMap((root) =>
+      root.replies.map((reply) => [reply.sourceCommentId, reply.replyId] as const),
+    ),
+  );
+  const replyRows = roots.flatMap((root) =>
+    root.replies.map((reply) => [
+      reply.replyId,
+      root.annotationId,
+      null,
+      null,
+      reply.parentSourceCommentId === root.sourceCommentId
+        ? null
+        : (replyIdBySource.get(reply.parentSourceCommentId) ?? null),
+      reply.bodyMarkdown.trim(),
+      `docx:${validated.importBatchId}:${reply.sourceCommentId}`,
+      now,
+      null,
+      null,
+      null,
+      null,
+      null,
+      "DOCX_IMPORT",
+      reply.sourceAuthorName,
+      reply.sourceInitials ?? null,
+      sourceTime(reply.sourceCreatedAt),
+      reply.sourceCommentId,
+      reply.sourceDocumentOrder,
+      reply.sourceResolved ? 1 : 0,
+      validated.importBatchId,
+      context.importerUserId,
+      validated.authorMappings[reply.sourceAuthorName] ?? reply.attributedUserId ?? null,
+    ]),
+  );
+  addRows(
+    "annotation-replies",
+    "annotation_replies",
+    [
+      "id",
+      "annotation_id",
+      "author_id",
+      "reply_to_user_id",
+      "reply_to_reply_id",
+      "content_markdown",
+      "submission_key",
+      "created_at",
+      "deleted_at",
+      "deleted_by_user_id",
+      "hidden_at",
+      "hidden_by_user_id",
+      "hidden_reason",
+      "source_type",
+      "source_author_name",
+      "source_initials",
+      "source_created_at",
+      "source_comment_id",
+      "source_document_order",
+      "source_resolved",
+      "import_batch_id",
+      "imported_by_user_id",
+      "attributed_user_id",
+    ],
+    replyRows,
+  );
+  addRows(
+    "anchors",
+    "post_annotation_anchors",
+    ["post_id", "annotation_id"],
+    roots.map((root) => [context.postId, root.annotationId]),
+  );
+  addRows(
+    "annotation-snapshots",
+    "revision_annotation_states",
+    [
+      "revision_id",
+      "annotation_id",
+      "deleted_at",
+      "deleted_by_user_id",
+      "hidden_at",
+      "hidden_by_user_id",
+    ],
+    roots.map((root) => [context.revisionId, root.annotationId, null, null, null, null]),
+  );
+  addRows(
+    "reply-snapshots",
+    "revision_imported_reply_states",
+    [
+      "revision_id",
+      "annotation_reply_id",
+      "deleted_at",
+      "deleted_by_user_id",
+      "hidden_at",
+      "hidden_by_user_id",
+    ],
+    replyRows.map((row) => [context.revisionId, row[0]!, null, null, null, null]),
+  );
 
-  addRows("activity", "activity_events", [
-    "id", "actor_user_id", "event_type", "post_id", "reply_id", "annotation_id", "annotation_reply_id", "root_reply_id",
-    "reply_to_user_id", "metadata_json", "created_at", "invalidated_at",
-  ], [[context.eventId, context.importerUserId, "POST_CREATED", context.postId, null, null, null, null, null, JSON.stringify({ docxImportPayloadHash: context.payloadHash }), now, null]]);
+  addRows(
+    "activity",
+    "activity_events",
+    [
+      "id",
+      "actor_user_id",
+      "event_type",
+      "post_id",
+      "reply_id",
+      "annotation_id",
+      "annotation_reply_id",
+      "root_reply_id",
+      "reply_to_user_id",
+      "metadata_json",
+      "created_at",
+      "invalidated_at",
+    ],
+    [
+      [
+        context.eventId,
+        context.importerUserId,
+        "POST_CREATED",
+        context.postId,
+        null,
+        null,
+        null,
+        null,
+        null,
+        JSON.stringify({ docxImportPayloadHash: context.payloadHash }),
+        now,
+        null,
+      ],
+    ],
+  );
 
   const notices = buildDocxAttributionNotices({
     importBatchId: validated.importBatchId,
@@ -216,19 +455,45 @@ export function planDocxImportCommit(
     importerUserId: context.importerUserId,
     importerDisplayName: context.importerDisplayName,
     createdAt: now,
-    attributedUserIds: roots.flatMap((root) => [root, ...root.replies]).map((item) => (
-      validated.authorMappings[item.sourceAuthorName] ?? item.attributedUserId
-    )),
+    attributedUserIds: roots
+      .flatMap((root) => [root, ...root.replies])
+      .map((item) => validated.authorMappings[item.sourceAuthorName] ?? item.attributedUserId),
   });
   const notificationRows = notices.map((notice) => [
-    notice.id, notice.recipientUserId, notice.actorUserId, notice.eventId, notice.notificationType,
-    notice.postId, notice.replyId, notice.annotationId, notice.annotationReplyId, notice.metadataJson,
-    notice.importBatchId, notice.createdAt, notice.readAt,
+    notice.id,
+    notice.recipientUserId,
+    notice.actorUserId,
+    notice.eventId,
+    notice.notificationType,
+    notice.postId,
+    notice.replyId,
+    notice.annotationId,
+    notice.annotationReplyId,
+    notice.metadataJson,
+    notice.importBatchId,
+    notice.createdAt,
+    notice.readAt,
   ]);
-  addRows("notifications", "notifications", [
-    "id", "recipient_user_id", "actor_user_id", "event_id", "notification_type", "post_id", "reply_id", "annotation_id",
-    "annotation_reply_id", "metadata_json", "import_batch_id", "created_at", "read_at",
-  ], notificationRows);
+  addRows(
+    "notifications",
+    "notifications",
+    [
+      "id",
+      "recipient_user_id",
+      "actor_user_id",
+      "event_id",
+      "notification_type",
+      "post_id",
+      "reply_id",
+      "annotation_id",
+      "annotation_reply_id",
+      "metadata_json",
+      "import_batch_id",
+      "created_at",
+      "read_at",
+    ],
+    notificationRows,
+  );
 
   return {
     statements,
@@ -248,7 +513,9 @@ function validateBlocks(payload: DocxImportCommitInput) {
     nodeCount += count;
     if (nodeCount > DOCX_IMPORT_LIMITS.irNodes) fail("IR_NODE_LIMIT");
   };
-  const countSegments = (segments: Array<{ text: string; link?: string; commentIds: string[] }>) => {
+  const countSegments = (
+    segments: Array<{ text: string; link?: string; commentIds: string[] }>,
+  ) => {
     segmentCount += segments.length;
     if (segmentCount > DOCX_IMPORT_LIMITS.irSegments) fail("IR_SEGMENT_LIMIT");
     for (const segment of segments) {
@@ -303,7 +570,9 @@ function validateBlocks(payload: DocxImportCommitInput) {
       }
     }
   };
-  countNodes(payload.ir.assets.length + payload.ir.threads.length + payload.ir.skippedThreads.length);
+  countNodes(
+    payload.ir.assets.length + payload.ir.threads.length + payload.ir.skippedThreads.length,
+  );
   for (const thread of payload.ir.threads) countNodes(thread.replies.length);
   for (const skipped of payload.ir.skippedThreads) countWarning(skipped.warning);
   for (const warning of payload.ir.warnings) countWarning(warning);
@@ -323,14 +592,22 @@ function validateImportedIdentities(payload: DocxImportCommitInput) {
     if (sourceIds.has(root.sourceCommentId)) fail("SOURCE_COMMENT_ID_DUPLICATE");
     sourceIds.add(root.sourceCommentId);
     validateAnnotationBody(root.bodyMarkdown);
-    const threadSources = new Set([root.sourceCommentId, ...root.replies.map((reply) => reply.sourceCommentId)]);
+    const threadSources = new Set([
+      root.sourceCommentId,
+      ...root.replies.map((reply) => reply.sourceCommentId),
+    ]);
     for (const reply of root.replies) {
-      if (reply.authorId !== undefined && reply.authorId !== null) fail("IMPORTED_AUTHOR_MUST_BE_NULL");
+      if (reply.authorId !== undefined && reply.authorId !== null)
+        fail("IMPORTED_AUTHOR_MUST_BE_NULL");
       if (replyIds.has(reply.replyId)) fail("REPLY_ID_DUPLICATE");
       replyIds.add(reply.replyId);
       if (sourceIds.has(reply.sourceCommentId)) fail("SOURCE_COMMENT_ID_DUPLICATE");
       sourceIds.add(reply.sourceCommentId);
-      if (!threadSources.has(reply.parentSourceCommentId) || reply.parentSourceCommentId === reply.sourceCommentId) fail("REPLY_PARENT_INVALID");
+      if (
+        !threadSources.has(reply.parentSourceCommentId) ||
+        reply.parentSourceCommentId === reply.sourceCommentId
+      )
+        fail("REPLY_PARENT_INVALID");
       validateAnnotationBody(reply.bodyMarkdown);
     }
     for (const reply of root.replies) {
@@ -341,7 +618,8 @@ function validateImportedIdentities(payload: DocxImportCommitInput) {
         if (seen.has(parent)) fail("REPLY_PARENT_INVALID");
         seen.add(parent);
         const parentReply = bySource.get(parent);
-        if (!parentReply || parentReply.sourceDocumentOrder >= reply.sourceDocumentOrder) fail("REPLY_PARENT_INVALID");
+        if (!parentReply || parentReply.sourceDocumentOrder >= reply.sourceDocumentOrder)
+          fail("REPLY_PARENT_INVALID");
         parent = parentReply.parentSourceCommentId;
       }
     }
@@ -351,15 +629,24 @@ function validateImportedIdentities(payload: DocxImportCommitInput) {
 
 function validateSourceRanges(payload: DocxImportCommitInput): Map<string, string> {
   const selected = new Map<string, string>();
-  const byBlock = new Map<string, Array<{ annotationId: string; sourceCommentId: string; from: number; to: number }>>();
+  const byBlock = new Map<
+    string,
+    Array<{ annotationId: string; sourceCommentId: string; from: number; to: number }>
+  >();
   for (const thread of payload.ir.threads) {
     const slices = importedThreadSlices(payload.ir.blocks, thread);
     if (!slices) fail("ANNOTATION_RANGE_INVALID");
-    if (slices.some((slice) => slice.segments.some((segment) => segment.marks.includes("code")))) fail("ANNOTATION_NON_TEXT_RANGE");
-    selected.set(thread.annotationId, slices.map((slice) => {
-      const value = slice.segments.map((segment) => segment.text).join("");
-      return value.slice(slice.from, slice.to);
-    }).join("\n\n"));
+    if (slices.some((slice) => slice.segments.some((segment) => segment.marks.includes("code"))))
+      fail("ANNOTATION_NON_TEXT_RANGE");
+    selected.set(
+      thread.annotationId,
+      slices
+        .map((slice) => {
+          const value = slice.segments.map((segment) => segment.text).join("");
+          return value.slice(slice.from, slice.to);
+        })
+        .join("\n\n"),
+    );
     for (const slice of slices) {
       const list = byBlock.get(slice.blockId) ?? [];
       list.push({
@@ -372,9 +659,12 @@ function validateSourceRanges(payload: DocxImportCommitInput): Map<string, strin
     }
   }
   for (const ranges of byBlock.values()) {
-    const ordered = [...ranges].sort((left, right) => left.from - right.from
-      || (right.to - right.from) - (left.to - left.from)
-      || left.sourceCommentId.localeCompare(right.sourceCommentId));
+    const ordered = [...ranges].sort(
+      (left, right) =>
+        left.from - right.from ||
+        right.to - right.from - (left.to - left.from) ||
+        left.sourceCommentId.localeCompare(right.sourceCommentId),
+    );
     for (let index = 1; index < ordered.length; index += 1) {
       if (ordered[index]!.from < ordered[index - 1]!.to) fail("ANNOTATION_OVERLAP");
     }
@@ -394,9 +684,14 @@ type MarkdownNode = {
 
 function validateMarkdown(markdown: string, selectedTextById: Map<string, string>): AnchorRange[] {
   let tree: MarkdownNode;
-  try { tree = parseAnnotationMarkdown(markdown) as MarkdownNode; }
-  catch { fail("PREVIEW_MARKDOWN_INVALID"); }
-  walk(tree, (node) => { if (node.url && !safeUrl(node.url)) fail("UNSAFE_EXTERNAL_URL"); });
+  try {
+    tree = parseAnnotationMarkdown(markdown) as MarkdownNode;
+  } catch {
+    fail("PREVIEW_MARKDOWN_INVALID");
+  }
+  walk(tree, (node) => {
+    if (node.url && !safeUrl(node.url)) fail("UNSAFE_EXTERNAL_URL");
+  });
   const validation = validateCanonicalAnnotationDocument(markdown, selectedTextById.keys());
   const issueCode: Record<AnnotationInvariantIssueCode, string> = {
     DUPLICATE: "ANNOTATION_ANCHOR_DUPLICATE",
@@ -429,62 +724,95 @@ function validateAssets(payload: DocxImportCommitInput): string[] {
   const manifestIds = new Set<string>();
   for (const [index, manifest] of payload.temporaryAssets.entries()) {
     const source = payload.ir.assets[index];
-    if (!source || irIds.has(source.id) || manifestIds.has(manifest.assetId)) fail("ASSET_REFERENCE_INVALID");
+    if (!source || irIds.has(source.id) || manifestIds.has(manifest.assetId))
+      fail("ASSET_REFERENCE_INVALID");
     irIds.add(source.id);
     manifestIds.add(manifest.assetId);
     if (
-      manifest.temporaryUrl !== `/api/assets/${manifest.assetId}`
-      || source.filename !== manifest.filename
-      || source.mimeType !== manifest.mimeType
-    ) fail("ASSET_REFERENCE_INVALID");
+      manifest.temporaryUrl !== `/api/assets/${manifest.assetId}` ||
+      source.filename !== manifest.filename ||
+      source.mimeType !== manifest.mimeType
+    )
+      fail("ASSET_REFERENCE_INVALID");
   }
   const referenced = new Set<string>();
   const tree = parseAnnotationMarkdown(payload.markdown) as MarkdownNode;
   walk(tree, (node) => {
     if (node.url?.startsWith("/api/assets/")) referenced.add(node.url.slice("/api/assets/".length));
   });
-  if (referenced.size !== manifestIds.size || [...referenced].some((id) => !manifestIds.has(id))) fail("ASSET_REFERENCE_INVALID");
+  if (referenced.size !== manifestIds.size || [...referenced].some((id) => !manifestIds.has(id)))
+    fail("ASSET_REFERENCE_INVALID");
   return [...referenced].sort();
 }
 
 function validateMappings(payload: DocxImportCommitInput): string[] {
-  const authors = new Set(payload.ir.threads.flatMap((root) => [root.sourceAuthorName, ...root.replies.map((reply) => reply.sourceAuthorName)]));
+  const authors = new Set(
+    payload.ir.threads.flatMap((root) => [
+      root.sourceAuthorName,
+      ...root.replies.map((reply) => reply.sourceAuthorName),
+    ]),
+  );
   for (const [author, userId] of Object.entries(payload.authorMappings)) {
     if (!authors.has(author)) fail("AUTHOR_MAPPING_INVALID");
     for (const item of payload.ir.threads.flatMap((root) => [root, ...root.replies])) {
-      if (item.sourceAuthorName === author && item.attributedUserId && item.attributedUserId !== userId) fail("AUTHOR_MAPPING_INVALID");
+      if (
+        item.sourceAuthorName === author &&
+        item.attributedUserId &&
+        item.attributedUserId !== userId
+      )
+        fail("AUTHOR_MAPPING_INVALID");
     }
   }
   for (const item of payload.ir.threads.flatMap((root) => [root, ...root.replies])) {
-    if (item.attributedUserId && payload.authorMappings[item.sourceAuthorName] !== item.attributedUserId) fail("AUTHOR_MAPPING_INVALID");
+    if (
+      item.attributedUserId &&
+      payload.authorMappings[item.sourceAuthorName] !== item.attributedUserId
+    )
+      fail("AUTHOR_MAPPING_INVALID");
   }
   return [...new Set(Object.values(payload.authorMappings))].sort();
 }
 
 function validateAnnotationBody(markdown: string) {
-  try { validateAnnotationContent(markdown); }
-  catch { fail("ANNOTATION_CONTENT_INVALID"); }
+  try {
+    validateAnnotationContent(markdown);
+  } catch {
+    fail("ANNOTATION_CONTENT_INVALID");
+  }
   const tree = parseAnnotationMarkdown(markdown) as MarkdownNode;
-  walk(tree, (node) => { if (node.url && !safeUrl(node.url)) fail("UNSAFE_EXTERNAL_URL"); });
+  walk(tree, (node) => {
+    if (node.url && !safeUrl(node.url)) fail("UNSAFE_EXTERNAL_URL");
+  });
 }
 
 function safeUrl(value: string): boolean {
   if (value.startsWith("/") || value.startsWith("#")) return true;
-  try { return ["http:", "https:", "mailto:"].includes(new URL(value, "https://invalid.local").protocol); }
-  catch { return false; }
+  try {
+    return ["http:", "https:", "mailto:"].includes(
+      new URL(value, "https://invalid.local").protocol,
+    );
+  } catch {
+    return false;
+  }
 }
 
 function selectedTextFor(validated: ValidatedDocxImportCommit, annotationId: string): string {
-  const value = validated.anchorRanges.find((anchor) => anchor.annotationId === annotationId)?.selectedText;
+  const value = validated.anchorRanges.find(
+    (anchor) => anchor.annotationId === annotationId,
+  )?.selectedText;
   if (value === undefined) fail("ANNOTATION_ANCHOR_MISSING");
   return value;
 }
 
-function sourceTime(value?: string): number | null { return value ? Date.parse(value) : null; }
+function sourceTime(value?: string): number | null {
+  return value ? Date.parse(value) : null;
+}
 
 function walk(node: MarkdownNode, callback: (node: MarkdownNode) => void) {
   callback(node);
   node.children?.forEach((child) => walk(child, callback));
 }
 
-function fail(code: string): never { throw new DocxImportValidationError(code); }
+function fail(code: string): never {
+  throw new DocxImportValidationError(code);
+}

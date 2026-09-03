@@ -40,17 +40,26 @@ function importDocumentBlocks(blocks: ImportBlock[]): ImportDocumentBlock[] {
   return result;
 }
 
-export function importTextBlocks(blocks: ImportBlock[]): Array<{ blockId: string; segments: InlineSegment[] }> {
+export function importTextBlocks(
+  blocks: ImportBlock[],
+): Array<{ blockId: string; segments: InlineSegment[] }> {
   return importDocumentBlocks(blocks)
     .filter((block) => block.supported)
     .map(({ blockId, segments }) => ({ blockId, segments }));
 }
 
-export function importedThreadSlices(blocks: ImportBlock[], thread: ImportedThreadRange): ImportedThreadSlice[] | null {
+export function importedThreadSlices(
+  blocks: ImportBlock[],
+  thread: ImportedThreadRange,
+): ImportedThreadSlice[] | null {
   const documentBlocks = importDocumentBlocks(blocks);
-  const startIndex = documentBlocks.findIndex((block) => block.blockId === thread.blockId && block.supported);
+  const startIndex = documentBlocks.findIndex(
+    (block) => block.blockId === thread.blockId && block.supported,
+  );
   const endBlockId = thread.endBlockId ?? thread.blockId;
-  const endIndex = documentBlocks.findIndex((block) => block.blockId === endBlockId && block.supported);
+  const endIndex = documentBlocks.findIndex(
+    (block) => block.blockId === endBlockId && block.supported,
+  );
   if (startIndex < 0 || endIndex < startIndex) return null;
 
   const selectedBlocks = documentBlocks.slice(startIndex, endIndex + 1);
@@ -61,8 +70,17 @@ export function importedThreadSlices(blocks: ImportBlock[], thread: ImportedThre
     const to = index === items.length - 1 ? thread.blockLocalEnd : length;
     return { ...block, from, to, length };
   });
-  if (selected.some((slice) => !Number.isInteger(slice.from) || !Number.isInteger(slice.to)
-    || slice.from < 0 || slice.to <= slice.from || slice.to > slice.length)) return null;
+  if (
+    selected.some(
+      (slice) =>
+        !Number.isInteger(slice.from) ||
+        !Number.isInteger(slice.to) ||
+        slice.from < 0 ||
+        slice.to <= slice.from ||
+        slice.to > slice.length,
+    )
+  )
+    return null;
   return selected.map((slice) => ({
     blockId: slice.blockId,
     segments: slice.segments,
@@ -71,9 +89,16 @@ export function importedThreadSlices(blocks: ImportBlock[], thread: ImportedThre
   }));
 }
 
-export function importedThreadSelectedText(blocks: ImportBlock[], thread: ImportedThreadRange): string {
-  return importedThreadSlices(blocks, thread)?.map((slice) => {
-    const text = slice.segments.map((segment) => segment.text).join("");
-    return text.slice(slice.from, slice.to);
-  }).join("\n\n") ?? "";
+export function importedThreadSelectedText(
+  blocks: ImportBlock[],
+  thread: ImportedThreadRange,
+): string {
+  return (
+    importedThreadSlices(blocks, thread)
+      ?.map((slice) => {
+        const text = slice.segments.map((segment) => segment.text).join("");
+        return text.slice(slice.from, slice.to);
+      })
+      .join("\n\n") ?? ""
+  );
 }

@@ -8,10 +8,12 @@ function isHashOnlyNavigation(href: string) {
   try {
     const current = new URL(window.location.href);
     const next = new URL(href, current.href);
-    return current.origin === next.origin
-      && current.pathname === next.pathname
-      && current.search === next.search
-      && current.hash !== next.hash;
+    return (
+      current.origin === next.origin &&
+      current.pathname === next.pathname &&
+      current.search === next.search &&
+      current.hash !== next.hash
+    );
   } catch {
     return false;
   }
@@ -19,7 +21,9 @@ function isHashOnlyNavigation(href: string) {
 
 export function onRouterTransitionStart(href: string, navigationType: NavigationType) {
   if (typeof window === "undefined" || isHashOnlyNavigation(href)) return;
-  window.dispatchEvent(new CustomEvent(ROUTE_PROGRESS_START_EVENT, {
-    detail: { href, navigationType },
-  }));
+  window.dispatchEvent(
+    new CustomEvent(ROUTE_PROGRESS_START_EVENT, {
+      detail: { href, navigationType },
+    }),
+  );
 }

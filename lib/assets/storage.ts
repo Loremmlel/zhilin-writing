@@ -12,7 +12,10 @@ function safeFilename(filename: string): string {
 }
 
 export async function storeTemporaryAsset(ownerId: string, file: File, requestedKind?: "avatar") {
-  const validation = validateAssetUpload({ size: file.size, mimeType: file.type || "application/octet-stream" });
+  const validation = validateAssetUpload({
+    size: file.size,
+    mimeType: file.type || "application/octet-stream",
+  });
   if (validation) throw new AssetStorageError(validation.code, validation.message);
 
   const kind = requestedKind ?? classifyUpload(file.type || "application/octet-stream");
@@ -32,10 +35,19 @@ export async function storeTemporaryAsset(ownerId: string, file: File, requested
   }
 
   const record = {
-    id, ownerId, postId: null, r2Key, kind,
-    filename: file.name, mimeType: file.type || "application/octet-stream",
-    byteSize: file.size, status: "temporary" as const, createdAt,
-    boundAt: null, expiresAt, deletedAt: null,
+    id,
+    ownerId,
+    postId: null,
+    r2Key,
+    kind,
+    filename: file.name,
+    mimeType: file.type || "application/octet-stream",
+    byteSize: file.size,
+    status: "temporary" as const,
+    createdAt,
+    boundAt: null,
+    expiresAt,
+    deletedAt: null,
   };
   try {
     await getDb().insert(assets).values(record);
@@ -44,7 +56,13 @@ export async function storeTemporaryAsset(ownerId: string, file: File, requested
       await env.BUCKET.delete(r2Key);
     } catch (compensationError) {
       // A later orphan scan can recover an object whose metadata insert and compensation both failed.
-      logServerError({ operation: "asset.upload-compensation-delete", entityId: id, userId: ownerId, error: compensationError, errorCode: "R2_DELETE_FAILED" });
+      logServerError({
+        operation: "asset.upload-compensation-delete",
+        entityId: id,
+        userId: ownerId,
+        error: compensationError,
+        errorCode: "R2_DELETE_FAILED",
+      });
     }
     throw new AssetStorageError("SERVER_FAILURE", "文件记录保存失败，请重试", { cause: error });
   }

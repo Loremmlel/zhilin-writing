@@ -30,16 +30,25 @@ test("title, Markdown, inline resources, and attachment set create content revis
   };
 
   assert.equal(classifyPostChange(current, { ...current, title: "新题" }).contentChanged, true);
-  assert.equal(classifyPostChange(current, { ...current, markdown: "新正文" }).contentChanged, true);
-  assert.equal(classifyPostChange(current, {
-    ...current,
-    markdown: "正文 ![](/api/assets/image-b)",
-    assetRefs: buildAssetSnapshot("正文 ![](/api/assets/image-b)", ["file-a"]),
-  }).contentChanged, true);
-  assert.equal(classifyPostChange(current, {
-    ...current,
-    assetRefs: buildAssetSnapshot(current.markdown, ["file-b"]),
-  }).contentChanged, true);
+  assert.equal(
+    classifyPostChange(current, { ...current, markdown: "新正文" }).contentChanged,
+    true,
+  );
+  assert.equal(
+    classifyPostChange(current, {
+      ...current,
+      markdown: "正文 ![](/api/assets/image-b)",
+      assetRefs: buildAssetSnapshot("正文 ![](/api/assets/image-b)", ["file-a"]),
+    }).contentChanged,
+    true,
+  );
+  assert.equal(
+    classifyPostChange(current, {
+      ...current,
+      assetRefs: buildAssetSnapshot(current.markdown, ["file-b"]),
+    }).contentChanged,
+    true,
+  );
   assert.equal(classifyPostChange(current, { ...current }).contentChanged, false);
 });
 

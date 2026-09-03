@@ -20,11 +20,12 @@ export function buildPostLifecycleView(post: PostLifecycleInput, replyRows: Publ
     contentVisible: state === "normal",
     hasOtherMemberDiscussion,
     discussionReachable: state === "normal" || hasOtherMemberDiscussion,
-    placeholder: state === "hidden"
-      ? "该帖子已被管理员隐藏。"
-      : state === "deleted"
-        ? "该帖子已被作者删除。"
-        : null,
+    placeholder:
+      state === "hidden"
+        ? "该帖子已被管理员隐藏。"
+        : state === "deleted"
+          ? "该帖子已被作者删除。"
+          : null,
   };
 }
 
@@ -54,20 +55,33 @@ export function buildReplyLifecycleViews<T extends ReplyTreeInput>(
   const result: ReplyLifecycleView<T>[] = [];
   for (const row of rows) {
     const { state } = contentState(row);
-    const visibleDependentCount = active.filter((candidate) => (
-      candidate.replyToReplyId === row.id
-      || (row.rootReplyId === null && candidate.rootReplyId === row.id)
-    )).length;
-    const visibleOtherAuthorDependentCount = active.filter((candidate) => (
-      candidate.authorId !== row.authorId
-      && (candidate.replyToReplyId === row.id
-        || (row.rootReplyId === null && candidate.rootReplyId === row.id))
-    )).length;
+    const visibleDependentCount = active.filter(
+      (candidate) =>
+        candidate.replyToReplyId === row.id ||
+        (row.rootReplyId === null && candidate.rootReplyId === row.id),
+    ).length;
+    const visibleOtherAuthorDependentCount = active.filter(
+      (candidate) =>
+        candidate.authorId !== row.authorId &&
+        (candidate.replyToReplyId === row.id ||
+          (row.rootReplyId === null && candidate.rootReplyId === row.id)),
+    ).length;
     if (state === "normal") {
-      result.push({ ...row, state, contentVisible: true, placeholder: null, visibleDependentCount, visibleOtherAuthorDependentCount });
+      result.push({
+        ...row,
+        state,
+        contentVisible: true,
+        placeholder: null,
+        visibleDependentCount,
+        visibleOtherAuthorDependentCount,
+      });
       continue;
     }
-    if (!shouldRenderReplyPlaceholder({ state, visibleDependentCount }) && !requiredPlaceholderIds.has(row.id)) continue;
+    if (
+      !shouldRenderReplyPlaceholder({ state, visibleDependentCount }) &&
+      !requiredPlaceholderIds.has(row.id)
+    )
+      continue;
     result.push({
       ...row,
       state,

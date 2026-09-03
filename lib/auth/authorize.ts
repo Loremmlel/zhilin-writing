@@ -11,7 +11,11 @@ type ApiAccessDependencies<TAllowed, TMember> = AccessDependencies<TAllowed> & {
 
 export type ApiMemberAccess<TAllowed, TMember> =
   | { ok: true; member: TMember; allowed: TAllowed }
-  | { ok: false; code: "AUTH_EXPIRED" | "ACCESS_REVOKED" | "ONBOARDING_REQUIRED"; status: 401 | 403 };
+  | {
+      ok: false;
+      code: "AUTH_EXPIRED" | "ACCESS_REVOKED" | "ONBOARDING_REQUIRED";
+      status: 401 | 403;
+    };
 
 export async function resolveAllowedIdentity<T>(
   identityEmail: string,
@@ -19,9 +23,7 @@ export async function resolveAllowedIdentity<T>(
   dependencies: AccessDependencies<T>,
 ) {
   const emailKey = normalizeEmail(identityEmail);
-  const administratorEmail = configuredAdminEmail
-    ? normalizeEmail(configuredAdminEmail)
-    : null;
+  const administratorEmail = configuredAdminEmail ? normalizeEmail(configuredAdminEmail) : null;
 
   const allowed =
     administratorEmail && emailKey === administratorEmail

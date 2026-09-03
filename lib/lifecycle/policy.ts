@@ -7,7 +7,11 @@ type LifecycleFlags = {
 
 export function contentState(flags: LifecycleFlags) {
   return {
-    state: flags.hiddenAt ? "hidden" as const : flags.deletedAt ? "deleted" as const : "normal" as const,
+    state: flags.hiddenAt
+      ? ("hidden" as const)
+      : flags.deletedAt
+        ? ("deleted" as const)
+        : ("normal" as const),
     userDeleted: Boolean(flags.deletedAt),
     adminHidden: Boolean(flags.hiddenAt),
   };
@@ -24,11 +28,12 @@ export function isPostDiscussionReachable(
   postAuthorId: string,
   replies: Array<{ authorId: string | null; deletedAt: Date | null; hiddenAt: Date | null }>,
 ) {
-  return replies.some((reply) => (
-    reply.authorId !== null
-    && reply.authorId !== postAuthorId
-    && contentState(reply).state === "normal"
-  ));
+  return replies.some(
+    (reply) =>
+      reply.authorId !== null &&
+      reply.authorId !== postAuthorId &&
+      contentState(reply).state === "normal",
+  );
 }
 
 export function deriveLastActivityAt(
@@ -50,9 +55,13 @@ type AssetGcInput = {
   now: Date;
 };
 
-export function assetGcEligibility(input: AssetGcInput): "eligible" | "referenced" | "temporary-not-expired" {
-  if (input.currentRefCount > 0 || input.revisionRefCount > 0 || input.avatarRefCount > 0) return "referenced";
-  if (input.status === "temporary" && (!input.expiresAt || input.expiresAt > input.now)) return "temporary-not-expired";
+export function assetGcEligibility(
+  input: AssetGcInput,
+): "eligible" | "referenced" | "temporary-not-expired" {
+  if (input.currentRefCount > 0 || input.revisionRefCount > 0 || input.avatarRefCount > 0)
+    return "referenced";
+  if (input.status === "temporary" && (!input.expiresAt || input.expiresAt > input.now))
+    return "temporary-not-expired";
   return "eligible";
 }
 
@@ -62,7 +71,10 @@ export function adminAuditDedupeKey(
   targetId: string,
   transitionIdentity: Date | string | null,
 ) {
-  const identity = transitionIdentity instanceof Date ? transitionIdentity.getTime() : transitionIdentity ?? "active";
+  const identity =
+    transitionIdentity instanceof Date
+      ? transitionIdentity.getTime()
+      : (transitionIdentity ?? "active");
   return [actionType, targetType, targetId, identity].join(":");
 }
 
@@ -88,7 +100,8 @@ export function validateLifecycleOperationId(value: string) {
 
 export function canExposeActivitySnapshot(
   postState: ContentState,
-  eventType: "POST_CREATED" | "POST_REPLY_CREATED" | "ANNOTATION_CREATED" | "ANNOTATION_REPLY_CREATED",
+  eventType:
+    "POST_CREATED" | "POST_REPLY_CREATED" | "ANNOTATION_CREATED" | "ANNOTATION_REPLY_CREATED",
   replyState: ContentState,
 ) {
   return postState === "normal" && (eventType === "POST_CREATED" || replyState === "normal");

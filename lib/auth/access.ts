@@ -20,7 +20,8 @@ export async function getApiMemberAccess() {
 export async function getActionAdministratorAccess() {
   const access = await getApiMemberAccess();
   if (!access.ok) return access;
-  if (!access.allowed.isAdmin) return { ok: false as const, code: "ADMIN_REQUIRED" as const, status: 403 as const };
+  if (!access.allowed.isAdmin)
+    return { ok: false as const, code: "ADMIN_REQUIRED" as const, status: 403 as const };
   return access;
 }
 
@@ -28,9 +29,7 @@ export async function requireSiteAccess(returnTo: string) {
   const identity = await requireChatGPTUser(returnTo);
   const { emailKey, allowed } = await resolveAllowedIdentity(
     identity.email,
-    typeof env.BOOTSTRAP_ADMIN_EMAIL === "string"
-      ? env.BOOTSTRAP_ADMIN_EMAIL
-      : null,
+    typeof env.BOOTSTRAP_ADMIN_EMAIL === "string" ? env.BOOTSTRAP_ADMIN_EMAIL : null,
     { findAllowedUser, ensureConfiguredAdministrator },
   );
 

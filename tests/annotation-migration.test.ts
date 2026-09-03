@@ -2,10 +2,18 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-const migration = await readFile(new URL("../drizzle/0004_far_alex_wilder.sql", import.meta.url), "utf8");
+const migration = await readFile(
+  new URL("../drizzle/0004_far_alex_wilder.sql", import.meta.url),
+  "utf8",
+);
 
 test("V5 migration creates annotation roots, replies, current anchors, and revision states", () => {
-  for (const table of ["annotations", "annotation_replies", "post_annotation_anchors", "revision_annotation_states"]) {
+  for (const table of [
+    "annotations",
+    "annotation_replies",
+    "post_annotation_anchors",
+    "revision_annotation_states",
+  ]) {
     assert.ok(migration.includes("CREATE TABLE `" + table + "`"));
   }
   assert.match(migration, /original_selected_text/);

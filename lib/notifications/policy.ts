@@ -38,38 +38,47 @@ export function buildDocxAttributionNotices(input: {
     }
   }
   const createdAt = input.createdAt instanceof Date ? input.createdAt.getTime() : input.createdAt;
-  return [...counts].sort(([left], [right]) => left < right ? -1 : left > right ? 1 : 0).map(([recipientUserId, commentCount]) => ({
-    id: `notification:${input.eventId}:${recipientUserId}:docx-attribution-notice`,
-    recipientUserId,
-    actorUserId: input.importerUserId,
-    eventId: input.eventId,
-    notificationType: "DOCX_ATTRIBUTION_NOTICE",
-    postId: input.postId,
-    replyId: null,
-    annotationId: null,
-    annotationReplyId: null,
-    metadataJson: JSON.stringify({
+  return [...counts]
+    .sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0))
+    .map(([recipientUserId, commentCount]) => ({
+      id: `notification:${input.eventId}:${recipientUserId}:docx-attribution-notice`,
+      recipientUserId,
+      actorUserId: input.importerUserId,
+      eventId: input.eventId,
+      notificationType: "DOCX_ATTRIBUTION_NOTICE",
       postId: input.postId,
-      postTitle: input.postTitle,
-      importerDisplayName: input.importerDisplayName,
-      commentCount,
-    } satisfies DocxAttributionNoticeMetadata),
-    importBatchId: input.importBatchId,
-    createdAt,
-    readAt: null,
-  }));
+      replyId: null,
+      annotationId: null,
+      annotationReplyId: null,
+      metadataJson: JSON.stringify({
+        postId: input.postId,
+        postTitle: input.postTitle,
+        importerDisplayName: input.importerDisplayName,
+        commentCount,
+      } satisfies DocxAttributionNoticeMetadata),
+      importBatchId: input.importBatchId,
+      createdAt,
+      readAt: null,
+    }));
 }
 
-export function parseDocxAttributionNoticeMetadata(value: string | null): DocxAttributionNoticeMetadata | null {
+export function parseDocxAttributionNoticeMetadata(
+  value: string | null,
+): DocxAttributionNoticeMetadata | null {
   if (!value) return null;
   try {
     const parsed = JSON.parse(value) as Partial<DocxAttributionNoticeMetadata>;
     if (
-      typeof parsed.postId !== "string" || !parsed.postId
-      || typeof parsed.postTitle !== "string" || !parsed.postTitle
-      || typeof parsed.importerDisplayName !== "string" || !parsed.importerDisplayName
-      || !Number.isInteger(parsed.commentCount) || (parsed.commentCount ?? 0) <= 0
-    ) return null;
+      typeof parsed.postId !== "string" ||
+      !parsed.postId ||
+      typeof parsed.postTitle !== "string" ||
+      !parsed.postTitle ||
+      typeof parsed.importerDisplayName !== "string" ||
+      !parsed.importerDisplayName ||
+      !Number.isInteger(parsed.commentCount) ||
+      (parsed.commentCount ?? 0) <= 0
+    )
+      return null;
     return parsed as DocxAttributionNoticeMetadata;
   } catch {
     return null;
