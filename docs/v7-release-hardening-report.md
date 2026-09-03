@@ -5,15 +5,16 @@
 - 日期：2026-09-03
 - 分支：`feature/v7-hardening`
 - 基线：`488ab91`
-- 阶段：设计与实施计划完成，代码实现进行中，尚未发布
-- 自动化当前：345 tests / 344 pass / 1 approved skip（以最终回归为准）
-- 浏览器门：`BLOCKED`；Work cloud browser 对健康的 Site preview 返回 `ERR_BLOCKED_BY_CLIENT`
+- 阶段：V7 代码与自动化回归完成；真实浏览器验收和生产发布被发布门阻止
+- 自动化最终：346 tests / 345 pass / 1 approved Word Online fixture skip；build、rendered HTML、TypeScript、ESLint 均通过
+- 浏览器门：`BLOCKED`；健康的 Site preview 已启动，但 Work cloud browser 三次均在进入应用前返回 `ERR_BLOCKED_BY_CLIENT`
+- 发布状态：`NOT DEPLOYED`；未创建候选版本、未切换生产，前一个稳定版本保持原样
 
 ## 可行性裁决
 
 没有整体技术不可行项。已确认并写入设计的非字面实现包括：access 与 target 状态分层；24 小时 IndexedDB Preview 由 7 天 temporary 窗口保护；R2/D1 以 claim/recheck/retry 实现工程安全而非伪装成跨存储事务；Milkdown 多文件上传先通过集成 risk gate；owner-only 托管暂不向其他 allowlist 成员开放。
 
-以下 16 节是 V7 完成时的强制交付结构。在取得证据前一律保留 `PENDING`，不填写推测结果。
+以下 16 节区分自动化证据与仍缺少的真实浏览器证据；`PARTIAL` 不能视为发布通过。
 
 ## 1. Annotation card collision algorithm
 
@@ -90,6 +91,19 @@
 - Milkdown/Crepe 的独立编辑器 chunk 约 1.19 MB minified，构建仍提示单 chunk 超过 500 KB；已从普通帖子阅读依赖中移除，只在打开 composer、帖子编辑或 DOCX Preview 时按需加载。进一步缩小需替换既有编辑器栈，V7 不做高风险重写。
 - 生产错误日志只输出 operation、entity ID、内部 user ID、error code 和随机 request ID；测试证明不序列化 exception message/stack、email 或正文载荷。通用 mutation failure 对用户只返回固定恢复文案。
 - owner-only deployment 暂时阻止其他 allowlist 成员。
+
+## 最终自动化证据
+
+- `npm test`：346 tests / 345 pass / 1 approved skip；包含完整 unit、production build 和 9/9 rendered artifact checks。
+- `npx tsc --noEmit`：PASS。
+- `npm run lint`：PASS；仅有上游 `jsx-ast-utils` 对 AwaitExpression 的信息提示，不影响退出状态。
+- V7 migration：空库完整迁移链 PASS；带既有 user/post 数据的 V6 → V7（0007–0009）升级 PASS，数据与 foreign keys 保持完整。
+- Query plan / query shape：PASS；已验证目标索引被采用且列表查询不再逐条加载关联数据。
+- Preview process：PASS，`http://terminal.local:4173/` 健康启动；云浏览器导航在应用响应前被客户端策略阻断。
+
+## 发布决定
+
+V7 说明书要求真实产品巡检、全部 viewport、慢网与交互 failure injection 通过后才能发布。当前缺失的是这一类浏览器证据，而不是代码编译或测试证据。因此本轮明确停止在部署前：不调用 Sites save/deploy，不变更 owner/private access，不触碰生产 D1/R2，也不宣称 V7 已发布。浏览器门恢复后应从回归矩阵的 `BLOCKED` 行继续，全部通过后再记录旧 Sites version、保存候选版本、执行 owner-only/private deploy 与生产 smoke/rollback 验证。
 
 ## 证据索引
 

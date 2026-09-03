@@ -36,6 +36,35 @@ test("V7 adds a nullable per-author post creation idempotency key", async () => 
   db.close();
 });
 
+test("the complete V7 migration chain upgrades a populated V6 database", async () => {
+  const db = new DatabaseSync(":memory:");
+  db.exec("PRAGMA foreign_keys = ON");
+  const files = (await readdir(new URL("../drizzle/", import.meta.url)))
+    .filter((name) => /^\d{4}_.+\.sql$/.test(name))
+    .sort();
+
+  for (const filename of files.filter((name) => name < "0007_")) await applyMigration(db, filename);
+  db.prepare("INSERT INTO users (id, email_key, display_name, bio, joined_at, updated_at) VALUES (?, ?, ?, '', ?, ?)")
+    .run("legacy-author", "legacy@example.com", "旧用户", 1, 1);
+  db.prepare("INSERT INTO posts (id, author_id, title, markdown, search_text, published_at, last_activity_at) VALUES (?, ?, ?, ?, ?, ?, ?)")
+    .run("legacy-post", "legacy-author", "旧帖", "旧正文", "旧正文", 2, 2);
+
+  for (const filename of files.filter((name) => name >= "0007_")) await applyMigration(db, filename);
+
+  assert.deepEqual(
+    { ...db.prepare("SELECT id, title, creation_submission_key FROM posts WHERE id = ?").get("legacy-post") },
+    { id: "legacy-post", title: "旧帖", creation_submission_key: null },
+  );
+  const indexes = db.prepare("SELECT name FROM sqlite_master WHERE type = 'index'").all().map((row) => String(row.name));
+  assert.ok(indexes.includes("posts_author_published_idx"));
+  assert.ok(indexes.includes("replies_post_published_idx"));
+  assert.ok(indexes.includes("post_tags_tag_post_idx"));
+  const assetColumns = db.prepare("PRAGMA table_info(assets)").all().map((row) => String(row.name));
+  assert.ok(assetColumns.includes("gc_claimed_at"));
+  assert.deepEqual(db.prepare("PRAGMA foreign_key_check").all(), []);
+  db.close();
+});
+
 test("new-post retries query the same server key before and after a unique race", async () => {
   const [service, action, editor] = await Promise.all([
     readFile(new URL("../lib/posts/service.ts", import.meta.url), "utf8"),

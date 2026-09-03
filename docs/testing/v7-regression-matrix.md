@@ -11,11 +11,13 @@
 
 ## 当前基线
 
-- Commit：`488ab91`
-- Unit：`PASS`，317 tests / 316 pass / 1 approved skip
+- V6 基线：`488ab91`
+- V7 实现：`2a8c3d5..208b4a0`，最终证据随本报告提交封存
+- Unit：`PASS`，346 tests / 345 pass / 1 approved skip
 - Site preview process：`PASS`
-- Work cloud browser navigation：`BLOCKED`，`ERR_BLOCKED_BY_CLIENT`
-- Build / rendered HTML：`PENDING`
+- Work cloud browser navigation：`BLOCKED`，三次均为 `ERR_BLOCKED_BY_CLIENT`
+- Build / rendered HTML：`PASS`，production build + 9/9 rendered artifact checks
+- TypeScript / ESLint：`PASS`
 
 ## Auth
 
@@ -88,7 +90,7 @@
 - [ ] `BLOCKED` 820px，Annotation layout 合理。
 - [ ] `BLOCKED` 1024px，正文、gutter 与 rail 均不拥挤。
 - [ ] `BLOCKED` common desktop，长文/长 thread/cards/connectors 稳定。
-- [ ] `PENDING` long URL / inline code / code block / table / filename / unbroken text 局部处理 overflow。
+- [x] `PASS (automated contract)` long URL / inline code / code block / table / filename / unbroken text 均使用局部 scroll/wrap；真实 viewport 仍受上方 browser rows 阻塞。
 
 ## Accessibility / History
 
@@ -111,23 +113,22 @@
 
 ## Failure injection
 
-- [ ] `PENDING` D1 mutation failure。
-- [ ] `PENDING` R2 upload failure。
-- [ ] `PENDING` R2 delete failure。
-- [ ] `PENDING` notification query failure。
-- [ ] `PENDING` asset bind failure。
-- [ ] `PENDING` auth expiry during edit。
-- [ ] `PENDING` optimistic revision conflict。
+- [x] `PASS (automated)` D1 mutation failure：batch 全回滚，无 ghost relation。
+- [x] `PASS (automated)` R2 upload/metadata failure：best-effort compensation，失败进入 orphan scan。
+- [x] `PASS (automated)` R2 delete failure：metadata 保留并记录可重试失败。
+- [x] `PASS (automated)` notification query failure：受保护 shell 不被未读计数拖垮。
+- [x] `PASS (automated)` asset bind failure：GC claim 阻止绑定，最终引用复查胜出。
+- [x] `PASS (automated)` auth expiry during edit：typed result 不清空受控输入/IndexedDB draft。
+- [x] `PASS (automated)` optimistic revision conflict：保留本地选择且不产生 ghost revision。
 
 每项必须记录：数据一致性、用户可见说明、恢复路径、日志 redaction、是否产生重复或 ghost state。
 
 ## Deployment gate
 
-- [ ] `PENDING` migrations 在空库与 V6 fixture 升级通过。
+- [x] `PASS` migrations 在空库与带既有数据的 V6 fixture 升级通过。
 - [ ] `PENDING` D1 / R2 bindings、allowlist、admin identity 正常。
 - [ ] `PENDING` production 无 fixture/mock/test account/debug backdoor。
 - [ ] `PENDING` 记录前一个稳定 Sites version。
-- [ ] `PENDING` owner-only/private deployment。
+- [ ] `BLOCKED` owner-only/private deployment；真实浏览器门未通过，未保存或部署候选版本。
 - [ ] `PENDING` production smoke test。
 - [ ] `PENDING` rollback procedure 验证。
-

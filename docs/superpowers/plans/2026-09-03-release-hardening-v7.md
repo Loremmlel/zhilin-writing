@@ -8,6 +8,8 @@
 
 **Spec:** `docs/superpowers/specs/2026-09-03-release-hardening-v7-design.md`
 
+**Execution status (2026-09-03):** Tasks 1–10 are implemented and the automated portion of Task 11 passes. The real-browser portion of Task 11 is `BLOCKED` by `ERR_BLOCKED_BY_CLIENT`, so Task 12 has deliberately not started. The release report and regression matrix are the evidence source; unchecked items below preserve the original work breakdown and do not override that gate status.
+
 ## Working Rules
 
 - Work on `feature/v7-hardening`; preserve unrelated user changes.
