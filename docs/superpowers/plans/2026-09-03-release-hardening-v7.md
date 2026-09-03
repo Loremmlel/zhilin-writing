@@ -52,7 +52,7 @@
 
 - [ ] Add failing tests for stable multi-line representative rects, downward-only collision, unchanged-geometry state suppression and container-mode switching.
 - [ ] Preserve `(anchorY, annotationId)` ordering and current `max(desiredTop, previousBottom + gap)` placement.
-- [ ] Replace separate CSS/JS breakpoint decisions with one container-derived `desktop | compact` state exposed through a data attribute.
+- [x] Replace separate CSS/JS breakpoint decisions with one container-derived `desktop | compact` state exposed through a data attribute.
 - [ ] Route connectors through the body/sidebar gutter, with a short anchor stem and a stable card-left attachment.
 - [ ] Schedule measurement on font ready, image load, resize, card/body ResizeObserver and editor/readonly mode changes through one rAF coalescer.
 - [ ] Do not remeasure on scroll; skip React geometry updates when values are equal.

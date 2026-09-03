@@ -143,6 +143,7 @@ export function AnnotationReadingLayout({ postId, html, annotations, baseRevisio
     const nextLayoutMode = annotationLayoutMode(layout.clientWidth);
     if (nextLayoutMode !== layoutMode) {
       setLayoutMode(nextLayoutMode);
+      if (nextLayoutMode === "desktop") setSheetId(null);
       return;
     }
     if (layoutMode === "compact") {
@@ -182,15 +183,18 @@ export function AnnotationReadingLayout({ postId, html, annotations, baseRevisio
   }, [annotations, layoutMode]);
 
   useLayoutEffect(() => {
+    const layout = layoutRef.current;
+    const body = bodyRef.current;
+    const sidebar = sidebarRef.current;
     const scheduler = createAnnotationLayoutScheduler(measure);
     const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(() => scheduler.schedule());
-    if (layoutRef.current) observer?.observe(layoutRef.current); if (bodyRef.current) observer?.observe(bodyRef.current); if (sidebarRef.current) observer?.observe(sidebarRef.current); cardRefs.current.forEach((card) => observer?.observe(card));
+    if (layout) observer?.observe(layout); if (body) observer?.observe(body); if (sidebar) observer?.observe(sidebar); cardRefs.current.forEach((card) => observer?.observe(card));
     const schedule = () => scheduler.schedule();
     let cancelled = false;
     document.fonts?.ready.then(() => { if (!cancelled) schedule(); });
-    bodyRef.current?.addEventListener("load", schedule, true);
+    body?.addEventListener("load", schedule, true);
     window.addEventListener("resize", schedule); scheduler.schedule();
-    return () => { cancelled = true; scheduler.destroy(); observer?.disconnect(); bodyRef.current?.removeEventListener("load", schedule, true); window.removeEventListener("resize", schedule); };
+    return () => { cancelled = true; scheduler.destroy(); observer?.disconnect(); body?.removeEventListener("load", schedule, true); window.removeEventListener("resize", schedule); };
   }, [measure]);
 
   useEffect(() => {
@@ -225,7 +229,6 @@ export function AnnotationReadingLayout({ postId, html, annotations, baseRevisio
     return () => window.clearTimeout(timeout);
   }, [deepLinkHighlight]);
 
-  useEffect(() => { if (layoutMode === "desktop") setSheetId(null); }, [layoutMode]);
   useEffect(() => {
     const body = bodyRef.current; if (!body) return;
     body.querySelectorAll(".annotation-range.is-active, .annotation-range.is-deep-linked").forEach((element) => element.classList.remove("is-active", "is-deep-linked"));

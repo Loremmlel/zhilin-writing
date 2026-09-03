@@ -6,7 +6,7 @@
 - 分支：`feature/v7-hardening`
 - 基线：`488ab91`
 - 阶段：设计与实施计划完成，代码实现进行中，尚未发布
-- 自动化当前：340 tests / 339 pass / 1 approved skip（以最终回归为准）
+- 自动化当前：342 tests / 341 pass / 1 approved skip（以最终回归为准）
 - 浏览器门：`BLOCKED`；Work cloud browser 对健康的 Site preview 返回 `ERR_BLOCKED_BY_CLIENT`
 
 ## 可行性裁决
@@ -33,7 +33,7 @@
 
 ## 5. Route skeleton / loading
 
-`PARTIAL`：site、post、profile、notifications、search、tag、admin、revision 已有 route loading；局部 retry 与防闪烁审计待完成。
+`PARTIAL`：site、post、profile、notifications、search、tag、admin、revision 已有 route loading；Post 正文/讨论、Profile 内容、Notifications、Admin 列表、Revision Preview 使用保留外层页面和 URL 状态的局部 Error Boundary + Retry。局部 skeleton 保留几何但延迟 160ms 显示，短请求不闪烁；browser evidence 待完成。
 
 ## 6. Mutation failure / retry
 
@@ -71,11 +71,11 @@
 
 ## 13. Mobile / tablet Annotation breakpoint
 
-`PENDING`：当前 900px 仅为保留基线；实际 viewport 验收前不宣布最终值。
+`PARTIAL`：Annotation 组件以实际容器宽度为唯一来源；至少 1060px 才进入 `desktop`（720px 正文 + 70px gutter + 270px rail），否则统一进入 compact sheet，CSS、connector 与交互消费同一 data attribute。320/375/390/430/768/820/1024px browser evidence 待完成。
 
 ## 14. Accessibility 修复
 
-`PENDING`。
+`PARTIAL`：interactive annotation mark 可 Tab 聚焦并以 Enter/Space 打开对应 thread；Modal/Sheet 已有顶层 focus trap、Escape 和关闭后触发点焦点恢复；补充全站 `:focus-visible` 与 forced-colors outline，compact 宽度的主要按钮/链接/批注操作统一至少 44px。Markdown 表格局部横向滚动，长正文/文件名换行，页面不以隐藏 overflow 掩盖问题。完整键盘与屏幕阅读器 browser evidence 待完成。
 
 ## 15. Slow-network / failure-injection 结果
 

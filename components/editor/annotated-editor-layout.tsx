@@ -65,6 +65,7 @@ export function AnnotatedEditorLayout({ children, editorRoot, annotations, pendi
     const nextLayoutMode = annotationLayoutMode(layout.clientWidth);
     if (nextLayoutMode !== layoutMode) {
       setLayoutMode(nextLayoutMode);
+      if (nextLayoutMode === "desktop") setSheetId(null);
       return;
     }
     if (layoutMode === "compact") {
@@ -180,8 +181,6 @@ export function AnnotatedEditorLayout({ children, editorRoot, annotations, pendi
       document.removeEventListener("selectionchange", activateFromSelection);
     };
   }, [editorRoot, layoutMode, visibleIdSet]);
-
-  useEffect(() => { if (layoutMode === "desktop") setSheetId(null); }, [layoutMode]);
 
   const locateAnnotation = useCallback((annotationId: string) => {
     if (!editorRoot || !visibleIdSet.has(annotationId)) return;

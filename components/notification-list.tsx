@@ -10,8 +10,10 @@ import { notificationTargetNotice } from "@/lib/notifications/target-resolution"
 
 type NotificationItem = Awaited<ReturnType<typeof listNotifications>>[number];
 
-export function NotificationList({ items }: { items: NotificationItem[] }) {
-  if (items.length === 0) return <div className="empty-state"><h2>这里很安静</h2><p>有同学回复你的内容，或 DOCX 导入关联了你的 Word 批注后，会在这里通知你。</p></div>;
+export function NotificationList({ items, emptyKind = "all" }: { items: NotificationItem[]; emptyKind?: "all" | "unread" }) {
+  if (items.length === 0) return emptyKind === "unread"
+    ? <div className="empty-state"><h2>没有未读通知</h2><p>新的直接回应会显示在这里。</p></div>
+    : <div className="empty-state"><h2>这里很安静</h2><p>有同学回复你的内容，或 DOCX 导入关联了你的 Word 批注后，会在这里通知你。</p></div>;
   return <section className="notification-list" aria-label="通知列表">
     {items.map((item) => {
       const isUnread = !item.notification.readAt;

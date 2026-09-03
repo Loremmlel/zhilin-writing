@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { ContentLifecycleControl } from "@/components/admin/content-lifecycle-control";
 import { AddAllowlistForm, RemoveAllowlistForm } from "@/components/admin/allowlist-forms";
 import { AdminListSkeleton } from "@/components/loading/skeletons";
+import { RegionErrorBoundary } from "@/components/region-error-boundary";
 import {
   listAdminAuditLog,
   listAdminPosts,
@@ -30,6 +31,20 @@ const statusLabels: Record<AdminContentStatus, string> = {
   deleted: "用户已删除",
   hidden: "管理员已隐藏",
 };
+
+const contentTypeLabels: Record<AdminContentType, string> = {
+  posts: "帖子",
+  replies: "回复",
+  annotations: "批注",
+  "annotation-replies": "批注回复",
+};
+
+function adminEmptyCopy(contentType: AdminContentType, status: AdminContentStatus): string {
+  const noun = contentTypeLabels[contentType];
+  if (status === "deleted") return `没有被作者删除的${noun}。`;
+  if (status === "hidden") return `没有被管理员隐藏的${noun}。`;
+  return `没有处于正常状态的${noun}。`;
+}
 
 function annotationAuthorLabel(author: AnnotationAuthorView): string {
   return [author.displayName, annotationSourceMetadata(author)].filter(Boolean).join(" · ");
@@ -59,9 +74,11 @@ export default async function AdminPage({ searchParams }: {
   return (
     <div className="page-column admin-page">
       <header className="page-header"><span className="eyebrow">管理员</span><h1>管理后台</h1><p>检查内容状态、恢复误删内容，并管理受邀成员。所有原文查看与状态操作都经过服务端管理员校验。</p></header>
-      <Suspense fallback={<AdminListSkeleton />}>
-        <AdminContent query={query} />
-      </Suspense>
+      <RegionErrorBoundary title="管理列表暂时无法载入" description="当前内容类型和状态筛选仍会保留，请稍后重试。">
+        <Suspense fallback={<AdminListSkeleton />}>
+          <AdminContent query={query} />
+        </Suspense>
+      </RegionErrorBoundary>
     </div>
   );
 }
@@ -179,7 +196,7 @@ async function AdminContent({ query }: { query: AdminQuery }) {
                 : <ContentLifecycleControl key={`annotation-reply-${reply.id}-hide`} action={moderateAnnotationReplyAction.bind(null, reply.id, "hide")} operation="hide" targetLabel="批注回复" />}
             </div>
           </article>)}
-          {content.length === 0 && <p className="empty-copy">此筛选下没有内容。</p>}
+          {content.length === 0 && <p className="empty-copy">{adminEmptyCopy(contentType, status)}</p>}
         </div>
       </section>
 

@@ -38,6 +38,7 @@ body { margin: 0; background: radial-gradient(circle at 85% 0%, rgba(125, 157, 1
 a { color: inherit; text-decoration: none; }
 button, input, textarea { font: inherit; }
 button, summary, input[type="file"] { cursor: pointer; }
+:where(a, button, summary, input, textarea, select, [tabindex]):focus-visible { outline: 3px solid rgba(53, 97, 69, .34); outline-offset: 2px; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 
 #route-progress { position: fixed; z-index: 700; top: 0; left: 0; right: 0; height: 2px; pointer-events: none; opacity: 0; transition: opacity 160ms ease; }
@@ -78,9 +79,14 @@ button, summary, input[type="file"] { cursor: pointer; }
 .skeleton-admin-section { min-height: 280px; }
 .skeleton-admin-section .skeleton-card { min-height: 72px; padding: 16px; }
 .skeleton-revision-preview { min-height: 620px; display: grid; align-content: start; gap: 30px; }
+/* Local Suspense regions keep their geometry but stay invisible for fast responses. */
+.skeleton-region, .skeleton-discussion, .skeleton-admin-section, .skeleton-revision-preview { animation: skeleton-reveal 0s .16s both; }
+@keyframes skeleton-reveal { from { visibility: hidden; } to { visibility: visible; } }
 .route-error-page { min-height: min(72vh, 680px); padding: 40px 20px; display: grid; place-items: center; }
 .route-error-card { width: min(560px, 100%); }
 .route-error-actions { margin-top: 24px; display: flex; flex-wrap: wrap; gap: 10px; }
+.region-error { min-height: 160px; margin: 16px 0; padding: 24px; border: 1px solid #e0b9b4; border-radius: var(--radius); display: grid; align-content: center; justify-items: start; gap: 8px; background: #fff9f7; }
+.region-error p { margin: 0 0 7px; color: #704b47; line-height: 1.65; }
 
 .site-shell { min-height: 100vh; display: flex; flex-direction: column; }
 .site-header { position: sticky; top: 0; z-index: var(--z-header); border-bottom: 1px solid var(--line); background: rgba(251, 250, 247, .94); backdrop-filter: blur(16px); }
@@ -214,7 +220,8 @@ button, summary, input[type="file"] { cursor: pointer; }
 .asset-upload-task strong, .asset-upload-task span { overflow-wrap: anywhere; }
 .asset-upload-task progress { width: 100%; height: 6px; accent-color: var(--green); }
 .asset-list { display: grid; gap: 7px; margin-top: 18px; }
-.asset-row { padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; display: flex; justify-content: space-between; gap: 12px; font-size: 13px; }
+.asset-row { min-width: 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; display: flex; justify-content: space-between; gap: 12px; font-size: 13px; }
+.asset-row > span { min-width: 0; overflow-wrap: anywhere; }
 .asset-row-actions { display: flex; align-items: center; gap: 12px; }
 .form-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 26px; }
 .form-error { color: var(--danger); font-size: 13px; padding: 10px 12px; border-radius: 8px; background: #fbefed; }
@@ -262,7 +269,7 @@ button, summary, input[type="file"] { cursor: pointer; }
 .markdown-body blockquote { margin: 1.5em 0; padding: .3em 1.2em; border-left: 3px solid #a9bea9; color: #5f685f; background: var(--green-pale); }
 .markdown-body pre { overflow-x: auto; padding: 17px; border-radius: 9px; background: #252a26; color: #eff3ef; font: 13px/1.7 ui-monospace, monospace; }
 .markdown-body code:not(pre code) { padding: 2px 5px; border-radius: 4px; background: #f0f1ec; font: .86em ui-monospace, monospace; }
-.markdown-body table { width: 100%; border-collapse: collapse; margin: 1.5em 0; font-family: inherit; }
+.markdown-body table { display: block; width: max-content; max-width: 100%; overflow-x: auto; border-collapse: collapse; margin: 1.5em 0; font-family: inherit; }
 .markdown-body th, .markdown-body td { padding: 9px 12px; border: 1px solid var(--line-strong); text-align: left; }
 .markdown-body th { background: var(--green-pale); }
 .markdown-body img { max-width: 100%; height: auto; border-radius: 10px; }
@@ -296,6 +303,7 @@ button, summary, input[type="file"] { cursor: pointer; }
 .markdown-body--annotation > :last-child { margin-bottom: 0; }
 .annotation-reply-heading { display: flex; align-items: center; justify-content: space-between; margin: 14px -16px 0; padding: 9px 16px; border-top: 1px solid #eadeda; border-bottom: 1px solid #eadeda; color: var(--muted); font-size: 11px; }
 .annotation-reply-heading strong { color: var(--annotation-ink); font-size: 11px; }
+.annotation-reply-empty { margin: 12px 0 0; padding: 10px 0 0; border-top: 1px solid #eadeda; color: var(--muted); font-size: 11px; }
 .annotation-reply-list { display: grid; gap: 0; margin: 0 -16px; }
 .annotation-reply { padding: 13px 16px; border-bottom: 1px solid #eadeda; background: rgba(251, 250, 247, .66); transition: background .35s ease-out, box-shadow .35s ease-out; }
 .annotation-reply.is-deep-linked { background: var(--annotation); box-shadow: inset 3px 0 0 var(--annotation-ink); }
@@ -566,6 +574,8 @@ button, summary, input[type="file"] { cursor: pointer; }
   .brand-name { font-size: 21px; }
   .button--write { width: 42px; padding: 0; font-size: 0; }
   .button--write::before { font-size: 20px; }
+  .button, .button--small, .text-button, .notification-link, .account-menu-trigger, .tag, .annotation-card-locate, .annotation-reply-cta, .annotation-reply-action, .annotation-reply-root-target, .annotation-selection-menu, .inline-reply summary, .attachment-link, .admin-row--link, .text-link { min-height: 44px; }
+  .text-button, .tag, .inline-reply summary, .text-link { display: inline-flex; align-items: center; }
   .account-menu-trigger > span { display: none; }
   .page-column, .editor-page, .admin-page { width: min(100% - 24px, 920px); padding-top: 30px; }
   .home-intro { padding-inline: 2px; }
@@ -577,6 +587,8 @@ button, summary, input[type="file"] { cursor: pointer; }
   .editor-topline { align-items: flex-start; flex-direction: column; gap: 4px; }
   .markdown-editor .milkdown .ProseMirror { padding: 22px 18px; }
   .post-article { padding: 4px 20px 36px; }
+  .asset-row { align-items: flex-start; flex-direction: column; }
+  .asset-row-actions { width: 100%; flex-wrap: wrap; gap: 8px 14px; }
   .reading-page--annotated { width: min(100% - 24px, 920px); }
   .reply { padding: 16px 14px; }
   .reply--nested { margin-left: 22px; }
@@ -620,6 +632,7 @@ button, summary, input[type="file"] { cursor: pointer; }
   .annotation-selection-overlay-rect { border: 1px solid Highlight; background: Highlight; }
   .annotation-card, .annotation-sheet-surface, .docx-import-dropzone, .docx-import-panel, .skeleton-block, .skeleton-card { border: 1px solid ButtonText; }
   .annotation-connectors path { stroke: LinkText; }
+  :where(a, button, summary, input, textarea, select, [tabindex]):focus-visible { outline: 2px solid Highlight; }
 }
 
 @media (prefers-reduced-motion: reduce) {

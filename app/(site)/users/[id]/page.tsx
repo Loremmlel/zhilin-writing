@@ -7,6 +7,7 @@ import Link from "next/link";
 
 import { ActivityList } from "@/components/activity-list";
 import { ProfileContentSkeleton } from "@/components/loading/skeletons";
+import { RegionErrorBoundary } from "@/components/region-error-boundary";
 import { findUserById, listPosts, listUserActivity } from "@/db/queries";
 import { formatJoinedDate } from "@/lib/format";
 
@@ -22,12 +23,14 @@ export default async function UserPage({ params, searchParams }: { params: Promi
         <div><span className="eyebrow">社区成员</span><h1>{user.displayName}</h1><p>{user.bio || "还没有写个人简介。"}</p><span className="muted">{formatJoinedDate(user.joinedAt)} 加入</span></div>
       </header>
       <nav className="list-tabs profile-tabs" aria-label="个人主页内容">
-        <Link href={`/users/${id}`} className={tab === "posts" ? "is-active" : ""}>Posts</Link>
-        <Link href={`/users/${id}?tab=activity`} className={tab === "activity" ? "is-active" : ""}>Activity</Link>
+        <Link href={`/users/${id}`} className={tab === "posts" ? "is-active" : ""}>帖子</Link>
+        <Link href={`/users/${id}?tab=activity`} className={tab === "activity" ? "is-active" : ""}>动态</Link>
       </nav>
-      <Suspense fallback={<ProfileContentSkeleton />}>
-        <ProfileContent userId={id} tab={tab} />
-      </Suspense>
+      <RegionErrorBoundary title="个人内容暂时无法载入" description="当前标签页仍会保留，请稍后重试。">
+        <Suspense fallback={<ProfileContentSkeleton />}>
+          <ProfileContent userId={id} tab={tab} />
+        </Suspense>
+      </RegionErrorBoundary>
     </div>
   );
 }

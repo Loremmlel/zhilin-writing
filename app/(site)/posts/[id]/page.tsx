@@ -10,6 +10,7 @@ import { DeepLinkHighlighter } from "@/components/deep-link-highlighter";
 import { DiscussionSkeleton, PostBodySkeleton } from "@/components/loading/skeletons";
 import { ReplyForm } from "@/components/reply-form";
 import { ReplyList } from "@/components/reply-list";
+import { RegionErrorBoundary } from "@/components/region-error-boundary";
 import { getPostDetail, listReplies } from "@/db/queries";
 import { listCurrentAnnotationThreads } from "@/lib/annotations/queries";
 import { getAnnotationMutationPermissions } from "@/lib/annotations/policy";
@@ -43,12 +44,16 @@ export default async function PostPage({ params, searchParams }: { params: Promi
 
   return (
     <div className={`reading-page page-column${rawAnnotations.length ? " reading-page--annotated" : ""}`}>
-      <Suspense fallback={<PostBodySkeleton />}>
-        <PostBodyRegion id={id} query={query} item={item} rawAnnotations={rawAnnotations} memberId={member.id} />
-      </Suspense>
-      {discussionVisible && <Suspense fallback={<DiscussionSkeleton />}>
-        <DiscussionRegion id={id} query={query} memberId={member.id} contentVisible={item.lifecycle.contentVisible} />
-      </Suspense>}
+      <RegionErrorBoundary title="正文暂时无法显示" description="帖子地址与定位目标仍会保留，请稍后重试。">
+        <Suspense fallback={<PostBodySkeleton />}>
+          <PostBodyRegion id={id} query={query} item={item} rawAnnotations={rawAnnotations} memberId={member.id} />
+        </Suspense>
+      </RegionErrorBoundary>
+      {discussionVisible && <RegionErrorBoundary title="讨论暂时无法显示" description="正文与当前定位状态仍会保留，请稍后重试。">
+        <Suspense fallback={<DiscussionSkeleton />}>
+          <DiscussionRegion id={id} query={query} memberId={member.id} contentVisible={item.lifecycle.contentVisible} />
+        </Suspense>
+      </RegionErrorBoundary>}
     </div>
   );
 }

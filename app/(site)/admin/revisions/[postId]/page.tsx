@@ -4,6 +4,7 @@ import { Suspense } from "react";
 
 import { RestoreRevisionForm } from "@/components/admin/restore-revision-form";
 import { RevisionPreviewSkeleton } from "@/components/loading/skeletons";
+import { RegionErrorBoundary } from "@/components/region-error-boundary";
 import { getPostForAdministration } from "@/db/queries";
 import { requireAdministrator } from "@/lib/auth/access";
 import { formatDateTime } from "@/lib/format";
@@ -70,9 +71,11 @@ export default async function PostRevisionsPage({
             })}
           </div>
         </aside>
-        <Suspense fallback={<RevisionPreviewSkeleton />}>
-          <RevisionPreview postId={postId} selectedId={selectedId} currentRevisionId={post.post.currentRevisionId} postDeleted={Boolean(post.post.deletedAt)} />
-        </Suspense>
+        <RegionErrorBoundary title="版本预览暂时无法载入" description="当前选中的版本仍会保留，请稍后重试。">
+          <Suspense fallback={<RevisionPreviewSkeleton />}>
+            <RevisionPreview postId={postId} selectedId={selectedId} currentRevisionId={post.post.currentRevisionId} postDeleted={Boolean(post.post.deletedAt)} />
+          </Suspense>
+        </RegionErrorBoundary>
       </div>
     </div>
   );

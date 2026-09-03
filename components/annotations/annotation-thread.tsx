@@ -100,7 +100,7 @@ function AnnotationReplyList({ replies, renderActions, highlightReplyId }: {
   renderActions?: (reply: AnnotationReplyView) => ReactNode;
   highlightReplyId?: string | null;
 }) {
-  if (replies.length === 0) return null;
+  if (replies.length === 0) return <p className="annotation-reply-empty">还没有回复。</p>;
   return <>
     <div className="annotation-reply-heading"><span>已有回复</span><strong>{replies.length}</strong></div>
     <div className="annotation-reply-list">{replies.map((reply) => <AnnotationReplyContent reply={reply} highlighted={highlightReplyId === reply.id} key={reply.id}>{renderActions?.(reply)}</AnnotationReplyContent>)}</div>
@@ -150,6 +150,7 @@ function InteractiveAnnotationDiscussion({ annotation, replyAction, deleteAction
       {capabilities.remove && annotation.lifecycle.contentVisible && annotation.permissions.canRemoveImportedThread && <DeleteContentControl action={removeImportedAction.bind(null, annotation.id)} label="移除导入批注" title="移除这条 Word 导入批注？" description={annotation.deleteDescription} confirmLabel="确认移除" pendingLabel="正在移除…" />}
     </div>}
     {replyCountItem?.kind === "reply-count" && replyCountItem.count > 0 && <div className="annotation-reply-heading"><span>已有回复</span><strong>{replyCountItem.count}</strong></div>}
+    {replyCountItem?.kind === "reply-count" && replyCountItem.count === 0 && <p className="annotation-reply-empty">还没有回复。</p>}
     {replyItems.length > 0 && <div className="annotation-reply-list">{replyItems.map((item) => {
       if (item.kind !== "reply") return null;
       const reply = item.reply;

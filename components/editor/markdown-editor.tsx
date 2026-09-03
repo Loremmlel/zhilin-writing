@@ -90,6 +90,7 @@ function MarkdownEditorSession({ initialMarkdown, onMarkdownChange, onAssetUploa
 
   useEffect(() => {
     if (!rootRef.current) return;
+    const failedImageFiles = failedImageFilesRef.current;
     onEditorRootChangeRef.current?.(rootRef.current);
     let disposed = false;
     const performImageUpload = async (taskId: string, file: File) => {
@@ -247,7 +248,7 @@ function MarkdownEditorSession({ initialMarkdown, onMarkdownChange, onAssetUploa
       uploadAbortRef.current?.abort();
       uploadAbortRef.current = null;
       retryImageUploadRef.current = null;
-      failedImageFilesRef.current.clear();
+      failedImageFiles.clear();
       onUploadStateChangeRef.current?.(false);
       onEditorRootChangeRef.current?.(null);
       guardRef.current?.discard();

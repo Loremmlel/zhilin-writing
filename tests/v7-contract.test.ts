@@ -70,3 +70,30 @@ test("asset failures remain per-file and unsafe attachments are downloaded", asy
   assert.match(assetRoute, /\? "inline" : "attachment"/);
   assert.match(storage, /await env\.BUCKET\.delete\(r2Key\)/);
 });
+
+test("V7 polish keeps lifecycle states out of 404 and provides local recovery and mobile containment", async () => {
+  const [notFound, styles, notifications, annotationThread, admin, profile, post, revision] = await Promise.all([
+    source("../app/not-found.tsx"),
+    source("../app/globals.css"),
+    source("../app/(site)/notifications/page.tsx"),
+    source("../components/annotations/annotation-thread.tsx"),
+    source("../app/(site)/admin/page.tsx"),
+    source("../app/(site)/users/[id]/page.tsx"),
+    source("../app/(site)/posts/[id]/page.tsx"),
+    source("../app/(site)/admin/revisions/[postId]/page.tsx"),
+  ]);
+
+  assert.match(notFound, /没有找到这个页面/);
+  assert.doesNotMatch(notFound, /不可见|已删除|已隐藏/);
+  assert.match(styles, /\.markdown-body table[^}]*max-width: 100%[^}]*overflow-x: auto/);
+  assert.match(styles, /@media \(max-width: 640px\)[\s\S]*min-height: 44px/);
+  assert.match(styles, /:focus-visible[^}]*outline/);
+  assert.match(styles, /skeleton-reveal 0s \.16s both/);
+  assert.match(annotationThread, /还没有回复。/);
+  assert.match(admin, /没有被作者删除的/);
+  assert.match(admin, /没有被管理员隐藏的/);
+  assert.match(profile, />帖子<[\s\S]*>动态</);
+  for (const region of [notifications, profile, post, admin, revision]) {
+    assert.match(region, /RegionErrorBoundary/);
+  }
+});
