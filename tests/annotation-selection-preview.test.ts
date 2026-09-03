@@ -116,3 +116,87 @@ test("reading layout inspects a pointer selection only after it finishes", async
   );
   assert.doesNotMatch(source, /addEventListener\("selectionchange"/);
 });
+
+test("reading layout preserves article nodes while selection UI rerenders", async () => {
+  const browser = new Window({ url: "https://example.test" });
+  for (const [name, value] of Object.entries({
+    window: browser,
+    document: browser.document,
+    Node: browser.Node,
+    Element: browser.Element,
+    HTMLElement: browser.HTMLElement,
+    Text: browser.Text,
+    Event: browser.Event,
+    MutationObserver: browser.MutationObserver,
+  })) {
+    Object.defineProperty(globalThis, name, { configurable: true, value, writable: true });
+  }
+  Object.defineProperty(globalThis, "navigator", {
+    configurable: true,
+    value: browser.navigator,
+    writable: true,
+  });
+
+  const React = await import("react");
+  const { createRoot } = await import("react-dom/client");
+  const host = browser.document.createElement("div");
+  browser.document.body.append(host);
+  let showSelectionMenu: (() => void) | undefined;
+
+  function SelectionRerenderProbe() {
+    const [menuVisible, setMenuVisible] = React.useState(false);
+    const renderedBody = React.useMemo(() => ({ __html: "<p>正文</p>" }), []);
+    showSelectionMenu = () => setMenuVisible(true);
+    return React.createElement(
+      "section",
+      null,
+      React.createElement("div", {
+        className: "annotation-document-body",
+        dangerouslySetInnerHTML: renderedBody,
+      }),
+      menuVisible ? React.createElement("button", null, "添加批注") : null,
+    );
+  }
+
+  const root = createRoot(host as unknown as HTMLElement);
+  root.render(React.createElement(SelectionRerenderProbe));
+  await new Promise((resolve) => setTimeout(resolve, 25));
+  const body = host.querySelector(".annotation-document-body")!;
+  const paragraph = body.firstElementChild;
+  const text = paragraph?.firstChild;
+  assert.ok(text instanceof browser.Text);
+  const range = browser.document.createRange();
+  range.setStart(text, 0);
+  range.setEnd(text, 2);
+  const selection = browser.getSelection();
+  selection?.removeAllRanges();
+  selection?.addRange(range);
+  let mutationCount = 0;
+  const observer = new browser.MutationObserver((records) => {
+    mutationCount += records.length;
+  });
+  observer.observe(body, { childList: true, characterData: true, subtree: true });
+
+  assert.ok(showSelectionMenu);
+  showSelectionMenu();
+  await new Promise((resolve) => setTimeout(resolve, 25));
+  mutationCount += observer.takeRecords().length;
+
+  assert.equal(host.querySelector("button")?.textContent, "添加批注");
+  assert.equal(body.firstElementChild, paragraph);
+  assert.equal(selection?.toString(), "正文");
+  assert.equal(selection?.getRangeAt(0).startContainer, text);
+  assert.equal(mutationCount, 0);
+
+  const source = await readFile(
+    new URL("../components/annotations/annotation-reading-layout.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(source, /const renderedBody = useMemo\(\(\) => \(\{ __html: html \}\), \[html\]\)/);
+  assert.match(source, /dangerouslySetInnerHTML=\{renderedBody\}/);
+  assert.doesNotMatch(source, /dangerouslySetInnerHTML=\{\{ __html: html \}\}/);
+
+  observer.disconnect();
+  root.unmount();
+  browser.close();
+});

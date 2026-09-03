@@ -1,7 +1,15 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useActionState, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  useActionState,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import type { AnnotationActionState } from "@/app/(site)/posts/[id]/actions";
 import { AnnotationSheet } from "@/components/annotations/annotation-sheet";
@@ -201,6 +209,8 @@ export function AnnotationReadingLayout({
   const sidebarRef = useRef<HTMLElement>(null);
   const cardRefs = useRef(new Map<string, HTMLElement>());
   const documentEpochRef = useRef(0);
+  // React 19 rewrites innerHTML when this wrapper changes, replacing live Range nodes.
+  const renderedBody = useMemo(() => ({ __html: html }), [html]);
   const [activeId, setActiveId] = useState<string | null>(initialAnnotationId ?? null);
   const [selectionContext, setSelectionContext] = useState<SelectionContext | null>(null);
   const [cardTops, setCardTops] = useState<Record<string, number>>({});
@@ -576,7 +586,7 @@ export function AnnotationReadingLayout({
             activateFromBody(event.target, true);
           }
         }}
-        dangerouslySetInnerHTML={{ __html: html }}
+        dangerouslySetInnerHTML={renderedBody}
       />
       <svg className="annotation-connectors" aria-hidden="true">
         {connectors.map((connector) => (
