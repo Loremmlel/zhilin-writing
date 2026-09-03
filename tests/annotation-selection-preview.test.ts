@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { Window } from "happy-dom";
 
@@ -100,4 +101,13 @@ test("saved selection remains authoritative after native DOM selection moves", (
     }),
     null,
   );
+});
+
+test("reading layout inspects native selection changes", async () => {
+  const source = await readFile(
+    new URL("../components/annotations/annotation-reading-layout.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(source, /addEventListener\("selectionchange", schedule\)/);
+  assert.match(source, /event\.type === "selectionchange" \? null : event\.target/);
 });

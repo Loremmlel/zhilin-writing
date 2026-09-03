@@ -459,14 +459,16 @@ export function AnnotationReadingLayout({
 
   useEffect(() => {
     const schedule = (event: Event) => {
-      const target = event.target;
+      const target = event.type === "selectionchange" ? null : event.target;
       window.setTimeout(() => inspectSelection(target), 0);
     };
     document.addEventListener("pointerup", schedule);
     document.addEventListener("keyup", schedule);
+    document.addEventListener("selectionchange", schedule);
     return () => {
       document.removeEventListener("pointerup", schedule);
       document.removeEventListener("keyup", schedule);
+      document.removeEventListener("selectionchange", schedule);
     };
   }, [inspectSelection]);
 
