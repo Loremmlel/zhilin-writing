@@ -45,7 +45,9 @@
 | Upload                     | Markdown editor and attachment upload        | `/api/assets`, `lib/assets/storage.ts`                                                       | inline image / attachment                                | service + build                             |
 | Account popover            | `AccountMenu`                                | `components/account-menu.tsx`                                                                | member / administrator links                             | dismissal unit test                         |
 | Lifecycle                  | lifecycle policy/service                     | `lib/lifecycle/*`                                                                            | normal / user deleted / admin hidden                     | unit + migration + build                    |
-| Moderation                 | administrator content management             | `app/(site)/admin`, `components/admin/content-lifecycle-control.tsx`                         | posts / replies / audit                                  | server permission + build                   |
+| Admin shell                | `AdminShell`                                 | `components/admin/admin-shell.tsx`, `lib/admin/query.ts`                                     | overview / content / members / audit                     | parser unit + build                         |
+| Moderation                 | administrator content management             | `app/(site)/admin`, `components/admin/content-lifecycle-control.tsx`                         | posts / replies / annotations / annotation replies       | server permission + build                   |
+| Admin table/search         | semantic admin content table                 | `app/(site)/admin/page.tsx`, `components/admin/admin-search-form.tsx`                        | status / query / newest-oldest / page                    | parser unit + build                         |
 | Asset access and GC        | reference-aware asset services               | `lib/assets/access-service.ts`, `lib/assets/gc.ts`                                           | active / historical / temporary / orphan                 | unit + service review                       |
 | Annotation AST/selection   | annotation Markdown and structural selection | `lib/annotations/markdown.ts`, `lib/annotations/span.ts`, `lib/annotations/selection.ts`     | single-block / consecutive cross-block                   | round-trip + selection unit                 |
 | Annotation reading         | `AnnotationReadingLayout`                    | `components/annotations/annotation-reading-layout.tsx`                                       | desktop sidebar / mobile sheet                           | unit + build + browser                      |
@@ -71,7 +73,9 @@
 - Admin revision list: per-post bounded timeline; community size is intentionally only a few users/posts, so V3 does not add pagination.
 - Exploratory lists: existing latest/recent-active routes and fixed limits remain canonical.
 - URL state: selected revision lives in `?revision=`; search query remains `?q=`.
-- Admin content filters live in `?type=posts|replies|annotations|annotation-replies&status=normal|deleted|hidden`; deleted and hidden filters may each include an item when both flags are present.
+- Admin root is the overview. Content types live only in the left navigation; members use `?section=members` and logs use `?section=audit`.
+- Admin content filters live in `?type=posts|replies|annotations|annotation-replies&status=normal|deleted|hidden&q=<term>&sort=newest|oldest&page=<n>`. Lists use server pagination with 20 rows; invalid values fall back safely and out-of-range pages clamp to the last page. Deleted and hidden filters may each include an item when both flags are present.
+- Admin sorting deliberately uses a native `<select>`; the operating-system-owned option popup and geometry are accepted because it contains only the two ordinary newest/oldest choices.
 - Annotation notification/deep-link state lives in `?annotation=<opaque-id>`; unavailable historical targets use `?notice=annotation-unavailable` and never text search.
 - Empty/no-results: stable explanatory card or inline notice. Route and independently streamed data loading: geometry-matched shared Skeleton; error: safe recovery card with retry and home action.
 - Back/scroll restoration: browser history and URL-selected revision.
@@ -91,6 +95,7 @@
 | Delete reply                 | 删除这条回复 + confirm                                | disabled confirm                   | same discussion                      | reply disappears or becomes a placeholder                       | retry is a no-op                                     | refreshed thread            | V4 spec      |
 | Hide/unhide                  | administrator action + confirm                        | disabled confirm                   | current admin filter                 | status badges and audit update                                  | retry is a no-op                                     | refreshed row               | V4 spec      |
 | Restore deleted              | administrator action + confirm                        | disabled confirm                   | current admin filter                 | current content becomes active unless still hidden              | retry is a no-op                                     | refreshed row               | V4 spec      |
+| Remove allowlist access      | 移除 + confirm                                        | disabled confirm                   | current administrator view           | access revoked; existing content and profile retained           | inline error; access unchanged                       | refreshed member row        | Admin plan   |
 | Upload                       | file input                                            | local pending                      | editor                               | attachment row/inline image                                     | inline upload error                                  | file input/editor           | V1 spec      |
 | Account menu                 | avatar button                                         | n/a                                | selected route                       | menu closes                                                     | outside/Escape close                                 | trigger restored on Escape  | V3 addendum  |
 | Create annotation            | select consecutive supported body text → 添加批注     | disabled duplicate publish         | same post                            | linked ranges, one card/sheet, Activity and author notification | selection conflict keeps正文 unchanged; choose again | active thread/card          | V5 + V8 spec |
@@ -106,9 +111,11 @@
 
 ## Navigation and responsive behavior
 
-- Route document titles inherit site metadata; item-specific metadata is not expanded in V3.
+- 管理总览、内容类型、成员、日志和历史版本都提供诚实的页面标题；普通内容详情仍沿用现有元数据策略。
 - Forbidden administrator navigation is enforced server-side and returns to the community root under the current auth contract.
 - Revision selection is URL-addressable; the route itself remains administrator-only.
+- The admin shell keeps one left navigation for overview, four content types, members, and audit. The main content panel never repeats the content-type segment. A 292px summary rail is optional and moves below the main panel at 1200px.
+- Admin tables preserve status, committed query, sort and page in the URL. On narrow screens the table owns horizontal overflow and shows a swipe cue; the document remains the only vertical scroll owner.
 - At 900px the revision timeline stacks above preview; at 640px dialogs and actions become one column.
 - Annotation reading derives one layout mode from its actual container: at 1060px or wider it can preserve a 720px reading column, 70px gutter and 270px rail; below that it removes sidebar/connectors and opens the selected thread in a bottom Sheet. CSS, connector logic and sheet behavior consume this same mode; native text selection and page scrolling remain available.
 - At 900px DOCX Preview stacks the document, annotation threads, author mappings and warnings; desktop keeps the document as the dominant surface with one bounded right rail.
@@ -129,7 +136,7 @@
 - Route navigation starts a non-blocking 2px accent progress bridge immediately; it follows Vinext's
   RSC response and navigation promise, resets on failure/cancel/unload/timeout, and ignores hash-only
   navigation. App Router segment `loading.tsx` remains the authoritative route fallback.
-- Post body/annotation rail, post replies, notifications, profile activity/posts, administrator lists, and revision preview use local Suspense fallbacks so the shared layout or already-resolved region stays available.
+- Post body/annotation rail, post replies, notifications, profile activity/posts, administrator lists, administrator summary panels, and revision preview use local Suspense fallbacks so the shared layout or already-resolved region stays available.
 - Skeletons keep stable geometry, expose `aria-busy` plus readable status, delay shimmer, and become static under `prefers-reduced-motion`.
 - Route, site, and global error boundaries never render exception messages, stack traces, database identifiers, or raw causes; recovery is retry plus return-home, with a dedicated missing/expired-login explanation at the site boundary.
 - Ordinary post reading defers the Milkdown bundle until a member explicitly opens a reply or annotation composer; editor-load failure stays local and retryable. Post edit and DOCX Preview load it immediately because editing is their primary task.

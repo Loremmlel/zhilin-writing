@@ -35,6 +35,13 @@ import { buildPostLifecycleView, buildReplyLifecycleViews } from "@/lib/lifecycl
 import { canExposeAnnotationActivitySnapshot } from "@/lib/activity/policy";
 import { parseDocxAttributionNoticeMetadata } from "@/lib/notifications/policy";
 import { resolveNotificationTarget } from "@/lib/notifications/target-resolution";
+import {
+  ADMIN_PAGE_SIZE,
+  type AdminContentStatus,
+  type AdminListOptions,
+  type AdminPageResult,
+  type AdminStatusCounts,
+} from "@/lib/admin/query";
 
 export type PostSort = "latest" | "active";
 
@@ -213,6 +220,10 @@ export async function findUserById(id: string) {
 
 export async function listUsers() {
   return getDb().select().from(users).orderBy(asc(users.joinedAt));
+}
+
+export async function listRecentUsers(limit = 5) {
+  return getDb().select().from(users).orderBy(desc(users.joinedAt), desc(users.id)).limit(limit);
 }
 
 export async function isDisplayNameTaken(displayName: string, exceptUserId?: string) {
@@ -931,7 +942,7 @@ export async function listTags() {
     .orderBy(asc(tags.name));
 }
 
-export type AdminContentStatus = "normal" | "deleted" | "hidden";
+export type { AdminContentStatus } from "@/lib/admin/query";
 
 function lifecycleStatusCondition(
   status: AdminContentStatus,
@@ -942,25 +953,126 @@ function lifecycleStatusCondition(
   return and(isNull(table.deletedAt), isNull(table.hiddenAt));
 }
 
-export async function listAdminPosts(status: AdminContentStatus, limit = 100) {
+function statusCounts(row?: {
+  normal: number | null;
+  deleted: number | null;
+  hidden: number | null;
+}): AdminStatusCounts {
+  return {
+    normal: Number(row?.normal ?? 0),
+    deleted: Number(row?.deleted ?? 0),
+    hidden: Number(row?.hidden ?? 0),
+  };
+}
+
+export async function countAdminPostsByStatus(): Promise<AdminStatusCounts> {
+  const [row] = await getDb()
+    .select({
+      normal: sql<number>`sum(case when ${posts.deletedAt} is null and ${posts.hiddenAt} is null then 1 else 0 end)`,
+      deleted: sql<number>`sum(case when ${posts.deletedAt} is not null then 1 else 0 end)`,
+      hidden: sql<number>`sum(case when ${posts.hiddenAt} is not null then 1 else 0 end)`,
+    })
+    .from(posts);
+  return statusCounts(row);
+}
+
+export async function countAdminRepliesByStatus(): Promise<AdminStatusCounts> {
+  const [row] = await getDb()
+    .select({
+      normal: sql<number>`sum(case when ${replies.deletedAt} is null and ${replies.hiddenAt} is null then 1 else 0 end)`,
+      deleted: sql<number>`sum(case when ${replies.deletedAt} is not null then 1 else 0 end)`,
+      hidden: sql<number>`sum(case when ${replies.hiddenAt} is not null then 1 else 0 end)`,
+    })
+    .from(replies);
+  return statusCounts(row);
+}
+
+export async function listAdminPosts(
+  options: AdminListOptions,
+): Promise<AdminPageResult<Awaited<ReturnType<typeof selectAdminPostRows>>[number]>> {
+  const db = getDb();
+  const search = options.q ? `%${options.q}%` : null;
+  const condition = search
+    ? and(
+        lifecycleStatusCondition(options.status, posts),
+        or(like(posts.searchText, search), like(users.displayName, search)),
+      )
+    : lifecycleStatusCondition(options.status, posts);
+  const [{ value: total = 0 } = { value: 0 }] = await db
+    .select({ value: count() })
+    .from(posts)
+    .innerJoin(users, eq(posts.authorId, users.id))
+    .where(condition);
+  const pageSize = Math.min(Math.max(options.pageSize ?? ADMIN_PAGE_SIZE, 1), 100);
+  const page = Math.min(options.page, Math.max(1, Math.ceil(total / pageSize)));
+  const rows = await selectAdminPostRows(condition, options.sort, page, pageSize);
+  return { rows, total, page, pageSize };
+}
+
+function selectAdminPostRows(
+  condition: ReturnType<typeof lifecycleStatusCondition>,
+  sort: AdminListOptions["sort"],
+  page: number,
+  pageSize: number,
+) {
   return getDb()
     .select({ post: posts, author: users })
     .from(posts)
     .innerJoin(users, eq(posts.authorId, users.id))
-    .where(lifecycleStatusCondition(status, posts))
-    .orderBy(desc(posts.publishedAt))
-    .limit(limit);
+    .where(condition)
+    .orderBy(
+      sort === "oldest" ? asc(posts.publishedAt) : desc(posts.publishedAt),
+      sort === "oldest" ? asc(posts.id) : desc(posts.id),
+    )
+    .limit(pageSize)
+    .offset((page - 1) * pageSize);
 }
 
-export async function listAdminReplies(status: AdminContentStatus, limit = 100) {
+export async function listAdminReplies(
+  options: AdminListOptions,
+): Promise<AdminPageResult<Awaited<ReturnType<typeof selectAdminReplyRows>>[number]>> {
+  const db = getDb();
+  const search = options.q ? `%${options.q}%` : null;
+  const condition = search
+    ? and(
+        lifecycleStatusCondition(options.status, replies),
+        or(
+          like(replies.markdown, search),
+          like(posts.title, search),
+          like(users.displayName, search),
+        ),
+      )
+    : lifecycleStatusCondition(options.status, replies);
+  const [{ value: total = 0 } = { value: 0 }] = await db
+    .select({ value: count() })
+    .from(replies)
+    .innerJoin(users, eq(replies.authorId, users.id))
+    .innerJoin(posts, eq(replies.postId, posts.id))
+    .where(condition);
+  const pageSize = Math.min(Math.max(options.pageSize ?? ADMIN_PAGE_SIZE, 1), 100);
+  const page = Math.min(options.page, Math.max(1, Math.ceil(total / pageSize)));
+  const rows = await selectAdminReplyRows(condition, options.sort, page, pageSize);
+  return { rows, total, page, pageSize };
+}
+
+function selectAdminReplyRows(
+  condition: ReturnType<typeof lifecycleStatusCondition>,
+  sort: AdminListOptions["sort"],
+  page: number,
+  pageSize: number,
+) {
   return getDb()
     .select({ reply: replies, author: users, post: posts })
     .from(replies)
     .innerJoin(users, eq(replies.authorId, users.id))
     .innerJoin(posts, eq(replies.postId, posts.id))
-    .where(lifecycleStatusCondition(status, replies))
-    .orderBy(desc(replies.publishedAt))
-    .limit(limit);
+    .where(condition)
+    .orderBy(
+      sort === "oldest" ? asc(replies.publishedAt) : desc(replies.publishedAt),
+      sort === "oldest" ? asc(replies.id) : desc(replies.id),
+    )
+    .limit(pageSize)
+    .offset((page - 1) * pageSize);
 }
 
 export async function listAdminAuditLog(limit = 60) {
@@ -970,6 +1082,22 @@ export async function listAdminAuditLog(limit = 60) {
     .innerJoin(users, eq(adminAuditLog.adminUserId, users.id))
     .orderBy(desc(adminAuditLog.createdAt))
     .limit(limit);
+}
+
+export async function listAdminAuditLogPage(page: number, pageSize = ADMIN_PAGE_SIZE) {
+  const [{ value: total = 0 } = { value: 0 }] = await getDb()
+    .select({ value: count() })
+    .from(adminAuditLog);
+  const safePageSize = Math.min(Math.max(pageSize, 1), 100);
+  const safePage = Math.min(page, Math.max(1, Math.ceil(total / safePageSize)));
+  const rows = await getDb()
+    .select({ audit: adminAuditLog, administrator: users })
+    .from(adminAuditLog)
+    .innerJoin(users, eq(adminAuditLog.adminUserId, users.id))
+    .orderBy(desc(adminAuditLog.createdAt), desc(adminAuditLog.id))
+    .limit(safePageSize)
+    .offset((safePage - 1) * safePageSize);
+  return { rows, total, page: safePage, pageSize: safePageSize };
 }
 
 export async function findAsset(id: string) {

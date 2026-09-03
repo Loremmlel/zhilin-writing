@@ -80,7 +80,7 @@ test("production artifact contains V6 annotation reading, discussion, and guarde
   assert.match(source, /继续修改并撤下批注/);
   assert.match(source, /正文批注，只读/);
   assert.match(source, /批注状态变化/);
-  assert.match(source, /Annotation replies/);
+  assert.match(source, /批注回复/);
   assert.match(styles, /annotation-range/);
   assert.match(styles, /annotation-connectors/);
   assert.match(styles, /annotation-sheet-surface/);
