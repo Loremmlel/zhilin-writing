@@ -50,6 +50,7 @@ const validationLabels: Record<string, string> = {
   ANNOTATION_TEXT_CHANGED: "带批注的原文发生变化，请恢复该范围。",
   ANNOTATION_NESTED: "批注锚点不能互相嵌套。",
   ANNOTATION_NON_TEXT_RANGE: "批注锚点不能包含图片或其他非正文内容。",
+  ANNOTATION_CROSS_BLOCK: "跨段批注必须覆盖连续的正文段落。",
   ANNOTATION_OVERLAP: "批注范围发生重叠，无法安全导入。",
   UNSAFE_EXTERNAL_URL: "正文包含不安全链接，请移除后再确认。",
   IMPORT_WARNING_ERROR: "源文件包含阻断导入的问题。",
@@ -115,7 +116,7 @@ export function DocxImportPreview({ preview, users, validation, onTitleChange, o
         <div className="section-heading"><h2>Word 批注</h2><span>{preview.ir.threads.length} 条</span></div>
         {preview.ir.threads.length === 0
           ? <p className="empty-copy">没有可导入的正文批注。</p>
-          : <div className="docx-import-thread-list">{preview.ir.threads.map((thread) => <ImportedThreadPreview key={thread.annotationId} thread={thread} selectedText={getImportedThreadSelectedText(preview.ir.blocks, thread.blockId, thread.blockLocalStart, thread.blockLocalEnd)} />)}</div>}
+          : <div className="docx-import-thread-list">{preview.ir.threads.map((thread) => <ImportedThreadPreview key={thread.annotationId} thread={thread} selectedText={getImportedThreadSelectedText(preview.ir.blocks, thread.blockId, thread.blockLocalStart, thread.blockLocalEnd, thread.endBlockId)} />)}</div>}
       </section>
 
       <section className="docx-import-panel">

@@ -7,6 +7,7 @@ import {
   type InlineSegment,
   type ListBlock,
 } from "./types.ts";
+import { importedThreadSlices } from "./thread-range.ts";
 
 const encoder = new TextEncoder();
 
@@ -16,11 +17,13 @@ export function renderCanonicalImportMarkdown(
   threads: ImportedThread[],
 ): string {
   const assetIds = new Set(assets.map((asset) => asset.id));
-  const threadsByBlock = new Map<string, ImportedThread[]>();
+  const threadsByBlock = new Map<string, Array<Pick<ImportedThread, "annotationId"> & { blockLocalStart: number; blockLocalEnd: number }>>();
   for (const thread of threads) {
-    const blockThreads = threadsByBlock.get(thread.blockId) ?? [];
-    blockThreads.push(thread);
-    threadsByBlock.set(thread.blockId, blockThreads);
+    for (const slice of importedThreadSlices(blocks, thread) ?? []) {
+      const blockThreads = threadsByBlock.get(slice.blockId) ?? [];
+      blockThreads.push({ annotationId: thread.annotationId, blockLocalStart: slice.from, blockLocalEnd: slice.to });
+      threadsByBlock.set(slice.blockId, blockThreads);
+    }
   }
   const rendered: Array<{ type: ImportBlock["type"]; value: string }> = [];
   for (const block of blocks) {
@@ -54,7 +57,7 @@ export function renderCanonicalImportMarkdown(
 
 function renderBlock(
   block: ImportBlock,
-  threadsByBlock: Map<string, ImportedThread[]>,
+  threadsByBlock: Map<string, Array<Pick<ImportedThread, "annotationId"> & { blockLocalStart: number; blockLocalEnd: number }>>,
   assetIds: ReadonlySet<string>,
 ): string {
   if (block.type === "paragraph") return renderInline(block.segments, threadsByBlock.get(block.id));
@@ -92,7 +95,7 @@ function renderTableCell(segments: InlineSegment[]): string {
     .replace(/\r?\n/g, "\\n");
 }
 
-function renderList(block: ListBlock, threadsByBlock: Map<string, ImportedThread[]>): string {
+function renderList(block: ListBlock, threadsByBlock: Map<string, Array<Pick<ImportedThread, "annotationId"> & { blockLocalStart: number; blockLocalEnd: number }>>): string {
   const prefix = `${"  ".repeat(block.depth)}${block.ordered ? "1." : "-"} `;
   return block.items.map((item) => {
     const own = `${prefix}${renderInline(item.segments, threadsByBlock.get(item.id))}`;
@@ -101,7 +104,10 @@ function renderList(block: ListBlock, threadsByBlock: Map<string, ImportedThread
   }).join("\n");
 }
 
-function renderInline(segments: InlineSegment[], threads: ImportedThread[] = []): string {
+function renderInline(
+  segments: InlineSegment[],
+  threads: Array<Pick<ImportedThread, "annotationId"> & { blockLocalStart: number; blockLocalEnd: number }> = [],
+): string {
   if (threads.length === 0) return renderSegmentSlice(segments, 0, Number.POSITIVE_INFINITY);
   const ranges = [...threads].sort((left, right) => left.blockLocalStart - right.blockLocalStart);
   let cursor = 0;

@@ -43,6 +43,32 @@ test("accepts adjacent anchors and supported heading list and quote text blocks"
   assert.equal(validateCanonicalAnnotationDocument(adjacent, [A, B]).ok, true);
 });
 
+test("accepts one logical anchor split across consecutive text blocks", () => {
+  const markdown = [
+    `第一段 :annotation[后半]{#${A}}`,
+    "",
+    `> :annotation[第二段]{#${A}}`,
+    "",
+    `- :annotation[第三段]{#${A}} 结尾`,
+  ].join("\n");
+
+  assert.deepEqual(scanCanonicalAnnotationAnchors(markdown), [{
+    annotationId: A,
+    text: "后半\n\n第二段\n\n第三段",
+    blockIndex: 0,
+  }]);
+  assert.equal(validateCanonicalAnnotationDocument(markdown, [A]).ok, true);
+});
+
+test("rejects gapped, partial-intermediate, and barrier-crossing multi-block anchors", () => {
+  const gapped = `:annotation[第一段]{#${A}}\n\n未批注\n\n:annotation[第三段]{#${A}}`;
+  const partial = `:annotation[第一]{#${A}} 段尾\n\n:annotation[第二段]{#${A}}`;
+  const barrier = `:annotation[第一段]{#${A}}\n\n\`\`\`\ncode\n\`\`\`\n\n:annotation[第三段]{#${A}}`;
+  assert.deepEqual(issueCodes(gapped, [A]), ["MULTI_BLOCK"]);
+  assert.deepEqual(issueCodes(partial, [A]), ["MULTI_BLOCK"]);
+  assert.deepEqual(issueCodes(barrier, [A]), ["MULTI_BLOCK"]);
+});
+
 test("rejects duplicate anchors for one annotation ID", () => {
   const markdown = `:annotation[A]{#${A}} 和 :annotation[B]{#${A}}`;
   assert.deepEqual(issueCodes(markdown, [A]), ["DUPLICATE"]);

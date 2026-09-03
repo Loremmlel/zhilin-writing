@@ -9,9 +9,10 @@ import { derivePostActivityAfterInteractionChange } from "@/lib/lifecycle/servic
 import { planAuthorDelete } from "@/lib/lifecycle/transitions";
 import { getCurrentAssetRefs, getCurrentImportedReplyStates } from "@/lib/revisions/service";
 import { findAnnotation, findAnnotationBySubmissionKey, findAnnotationReply, findAnnotationReplyBySubmissionKey, getCurrentAnnotationAnchorIds, getCurrentAnnotationStates } from "./queries";
-import { collectAnnotationIds, parseAnnotationMarkdown, stringifyAnnotationMarkdown } from "./markdown";
+import { validateCanonicalAnnotationDocument } from "./invariants";
+import { parseAnnotationMarkdown, stringifyAnnotationMarkdown } from "./markdown";
 import { planAnnotationAdminTransition, planAnnotationAuthorDelete, planImportedAnnotationThreadRemoval } from "./lifecycle";
-import { assertAnnotationBelongsToPost, assertAnchorInvariant, assertNativeAnnotationMutation, createAnnotationId, validateAnnotationContent, validateAnnotationReplyContent, validateAnnotationSubmissionKey } from "./policy";
+import { assertAnnotationBelongsToPost, assertNativeAnnotationMutation, createAnnotationId, validateAnnotationContent, validateAnnotationReplyContent, validateAnnotationSubmissionKey } from "./policy";
 import { unwrapAnnotation } from "./selection";
 import { buildImportedThreadRemovalPostGuard, commitAnnotationMutation, planAnnotationCreation, planAnnotationReplyCreation } from "./transaction";
 import type { AnnotationSelectionDescriptor } from "./types";
@@ -19,6 +20,12 @@ import type { AnnotationSelectionDescriptor } from "./types";
 function asBatch(items: BatchItem<"sqlite">[]) {
   if (items.length === 0) throw new Error("批注事务不能为空");
   return items as [BatchItem<"sqlite">, ...BatchItem<"sqlite">[]];
+}
+
+function assertCanonicalAnchors(markdown: string, anchorIds: string[]) {
+  if (!validateCanonicalAnnotationDocument(markdown, anchorIds).ok) {
+    throw new Error("正文批注锚点状态不一致");
+  }
 }
 
 export async function createAnnotation(input: {
@@ -142,13 +149,13 @@ export async function deleteAnnotationByAuthor(postId: string, annotationId: str
   const currentAnchorIds = currentStates.map((state) => state.annotationId);
   if (!currentAnchorIds.includes(annotationId)) throw new Error("该批注不属于当前正文");
   const currentTree = parseAnnotationMarkdown(post.markdown);
-  assertAnchorInvariant(collectAnnotationIds(currentTree), currentAnchorIds);
+  assertCanonicalAnchors(post.markdown, currentAnchorIds);
   const nextTree = lifecyclePlan.retainAnchor ? currentTree : unwrapAnnotation(currentTree, annotationId);
   const nextMarkdown = stringifyAnnotationMarkdown(nextTree);
   const nextStates = currentStates
     .filter((state) => lifecyclePlan.retainAnchor || state.annotationId !== annotationId)
     .map((state) => state.annotationId === annotationId ? { ...state, deletedAt: now, deletedByUserId: actorUserId } : state);
-  assertAnchorInvariant(collectAnnotationIds(nextTree), nextStates.map((state) => state.annotationId));
+  assertCanonicalAnchors(nextMarkdown, nextStates.map((state) => state.annotationId));
   const lastActivityAt = await derivePostActivityAfterInteractionChange(annotation.postId, { kind: "annotation", id: annotationId, deletedAt: now, current: lifecyclePlan.retainAnchor });
   const revisionId = crypto.randomUUID();
   const operations: BatchItem<"sqlite">[] = [
@@ -193,13 +200,13 @@ export async function removeImportedAnnotationThread(postId: string, annotationI
   const currentAnchorIds = currentStates.map((state) => state.annotationId);
   if (!currentAnchorIds.includes(annotationId)) throw new Error("该批注不属于当前正文");
   const currentTree = parseAnnotationMarkdown(post.markdown);
-  assertAnchorInvariant(collectAnnotationIds(currentTree), currentAnchorIds);
+  assertCanonicalAnchors(post.markdown, currentAnchorIds);
   const nextTree = lifecyclePlan.retainAnchor ? currentTree : unwrapAnnotation(currentTree, annotationId);
   const nextMarkdown = stringifyAnnotationMarkdown(nextTree);
   const nextStates = currentStates
     .filter((state) => lifecyclePlan.retainAnchor || state.annotationId !== annotationId)
     .map((state) => state.annotationId === annotationId ? { ...state, ...lifecyclePlan.patch } : state);
-  assertAnchorInvariant(collectAnnotationIds(nextTree), nextStates.map((state) => state.annotationId));
+  assertCanonicalAnchors(nextMarkdown, nextStates.map((state) => state.annotationId));
   const lastActivityAt = await derivePostActivityAfterInteractionChange(postId, { kind: "annotation", id: annotationId, deletedAt: now, current: lifecyclePlan.retainAnchor });
   const revisionId = crypto.randomUUID();
   const removedReplyIds = new Set(discussionReplies.filter((reply) => reply.sourceType === "DOCX_IMPORT").map((reply) => reply.id));

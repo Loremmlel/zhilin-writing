@@ -150,6 +150,7 @@ const importedThread = z.strictObject({
   authorId: z.string().nullable().optional(),
   sourceCommentId: sourceId,
   blockId: sourceId,
+  endBlockId: sourceId.optional(),
   blockLocalStart: z.number().int().nonnegative(),
   blockLocalEnd: z.number().int().nonnegative(),
   sourceAuthorName: sourceName,

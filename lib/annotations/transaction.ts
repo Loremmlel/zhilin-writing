@@ -1,8 +1,9 @@
 import { sql } from "drizzle-orm";
 
 import { annotationReplies, posts } from "../../db/schema.ts";
+import { validateCanonicalAnnotationDocument } from "./invariants.ts";
 import { collectAnnotationIds, parseAnnotationMarkdown, stringifyAnnotationMarkdown, visiblePostText } from "./markdown.ts";
-import { assertAnchorInvariant, resolveAnnotationReplyRecipient, validateAnnotationId } from "./policy.ts";
+import { resolveAnnotationReplyRecipient, validateAnnotationId } from "./policy.ts";
 import { wrapAnnotationRange } from "./selection.ts";
 import type { AnnotationSelectionDescriptor } from "./types.ts";
 
@@ -16,14 +17,19 @@ export function planAnnotationCreation(current: CurrentAnnotationPostState, requ
 }, now: Date) {
   if (current.currentRevisionId !== request.baseRevisionId) throw new Error("帖子已更新，请重新选择文字后再批注");
   const currentTree = parseAnnotationMarkdown(current.markdown);
-  assertAnchorInvariant(collectAnnotationIds(currentTree), current.currentAnchorIds);
+  if (!validateCanonicalAnnotationDocument(current.markdown, current.currentAnchorIds).ok) {
+    throw new Error("正文批注锚点状态不一致");
+  }
   const annotationId = validateAnnotationId(request.annotationId);
   const nextTree = wrapAnnotationRange(currentTree, request.selection, annotationId);
   if (visiblePostText(currentTree) !== visiblePostText(nextTree)) throw new Error("创建批注不能改变正文可见文字");
   const nextAnchorIds = collectAnnotationIds(nextTree);
-  assertAnchorInvariant(nextAnchorIds, [...current.currentAnchorIds, annotationId]);
+  const markdown = stringifyAnnotationMarkdown(nextTree);
+  if (!validateCanonicalAnnotationDocument(markdown, [...current.currentAnchorIds, annotationId]).ok) {
+    throw new Error("正文批注锚点状态不一致");
+  }
   return {
-    postId: current.postId, title: current.title, markdown: stringifyAnnotationMarkdown(nextTree), revisionId: request.revisionId,
+    postId: current.postId, title: current.title, markdown, revisionId: request.revisionId,
     revisionKind: "ANNOTATION_STATE" as const, revisionNumber: current.currentRevisionNumber + 1,
     editedAt: current.editedAt, lastActivityAt: now, originalSelectedText: request.selection.selectedText,
     previousAnchorIds: [...current.currentAnchorIds], anchorIds: nextAnchorIds,

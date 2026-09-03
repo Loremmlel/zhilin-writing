@@ -14,6 +14,7 @@ import {
   annotationAnchorGeometry,
   annotationConnectorPath,
   createAnnotationLayoutScheduler,
+  findAnnotationAnchorElements,
   layoutAnnotationCards,
   sameAnnotationCardTops,
   sameAnnotationConnectors,
@@ -158,11 +159,14 @@ export function AnnotationReadingLayout({ postId, html, annotations, baseRevisio
     const anchors: Array<{ annotationId: string; top: number; right: number; height: number }> = [];
     const cardHeights = new Map<string, number>();
     for (const annotation of annotations) {
-      const anchor = body.querySelector<HTMLElement>(`.annotation-range[data-annotation-id="${CSS.escape(annotation.id)}"]`);
+      const anchorElements = findAnnotationAnchorElements(body, annotation.id);
       const card = cardRefs.current.get(annotation.id);
-      if (!anchor || !card) continue;
-      const clientRects = [...anchor.getClientRects()];
-      const geometry = annotationAnchorGeometry(clientRects.length > 0 ? clientRects : [anchor.getBoundingClientRect()], layoutRect);
+      if (anchorElements.length === 0 || !card) continue;
+      const clientRects = anchorElements.flatMap((anchor) => {
+        const rects = [...anchor.getClientRects()];
+        return rects.length > 0 ? rects : [anchor.getBoundingClientRect()];
+      });
+      const geometry = annotationAnchorGeometry(clientRects, layoutRect);
       if (!geometry) continue;
       anchors.push({ annotationId: annotation.id, ...geometry });
       cardHeights.set(annotation.id, card.offsetHeight);
@@ -203,7 +207,7 @@ export function AnnotationReadingLayout({ postId, html, annotations, baseRevisio
     if (!initialAnnotationId) return;
     let nestedFrame = 0;
     const frame = window.requestAnimationFrame(() => {
-      const anchor = bodyRef.current?.querySelector<HTMLElement>(`.annotation-range[data-annotation-id="${CSS.escape(initialAnnotationId)}"]`);
+      const anchor = bodyRef.current ? findAnnotationAnchorElements(bodyRef.current, initialAnnotationId)[0] : null;
       const annotation = annotations.find((item) => item.id === initialAnnotationId);
       if (!anchor || !annotation) return;
       const replyAvailable = !initialAnnotationReplyId || annotation.replies.some((reply) => reply.id === initialAnnotationReplyId);
@@ -234,8 +238,8 @@ export function AnnotationReadingLayout({ postId, html, annotations, baseRevisio
   useEffect(() => {
     const body = bodyRef.current; if (!body) return;
     body.querySelectorAll(".annotation-range.is-active, .annotation-range.is-deep-linked").forEach((element) => element.classList.remove("is-active", "is-deep-linked"));
-    if (activeId) body.querySelector<HTMLElement>(`.annotation-range[data-annotation-id="${CSS.escape(activeId)}"]`)?.classList.add("is-active");
-    if (deepLinkHighlight) body.querySelector<HTMLElement>(`.annotation-range[data-annotation-id="${CSS.escape(deepLinkHighlight.annotationId)}"]`)?.classList.add("is-deep-linked");
+    if (activeId) findAnnotationAnchorElements(body, activeId).forEach((element) => element.classList.add("is-active"));
+    if (deepLinkHighlight) findAnnotationAnchorElements(body, deepLinkHighlight.annotationId).forEach((element) => element.classList.add("is-deep-linked"));
   }, [activeId, deepLinkHighlight]);
 
   const inspectSelection = useCallback((eventTarget?: EventTarget | null) => {
@@ -250,7 +254,9 @@ export function AnnotationReadingLayout({ postId, html, annotations, baseRevisio
       setActiveId(existing.dataset.annotationId); setSheetId((current) => nextAnnotationSheetState(current, { type: "activate", annotationId: existing.dataset.annotationId!, compact: layoutMode === "compact" })); setSelectionContext(null); return;
     }
     try {
-      const descriptor = describeAnnotationDomRange(root, range); const rect = range.getBoundingClientRect();
+      const descriptor = describeAnnotationDomRange(root, range);
+      const rects = [...range.getClientRects()].filter((candidate) => candidate.width > 0 && candidate.height > 0);
+      const rect = rects.at(-1) ?? range.getBoundingClientRect();
       const saved = captureSavedAnnotationSelection({ postId, baseRevisionId, descriptor, root, range, epoch: documentEpochRef.current });
       setSelectionContext({ saved, left: Math.min(window.innerWidth - 118, Math.max(12, rect.left + rect.width / 2 - 50)), top: Math.max(12, rect.top - 44), phase: nextSelectionPreviewPhase("hidden", "capture"), submissionKey: crypto.randomUUID() });
     } catch { setSelectionContext(null); }
@@ -300,7 +306,7 @@ export function AnnotationReadingLayout({ postId, html, annotations, baseRevisio
     <svg className="annotation-connectors" aria-hidden="true">{connectors.map((connector) => <path key={connector.annotationId} d={connector.path} className={activeId === connector.annotationId ? "is-active" : ""} />)}</svg>
     <aside ref={sidebarRef} className="annotation-sidebar" aria-label={`正文批注，共 ${annotations.length} 条`} style={{ minHeight: sidebarHeight || undefined }}>
       {layoutMode === "desktop" && annotations.map((annotation) => <article id={`annotation-card-${annotation.id}`} key={annotation.id} ref={(element) => { if (element) cardRefs.current.set(annotation.id, element); else cardRefs.current.delete(annotation.id); }} className={`annotation-card${activeId === annotation.id ? " is-active" : ""}${deepLinkHighlight?.annotationId === annotation.id && !deepLinkHighlight.replyId ? " is-deep-linked" : ""}`} style={{ top: cardTops[annotation.id] ?? 0 }} tabIndex={-1} onFocusCapture={() => setActiveId(annotation.id)} onPointerEnter={() => setActiveId(annotation.id)}>
-        <AnnotationThread annotation={annotation} replyAction={replyAction} deleteAction={deleteAction} deleteReplyAction={deleteReplyAction} removeImportedAction={removeImportedAction} highlightReplyId={deepLinkHighlight?.annotationId === annotation.id ? deepLinkHighlight.replyId : null} onLocate={() => { setActiveId(annotation.id); const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches; bodyRef.current?.querySelector<HTMLElement>(`.annotation-range[data-annotation-id="${CSS.escape(annotation.id)}"]`)?.scrollIntoView({ block: "center", behavior: reducedMotion ? "auto" : "smooth" }); }} />
+        <AnnotationThread annotation={annotation} replyAction={replyAction} deleteAction={deleteAction} deleteReplyAction={deleteReplyAction} removeImportedAction={removeImportedAction} highlightReplyId={deepLinkHighlight?.annotationId === annotation.id ? deepLinkHighlight.replyId : null} onLocate={() => { setActiveId(annotation.id); const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches; if (bodyRef.current) findAnnotationAnchorElements(bodyRef.current, annotation.id)[0]?.scrollIntoView({ block: "center", behavior: reducedMotion ? "auto" : "smooth" }); }} />
       </article>)}
     </aside>
     <AnnotationSheet annotation={annotations.find((annotation) => annotation.id === sheetId) ?? null} open={Boolean(sheetId)} onClose={() => setSheetId((current) => nextAnnotationSheetState(current, { type: "close" }))} replyAction={replyAction} deleteAction={deleteAction} deleteReplyAction={deleteReplyAction} removeImportedAction={removeImportedAction} highlightReplyId={deepLinkHighlight?.annotationId === sheetId ? deepLinkHighlight.replyId : null} highlighted={deepLinkHighlight?.annotationId === sheetId && !deepLinkHighlight.replyId} />

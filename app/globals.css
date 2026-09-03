@@ -354,7 +354,7 @@ button, summary, input[type="file"] { cursor: pointer; }
 .annotation-selection-overlay { position: fixed; inset: 0; z-index: calc(var(--z-popover) - 1); pointer-events: none; }
 .annotation-selection-overlay-rect { position: fixed; border-bottom: 1px dotted var(--annotation-ink); border-radius: 2px; background: rgba(239, 203, 198, .78); box-shadow: 0 0 0 1px rgba(125, 57, 52, .12); }
 .annotation-composer { margin-top: 20px; }
-.annotation-selection-preview { max-height: 105px; overflow: auto; margin: 0 0 15px; padding: 11px 13px; border-left: 3px solid #d8aaa5; background: var(--annotation); color: #76504c; font: 14px/1.7 Georgia, "Noto Serif SC", serif; }
+.annotation-selection-preview { max-height: 105px; overflow: auto; margin: 0 0 15px; padding: 11px 13px; border-left: 3px solid #d8aaa5; background: var(--annotation); color: #76504c; white-space: pre-line; font: 14px/1.7 Georgia, "Noto Serif SC", serif; }
 .annotation-detached-discussions { margin-top: 28px; padding: 24px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper-strong); }
 .annotation-detached-discussions > .muted { display: block; margin: -5px 0 17px; }
 .annotation-detached-list { display: grid; gap: 12px; }

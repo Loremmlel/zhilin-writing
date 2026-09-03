@@ -29,17 +29,40 @@ test("allows adjacent and separated annotations but rejects every overlap", () =
   assert.throws(() => wrapAnnotationRange(first, descriptor(0, 0, 8, "AAAABBBB"), B), /重叠/);
 });
 
-test("rejects cross-block, blank, stale text, code, images, attachments, and tables", () => {
+test("wraps one logical annotation across consecutive text blocks", () => {
+  const tree = parseAnnotationMarkdown("第一段 **后半**\n\n> 第二段\n\n- 第三段 前半");
+  const next = wrapAnnotationRange(tree, {
+    blockOrdinal: 0,
+    endBlockOrdinal: 2,
+    blockTextFrom: 4,
+    blockTextTo: 3,
+    selectedText: "后半\n\n第二段\n\n第三段",
+  }, A);
+  const markdown = stringifyAnnotationMarkdown(next);
+
+  assert.equal(visiblePostText(next), visiblePostText(tree));
+  assert.deepEqual(collectAnnotationIds(next), [A]);
+  assert.equal(markdown.match(new RegExp(A, "g"))?.length, 3);
+  assert.match(markdown, /\*\*后半\*\*/);
+  const unwrapped = unwrapAnnotation(next, A);
+  assert.equal(visiblePostText(unwrapped), visiblePostText(tree));
+  assert.deepEqual(collectAnnotationIds(unwrapped), []);
+});
+
+test("rejects blank, stale text, unsupported blocks, and cross-block barriers", () => {
   const paragraphs = parseAnnotationMarkdown("第一段\n\n第二段");
-  assert.throws(() => validateAnnotationSelection(paragraphs, { ...descriptor(0, 0, 1, "第"), endBlockOrdinal: 1 }), /同一个文本块/);
   assert.throws(() => validateAnnotationSelection(parseAnnotationMarkdown("a   b"), descriptor(0, 1, 4, "   ")), /非空白/);
   assert.throws(() => validateAnnotationSelection(paragraphs, descriptor(0, 0, 1, "错")), /正文已经变化/);
+  assert.throws(() => validateAnnotationSelection(
+    parseAnnotationMarkdown("第一段\n\n```\ncode\n```\n\n第二段"),
+    { blockOrdinal: 0, endBlockOrdinal: 1, blockTextFrom: 0, blockTextTo: 1, selectedText: "第一段\n\n第" },
+  ), /不能穿过/);
   for (const markdown of ["`code`", "![图](https://example.com/a.png)", "[附件](/api/assets/x)", "| A |\n| - |\n| B |", "```\ncode\n```"]) {
     assert.throws(() => validateAnnotationSelection(parseAnnotationMarkdown(markdown), descriptor(0, 0, 1, markdown.includes("附件") ? "附" : markdown.includes("code") ? "c" : "A")), /不支持|不在可批注/);
   }
 });
 
-test("unwrap removes exactly one anchor while preserving visible text", () => {
+test("unwrap removes a logical anchor while preserving visible text", () => {
   const tree = wrapAnnotationRange(parseAnnotationMarkdown("我喜欢你"), descriptor(0, 1, 3, "喜欢"), A);
   const next = unwrapAnnotation(tree, A);
   assert.deepEqual(collectAnnotationIds(next), []);

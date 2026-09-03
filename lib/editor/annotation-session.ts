@@ -81,9 +81,14 @@ function annotationMarkType(state: EditorState): MarkType {
 
 function affectedExcerpts(doc: ProseMirrorNode, ids: string[]) {
   const wanted = new Set(ids);
-  return analyzeAnnotationRanges(doc).ranges
-    .filter((range) => wanted.has(range.annotationId))
-    .map((range) => ({ annotationId: range.annotationId, text: range.text.slice(0, 120) }));
+  const grouped = new Map<string, string[]>();
+  for (const range of analyzeAnnotationRanges(doc).ranges) {
+    if (wanted.has(range.annotationId)) grouped.set(range.annotationId, [...(grouped.get(range.annotationId) ?? []), range.text]);
+  }
+  return ids.flatMap((annotationId) => {
+    const parts = grouped.get(annotationId);
+    return parts ? [{ annotationId, text: parts.join("\n\n").slice(0, 120) }] : [];
+  });
 }
 
 function compositeTransaction(state: EditorState, proposed: Transaction, affectedIds: string[]): Transaction {

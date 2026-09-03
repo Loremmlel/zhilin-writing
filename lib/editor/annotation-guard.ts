@@ -36,6 +36,7 @@ export type AnnotationGuardResult =
 function rangesById(ranges: EditorAnnotationRange[]): Map<string, EditorAnnotationRange[]> {
   const result = new Map<string, EditorAnnotationRange[]>();
   for (const range of ranges) result.set(range.annotationId, [...(result.get(range.annotationId) ?? []), range]);
+  for (const grouped of result.values()) grouped.sort((left, right) => left.from - right.from);
   return result;
 }
 
@@ -79,15 +80,17 @@ export function inspectAnnotationTransaction(
       reasons.push({ annotationId, code: "REMOVED" });
       continue;
     }
-    if (structuralIds.has(annotationId) || beforeRanges.length !== 1 || afterRanges.length !== 1) continue;
-    const [previous] = beforeRanges;
-    const [next] = afterRanges;
-    if (!boundarySurvives(previous.from, 1, next.from, transaction)
-      || !endpointSurvives(previous.firstEndpoint, next, transaction)) {
+    if (structuralIds.has(annotationId)) continue;
+    const previousFirst = beforeRanges[0]!;
+    const previousLast = beforeRanges.at(-1)!;
+    const nextFirst = afterRanges[0]!;
+    const nextLast = afterRanges.at(-1)!;
+    if (!boundarySurvives(previousFirst.from, 1, nextFirst.from, transaction)
+      || !endpointSurvives(previousFirst.firstEndpoint, nextFirst, transaction)) {
       reasons.push({ annotationId, code: "LEFT_ENDPOINT_REMOVED" });
     }
-    if (!boundarySurvives(previous.to, -1, next.to, transaction)
-      || !endpointSurvives(previous.lastEndpoint, next, transaction)) {
+    if (!boundarySurvives(previousLast.to, -1, nextLast.to, transaction)
+      || !endpointSurvives(previousLast.lastEndpoint, nextLast, transaction)) {
       reasons.push({ annotationId, code: "RIGHT_ENDPOINT_REMOVED" });
     }
   }

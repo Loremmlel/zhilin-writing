@@ -1,5 +1,6 @@
 import type { AnnotationId, AnnotationMarkdownRoot, AnnotationSelectionDescriptor } from "./types.ts";
 import { isAttachmentAssetHref } from "./inline-policy.ts";
+import { collectAnnotationDocumentBlocks } from "./span.ts";
 
 type InlineNode = {
   type: string;
@@ -26,7 +27,6 @@ export class AnnotationSelectionError extends Error {
   }
 }
 
-const allowedParagraphParents = new Set(["root", "listItem", "blockquote"]);
 const supportedContainers = new Set(["strong", "emphasis", "delete", "link", "textDirective"]);
 
 function cloneWithoutPosition<T extends InlineNode>(node: T): T {
@@ -77,34 +77,40 @@ function annotationRanges(nodes: InlineNode[]) {
   return ranges;
 }
 
-function eligibleBlocks(tree: AnnotationMarkdownRoot): AnnotationBlock[] {
-  const result: AnnotationBlock[] = [];
-  const walk = (node: InlineNode, parentType: string | null) => {
-    if (node.type === "heading" && parentType === "root" && node.children) result.push(node as AnnotationBlock);
-    if (node.type === "paragraph" && parentType && allowedParagraphParents.has(parentType) && node.children) result.push(node as AnnotationBlock);
-    node.children?.forEach((child) => walk(child, node.type));
-  };
-  walk(tree as InlineNode, null);
-  return result;
-}
-
 export function validateAnnotationSelection(tree: AnnotationMarkdownRoot, descriptor: AnnotationSelectionDescriptor) {
-  if (descriptor.blockOrdinal !== descriptor.endBlockOrdinal) throw new AnnotationSelectionError("CROSS_BLOCK", "批注只能位于同一个文本块内");
-  const block = eligibleBlocks(tree)[descriptor.blockOrdinal];
-  if (!block) throw new AnnotationSelectionError("INVALID_BLOCK", "所选文本不在可批注的正文块中");
-  assertSupportedBlock(block);
-  const blockText = block.children.map(inlineText).join("");
-  const { blockTextFrom: from, blockTextTo: to } = descriptor;
-  if (!Number.isInteger(from) || !Number.isInteger(to) || from < 0 || to <= from || to > blockText.length) {
-    throw new AnnotationSelectionError("INVALID_RANGE", "批注选区已经失效");
+  const entries = collectAnnotationDocumentBlocks(tree as InlineNode);
+  const eligible = entries.filter((entry) => entry.supported);
+  if (!Number.isInteger(descriptor.blockOrdinal) || !Number.isInteger(descriptor.endBlockOrdinal)
+    || descriptor.blockOrdinal < 0 || descriptor.endBlockOrdinal < descriptor.blockOrdinal) {
+    throw new AnnotationSelectionError("INVALID_BLOCK", "所选文本不在可批注的正文块中");
   }
-  const selectedText = blockText.slice(from, to);
+  const startEntry = eligible[descriptor.blockOrdinal];
+  const endEntry = eligible[descriptor.endBlockOrdinal];
+  if (!startEntry || !endEntry) throw new AnnotationSelectionError("INVALID_BLOCK", "所选文本不在可批注的正文块中");
+  if (entries.slice(startEntry.documentIndex, endEntry.documentIndex + 1).some((entry) => !entry.supported)) {
+    throw new AnnotationSelectionError("CROSS_BLOCK", "跨段批注不能穿过代码块、表格或其他不支持的内容");
+  }
+  const blocks = eligible.slice(descriptor.blockOrdinal, descriptor.endBlockOrdinal + 1).map((entry, index, selected) => {
+    const block = entry.node as AnnotationBlock;
+    assertSupportedBlock(block);
+    const text = block.children.map(inlineText).join("");
+    const from = index === 0 ? descriptor.blockTextFrom : 0;
+    const to = index === selected.length - 1 ? descriptor.blockTextTo : text.length;
+    if (!Number.isInteger(from) || !Number.isInteger(to) || from < 0 || to <= from || to > text.length) {
+      throw new AnnotationSelectionError("INVALID_RANGE", "批注选区已经失效");
+    }
+    const selectedText = text.slice(from, to);
+    if (!selectedText.trim()) throw new AnnotationSelectionError("BLANK_SELECTION", "请选择至少一个非空白字符");
+    if (annotationRanges(block.children).some((range) => from < range.to && to > range.from)) {
+      throw new AnnotationSelectionError("OVERLAP", "所选内容与已有批注重叠");
+    }
+    return { block, blockText: text, from, to, selectedText };
+  });
+  const block = blocks[0]!.block;
+  const blockText = blocks[0]!.blockText;
+  const selectedText = blocks.map((item) => item.selectedText).join("\n\n");
   if (selectedText !== descriptor.selectedText) throw new AnnotationSelectionError("TEXT_MISMATCH", "正文已经变化，请重新选择文字");
-  if (!selectedText.trim()) throw new AnnotationSelectionError("BLANK_SELECTION", "请选择至少一个非空白字符");
-  if (annotationRanges(block.children).some((range) => from < range.to && to > range.from)) {
-    throw new AnnotationSelectionError("OVERLAP", "所选内容与已有批注重叠");
-  }
-  return { block, blockText };
+  return { block, blockText, blocks };
 }
 
 type SplitResult = { before: InlineNode[]; selected: InlineNode[]; after: InlineNode[] };
@@ -175,11 +181,13 @@ function normalizeNodes(nodes: InlineNode[]): InlineNode[] {
 
 export function wrapAnnotationRange(tree: AnnotationMarkdownRoot, descriptor: AnnotationSelectionDescriptor, annotationId: AnnotationId | string): AnnotationMarkdownRoot {
   const clone = structuredClone(tree) as AnnotationMarkdownRoot;
-  const { block } = validateAnnotationSelection(clone, descriptor);
-  const split = splitNodes(block.children, descriptor.blockTextFrom, descriptor.blockTextTo);
-  if (split.selected.length === 0) throw new AnnotationSelectionError("INVALID_RANGE", "没有可写入批注的文字");
-  const directive: InlineNode = { type: "textDirective", name: "annotation", attributes: { id: annotationId }, children: split.selected };
-  block.children = normalizeNodes([...split.before, directive, ...split.after]);
+  const { blocks } = validateAnnotationSelection(clone, descriptor);
+  for (const { block, from, to } of blocks) {
+    const split = splitNodes(block.children, from, to);
+    if (split.selected.length === 0) throw new AnnotationSelectionError("INVALID_RANGE", "没有可写入批注的文字");
+    const directive: InlineNode = { type: "textDirective", name: "annotation", attributes: { id: annotationId }, children: split.selected };
+    block.children = normalizeNodes([...split.before, directive, ...split.after]);
+  }
   return clone;
 }
 
@@ -200,6 +208,6 @@ export function unwrapAnnotation(tree: AnnotationMarkdownRoot, annotationId: str
   };
   const root = clone as InlineNode;
   root.children = unwrapChildren(root.children ?? []);
-  if (matches !== 1) throw new AnnotationSelectionError("INVALID_RANGE", "批注锚点不存在或不唯一");
+  if (matches === 0) throw new AnnotationSelectionError("INVALID_RANGE", "批注锚点不存在或不唯一");
   return clone;
 }

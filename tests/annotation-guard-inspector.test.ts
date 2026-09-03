@@ -231,12 +231,11 @@ test("aggregates two destroyed annotations into one impact", () => {
   ]));
 });
 
-test("detects block split and whole paragraph deletion but allows a legal block join", () => {
+test("allows a canonical cross-block split and join while protecting the logical outer endpoints", () => {
   const split = stateFrom(":annotation[我非常⌁喜欢你]{#a}");
-  assert.deepEqual(
-    inspectAnnotationTransaction(split.doc, commandTransaction(split, splitBlock)),
-    impact(["a"], [{ annotationId: "a", code: "MULTI_BLOCK" }]),
-  );
+  const splitTransaction = commandTransaction(split, splitBlock);
+  assert.deepEqual(inspectAnnotationTransaction(split.doc, splitTransaction), { kind: "SAFE" });
+  assert.equal(scanAnnotationRanges(splitTransaction.doc).length, 2);
 
   const paragraph = stateFrom("⟦:annotation[整段]{#a}⟧\n\n下一段");
   assert.deepEqual(inspectAnnotationTransaction(paragraph.doc, paragraph.tr.deleteSelection()), impact(["a"], [{ annotationId: "a", code: "REMOVED" }]));
@@ -276,13 +275,16 @@ test("allows ordinary formatting across annotation boundaries", () => {
   assert.deepEqual(inspectAnnotationTransaction(linked.doc, linked.tr.removeMark(linked.selection.from, linked.selection.to, schema.marks.link)), { kind: "SAFE" });
 });
 
-test("classifies duplicate and multi-block anchors", () => {
+test("classifies duplicate and malformed multi-block anchors", () => {
   const base = stateFrom("普⌁通正文");
   const duplicate = parse(":annotation[A]{#a} gap :annotation[B]{#a}");
   assert.deepEqual(inspectAnnotationTransaction(base.doc, replacementTransaction(base, duplicate)), impact(["a"], [{ annotationId: "a", code: "DUPLICATE" }]));
 
   const multiBlock = parse(":annotation[A]{#a}\n\n:annotation[B]{#a}");
-  assert.deepEqual(inspectAnnotationTransaction(base.doc, replacementTransaction(base, multiBlock)), impact(["a"], [{ annotationId: "a", code: "MULTI_BLOCK" }]));
+  assert.deepEqual(inspectAnnotationTransaction(base.doc, replacementTransaction(base, multiBlock)), { kind: "SAFE" });
+
+  const gapped = parse(":annotation[A]{#a}\n\ngap\n\n:annotation[B]{#a}");
+  assert.deepEqual(inspectAnnotationTransaction(base.doc, replacementTransaction(base, gapped)), impact(["a"], [{ annotationId: "a", code: "MULTI_BLOCK" }]));
 });
 
 test("classifies nested, overlapping, empty, and invalid-block anchors", () => {

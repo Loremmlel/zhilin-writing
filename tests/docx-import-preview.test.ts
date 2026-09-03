@@ -50,10 +50,20 @@ test("blocks missing, unknown, and duplicate annotation anchors", () => {
 
   const duplicate = validateEditedImportPreview({
     ...editableFixture(),
-    markdown: `:annotation[正文]{#${ROOT_ID}}\n\n:annotation[正文]{#${ROOT_ID}}`,
+    markdown: `:annotation[正]{#${ROOT_ID}}文 :annotation[文]{#${ROOT_ID}}`,
   });
   assert.equal(duplicate.ok, false);
   assert.ok(duplicate.errors.some((item) => item.code === "ANNOTATION_ANCHOR_DUPLICATE"));
+
+  const duplicateThreadFixture = editableFixture();
+  duplicateThreadFixture.ir.threads.push({
+    ...duplicateThreadFixture.ir.threads[0]!,
+    sourceCommentId: "12",
+    replies: [],
+  });
+  const duplicateThread = validateEditedImportPreview(duplicateThreadFixture);
+  assert.equal(duplicateThread.ok, false);
+  assert.ok(duplicateThread.errors.some((item) => item.code === "ANNOTATION_ANCHOR_DUPLICATE"));
 });
 
 test("blocks edited annotation text, nested directives, and overlapping imported ranges", () => {

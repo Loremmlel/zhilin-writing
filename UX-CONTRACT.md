@@ -20,6 +20,7 @@
 | V4 内容生命周期与资源回收 | `docs/superpowers/specs/2026-08-26-content-lifecycle-v4-design.md` | Product/design spec | 2026-08-26 |
 | V5 Annotation AST、正文批注与讨论 | `docs/superpowers/specs/2026-08-27-annotation-v5-design.md` | Product/design spec | 2026-08-27 |
 | V6 AnnotationGuard、批注编辑与 Loading | `docs/superpowers/specs/2026-08-31-annotation-guard-v6-design.md` | Product/design spec | 2026-08-31 |
+| V8 跨段批注 | `docs/superpowers/specs/2026-09-03-cross-block-annotation-v8-design.md` | Product/design spec | 2026-09-03 |
 | 服务器权限边界 | `lib/auth/access.ts` | Verified domain invariant | 2026-08-25 |
 | 保存、删除、隐藏与恢复状态机 | `lib/posts/service.ts`, `lib/lifecycle/service.ts`, `lib/revisions/service.ts`, `lib/annotations/service.ts` | Verified API/domain contract | 2026-08-27 |
 
@@ -46,7 +47,7 @@
 | Lifecycle | lifecycle policy/service | `lib/lifecycle/*` | normal / user deleted / admin hidden | unit + migration + build |
 | Moderation | administrator content management | `app/(site)/admin`, `components/admin/content-lifecycle-control.tsx` | posts / replies / audit | server permission + build |
 | Asset access and GC | reference-aware asset services | `lib/assets/access-service.ts`, `lib/assets/gc.ts` | active / historical / temporary / orphan | unit + service review |
-| Annotation AST/selection | annotation Markdown and structural selection | `lib/annotations/markdown.ts`, `lib/annotations/selection.ts` | parse / wrap / unwrap / validate | round-trip + selection unit |
+| Annotation AST/selection | annotation Markdown and structural selection | `lib/annotations/markdown.ts`, `lib/annotations/span.ts`, `lib/annotations/selection.ts` | single-block / consecutive cross-block | round-trip + selection unit |
 | Annotation reading | `AnnotationReadingLayout` | `components/annotations/annotation-reading-layout.tsx` | desktop sidebar / mobile sheet | unit + build + browser |
 | Annotation lifecycle | annotation service and shared moderation | `lib/annotations/service.ts`, `components/admin/content-lifecycle-control.tsx` | create / reply / delete / hide / unhide / restore | unit + transaction review |
 | Annotated editing | `AnnotationGuard` + authoritative post save | `lib/editor/annotation-guard.ts`, `lib/editor/annotation-session.ts`, `lib/posts/service.ts` | safe edit / confirmed retirement / conflict | inspector + integration + transaction tests |
@@ -61,7 +62,7 @@
 | Search | explicit submit | border visible | green ring | n/a | n/a | route transition | results/empty state |
 | Textarea/editor | fixed authored surface | n/a | green boundary/editor focus | n/a | read-only when required | local draft status | retained content + inline error |
 | List/timeline | readable rows | border/tone change | link focus | selected green surface | n/a | stable footprint | empty explanatory copy |
-| Annotation range | pale red mark + dotted underline | stronger tint | visible ring | linked card/range highlight | creation menu withheld on overlap | composer submit disabled | explicit conflict/selection copy |
+| Annotation range | one or more linked pale red marks + dotted underline | all same-ID marks strengthen | visible ring | linked card/all ranges highlight | creation menu withheld on overlap | composer submit disabled | explicit conflict/selection copy |
 | Annotation card/sheet | author, time, content, replies | linked range highlight | visible card focus | stable ID selected | unavailable content uses placeholder | fixed-size publish action | input retained with inline error |
 | Skeleton | final-layout geometry | n/a | n/a | static paper-tone surface | n/a | delayed subtle shimmer + `aria-busy` | replaced by safe recovery card |
 
@@ -92,7 +93,7 @@
 | Restore deleted | administrator action + confirm | disabled confirm | current admin filter | current content becomes active unless still hidden | retry is a no-op | refreshed row | V4 spec |
 | Upload | file input | local pending | editor | attachment row/inline image | inline upload error | file input/editor | V1 spec |
 | Account menu | avatar button | n/a | selected route | menu closes | outside/Escape close | trigger restored on Escape | V3 addendum |
-| Create annotation | select same-block text → 添加批注 | disabled duplicate publish | same post | range, card/sheet, Activity and author notification | selection conflict keeps正文 unchanged; choose again | active thread/card | V5 spec |
+| Create annotation | select consecutive supported body text → 添加批注 | disabled duplicate publish | same post | linked ranges, one card/sheet, Activity and author notification | selection conflict keeps正文 unchanged; choose again | active thread/card | V5 + V8 spec |
 | Reply annotation | 回复批注 / 回复成员 | disabled duplicate publish | same thread | one-layer reply + direct-target notification | editor retains content/error | refreshed thread | V5 spec |
 | Delete annotation | 删除批注 + confirm | disabled confirm | same post | no-thread anchor exits; dependent thread becomes placeholder | retry is a no-op | refreshed article/thread | V5 spec |
 | Hide annotation | administrator action + confirm | disabled confirm | current admin filter | placeholder/audit; root creates annotation-state revision | retry is a no-op | refreshed row | V5 spec |
@@ -153,8 +154,9 @@
 - Server errors: inline text; `EDIT_CONFLICT` maps to the comparison dialog.
 - Sensitive values: opaque IDs remain hidden except in internal form values/URLs.
 - Forms prevent duplicate submit; editor fields retain input after errors.
-- Ordinary post create/update rejects annotation directives. Annotation creation re-parses current canonical Markdown, verifies exact base revision, one eligible text block, exact selected text and zero overlap before inserting a server-controlled ID.
-- DOCX Commit treats browser IR as untrusted: it revalidates schema, Markdown AST, annotation invariants, imported `author_id=NULL`, attribution membership, temporary asset ownership, safe links, counts, sizes and batch idempotency without re-uploading or re-parsing the source DOCX.
+- Ordinary post create/update rejects annotation directives. Annotation creation re-parses current canonical Markdown, verifies exact base revision, one or more consecutive eligible text blocks, exact selected text and zero overlap before inserting a server-controlled ID into every selected block.
+- A logical cross-block annotation uses one stable ID, one database thread/anchor and consecutive inline Markdown segments. The first segment reaches the first block's final visible character, intermediate segments cover their full visible text, and the last begins at its block's first visible character. Code, tables, images, attachments, hard breaks and unsupported blocks are barriers.
+- DOCX Commit treats browser IR as untrusted: it revalidates schema, Markdown AST, logical cross-block annotation topology and aggregate selected text, imported `author_id=NULL`, attribution membership, temporary asset ownership, safe links, counts, sizes and batch idempotency without re-uploading or re-parsing the source DOCX.
 
 ## Permission and clipboard
 

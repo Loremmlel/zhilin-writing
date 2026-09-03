@@ -1,5 +1,6 @@
 import { DOCX_IMPORT_LIMITS } from "./limits.ts";
 import { escapeMarkdownLiteral } from "./markdown.ts";
+import { importTextBlocks, importedThreadSlices, type ImportedThreadSlice } from "./thread-range.ts";
 import { DocxImportError } from "./types.ts";
 import type {
   ImportedReply,
@@ -262,8 +263,10 @@ export function resolveAnnotationThreads(
   const candidates: Array<{
     thread: WordThread;
     blockId: string;
+    endBlockId?: string;
     start: number;
     end: number;
+    slices: ImportedThreadSlice[];
   }> = [];
 
   for (const thread of threads) {
@@ -283,7 +286,17 @@ export function resolveAnnotationThreads(
       skipped.push(skipWordThread(thread, legality.code));
       continue;
     }
-    candidates.push({ thread, ...legality });
+    const slices = importedThreadSlices(walked.blocks, {
+      blockId: legality.blockId,
+      endBlockId: legality.endBlockId,
+      blockLocalStart: legality.start,
+      blockLocalEnd: legality.end,
+    });
+    if (!slices) {
+      skipped.push(skipWordThread(thread, "ANNOTATION_CROSS_BLOCK"));
+      continue;
+    }
+    candidates.push({ thread, ...legality, slices });
   }
 
   for (const trace of walked.commentRanges) {
@@ -300,15 +313,15 @@ export function resolveAnnotationThreads(
     (blockOrder.get(left.blockId) ?? Number.MAX_SAFE_INTEGER)
     - (blockOrder.get(right.blockId) ?? Number.MAX_SAFE_INTEGER)
     || left.start - right.start
-    || (right.end - right.start) - (left.end - left.start)
+    || (blockOrder.get(right.endBlockId ?? right.blockId) ?? Number.MIN_SAFE_INTEGER)
+      - (blockOrder.get(left.endBlockId ?? left.blockId) ?? Number.MIN_SAFE_INTEGER)
+    || right.end - left.end
     || compareSourceCommentId(left.thread.root.sourceCommentId, right.thread.root.sourceCommentId));
 
   const acceptedCandidates: typeof candidates = [];
   for (const candidate of candidates) {
-    const conflict = acceptedCandidates.find((accepted) =>
-      accepted.blockId === candidate.blockId
-      && candidate.start < accepted.end
-      && accepted.start < candidate.end);
+    const conflict = acceptedCandidates.find((accepted) => accepted.slices.some((left) =>
+      candidate.slices.some((right) => left.blockId === right.blockId && left.from < right.to && right.from < left.to)));
     if (conflict) {
       skipped.push(skipWordThread(candidate.thread, "ANNOTATION_OVERLAP_SKIPPED", {
         conflictsWithSourceCommentId: conflict.thread.root.sourceCommentId,
@@ -318,10 +331,11 @@ export function resolveAnnotationThreads(
     }
   }
 
-  const accepted = acceptedCandidates.map(({ thread, blockId, start, end }) => ({
+  const accepted = acceptedCandidates.map(({ thread, blockId, endBlockId, start, end }) => ({
     annotationId: createAnnotationId(thread.root.sourceCommentId),
     sourceCommentId: thread.root.sourceCommentId,
     blockId,
+    ...(endBlockId && endBlockId !== blockId ? { endBlockId } : {}),
     blockLocalStart: start,
     blockLocalEnd: end,
     sourceAuthorName: thread.root.sourceAuthorName,
@@ -352,7 +366,8 @@ export function resolveAnnotationThreads(
 function legalRange(
   trace: WalkedCommentRange,
   segmentsByBlock: ReadonlyMap<string, InlineSegment[]>,
-): { blockId: string; start: number; end: number } | { code: ImportWarningCode } {
+  blockOrder: ReadonlyMap<string, number> = new Map([...segmentsByBlock.keys()].map((id, index) => [id, index])),
+): { blockId: string; endBlockId?: string; start: number; end: number } | { code: ImportWarningCode } {
   if (trace.touchedLocations.includes("table")) return { code: "ANNOTATION_TABLE_UNSUPPORTED" };
   if (trace.touchedLocations.some((location) => location === "image" || location === "nonText")) {
     return { code: "ANNOTATION_NON_TEXT_RANGE" };
@@ -365,15 +380,31 @@ function legalRange(
   if (!start.blockId || !end.blockId || start.offset === undefined || end.offset === undefined) {
     return { code: "ANNOTATION_NON_TEXT_RANGE" };
   }
-  if (start.blockId !== end.blockId) return { code: "ANNOTATION_CROSS_BLOCK" };
-  if (end.offset <= start.offset) return {
-    code: end.offset === start.offset ? "ANNOTATION_EMPTY_RANGE" : "ANNOTATION_NON_TEXT_RANGE",
-  };
-  const segments = segmentsByBlock.get(start.blockId);
-  if (!segments || segments.some((segment) => segment.marks.includes("code"))) {
+  const startIndex = blockOrder.get(start.blockId);
+  const endIndex = blockOrder.get(end.blockId);
+  if (startIndex === undefined || endIndex === undefined || endIndex < startIndex) return { code: "ANNOTATION_CROSS_BLOCK" };
+  const selectedBlockIds = [...blockOrder]
+    .filter(([, index]) => index >= startIndex && index <= endIndex)
+    .sort((left, right) => left[1] - right[1])
+    .map(([id]) => id);
+  const selectedSegments = selectedBlockIds.map((id) => segmentsByBlock.get(id));
+  if (selectedSegments.some((segments) => !segments || segments.some((segment) => segment.marks.includes("code")))) {
     return { code: "ANNOTATION_NON_TEXT_RANGE" };
   }
-  return { blockId: start.blockId, start: start.offset, end: end.offset };
+  const startLength = selectedSegments[0]!.reduce((total, segment) => total + segment.text.length, 0);
+  const endLength = selectedSegments.at(-1)!.reduce((total, segment) => total + segment.text.length, 0);
+  if (start.offset < 0 || start.offset >= startLength || end.offset <= 0 || end.offset > endLength) {
+    return { code: start.blockId === end.blockId && end.offset === start.offset ? "ANNOTATION_EMPTY_RANGE" : "ANNOTATION_NON_TEXT_RANGE" };
+  }
+  if (start.blockId === end.blockId && end.offset <= start.offset) return {
+    code: end.offset === start.offset ? "ANNOTATION_EMPTY_RANGE" : "ANNOTATION_NON_TEXT_RANGE",
+  };
+  return {
+    blockId: start.blockId,
+    ...(start.blockId === end.blockId ? {} : { endBlockId: end.blockId }),
+    start: start.offset,
+    end: end.offset,
+  };
 }
 
 function supportedTextBlocks(walked: WalkedDocument): {
@@ -382,17 +413,9 @@ function supportedTextBlocks(walked: WalkedDocument): {
 } {
   const order = new Map<string, number>();
   const segments = new Map<string, InlineSegment[]>();
-  let index = 0;
-  for (const block of walked.blocks) {
-    if (block.type === "list") {
-      for (const item of block.items) {
-        order.set(item.id, index++);
-        segments.set(item.id, item.segments);
-      }
-    } else if ("segments" in block) {
-      order.set(block.id, index++);
-      segments.set(block.id, block.segments);
-    }
+  for (const [index, block] of importTextBlocks(walked.blocks).entries()) {
+    order.set(block.blockId, index);
+    segments.set(block.blockId, block.segments);
   }
   return { order, segments };
 }

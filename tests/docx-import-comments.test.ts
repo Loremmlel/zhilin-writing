@@ -350,13 +350,15 @@ test("reports reply count when a valid thread is skipped for an illegal range", 
   assert.equal(parsed.skippedThreads[0]?.warning.payload?.replyCount, 1);
 });
 
-test("accepts list-item ranges and classifies empty cross-block table image and missing-definition ranges", async () => {
+test("accepts list-item and cross-block ranges while classifying unsupported ranges", async () => {
   const body = `
     <w:p><w:commentRangeStart w:id="40"/><w:commentRangeEnd w:id="40"/></w:p>
     <w:p><w:commentRangeStart w:id="41"/><w:r><w:t>跨</w:t></w:r></w:p>
     <w:p><w:r><w:t>段</w:t></w:r><w:commentRangeEnd w:id="41"/></w:p>
     <w:p><w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="7"/></w:numPr></w:pPr><w:commentRangeStart w:id="42"/><w:r><w:t>列表项</w:t></w:r><w:commentRangeEnd w:id="42"/></w:p>
+    <w:p><w:commentRangeStart w:id="47"/><w:r><w:t>表前</w:t></w:r></w:p>
     <w:tbl><w:tr><w:tc><w:p><w:commentRangeStart w:id="43"/><w:r><w:t>表格</w:t></w:r><w:commentRangeEnd w:id="43"/></w:p></w:tc></w:tr></w:tbl>
+    <w:p><w:r><w:t>表后</w:t></w:r><w:commentRangeEnd w:id="47"/></w:p>
     <w:p><w:r><w:drawing><w:commentRangeStart w:id="44"/><w:t>图</w:t><w:commentRangeEnd w:id="44"/></w:drawing></w:r></w:p>
     <w:p><w:commentRangeStart w:id="45"/><w:r><w:t>缺定义</w:t></w:r><w:commentRangeEnd w:id="45"/></w:p>
     <w:p><w:commentRangeStart w:id="46"/><w:r><w:t>普通</w:t></w:r><w:commentRangeEnd w:id="46"/><w:r><w:rPr><w:rStyle w:val="CodeChar"/></w:rPr><w:t>代码</w:t></w:r></w:p>`;
@@ -376,14 +378,20 @@ test("accepts list-item ranges and classifies empty cross-block table image and 
     comment("43", "AAA00043", "表", "T", "表格"),
     comment("44", "AAA00044", "图", "I", "图片"),
     comment("46", "AAA00046", "码", "C", "含代码块"),
+    comment("47", "AAA00047", "障", "B", "跨表格"),
   ].join(""), undefined, { extraParts: {
     "word/numbering.xml": numbering,
     "word/styles.xml": styles,
   } }), undefined, parseOptions);
 
-  assert.equal(parsed.threads.length, 1);
-  assert.equal(parsed.threads[0]?.sourceCommentId, "42");
-  assert.match(parsed.threads[0]?.blockId ?? "", /_item_1$/);
+  assert.equal(parsed.threads.length, 2);
+  const crossBlock = parsed.threads.find((thread) => thread.sourceCommentId === "41");
+  assert.ok(crossBlock?.endBlockId);
+  assert.equal(crossBlock?.blockLocalStart, 0);
+  assert.equal(crossBlock?.blockLocalEnd, 1);
+  const listThread = parsed.threads.find((thread) => thread.sourceCommentId === "42");
+  assert.match(listThread?.blockId ?? "", /_item_1$/);
+  assert.equal(parsed.canonicalMarkdown.match(/ann_00000000-0000-4000-8000-000000000041/g)?.length, 2);
   assert.match(parsed.canonicalMarkdown, /- :annotation\[列表项\]/);
 
   const skipped = Object.fromEntries(parsed.skippedThreads.map((thread) => [
@@ -392,11 +400,11 @@ test("accepts list-item ranges and classifies empty cross-block table image and 
   ]));
   assert.deepEqual(skipped, {
     40: "ANNOTATION_EMPTY_RANGE",
-    41: "ANNOTATION_CROSS_BLOCK",
     43: "ANNOTATION_TABLE_UNSUPPORTED",
     44: "ANNOTATION_NON_TEXT_RANGE",
     45: "ANNOTATION_ORPHAN_DEFINITION",
     46: "ANNOTATION_NON_TEXT_RANGE",
+    47: "ANNOTATION_TABLE_UNSUPPORTED",
   });
 });
 

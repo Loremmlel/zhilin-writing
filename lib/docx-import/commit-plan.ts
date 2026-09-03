@@ -1,8 +1,10 @@
 import { validateAnnotationContent } from "../annotations/policy.ts";
 import { parseAnnotationMarkdown } from "../annotations/markdown.ts";
+import { validateCanonicalAnnotationDocument, type AnnotationInvariantIssueCode } from "../annotations/invariants.ts";
 import { markdownToPlainText } from "../markdown/render.ts";
 import { buildDocxAttributionNotices } from "../notifications/policy.ts";
 import { DOCX_IMPORT_LIMITS } from "./limits.ts";
+import { importedThreadSlices } from "./thread-range.ts";
 import {
   DocxImportCommitSchema,
   type DocxImportCommitInput,
@@ -105,7 +107,7 @@ export function validateDocxImportCommitPayload(input: unknown): ValidatedDocxIm
   validateBlocks(payload);
   validateImportedIdentities(payload);
   const selectedTextById = validateSourceRanges(payload);
-  const anchorRanges = validateMarkdown(payload, markdown, selectedTextById);
+  const anchorRanges = validateMarkdown(markdown, selectedTextById);
   const assetIds = validateAssets(payload);
   const attributedUserIds = validateMappings(payload);
 
@@ -349,21 +351,32 @@ function validateImportedIdentities(payload: DocxImportCommitInput) {
 
 function validateSourceRanges(payload: DocxImportCommitInput): Map<string, string> {
   const selected = new Map<string, string>();
-  const byBlock = new Map<string, typeof payload.ir.threads>();
+  const byBlock = new Map<string, Array<{ annotationId: string; sourceCommentId: string; from: number; to: number }>>();
   for (const thread of payload.ir.threads) {
-    const value = blockText(payload.ir.blocks, thread.blockId);
-    if (value === null || thread.blockLocalStart >= thread.blockLocalEnd || thread.blockLocalEnd > value.length) fail("ANNOTATION_RANGE_INVALID");
-    selected.set(thread.annotationId, value.slice(thread.blockLocalStart, thread.blockLocalEnd));
-    const list = byBlock.get(thread.blockId) ?? [];
-    list.push(thread);
-    byBlock.set(thread.blockId, list);
+    const slices = importedThreadSlices(payload.ir.blocks, thread);
+    if (!slices) fail("ANNOTATION_RANGE_INVALID");
+    if (slices.some((slice) => slice.segments.some((segment) => segment.marks.includes("code")))) fail("ANNOTATION_NON_TEXT_RANGE");
+    selected.set(thread.annotationId, slices.map((slice) => {
+      const value = slice.segments.map((segment) => segment.text).join("");
+      return value.slice(slice.from, slice.to);
+    }).join("\n\n"));
+    for (const slice of slices) {
+      const list = byBlock.get(slice.blockId) ?? [];
+      list.push({
+        annotationId: thread.annotationId,
+        sourceCommentId: thread.sourceCommentId,
+        from: slice.from,
+        to: slice.to,
+      });
+      byBlock.set(slice.blockId, list);
+    }
   }
-  for (const threads of byBlock.values()) {
-    const ordered = [...threads].sort((left, right) => left.blockLocalStart - right.blockLocalStart
-      || (right.blockLocalEnd - right.blockLocalStart) - (left.blockLocalEnd - left.blockLocalStart)
+  for (const ranges of byBlock.values()) {
+    const ordered = [...ranges].sort((left, right) => left.from - right.from
+      || (right.to - right.from) - (left.to - left.from)
       || left.sourceCommentId.localeCompare(right.sourceCommentId));
     for (let index = 1; index < ordered.length; index += 1) {
-      if (ordered[index]!.blockLocalStart < ordered[index - 1]!.blockLocalEnd) fail("ANNOTATION_OVERLAP");
+      if (ordered[index]!.from < ordered[index - 1]!.to) fail("ANNOTATION_OVERLAP");
     }
   }
   return selected;
@@ -379,57 +392,35 @@ type MarkdownNode = {
   children?: MarkdownNode[];
 };
 
-function validateMarkdown(payload: DocxImportCommitInput, markdown: string, selectedTextById: Map<string, string>): AnchorRange[] {
+function validateMarkdown(markdown: string, selectedTextById: Map<string, string>): AnchorRange[] {
   let tree: MarkdownNode;
   try { tree = parseAnnotationMarkdown(markdown) as MarkdownNode; }
   catch { fail("PREVIEW_MARKDOWN_INVALID"); }
-  const anchors: AnchorRange[] = [];
-  let blockOrdinal = 0;
-  const scanOwner = (owner: MarkdownNode, forbidden: boolean) => {
-    let offset = 0;
-    const scan = (node: MarkdownNode, nested: boolean) => {
-      if (node.url && !safeUrl(node.url)) fail("UNSAFE_EXTERNAL_URL");
-      if (node.type === "text" || node.type === "inlineCode") { offset += node.value?.length ?? 0; return; }
-      if (node.type === "image") {
-        if (nested) fail("ANNOTATION_NON_TEXT_RANGE");
-        offset += node.alt?.length ?? 0;
-        return;
-      }
-      const directive = node.type === "textDirective" && node.name === "annotation";
-      if (directive) {
-        if (nested) fail("ANNOTATION_NESTED");
-        if (forbidden) fail("ANNOTATION_CROSS_BLOCK");
-        const id = node.attributes?.id;
-        if (!id || !selectedTextById.has(id)) fail("ANNOTATION_ANCHOR_UNKNOWN");
-        const start = offset;
-        node.children?.forEach((child) => scan(child, true));
-        const end = offset;
-        const selectedText = selectedTextById.get(id)!;
-        if (visibleText(node) !== selectedText || end - start !== selectedText.length) fail("ANNOTATION_TEXT_CHANGED");
-        anchors.push({ annotationId: id, blockOrdinal, start, end, selectedText });
-        return;
-      }
-      node.children?.forEach((child) => scan(child, nested));
+  walk(tree, (node) => { if (node.url && !safeUrl(node.url)) fail("UNSAFE_EXTERNAL_URL"); });
+  const validation = validateCanonicalAnnotationDocument(markdown, selectedTextById.keys());
+  const issueCode: Record<AnnotationInvariantIssueCode, string> = {
+    DUPLICATE: "ANNOTATION_ANCHOR_DUPLICATE",
+    EMPTY: "ANNOTATION_RANGE_INVALID",
+    MULTI_BLOCK: "ANNOTATION_CROSS_BLOCK",
+    OVERLAP: "ANNOTATION_OVERLAP",
+    NESTED: "ANNOTATION_NESTED",
+    INVALID_BLOCK: "ANNOTATION_NON_TEXT_RANGE",
+    UNKNOWN_ID: "ANNOTATION_ANCHOR_UNKNOWN",
+    MISSING_ACTIVE_ID: "ANNOTATION_ANCHOR_MISSING",
+  };
+  if (!validation.ok) fail(issueCode[validation.issues[0]!.code]);
+  return validation.anchors.map((anchor) => {
+    const selectedText = selectedTextById.get(anchor.annotationId);
+    if (selectedText === undefined) fail("ANNOTATION_ANCHOR_UNKNOWN");
+    if (anchor.text !== selectedText) fail("ANNOTATION_TEXT_CHANGED");
+    return {
+      annotationId: anchor.annotationId,
+      blockOrdinal: anchor.blockIndex,
+      start: 0,
+      end: anchor.text.length,
+      selectedText,
     };
-    scan(owner, false);
-    blockOrdinal += 1;
-  };
-  const walkOwners = (node: MarkdownNode, insideOwner = false) => {
-    if (!insideOwner && (node.type === "paragraph" || node.type === "heading" || node.type === "tableCell")) {
-      scanOwner(node, node.type === "tableCell");
-      return;
-    }
-    node.children?.forEach((child) => walkOwners(child, insideOwner));
-  };
-  walkOwners(tree);
-  const expected = new Set(selectedTextById.keys());
-  const seen = new Set<string>();
-  for (const anchor of anchors) {
-    if (seen.has(anchor.annotationId)) fail("ANNOTATION_ANCHOR_DUPLICATE");
-    seen.add(anchor.annotationId);
-  }
-  if ([...expected].some((id) => !seen.has(id))) fail("ANNOTATION_ANCHOR_MISSING");
-  return anchors.sort((left, right) => left.blockOrdinal - right.blockOrdinal || left.start - right.start || (right.end - right.start) - (left.end - left.start) || left.annotationId.localeCompare(right.annotationId));
+  });
 }
 
 function validateAssets(payload: DocxImportCommitInput): string[] {
@@ -490,25 +481,6 @@ function selectedTextFor(validated: ValidatedDocxImportCommit, annotationId: str
 }
 
 function sourceTime(value?: string): number | null { return value ? Date.parse(value) : null; }
-
-function blockText(blocks: DocxImportCommitInput["ir"]["blocks"], blockId: string): string | null {
-  for (const block of blocks) {
-    if (block.id === blockId && "segments" in block) return block.segments.map((segment) => segment.text).join("");
-    if (block.type !== "list") continue;
-    for (const item of block.items) {
-      if (item.id === blockId) return item.segments.map((segment) => segment.text).join("");
-      const nested = blockText(item.children, blockId);
-      if (nested !== null) return nested;
-    }
-  }
-  return null;
-}
-
-function visibleText(node: MarkdownNode): string {
-  if (node.type === "text" || node.type === "inlineCode") return node.value ?? "";
-  if (node.type === "image") return node.alt ?? "";
-  return node.children?.map(visibleText).join("") ?? "";
-}
 
 function walk(node: MarkdownNode, callback: (node: MarkdownNode) => void) {
   callback(node);

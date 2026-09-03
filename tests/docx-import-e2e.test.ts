@@ -238,7 +238,8 @@ function assertSemanticMatrix(ir: DocxImportIR) {
   assert.match(ir.canonicalMarkdown, /文本框一 \/ 文本框二/);
   assert.match(ir.canonicalMarkdown, /\[公式\]/);
   assert.match(ir.canonicalMarkdown, /中[\s\S]*😀[\s\S]*é[\s\S]*אב/);
-  assert.deepEqual(ir.threads.map((thread) => thread.sourceCommentId), ["25", "1", "2", "3", "4", "10"]);
+  assert.deepEqual(ir.threads.map((thread) => thread.sourceCommentId), ["25", "1", "2", "3", "4", "10", "21"]);
+  assert.ok(ir.threads.find((thread) => thread.sourceCommentId === "21")?.endBlockId);
   assert.equal(ir.threads.find((thread) => thread.sourceCommentId === "10")?.sourceResolved, true);
   assert.deepEqual(ir.threads.find((thread) => thread.sourceCommentId === "10")?.replies.map((reply) => [
     reply.sourceCommentId,
@@ -247,7 +248,6 @@ function assertSemanticMatrix(ir: DocxImportIR) {
   assert.deepEqual(ir.skippedThreads.map((thread) => [thread.sourceCommentId, thread.warning.code]), [
     ["5", "ANNOTATION_OVERLAP_SKIPPED"],
     ["20", "ANNOTATION_EMPTY_RANGE"],
-    ["21", "ANNOTATION_CROSS_BLOCK"],
     ["22", "ANNOTATION_TABLE_UNSUPPORTED"],
     ["23", "ANNOTATION_ORPHAN_DEFINITION"],
     ["24", "ANNOTATION_NON_TEXT_RANGE"],

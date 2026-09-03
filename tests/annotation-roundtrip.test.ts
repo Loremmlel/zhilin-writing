@@ -101,3 +101,19 @@ test("adjacent and separated annotation marks remain independent after Milkdown 
     assert.equal(visiblePostText(parseAnnotationMarkdown(second.markdown)), visiblePostText(parseAnnotationMarkdown(source)));
   }
 });
+
+test("one annotation ID round-trips as consecutive cross-block mark segments", async () => {
+  const source = [
+    `第一段 :annotation[后半]{#${FIRST_ID}}`,
+    "",
+    `> :annotation[第二段]{#${FIRST_ID}}`,
+    "",
+    `- :annotation[第三段]{#${FIRST_ID}} 结尾`,
+  ].join("\n");
+  const first = await milkdownRoundTrip(source);
+  const second = await milkdownRoundTrip(first.markdown);
+
+  assert.deepEqual(collectAnnotationIds(parseAnnotationMarkdown(second.markdown)), [FIRST_ID]);
+  assert.equal(second.markdown.match(new RegExp(FIRST_ID, "g"))?.length, 3);
+  assert.equal(visiblePostText(parseAnnotationMarkdown(second.markdown)), visiblePostText(parseAnnotationMarkdown(source)));
+});

@@ -38,10 +38,14 @@ export function stringifyAnnotationMarkdown(tree: AnnotationMarkdownRoot): strin
 
 export function collectAnnotationIds(tree: AnnotationMarkdownRoot): string[] {
   const ids: string[] = [];
+  const seen = new Set<string>();
   visit(tree as TraversableNode, (node) => {
     if (node.type !== "textDirective" || node.name !== "annotation") return;
     const id = node.attributes?.id;
-    if (typeof id === "string") ids.push(id);
+    if (typeof id === "string" && !seen.has(id)) {
+      seen.add(id);
+      ids.push(id);
+    }
   });
   return ids;
 }
