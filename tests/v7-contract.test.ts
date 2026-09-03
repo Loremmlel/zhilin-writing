@@ -18,7 +18,7 @@ test("V7 keeps an executable release matrix and the required final report sectio
   for (let section = 1; section <= 16; section += 1) {
     assert.match(report, new RegExp(`## ${section}\\.`));
   }
-  assert.match(matrix, /BLOCKED.*ERR_BLOCKED_BY_CLIENT/s);
+  assert.match(matrix, /BLOCKED[\s\S]*ERR_BLOCKED_BY_CLIENT/);
   assert.doesNotMatch(report, /阶段：完成/);
 });
 

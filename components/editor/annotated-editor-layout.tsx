@@ -6,41 +6,18 @@ import { AnnotationReadonlyThread } from "@/components/annotations/annotation-re
 import { AnnotationSheet } from "@/components/annotations/annotation-sheet";
 import type { AnnotationCardView } from "@/components/annotations/annotation-thread";
 import {
+  annotationAnchorGeometry,
+  annotationConnectorPath,
   createAnnotationLayoutScheduler,
   findAnnotationAnchorElements,
   findAnnotationIdFromTarget,
   layoutAnnotationCards,
+  sameAnnotationCardTops,
+  sameAnnotationConnectors,
+  type AnnotationConnector,
   visibleAnnotationIds,
 } from "@/lib/annotations/layout";
-import { resolveAnnotationSheetId, shouldUseAnnotationSheet } from "@/lib/annotations/responsive";
-
-type Connector = { annotationId: string; path: string };
-
-function sameNumberRecord(left: Record<string, number>, right: Record<string, number>) {
-  const leftKeys = Object.keys(left);
-  const rightKeys = Object.keys(right);
-  return leftKeys.length === rightKeys.length && leftKeys.every((key) => left[key] === right[key]);
-}
-
-function sameConnectors(left: Connector[], right: Connector[]) {
-  return left.length === right.length
-    && left.every((connector, index) => connector.annotationId === right[index]?.annotationId && connector.path === right[index]?.path);
-}
-
-function anchorGeometry(elements: HTMLElement[], layoutRect: DOMRect) {
-  const rects = elements.flatMap((element) => {
-    const clientRects = [...element.getClientRects()];
-    return clientRects.length > 0 ? clientRects : [element.getBoundingClientRect()];
-  });
-  if (rects.length === 0) return null;
-  const top = Math.min(...rects.map((rect) => rect.top)) - layoutRect.top;
-  const bottom = Math.max(...rects.map((rect) => rect.bottom)) - layoutRect.top;
-  return {
-    top,
-    right: Math.max(...rects.map((rect) => rect.right)) - layoutRect.left,
-    height: Math.max(1, bottom - top),
-  };
-}
+import { annotationLayoutMode, resolveAnnotationSheetId, type AnnotationLayoutMode } from "@/lib/annotations/responsive";
 
 function syncActiveAnchors(root: Element, activeId: string | null) {
   root.querySelectorAll<HTMLElement>("[data-annotation-id]").forEach((element) => {
@@ -61,8 +38,9 @@ export function AnnotatedEditorLayout({ children, editorRoot, annotations, pendi
   const [activeId, setActiveId] = useState<string | null>(null);
   const [sheetId, setSheetId] = useState<string | null>(null);
   const [cardTops, setCardTops] = useState<Record<string, number>>({});
-  const [connectors, setConnectors] = useState<Connector[]>([]);
+  const [connectors, setConnectors] = useState<AnnotationConnector[]>([]);
   const [sidebarHeight, setSidebarHeight] = useState(0);
+  const [layoutMode, setLayoutMode] = useState<AnnotationLayoutMode>("compact");
   const visibleIds = useMemo(
     () => visibleAnnotationIds(annotations.map((annotation) => annotation.id), pendingRetiredAnnotationIds),
     [annotations, pendingRetiredAnnotationIds],
@@ -83,18 +61,29 @@ export function AnnotatedEditorLayout({ children, editorRoot, annotations, pendi
   const measure = useCallback(() => {
     const layout = layoutRef.current;
     const sidebar = sidebarRef.current;
-    if (!layout || !editorRoot || !sidebar || shouldUseAnnotationSheet(window.innerWidth)) {
+    if (!layout || !editorRoot || !sidebar) return;
+    const nextLayoutMode = annotationLayoutMode(layout.clientWidth);
+    if (nextLayoutMode !== layoutMode) {
+      setLayoutMode(nextLayoutMode);
+      return;
+    }
+    if (layoutMode === "compact") {
       setCardTops((current) => Object.keys(current).length === 0 ? current : {});
       setConnectors((current) => current.length === 0 ? current : []);
       setSidebarHeight((current) => current === 0 ? current : 0);
       return;
     }
     const layoutRect = layout.getBoundingClientRect();
+    const editorRect = editorRoot.getBoundingClientRect();
     const sidebarRect = sidebar.getBoundingClientRect();
     const anchors: Array<{ annotationId: string; top: number; right: number; height: number }> = [];
     const cardHeights = new Map<string, number>();
     for (const annotation of visibleAnnotations) {
-      const geometry = anchorGeometry(findAnnotationAnchorElements(editorRoot, annotation.id), layoutRect);
+      const rects = findAnnotationAnchorElements(editorRoot, annotation.id).flatMap((element) => {
+        const clientRects = [...element.getClientRects()];
+        return clientRects.length > 0 ? clientRects : [element.getBoundingClientRect()];
+      });
+      const geometry = annotationAnchorGeometry(rects, layoutRect);
       const card = cardRefs.current.get(annotation.id);
       if (!geometry || !card) continue;
       anchors.push({ annotationId: annotation.id, ...geometry });
@@ -103,24 +92,23 @@ export function AnnotatedEditorLayout({ children, editorRoot, annotations, pendi
     const placement = layoutAnnotationCards(anchors, cardHeights, 12);
     const anchorsById = new Map(anchors.map((anchor) => [anchor.annotationId, anchor]));
     const tops: Record<string, number> = {};
-    const nextConnectors: Connector[] = [];
+    const nextConnectors: AnnotationConnector[] = [];
     for (const placed of placement.cards) {
       const anchor = anchorsById.get(placed.annotationId);
       const card = cardRefs.current.get(placed.annotationId);
       if (!anchor || !card) continue;
       tops[placed.annotationId] = placed.top;
-      const startX = anchor.right + 7;
+      const startX = editorRect.right - layoutRect.left + 8;
       const startY = anchor.top + anchor.height / 2;
       const endX = sidebarRect.left - layoutRect.left - 7;
       const endY = placed.top + Math.min(42, card.offsetHeight / 2);
-      const bend = Math.max(18, (endX - startX) * .42);
-      nextConnectors.push({ annotationId: placed.annotationId, path: `M ${startX} ${startY} C ${startX + bend} ${startY}, ${endX - bend} ${endY}, ${endX} ${endY}` });
+      nextConnectors.push({ annotationId: placed.annotationId, path: annotationConnectorPath({ startX, startY, endX, endY }) });
     }
-    setCardTops((current) => sameNumberRecord(current, tops) ? current : tops);
-    setConnectors((current) => sameConnectors(current, nextConnectors) ? current : nextConnectors);
+    setCardTops((current) => sameAnnotationCardTops(current, tops) ? current : tops);
+    setConnectors((current) => sameAnnotationConnectors(current, nextConnectors) ? current : nextConnectors);
     const nextHeight = Math.max(editorRoot.offsetHeight, placement.height);
     setSidebarHeight((current) => current === nextHeight ? current : nextHeight);
-  }, [editorRoot, visibleAnnotations]);
+  }, [editorRoot, layoutMode, visibleAnnotations]);
 
   useLayoutEffect(() => {
     const layout = layoutRef.current;
@@ -140,12 +128,17 @@ export function AnnotatedEditorLayout({ children, editorRoot, annotations, pendi
     cardRefs.current.forEach((card) => resizeObserver?.observe(card));
     mutationObserver?.observe(editorRoot!, { childList: true, characterData: true, subtree: true });
     const schedule = () => scheduler.schedule();
+    let cancelled = false;
+    document.fonts?.ready.then(() => { if (!cancelled) schedule(); });
+    editorRoot?.addEventListener("load", schedule, true);
     window.addEventListener("resize", schedule);
     scheduler.schedule();
     return () => {
+      cancelled = true;
       scheduler.destroy();
       resizeObserver?.disconnect();
       mutationObserver?.disconnect();
+      editorRoot?.removeEventListener("load", schedule, true);
       window.removeEventListener("resize", schedule);
     };
   }, [editorRoot, measure, visibleAnnotations]);
@@ -170,7 +163,7 @@ export function AnnotatedEditorLayout({ children, editorRoot, annotations, pendi
     const activateFromKeyboard = (event: KeyboardEvent) => {
       if (event.key !== "Enter" && event.key !== " ") return;
       const annotationId = activateTarget(event.target);
-      if (!annotationId || !visibleIdSet.has(annotationId) || !shouldUseAnnotationSheet(window.innerWidth)) return;
+      if (!annotationId || !visibleIdSet.has(annotationId) || layoutMode !== "compact") return;
       event.preventDefault();
       setSheetId(annotationId);
     };
@@ -186,7 +179,9 @@ export function AnnotatedEditorLayout({ children, editorRoot, annotations, pendi
       editorRoot.removeEventListener("keydown", activateFromKeyboard);
       document.removeEventListener("selectionchange", activateFromSelection);
     };
-  }, [editorRoot, visibleIdSet]);
+  }, [editorRoot, layoutMode, visibleIdSet]);
+
+  useEffect(() => { if (layoutMode === "desktop") setSheetId(null); }, [layoutMode]);
 
   const locateAnnotation = useCallback((annotationId: string) => {
     if (!editorRoot || !visibleIdSet.has(annotationId)) return;
@@ -202,7 +197,7 @@ export function AnnotatedEditorLayout({ children, editorRoot, annotations, pendi
   const sheetAnnotation = visibleAnnotations.find((annotation) => annotation.id === resolvedSheetId) ?? null;
   const mobileTargetId = resolvedActiveId ?? visibleIds[0] ?? null;
 
-  return <div className="annotated-editor-layout" ref={layoutRef}>
+  return <div className="annotated-editor-layout" data-annotation-layout={layoutMode} ref={layoutRef}>
     <div className="annotated-editor-main">{children}</div>
     <svg className="annotation-connectors" aria-hidden="true">{connectors.map((connector) => <path key={connector.annotationId} d={connector.path} className={resolvedActiveId === connector.annotationId ? "is-active" : ""} />)}</svg>
     <aside ref={sidebarRef} className="annotation-sidebar annotation-editor-sidebar" aria-label={`正文批注，只读，共 ${visibleAnnotations.length} 条`} style={{ minHeight: sidebarHeight || undefined }}>

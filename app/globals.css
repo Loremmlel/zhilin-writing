@@ -190,7 +190,8 @@ button, summary, input[type="file"] { cursor: pointer; }
 .markdown-editor--compact .milkdown, .markdown-editor--compact .milkdown .ProseMirror { min-height: 120px; }
 .markdown-editor--compact .milkdown .ProseMirror { padding: 16px 18px; font: 14px/1.75 inherit; }
 .annotation-editor-pending { width: fit-content; margin: 0 0 10px; padding: 7px 10px; border-left: 2px solid var(--annotation-ink); background: var(--annotation); color: #704943; font-size: 12px; line-height: 1.55; }
-.annotated-editor-layout { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 320px); gap: 54px; align-items: start; margin-bottom: 22px; }
+.annotated-editor-layout { position: relative; display: block; margin-bottom: 22px; }
+.annotated-editor-layout[data-annotation-layout="desktop"] { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 320px); gap: 54px; align-items: start; }
 .annotated-editor-main { min-width: 0; }
 .annotated-editor-main .markdown-editor { margin-bottom: 0; }
 .annotation-editor-sidebar { position: relative; min-width: 0; }
@@ -264,9 +265,14 @@ button, summary, input[type="file"] { cursor: pointer; }
 .annotation-range--preview { cursor: default; }
 .reading-page--annotated { width: min(1240px, calc(100% - 40px)); }
 .post-article--annotated { padding-inline: 46px; }
-.annotation-reading-layout { position: relative; display: grid; grid-template-columns: minmax(0, 720px) minmax(270px, 330px); gap: 70px; align-items: start; }
+.annotation-reading-layout { position: relative; display: block; }
+.annotation-reading-layout[data-annotation-layout="desktop"] { display: grid; grid-template-columns: minmax(0, 720px) minmax(270px, 330px); gap: 70px; align-items: start; }
 .annotation-reading-layout--empty { display: block; }
 .annotation-reading-layout--empty .annotation-sidebar { display: none; }
+.annotation-reading-layout[data-annotation-layout="compact"] > .annotation-sidebar,
+.annotation-reading-layout[data-annotation-layout="compact"] > .annotation-connectors,
+.annotated-editor-layout[data-annotation-layout="compact"] > .annotation-sidebar,
+.annotated-editor-layout[data-annotation-layout="compact"] > .annotation-connectors { display: none; }
 .annotation-document-body { min-width: 0; }
 .annotation-sidebar { position: relative; min-width: 0; }
 .annotation-card { position: absolute; inset-inline: 0; padding: 15px 16px; border: 1px solid #ead6d3; border-radius: 10px; background: #fffaf8; box-shadow: 0 5px 18px rgba(72, 42, 39, .04); outline: none; transition: border-color .18s, background .18s, box-shadow .18s, transform .18s; }
@@ -307,6 +313,13 @@ button, summary, input[type="file"] { cursor: pointer; }
 .annotation-card > .text-button--danger, .annotation-shared-reply > .text-button--danger, .annotation-reply > .text-button--danger { margin-top: 7px; font-size: 11px; }
 .annotation-sheet-actions { display: flex; justify-content: flex-end; margin: -8px 0 8px; }
 .annotation-sheet-thread { padding-bottom: 4px; }
+.annotated-editor-layout[data-annotation-layout="compact"] > .annotation-editor-sheet-trigger { width: 100%; min-height: 44px; margin-top: 10px; border: 1px solid #d7aaa5; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; background: #fffaf8; color: var(--annotation-ink); font-size: 13px; font-weight: 700; }
+.annotated-editor-layout[data-annotation-layout="compact"] > .annotation-editor-sheet-trigger:hover,
+.annotated-editor-layout[data-annotation-layout="compact"] > .annotation-editor-sheet-trigger:focus-visible { background: var(--annotation); outline: 2px solid rgba(125, 57, 52, .25); outline-offset: 2px; }
+[data-annotation-layout="compact"] .dialog-backdrop.annotation-sheet-backdrop { padding: 0; place-items: end center; }
+[data-annotation-layout="compact"] .dialog-surface.annotation-sheet-surface { width: min(100%, 680px); max-height: min(82dvh, 760px); padding: 20px 20px calc(20px + env(safe-area-inset-bottom)); border-radius: 18px 18px 0 0; border-bottom: 0; overscroll-behavior: contain; }
+[data-annotation-layout="compact"] .annotation-sheet-surface .dialog-header { padding-right: 70px; }
+[data-annotation-layout="compact"] .annotation-sheet-surface .dialog-header h2 { font-size: 23px; }
 .annotation-connectors { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
 .annotation-connectors path { fill: none; stroke: #d6a29d; stroke-width: 1.15; stroke-dasharray: 2 3; vector-effect: non-scaling-stroke; transition: stroke .18s, stroke-width .18s; }
 .annotation-connectors path.is-active { stroke: var(--annotation-ink); stroke-width: 1.8; stroke-dasharray: none; }
@@ -531,17 +544,8 @@ button, summary, input[type="file"] { cursor: pointer; }
   .revision-timeline { position: static; max-height: 360px; }
   .reading-page--annotated { width: min(920px, calc(100% - 40px)); }
   .post-article--annotated { padding-inline: clamp(22px, 6vw, 42px); }
-  .annotation-reading-layout { display: block; }
   .skeleton-reading-layout { grid-template-columns: 1fr; }
   .skeleton-annotation-rail { display: none; }
-  .annotated-editor-layout { display: block; }
-  .annotation-sidebar, .annotation-connectors { display: none; }
-  .annotation-editor-sheet-trigger { width: 100%; min-height: 42px; margin-top: 10px; border: 1px solid #d7aaa5; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; background: #fffaf8; color: var(--annotation-ink); font-size: 13px; font-weight: 700; }
-  .annotation-editor-sheet-trigger:hover, .annotation-editor-sheet-trigger:focus-visible { background: var(--annotation); outline: 2px solid rgba(125, 57, 52, .25); outline-offset: 2px; }
-  .dialog-backdrop.annotation-sheet-backdrop { padding: 0; place-items: end center; }
-  .dialog-surface.annotation-sheet-surface { width: min(100%, 680px); max-height: min(82dvh, 760px); padding: 20px 20px calc(20px + env(safe-area-inset-bottom)); border-radius: 18px 18px 0 0; border-bottom: 0; overscroll-behavior: contain; }
-  .annotation-sheet-surface .dialog-header { padding-right: 70px; }
-  .annotation-sheet-surface .dialog-header h2 { font-size: 23px; }
   .docx-import-preview { grid-template-columns: 1fr; }
   .docx-import-rail { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .docx-import-validation { grid-column: 1 / -1; }

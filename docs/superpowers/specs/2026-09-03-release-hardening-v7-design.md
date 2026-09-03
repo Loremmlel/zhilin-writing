@@ -73,7 +73,7 @@ V7 只做以下强化：
 - scroll 不触发全量测量或 React rerender。
 - active 仍只由 `annotation_id` 决定；deep-link highlight 是独立、短暂、可结束的状态。
 
-Breakpoint 不再在 CSS 与 JS 各自决定。组件按实际容器宽度计算一个 `desktop | compact` layout mode，并写入稳定 data attribute；CSS、connector 和 sheet 都消费同一 mode。初始阈值保留 900px，只有实际 768/820/1024px 审查证明需要时才调整。
+Breakpoint 不再在 CSS 与 JS 各自决定。组件按实际容器宽度计算一个 `desktop | compact` layout mode，并写入稳定 data attribute；CSS、connector 和 sheet 都消费同一 mode。静态几何证明 desktop 至少需要 1060px（720px 正文 + 70px gutter + 270px rail），因此以此作为容器阈值；实际 768/820/1024px 审查仍负责验证结果，而不是再引入 viewport 断点。
 
 ## 2. 稳定深链与 transient highlight
 
@@ -253,4 +253,3 @@ Asset 分类仍为 temporary、current post ref、revision ref、avatar ref、or
 - R2/D1 没有跨存储事务，GC 采用 claim/recheck/retry 达到工程安全，不宣称线性一致。
 - `%LIKE%` 搜索仍为有界扫描；以当前私人站规模是明确接受的取舍。
 - owner-only 托管意味着其他 allowlist 成员暂时无法进入；扩大访问范围需另行确认。
-

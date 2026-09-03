@@ -109,7 +109,7 @@
 - Forbidden administrator navigation is enforced server-side and returns to the community root under the current auth contract.
 - Revision selection is URL-addressable; the route itself remains administrator-only.
 - At 900px the revision timeline stacks above preview; at 640px dialogs and actions become one column.
-- At 900px annotated reading removes sidebar/connectors and opens the selected thread in a bottom Sheet; native text selection and page scrolling remain available.
+- Annotation reading derives one layout mode from its actual container: at 1060px or wider it can preserve a 720px reading column, 70px gutter and 270px rail; below that it removes sidebar/connectors and opens the selected thread in a bottom Sheet. CSS, connector logic and sheet behavior consume this same mode; native text selection and page scrolling remain available.
 - At 900px DOCX Preview stacks the document, annotation threads, author mappings and warnings; desktop keeps the document as the dominant surface with one bounded right rail.
 - Focus must remain visible below the sticky header; modal focus is trapped and restored.
 

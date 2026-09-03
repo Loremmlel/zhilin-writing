@@ -14,7 +14,7 @@
 - Keep `origin` as the authoritative Sites source remote; do not push the GitHub mirror unless explicitly requested.
 - Follow RED → minimum GREEN → focused regression → `git diff --check` for each task.
 - Use existing primitives before adding code. Any new abstraction must serve at least two concrete V7 call sites or protect a cross-cutting invariant.
-- Do not change the 900px annotation threshold until real 768/820/1024px evidence justifies it.
+- Keep the annotation threshold derived from the documented 1060px minimum geometry; do not add a competing viewport breakpoint.
 - Do not deploy while the cloud browser preview gate is blocked.
 - Do not expose private body text, email, raw DOCX, auth headers, SQL, or stack traces in UI or logs.
 - No new V8 product feature is admitted through a V7 bug fix.
@@ -303,4 +303,3 @@
 - [ ] Verify rollback procedure can select/redeploy the recorded stable version.
 - [ ] Complete all 16 required report sections, including exact indexes, eliminated N+1s, GC behavior, viewport result, failure injection and known limitations.
 - [ ] Stop feature expansion after V7; future work enters bugfix, maintenance, migration or small UX polish mode.
-
