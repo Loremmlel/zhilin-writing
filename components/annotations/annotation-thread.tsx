@@ -153,7 +153,6 @@ function AnnotationRoot({
           </button>
         )}
       </header>
-      <blockquote className="annotation-card-excerpt">{annotation.originalSelectedText}</blockquote>
       {annotation.lifecycle.contentVisible ? (
         <div
           className="markdown-body markdown-body--annotation"

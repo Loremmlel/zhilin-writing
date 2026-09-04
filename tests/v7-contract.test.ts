@@ -138,6 +138,20 @@ test("ordinary post reading defers the large editor bundle until a composer open
   assert.doesNotMatch(`${readingLayout}\n${editorLayout}`, /addEventListener\("scroll"/);
 });
 
+test("annotation reading activates on click without duplicating selected text in threads", async () => {
+  const [readingLayout, annotationThread, annotationSheet] = await Promise.all([
+    source("../components/annotations/annotation-reading-layout.tsx"),
+    source("../components/annotations/annotation-thread.tsx"),
+    source("../components/annotations/annotation-sheet.tsx"),
+  ]);
+
+  assert.match(readingLayout, /onClick=\{\(event\) =>/);
+  assert.match(readingLayout, /layoutAnnotationCards\(anchors, cardHeights, 8\)/);
+  assert.doesNotMatch(readingLayout, /onPointerOver=/);
+  assert.doesNotMatch(annotationThread, /annotation-card-excerpt/);
+  assert.doesNotMatch(annotationSheet, /选中文字/);
+});
+
 test("home cards, admin tabs, and the compact header keep their interaction contract", async () => {
   const [styles, card, admin] = await Promise.all([
     source("../app/globals.css"),

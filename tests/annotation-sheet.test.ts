@@ -9,10 +9,10 @@ import {
 
 test("annotation threads use a bottom sheet only at compact widths", () => {
   assert.equal(shouldUseAnnotationSheet(900), true);
-  assert.equal(shouldUseAnnotationSheet(1059), true);
-  assert.equal(shouldUseAnnotationSheet(1060), false);
-  assert.equal(annotationLayoutMode(1059), "compact");
-  assert.equal(annotationLayoutMode(1060), "desktop");
+  assert.equal(shouldUseAnnotationSheet(1115), true);
+  assert.equal(shouldUseAnnotationSheet(1116), false);
+  assert.equal(annotationLayoutMode(1115), "compact");
+  assert.equal(annotationLayoutMode(1116), "desktop");
   assert.equal(
     nextAnnotationSheetState(null, { type: "activate", annotationId: "a", compact: true }),
     "a",

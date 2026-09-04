@@ -297,7 +297,7 @@ export function AnnotationReadingLayout({
       anchors.push({ annotationId: annotation.id, ...geometry });
       cardHeights.set(annotation.id, card.offsetHeight);
     }
-    const placement = layoutAnnotationCards(anchors, cardHeights, 12);
+    const placement = layoutAnnotationCards(anchors, cardHeights, 8);
     const byId = new Map(anchors.map((anchor) => [anchor.annotationId, anchor]));
     const tops: Record<string, number> = {};
     const paths: AnnotationConnector[] = [];
@@ -577,7 +577,6 @@ export function AnnotationReadingLayout({
           activateFromBody(event.target, true);
         }}
         onFocus={(event) => activateFromBody(event.target)}
-        onPointerOver={(event) => activateFromBody(event.target)}
         onKeyDown={(event) => {
           const target = event.target instanceof Element ? event.target : null;
           const anchor = target?.closest<HTMLElement>(".annotation-range");

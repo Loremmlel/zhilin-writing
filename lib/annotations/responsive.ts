@@ -1,5 +1,5 @@
-// 720px reading column + 70px gutter + 270px minimum rail.
-export const ANNOTATION_DESKTOP_MIN_WIDTH = 1060;
+// 720px reading column + 56px gutter + 340px minimum rail.
+export const ANNOTATION_DESKTOP_MIN_WIDTH = 1116;
 
 export type AnnotationLayoutMode = "compact" | "desktop";
 

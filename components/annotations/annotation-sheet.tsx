@@ -38,16 +38,11 @@ type AnnotationSheetProps = {
 export function AnnotationSheet(props: AnnotationSheetProps) {
   const { annotation, open, onClose, onLocate, highlightReplyId, highlighted = false } = props;
   if (!annotation) return null;
-  const characters = Array.from(annotation.originalSelectedText);
-  const excerpt =
-    characters.length > 120
-      ? `${characters.slice(0, 120).join("")}…`
-      : annotation.originalSelectedText;
   return (
     <ModalDialog
       open={open}
       title="正文批注"
-      description={`选中文字：${excerpt}`}
+      description="查看和回复这条正文批注。"
       onClose={onClose}
       surfaceClassName="annotation-sheet-surface"
       backdropClassName="annotation-sheet-backdrop"
