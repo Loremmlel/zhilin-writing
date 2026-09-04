@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useId, useRef, type ReactNode } from "react";
+import { useEffect, useId, useRef, useSyncExternalStore, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { isTopmostModal } from "@/lib/ui/modal-stack";
 
 type ModalDialogProps = {
@@ -16,6 +17,9 @@ type ModalDialogProps = {
 
 const focusableSelector =
   "button:not([disabled]), a[href], input:not([disabled]):not([type='hidden']), textarea:not([disabled]), [tabindex]:not([tabindex='-1'])";
+const subscribeToClient = () => () => {};
+const clientSnapshot = () => true;
+const serverSnapshot = () => false;
 
 export function ModalDialog({
   open,
@@ -29,6 +33,7 @@ export function ModalDialog({
 }: ModalDialogProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const onCloseRef = useRef(onClose);
+  const mounted = useSyncExternalStore(subscribeToClient, clientSnapshot, serverSnapshot);
   const titleId = useId();
   const descriptionId = useId();
   useEffect(() => {
@@ -36,7 +41,7 @@ export function ModalDialog({
   }, [onClose]);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || !mounted) return;
     const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -74,10 +79,10 @@ export function ModalDialog({
       document.body.style.overflow = previousOverflow;
       previous?.focus();
     };
-  }, [open]);
+  }, [mounted, open]);
 
-  if (!open) return null;
-  return (
+  if (!open || !mounted) return null;
+  return createPortal(
     <div
       className={`dialog-backdrop${backdropClassName ? ` ${backdropClassName}` : ""}`}
       onPointerDown={(event) => {
@@ -100,6 +105,7 @@ export function ModalDialog({
         </header>
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

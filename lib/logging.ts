@@ -37,9 +37,17 @@ function errorStage(error: unknown): string | undefined {
   return safeToken(String(error.stage));
 }
 
+function declaredErrorReason(error: unknown): string | undefined {
+  if (!error || typeof error !== "object" || !("reason" in error)) return undefined;
+  const reason = String(error.reason);
+  return ERROR_CODE_PATTERN.test(reason) ? reason : undefined;
+}
+
 function errorReason(error: unknown): string {
   let current = error;
   for (let depth = 0; current && depth <= MAX_CAUSE_DEPTH; depth += 1) {
+    const declared = declaredErrorReason(current);
+    if (declared) return declared;
     if (current instanceof Error) {
       const message = current.message;
       if (/foreign key/i.test(message)) return "FOREIGN_KEY_CONSTRAINT";

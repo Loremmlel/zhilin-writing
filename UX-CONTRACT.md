@@ -124,7 +124,7 @@
 
 ## Overlays and feedback
 
-- Dialog primitive: `ModalDialog` with modal semantics, focus cycle, Escape, backdrop dismissal, and trigger-focus restoration.
+- Dialog primitive: `ModalDialog` portals to `document.body` and owns the global backdrop/dialog layers, with modal semantics, focus cycle, Escape, backdrop dismissal, and trigger-focus restoration.
 - Destructive confirmation: discard draft, overwrite latest, restore historical content, author delete, and administrator hide each require an app-owned confirmation with explicit discussion-retention copy.
 - Alert/banner: local draft recovery and conflict blocking are persistent until resolved.
 - Unsaved changes: device-local IndexedDB autosave; server post changes only after explicit save.

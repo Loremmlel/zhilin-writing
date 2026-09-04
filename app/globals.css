@@ -1829,11 +1829,11 @@ input[type="file"] {
   outline: 2px solid rgba(125, 57, 52, 0.25);
   outline-offset: 2px;
 }
-[data-annotation-layout="compact"] .dialog-backdrop.annotation-sheet-backdrop {
+.dialog-backdrop.annotation-sheet-backdrop {
   padding: 0;
   place-items: end center;
 }
-[data-annotation-layout="compact"] .dialog-surface.annotation-sheet-surface {
+.dialog-surface.annotation-sheet-surface {
   width: min(100%, 680px);
   max-height: min(82dvh, 760px);
   padding: 20px 20px calc(20px + env(safe-area-inset-bottom));
@@ -1841,10 +1841,10 @@ input[type="file"] {
   border-bottom: 0;
   overscroll-behavior: contain;
 }
-[data-annotation-layout="compact"] .annotation-sheet-surface .dialog-header {
+.annotation-sheet-surface .dialog-header {
   padding-right: 70px;
 }
-[data-annotation-layout="compact"] .annotation-sheet-surface .dialog-header h2 {
+.annotation-sheet-surface .dialog-header h2 {
   font-size: 23px;
 }
 .annotation-connectors {

@@ -65,6 +65,7 @@ test("unsafe diagnostic tokens are redacted without hiding the operation fallbac
     const error = Object.assign(new Error("secret"), {
       code: "bad code",
       name: "Bad Error Name",
+      reason: "private post markdown",
       stage: "bad stage value",
     });
     logServerError({ operation: "post.update", error, errorCode: "POST_UPDATE_FAILED" });
@@ -77,7 +78,28 @@ test("unsafe diagnostic tokens are redacted without hiding the operation fallbac
   assert.equal(record.errorCode, "INTERNAL_ERROR");
   assert.equal(record.errorName, "REDACTED");
   assert.equal(record.stage, "REDACTED");
-  assert.doesNotMatch(lines[0], /secret|bad code|bad stage value/i);
+  assert.equal(record.reason, "UNCLASSIFIED");
+  assert.doesNotMatch(lines[0], /secret|bad code|bad stage value|private post markdown/i);
+});
+
+test("trusted diagnostic reasons identify the failed invariant", () => {
+  const lines: string[] = [];
+  const original = console.error;
+  console.error = (value?: unknown) => lines.push(String(value));
+  try {
+    const error = Object.assign(new Error("private markdown"), {
+      code: "ANNOTATION_DOCUMENT_INVALID",
+      reason: "CURRENT_DUPLICATE",
+    });
+    logServerError({ operation: "annotation.delete", error });
+  } finally {
+    console.error = original;
+  }
+
+  const record = JSON.parse(lines[0]);
+  assert.equal(record.errorCode, "ANNOTATION_DOCUMENT_INVALID");
+  assert.equal(record.reason, "CURRENT_DUPLICATE");
+  assert.doesNotMatch(lines[0], /private markdown/i);
 });
 
 test("the first service stage survives outer error boundaries", () => {

@@ -58,10 +58,13 @@ function asBatch(items: BatchItem<"sqlite">[]) {
   return items as [BatchItem<"sqlite">, ...BatchItem<"sqlite">[]];
 }
 
-function assertCanonicalAnchors(markdown: string, anchorIds: string[]) {
-  if (!validateCanonicalAnnotationDocument(markdown, anchorIds).ok) {
-    throw new Error("正文批注锚点状态不一致");
-  }
+function assertCanonicalAnchors(markdown: string, anchorIds: string[], scope: "CURRENT" | "NEXT") {
+  const validation = validateCanonicalAnnotationDocument(markdown, anchorIds);
+  if (validation.ok) return;
+  throw Object.assign(new Error("正文批注锚点状态不一致"), {
+    code: "ANNOTATION_DOCUMENT_INVALID",
+    reason: `${scope}_${validation.issues[0]?.code ?? "UNKNOWN"}`,
+  });
 }
 
 export async function createAnnotation(input: {
@@ -414,15 +417,20 @@ export async function deleteAnnotationByAuthor(
       getCurrentAssetRefs(annotation.postId),
       getCurrentImportedReplyStates(annotation.postId),
     ]);
-    stage = "plan-document";
+    stage = "validate-current-membership";
     const currentAnchorIds = currentStates.map((state) => state.annotationId);
     if (!currentAnchorIds.includes(annotationId)) throw new Error("该批注不属于当前正文");
+    stage = "parse-current-document";
     const currentTree = parseAnnotationMarkdown(post.markdown);
-    assertCanonicalAnchors(post.markdown, currentAnchorIds);
+    stage = "validate-current-document";
+    assertCanonicalAnchors(post.markdown, currentAnchorIds, "CURRENT");
+    stage = "unwrap-annotation";
     const nextTree = lifecyclePlan.retainAnchor
       ? currentTree
       : unwrapAnnotation(currentTree, annotationId);
+    stage = "serialize-next-document";
     const nextMarkdown = stringifyAnnotationMarkdown(nextTree);
+    stage = "plan-next-state";
     const nextStates = currentStates
       .filter((state) => lifecyclePlan.retainAnchor || state.annotationId !== annotationId)
       .map((state) =>
@@ -430,9 +438,11 @@ export async function deleteAnnotationByAuthor(
           ? { ...state, deletedAt: now, deletedByUserId: actorUserId }
           : state,
       );
+    stage = "validate-next-document";
     assertCanonicalAnchors(
       nextMarkdown,
       nextStates.map((state) => state.annotationId),
+      "NEXT",
     );
     stage = "load-activity";
     const lastActivityAt = await derivePostActivityAfterInteractionChange(annotation.postId, {
@@ -553,7 +563,7 @@ export async function removeImportedAnnotationThread(
   const currentAnchorIds = currentStates.map((state) => state.annotationId);
   if (!currentAnchorIds.includes(annotationId)) throw new Error("该批注不属于当前正文");
   const currentTree = parseAnnotationMarkdown(post.markdown);
-  assertCanonicalAnchors(post.markdown, currentAnchorIds);
+  assertCanonicalAnchors(post.markdown, currentAnchorIds, "CURRENT");
   const nextTree = lifecyclePlan.retainAnchor
     ? currentTree
     : unwrapAnnotation(currentTree, annotationId);
@@ -566,6 +576,7 @@ export async function removeImportedAnnotationThread(
   assertCanonicalAnchors(
     nextMarkdown,
     nextStates.map((state) => state.annotationId),
+    "NEXT",
   );
   const lastActivityAt = await derivePostActivityAfterInteractionChange(postId, {
     kind: "annotation",
