@@ -7,6 +7,7 @@ import {
   stringifyAnnotationMarkdown,
   visiblePostText,
 } from "../lib/annotations/markdown.ts";
+import { validateCanonicalAnnotationDocument } from "../lib/annotations/invariants.ts";
 import {
   unwrapAnnotation,
   validateAnnotationSelection,
@@ -126,4 +127,15 @@ test("unwrap removes a logical anchor while preserving visible text", () => {
   assert.deepEqual(collectAnnotationIds(next), []);
   assert.equal(visiblePostText(next), "我喜欢你");
   assert.throws(() => unwrapAnnotation(next, A), /不存在或不唯一/);
+});
+
+test("unwrap preserves block boundaries around other annotations", () => {
+  const markdown = `:annotation[删除]{#${A}}\n\n:annotation[保留]{#${B}}\n\n\`code\``;
+  const nextMarkdown = stringifyAnnotationMarkdown(
+    unwrapAnnotation(parseAnnotationMarkdown(markdown), A),
+  );
+
+  assert.equal(validateCanonicalAnnotationDocument(nextMarkdown, [B]).ok, true);
+  assert.match(nextMarkdown, /删除\n\n:annotation\[保留\]/);
+  assert.match(nextMarkdown, /\n\n`code`/);
 });

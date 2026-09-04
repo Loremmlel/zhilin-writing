@@ -297,7 +297,7 @@ export function unwrapAnnotation(
         result.push(...(node.children ?? []));
       } else result.push(node);
     }
-    return normalizeNodes(result);
+    return result;
   };
   const root = clone as InlineNode;
   root.children = unwrapChildren(root.children ?? []);
