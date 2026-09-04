@@ -24,6 +24,15 @@
 - 用户要求移动或合并提交时，保留原始提交历史；完成后核对本地分支、远端分支、提交数量和工作树状态。
 - 不要因为“最新 main”就推断它已经部署。
 
+## GitHub 镜像同步
+
+- 只在用户明确要求时，把 `main` 原样镜像到 `github/main`；使用 `bash scripts/sync-github.sh`，不要用 GitHub 内容 API 重建提交，否则原始 commit SHA 会改变。
+- ChatGPT Work 中必须以可写 stdin 的 TTY 会话启动脚本。脚本获取设备码后会停在 `Waiting for an explicit resume after authorization...`，此时把显示的地址和代码发给用户，不要让进程在后台轮询。
+- 用户明确回复已授权后，向同一个执行会话发送一次回车并保持前台等待；脚本随后交换临时令牌、执行快进推送，并核对本地与 GitHub 的完整 SHA。
+- 已验证成功的 Work 流程不依赖持久登录：`gh auth login --web` 在设备授权后还会访问 `api.github.com` 校验账户，可能在保存登录态前被网络策略终止。安装或校验 `gh` 不能替代仓库脚本。
+- 脚本只允许 `github/main` 是本地 `main` 的祖先；若历史分叉则停止，不要自动 force push。
+- OAuth 令牌只能存在于同步进程内，并通过临时 credential helper 传给 Git；不得输出、写入文件、remote、Git 配置或 shell 历史。
+
 ## Sites 部署
 
 - Git 分支状态与 Sites 生产状态是两套信息。需要判断某个提交是否已部署、回退主线或准备发布时，查询 Sites 版本历史，并将其 `source.commit_sha` 与 Git 提交比较。
