@@ -76,6 +76,8 @@ test("production artifact keeps administrator chrome within the viewport", async
   assert.match(styles, /\.admin-table-operation\{[^}]*right:0/);
   assert.match(styles, /\.admin-table-operation\{[^}]*width:266px/);
   assert.match(styles, /\.admin-toolbar \.text-input\{[^}]*height:36px/);
+  assert.match(styles, /\.admin-preview-body,\.admin-preview-quote\{[^}]*height:3em/);
+  assert.match(styles, /\.admin-preview-body,\.admin-preview-quote\{[^}]*line-height:1\.5/);
   assert.match(styles, /\.admin-page-header\{[^}]*margin-bottom:18px[^}]*\}/);
 });
 
