@@ -66,13 +66,23 @@ test("production artifact keeps administrator chrome within the viewport", async
   const [source, styles] = await Promise.all([builtServerSource(), builtCssSource()]);
   assert.doesNotMatch(source, /返回总览/);
   assert.match(styles, /\.site-main:has\(\.admin-shell\)\+\.site-footer\{display:none\}/);
-  assert.match(
-    styles,
-    /\.admin-sidebar\{[^}]*height:calc\(100dvh - 76px\)[^}]*overflow-y:auto[^}]*\}/,
-  );
-  assert.doesNotMatch(styles, /\.admin-sidebar\{[^}]*min-height:calc\(100dvh - 76px\)[^}]*\}/);
-  assert.match(styles, /\.admin-page\{[^}]*padding:24px clamp\(20px,2\.6vw,38px\) 64px[^}]*\}/);
+  assert.match(styles, /\.admin-sidebar\{[^}]*height:100%[^}]*overflow-y:auto[^}]*\}/);
+  assert.match(styles, /\.site-shell:has\(\.admin-shell\)\{[^}]*height:100dvh[^}]*overflow:hidden/);
+  assert.match(styles, /\.admin-page\{[^}]*height:100%[^}]*overflow:hidden/);
+  assert.match(styles, /\.admin-table-scroll\{[^}]*overflow:auto/);
+  assert.match(styles, /\.admin-table-operation\{[^}]*position:sticky!important/);
+  assert.match(styles, /\.admin-table-operation\{[^}]*right:0/);
   assert.match(styles, /\.admin-page-header\{[^}]*margin-bottom:18px[^}]*\}/);
+});
+
+test("production artifact contains administrator filters, bulk actions, and purge confirmations", async () => {
+  const [source, styles] = await Promise.all([builtServerSource(), builtCssSource()]);
+  assert.match(source, /批量永久删除/);
+  assert.match(source, /日期按北京时间计算/);
+  assert.match(source, /此操作不可撤销/);
+  assert.match(source, /永久删除批注/);
+  assert.match(styles, /admin-preview-body/);
+  assert.match(styles, /admin-bulk-scope/);
 });
 
 test("production artifact contains V4 lifecycle placeholders, confirmations, and moderation", async () => {

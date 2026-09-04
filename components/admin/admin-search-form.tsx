@@ -10,12 +10,18 @@ export function AdminSearchForm({
   status,
   query,
   sort,
+  from,
+  to,
+  searchClearHref,
   clearHref,
 }: {
   type: AdminContentType;
   status: AdminContentStatus;
   query: string;
   sort: AdminSort;
+  from: string;
+  to: string;
+  searchClearHref: string;
   clearHref: string;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -43,12 +49,20 @@ export function AdminSearchForm({
             onClick={() => {
               if (inputRef.current) inputRef.current.value = "";
               inputRef.current?.focus();
-              router.push(clearHref);
+              router.push(searchClearHref);
             }}
           >
             ×
           </button>
         )}
+      </label>
+      <label className="admin-date-field">
+        <span>开始日期</span>
+        <input className="text-input" type="date" name="from" defaultValue={from} />
+      </label>
+      <label className="admin-date-field">
+        <span>结束日期</span>
+        <input className="text-input" type="date" name="to" defaultValue={to} />
       </label>
       <label className="admin-sort-field">
         <span className="sr-only">排序方式</span>
@@ -57,9 +71,21 @@ export function AdminSearchForm({
           <option value="oldest">最早在前</option>
         </select>
       </label>
-      <button className="button button--primary button--small" type="submit">
-        搜索
-      </button>
+      <div className="admin-toolbar-actions">
+        {(query || from || to) && (
+          <button
+            className="button button--ghost button--small"
+            type="button"
+            onClick={() => router.push(clearHref)}
+          >
+            清除筛选
+          </button>
+        )}
+        <button className="button button--primary button--small" type="submit">
+          应用筛选
+        </button>
+      </div>
+      <small className="admin-date-note">日期按北京时间计算，起止日均包含在内。</small>
     </form>
   );
 }

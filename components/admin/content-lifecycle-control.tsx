@@ -16,7 +16,7 @@ export function ContentLifecycleControl({
   targetLabel,
 }: {
   action: LifecycleFormAction;
-  operation: "hide" | "unhide" | "restore";
+  operation: "hide" | "unhide" | "restore" | "purge";
   targetLabel: "帖子" | "回复" | "批注" | "批注回复";
 }) {
   const router = useRouter();
@@ -48,16 +48,35 @@ export function ContentLifecycleControl({
             title: `取消隐藏这条${targetLabel}？`,
             description: "若内容同时处于作者已删除状态，取消隐藏后仍不会公开。",
           }
-        : {
-            label: "恢复作者删除",
-            title: `恢复这条${targetLabel}？`,
-            description: "恢复当前内容，不会新增正文版本，也不会生成公开动态。",
-          };
+        : operation === "restore"
+          ? {
+              label: "恢复作者删除",
+              title: `恢复这条${targetLabel}？`,
+              description: "恢复当前内容，不会新增正文版本，也不会生成公开动态。",
+              danger: false,
+            }
+          : {
+              label: "永久删除",
+              title: `永久删除这条${targetLabel}？`,
+              description:
+                targetLabel === "帖子"
+                  ? "此操作不可撤销。帖子正文、全部回复、批注、历史版本和关联记录都会被永久删除；无引用附件随后由系统回收。"
+                  : targetLabel === "回复"
+                    ? "此操作不可撤销。若这是顶层回复，其整条回复讨论会一并永久删除。"
+                    : targetLabel === "批注"
+                      ? "此操作不可撤销。批注讨论会被永久删除，正文和所有历史版本中的批注标记也会移除。"
+                      : "此操作不可撤销。这条批注回复会被永久删除。",
+              danger: true,
+            };
 
   return (
     <>
       <button
-        className={operation === "hide" ? "text-button text-button--danger" : "text-button"}
+        className={
+          operation === "hide" || operation === "purge"
+            ? "text-button text-button--danger"
+            : "text-button"
+        }
         type="button"
         onClick={() => setOpen(true)}
       >
@@ -97,7 +116,11 @@ export function ContentLifecycleControl({
               取消
             </button>
             <button
-              className={operation === "hide" ? "button button--danger" : "button button--primary"}
+              className={
+                operation === "hide" || operation === "purge"
+                  ? "button button--danger"
+                  : "button button--primary"
+              }
               type="submit"
               disabled={pending || state.code === "ACCESS_REVOKED"}
               aria-busy={pending}

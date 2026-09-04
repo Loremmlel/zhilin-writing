@@ -294,6 +294,10 @@ export const adminAuditLog = sqliteTable(
         "ANNOTATION_UNHIDDEN",
         "ANNOTATION_REPLY_HIDDEN",
         "ANNOTATION_REPLY_UNHIDDEN",
+        "POST_PURGED",
+        "REPLY_PURGED",
+        "ANNOTATION_PURGED",
+        "ANNOTATION_REPLY_PURGED",
       ],
     }).notNull(),
     targetType: text("target_type", {

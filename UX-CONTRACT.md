@@ -7,7 +7,7 @@
 - Target market(s): 私密中文社区。
 - Active locales: `zh-CN`。
 - Language/content register: 直白、安静、非营销式中文；管理员界面可保留少量准确英文术语。
-- Timezone/calendar policy: 使用平台时间并经项目 `formatDateTime()` 统一展示；公历。
+- Timezone/calendar policy: 时间经项目 `formatDateTime()` 统一展示；管理员日期筛选使用北京时间（UTC+8）公历自然日，起止日均包含。
 - Accessibility target: WCAG 2.2 AA。
 
 ## Business-context sources
@@ -21,6 +21,7 @@
 | V5 Annotation AST、正文批注与讨论      | `docs/superpowers/specs/2026-08-27-annotation-v5-design.md`                                                  | Product/design spec          | 2026-08-27    |
 | V6 AnnotationGuard、批注编辑与 Loading | `docs/superpowers/specs/2026-08-31-annotation-guard-v6-design.md`                                            | Product/design spec          | 2026-08-31    |
 | V8 跨段批注                            | `docs/superpowers/specs/2026-09-03-cross-block-annotation-v8-design.md`                                      | Product/design spec          | 2026-09-03    |
+| 管理员筛选、批量管理与永久删除         | `docs/superpowers/specs/2026-09-04-admin-content-management-design.md`                                       | Product/design spec          | 2026-09-04    |
 | 服务器权限边界                         | `lib/auth/access.ts`                                                                                         | Verified domain invariant    | 2026-08-25    |
 | 保存、删除、隐藏与恢复状态机           | `lib/posts/service.ts`, `lib/lifecycle/service.ts`, `lib/revisions/service.ts`, `lib/annotations/service.ts` | Verified API/domain contract | 2026-08-27    |
 
@@ -36,24 +37,24 @@
 
 ## Canonical UI Map
 
-| Capability                 | Canonical owner                              | Source of truth                                                                              | Allowed variants                                         | Verification                                |
-| -------------------------- | -------------------------------------------- | -------------------------------------------------------------------------------------------- | -------------------------------------------------------- | ------------------------------------------- |
-| Form                       | `PostEditorForm` 与现有 server actions       | `components/editor/post-editor-form.tsx`                                                     | new / edit / conflict                                    | unit + build                                |
-| Scrollbar                  | global document baseline                     | `app/globals.css`                                                                            | stable-gutter geometry only                              | static audit                                |
-| Dialog                     | `ModalDialog`                                | `components/modal-dialog.tsx`                                                                | dialog / alertdialog                                     | keyboard policy + build                     |
-| CRUD                       | post/revision services                       | `lib/posts/service.ts`, `lib/revisions/service.ts`                                           | create / edit / restore                                  | unit + migration + build                    |
-| Upload                     | Markdown editor and attachment upload        | `/api/assets`, `lib/assets/storage.ts`                                                       | inline image / attachment                                | service + build                             |
-| Account popover            | `AccountMenu`                                | `components/account-menu.tsx`                                                                | member / administrator links                             | dismissal unit test                         |
-| Lifecycle                  | lifecycle policy/service                     | `lib/lifecycle/*`                                                                            | normal / user deleted / admin hidden                     | unit + migration + build                    |
-| Admin shell                | `AdminShell`                                 | `components/admin/admin-shell.tsx`, `lib/admin/query.ts`                                     | overview / content / members / audit                     | parser unit + build                         |
-| Moderation                 | administrator content management             | `app/(site)/admin`, `components/admin/content-lifecycle-control.tsx`                         | posts / replies / annotations / annotation replies       | server permission + build                   |
-| Admin table/search         | semantic admin content table                 | `app/(site)/admin/page.tsx`, `components/admin/admin-search-form.tsx`                        | status / query / newest-oldest / page                    | parser unit + build                         |
-| Asset access and GC        | reference-aware asset services               | `lib/assets/access-service.ts`, `lib/assets/gc.ts`                                           | active / historical / temporary / orphan                 | unit + service review                       |
-| Annotation AST/selection   | annotation Markdown and structural selection | `lib/annotations/markdown.ts`, `lib/annotations/span.ts`, `lib/annotations/selection.ts`     | single-block / consecutive cross-block                   | round-trip + selection unit                 |
-| Annotation reading         | `AnnotationReadingLayout`                    | `components/annotations/annotation-reading-layout.tsx`                                       | desktop sidebar / mobile sheet                           | unit + build + browser                      |
-| Annotation lifecycle       | annotation service and shared moderation     | `lib/annotations/service.ts`, `components/admin/content-lifecycle-control.tsx`               | create / reply / delete / hide / unhide / restore        | unit + transaction review                   |
-| Annotated editing          | `AnnotationGuard` + authoritative post save  | `lib/editor/annotation-guard.ts`, `lib/editor/annotation-session.ts`, `lib/posts/service.ts` | safe edit / confirmed retirement / conflict              | inspector + integration + transaction tests |
-| Route loading and recovery | shared loading/error surfaces                | `components/loading/*`, `components/error-state.tsx`, App Router `loading.tsx` / `error.tsx` | route / independent region / global recovery / not-found | static contract + build + rendered smoke    |
+| Capability                 | Canonical owner                              | Source of truth                                                                                                   | Allowed variants                                         | Verification                                |
+| -------------------------- | -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- | ------------------------------------------- |
+| Form                       | `PostEditorForm` 与现有 server actions       | `components/editor/post-editor-form.tsx`                                                                          | new / edit / conflict                                    | unit + build                                |
+| Scrollbar                  | global baseline + admin table scroll owner   | `app/globals.css`                                                                                                 | document / bounded admin panel / dual-axis table         | static audit                                |
+| Dialog                     | `ModalDialog`                                | `components/modal-dialog.tsx`                                                                                     | dialog / alertdialog                                     | keyboard policy + build                     |
+| CRUD                       | post/revision + admin purge services         | `lib/posts/service.ts`, `lib/revisions/service.ts`, `lib/admin/purge-service.ts`                                  | create / edit / restore / administrator purge            | unit + transaction review + build           |
+| Upload                     | Markdown editor and attachment upload        | `/api/assets`, `lib/assets/storage.ts`                                                                            | inline image / attachment                                | service + build                             |
+| Account popover            | `AccountMenu`                                | `components/account-menu.tsx`                                                                                     | member / administrator links                             | dismissal unit test                         |
+| Lifecycle                  | lifecycle policy/service                     | `lib/lifecycle/*`                                                                                                 | normal / user deleted / admin hidden                     | unit + migration + build                    |
+| Admin shell                | `AdminShell`                                 | `components/admin/admin-shell.tsx`, `lib/admin/query.ts`                                                          | overview / content / members / audit                     | parser unit + build                         |
+| Moderation                 | administrator content management             | `app/(site)/admin`, `components/admin/content-lifecycle-control.tsx`, `components/admin/admin-bulk-selection.tsx` | hide / unhide / restore / purge / current-page bulk      | server permission + build                   |
+| Admin table/search         | shared native semantic table                 | `components/admin/admin-content-table.tsx`, `components/admin/admin-search-form.tsx`                              | status / date / query / newest-oldest / page / selection | parser + policy unit + build                |
+| Asset access and GC        | reference-aware asset services               | `lib/assets/access-service.ts`, `lib/assets/gc.ts`                                                                | active / historical / temporary / orphan                 | unit + service review                       |
+| Annotation AST/selection   | annotation Markdown and structural selection | `lib/annotations/markdown.ts`, `lib/annotations/span.ts`, `lib/annotations/selection.ts`                          | single-block / consecutive cross-block                   | round-trip + selection unit                 |
+| Annotation reading         | `AnnotationReadingLayout`                    | `components/annotations/annotation-reading-layout.tsx`                                                            | desktop sidebar / mobile sheet                           | unit + build + browser                      |
+| Annotation lifecycle       | annotation service and shared moderation     | `lib/annotations/service.ts`, `components/admin/content-lifecycle-control.tsx`                                    | create / reply / delete / hide / unhide / restore        | unit + transaction review                   |
+| Annotated editing          | `AnnotationGuard` + authoritative post save  | `lib/editor/annotation-guard.ts`, `lib/editor/annotation-session.ts`, `lib/posts/service.ts`                      | safe edit / confirmed retirement / conflict              | inspector + integration + transaction tests |
+| Route loading and recovery | shared loading/error surfaces                | `components/loading/*`, `components/error-state.tsx`, App Router `loading.tsx` / `error.tsx`                      | route / independent region / global recovery / not-found | static contract + build + rendered smoke    |
 
 ## Component behavior
 
@@ -62,6 +63,7 @@
 | Button                | labelled action                                       | tone strengthens           | visible native/project ring | slight press/selected state      | non-interactive, reduced opacity     | fixed width, progress copy           | inline actionable copy           |
 | Input                 | white paper field                                     | border visible             | green ring                  | n/a                              | non-interactive                      | submit owns pending                  | text + `aria-invalid`            |
 | Search                | explicit submit                                       | border visible             | green ring                  | n/a                              | n/a                                  | route transition                     | results/empty state              |
+| Admin table           | sticky header/select/action columns; fixed previews   | row tone                   | native checkbox/action ring | current-page selection count     | bulk actions disabled at zero        | bounded pessimistic mutation         | exact counts + incident ID       |
 | Textarea/editor       | fixed authored surface                                | n/a                        | green boundary/editor focus | n/a                              | read-only when required              | local draft status                   | retained content + inline error  |
 | List/timeline         | readable rows                                         | border/tone change         | link focus                  | selected green surface           | n/a                                  | stable footprint                     | empty explanatory copy           |
 | Annotation range      | one or more linked pale red marks + dotted underline  | local visual emphasis only | visible ring                | click/keyboard links card/ranges | creation menu withheld on overlap    | composer submit disabled             | explicit conflict/selection copy |
@@ -74,7 +76,8 @@
 - Exploratory lists: existing latest/recent-active routes and fixed limits remain canonical.
 - URL state: selected revision lives in `?revision=`; search query remains `?q=`.
 - Admin root is the overview. Content types live only in the left navigation; members use `?section=members` and logs use `?section=audit`.
-- Admin content filters live in `?type=posts|replies|annotations|annotation-replies&status=normal|deleted|hidden&q=<term>&sort=newest|oldest&page=<n>`. Lists use server pagination with 20 rows; invalid values fall back safely and out-of-range pages clamp to the last page. Deleted and hidden filters may each include an item when both flags are present.
+- Admin content filters live in `?type=posts|replies|annotations|annotation-replies&status=all|normal|deleted|hidden&q=<term>&sort=newest|oldest&from=YYYY-MM-DD&to=YYYY-MM-DD&page=<n>`. Lists use server pagination with 20 rows; invalid values fall back safely, reversed valid dates normalize to chronological order, and out-of-range pages clamp to the last page. Deleted and hidden filters may each include an item when both flags are present.
+- 帖子/普通回复按发布时间筛选；批注/批注回复按 `source_created_at ?? created_at` 筛选、排序和显示。日期输入使用原生 `type=date`，浏览器拥有日期选择弹层。
 - Admin sorting deliberately uses a native `<select>`; the operating-system-owned option popup and geometry are accepted because it contains only the two ordinary newest/oldest choices.
 - Annotation notification/deep-link state lives in `?annotation=<opaque-id>`; unavailable historical targets use `?notice=annotation-unavailable` and never text search.
 - Empty/no-results: stable explanatory card or inline notice. Route and independently streamed data loading: geometry-matched shared Skeleton; error: safe recovery card with retry and home action.
@@ -95,6 +98,8 @@
 | Delete reply                 | 删除这条回复 + confirm                                | disabled confirm                   | same discussion                      | reply disappears or becomes a placeholder                       | retry is a no-op                                     | refreshed thread            | V4 spec      |
 | Hide/unhide                  | administrator action + confirm                        | disabled confirm                   | current admin filter                 | status badges and audit update                                  | retry is a no-op                                     | refreshed row               | V4 spec      |
 | Restore deleted              | administrator action + confirm                        | disabled confirm                   | current admin filter                 | current content becomes active unless still hidden              | retry is a no-op                                     | refreshed row               | V4 spec      |
+| Bulk hide                    | select current-page rows + confirm                    | disabled confirm                   | current admin filter                 | exact processed/skipped/failed counts                           | failed rows remain retryable with incident ID        | refreshed table             | Admin spec   |
+| Permanent delete             | single or current-page rows + irreversible confirm    | disabled confirm                   | current admin filter                 | target graph removed; audit retained; exact counts              | completed targets become safe no-ops on retry        | refreshed table             | Admin spec   |
 | Remove allowlist access      | 移除 + confirm                                        | disabled confirm                   | current administrator view           | access revoked; existing content and profile retained           | inline error; access unchanged                       | refreshed member row        | Admin plan   |
 | Upload                       | file input                                            | local pending                      | editor                               | attachment row/inline image                                     | inline upload error                                  | file input/editor           | V1 spec      |
 | Account menu                 | avatar button                                         | n/a                                | selected route                       | menu closes                                                     | outside/Escape close                                 | trigger restored on Escape  | V3 addendum  |
@@ -114,9 +119,9 @@
 - 管理总览、内容类型、成员、日志和历史版本都提供诚实的页面标题；普通内容详情仍沿用现有元数据策略。
 - Forbidden administrator navigation is enforced server-side and returns to the community root under the current auth contract.
 - Revision selection is URL-addressable; the route itself remains administrator-only.
-- The admin shell keeps one left navigation for overview, four content types, members, and audit. The main content panel never repeats the content-type segment. A 292px summary rail is optional and moves below the main panel at 1200px.
-- Administrator routes omit the community footer. On desktop the sidebar stays below the sticky header for the remaining viewport height and scrolls only when its own navigation no longer fits.
-- Admin tables preserve status, committed query, sort and page in the URL. On narrow screens the table owns horizontal overflow and shows a swipe cue; the document remains the only vertical scroll owner.
+- The admin shell keeps one left navigation for overview, four content types, members, and audit. The main content panel never repeats the content-type segment. A 292px summary rail is optional and is removed below 1200px so the main task retains space.
+- Administrator routes omit the community footer and occupy the remaining viewport below the sticky Header. The document does not scroll: content tables own both axes; overview, member, audit and summary panels own their local vertical overflow.
+- Admin tables preserve status, committed query, inclusive Beijing date range, sort and page in the URL. The header, left selection column and right operation column stay visible while the table scrolls. Preview body and quote each use a fixed two-line region; operations never wrap vertically.
 - At 900px the revision timeline stacks above preview; at 640px dialogs and actions become one column.
 - Annotation reading derives one layout mode from its actual container: at 1116px or wider it preserves a 720px reading column, 56px gutter and 340–400px rail; below that it removes sidebar/connectors and opens the selected thread in a bottom Sheet. Hover never changes scroll position; click, keyboard activation and deep links may locate the linked card/range. CSS, connector logic and sheet behavior consume this same mode; native text selection and page scrolling remain available.
 - At 900px DOCX Preview stacks the document, annotation threads, author mappings and warnings; desktop keeps the document as the dominant surface with one bounded right rail.
@@ -125,7 +130,7 @@
 ## Overlays and feedback
 
 - Dialog primitive: `ModalDialog` portals to `document.body` and owns the global backdrop/dialog layers, with modal semantics, focus cycle, Escape, backdrop dismissal, and trigger-focus restoration.
-- Destructive confirmation: discard draft, overwrite latest, restore historical content, author delete, and administrator hide each require an app-owned confirmation with explicit discussion-retention copy.
+- Destructive confirmation: discard draft, overwrite latest, restore historical content, author delete, administrator hide, and administrator purge each require an app-owned confirmation. Purge copy states irreversibility and the target-specific cascade; it has no Undo.
 - Alert/banner: local draft recovery and conflict blocking are persistent until resolved.
 - Unsaved changes: device-local IndexedDB autosave; server post changes only after explicit save.
 - Layer contract: header 400 < popover 450 < backdrop 500 < dialog 600.
@@ -144,6 +149,7 @@
 - Mutation default: pessimistic UI with disabled duplicate submit.
 - Annotation create/reply mutations use per-submit UUID keys; server-generated annotation IDs, revision CAS and one D1 batch prevent partial anchors/events/notifications.
 - Idempotency: replies use submission keys; lifecycle retries are no-ops; audit transitions use dedupe keys; revision restore uses a per-confirmation operation ID in addition to revision uniqueness.
+- 管理员批量操作只接受当前页最多 20 个去重 ID。永久删除按目标事务执行并写入不含原文的 dedupe audit；部分失败返回准确计数和安全事件编号。
 - Auto-save/draft recovery: 700ms IndexedDB debounce, explicit continue/discard prompt for published posts.
 - Offline behavior: drafts may continue locally; server writes require connection.
 - Version conflict: exact base revision check; no automatic merge。普通正文冲突提供 online/manual/explicit overwrite；若基础版本到当前版本之间发生任何 Annotation membership、anchor text 或 lifecycle 变化，服务端与界面都禁用 force overwrite，IndexedDB 本地草稿继续保留。
@@ -155,6 +161,7 @@
 - Lifecycle mutations never use operation time as `last_activity_at`; reply removal/hide recalculates from remaining public reply publication times.
 - Creating annotation or annotation reply updates `last_activity_at`; annotation structural revisions never update `edited_at`, never create post-edit notifications, and never bump activity by themselves.
 - Asset deletion is never performed in content handlers. A bounded GC service rechecks current-post, revision, avatar, and temporary-expiry references immediately before deleting an R2 object.
+- 管理员永久删除帖子只解除 D1 资源引用与 `assets.post_id`；无引用对象继续由既有 GC 异步回收。删除子内容后按剩余公开内容的原始发表时间重算帖子活动时间。
 
 ## Validation
 
@@ -171,7 +178,7 @@
 - Revision list, preview, and restore are absent from ordinary UI and protected by `requireAdministrator()` on every page/action.
 - No revision API is exposed to ordinary users.
 - Deleted/hidden Markdown and historical-only assets are returned only through administrator-checked paths; public detail queries return placeholders with nullable content fields.
-- Ordinary server actions enforce ownership for delete. Hide, unhide, restore, raw lifecycle lists, and audit history require `requireAdministrator()`.
+- Ordinary server actions enforce ownership for delete. Hide, unhide, restore, purge, bulk operations, raw lifecycle lists, and audit history require administrator access on the server.
 - Current annotation membership is the `post_annotation_anchors` relation, not a nullable row heuristic. Notification/activity readers redact root or reply Markdown unless the target is visible and its root anchor belongs to the current revision.
 - 带批注正文只允许帖子作者从受控编辑页修改；客户端 AnnotationGuard 负责交互保护，服务端仍重新验证 canonical AST、ownership、confirmed delta、base revision 与 conflict interval。
 - Imported Annotation/Reply is immutable and always identifies its Word source. Attribution grants no ownership or lifecycle permission; the Post author may remove an imported thread without cascading to later native replies.
@@ -182,5 +189,5 @@
 - Required static commands: `npx tsc --noEmit`, `npm run lint`, `npm test`, strict premium audit, Sites checkpoint build.
 - Accessibility: native semantics, keyboard dismissal, focus trap/restoration, forced-colors fallback.
 - Canonical sibling flow: existing post edit flow and administrator allowlist sections.
-- CRUD evidence: migration test, annotation round-trip/selection/lifecycle/revision tests, production artifact test, and Sites checkpoint build.
+- CRUD evidence: admin purge policy tests, annotation round-trip/selection/lifecycle/revision tests, static cascade review, production artifact test, and Sites checkpoint build.
 - Failure evidence: stale base, repeated race, draft discard confirmation, upload error, unauthorized route boundary.

@@ -1,5 +1,7 @@
 # Admin Console Implementation Plan
 
+> 2026-09-04 补充：`docs/superpowers/specs/2026-09-04-admin-content-management-design.md` 已经取代本文对硬删除、批量操作、日期筛选和页面滚动方式的排除项；其余既有后台信息架构继续有效。
+
 **Goal:** 把当前纵向堆叠的窄版 `/admin` 页面改造成真正可长期使用的管理后台：保留站点顶部导航，在后台主体中提供左侧模块导航、中间主工作区，以及仅在有实际信息时出现的右侧管理员辅助区；所有功能严格建立在现有权限、内容生命周期、白名单与审计数据上。
 
 **Branch:** `feature/admin-console`

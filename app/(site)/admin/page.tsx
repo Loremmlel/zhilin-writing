@@ -3,6 +3,9 @@ import type { Metadata } from "next";
 import { Suspense, type ReactNode } from "react";
 
 import { AdminSearchForm } from "@/components/admin/admin-search-form";
+import { AdminBulkSelection } from "@/components/admin/admin-bulk-selection";
+import { AdminContentPreview } from "@/components/admin/admin-content-preview";
+import { AdminContentTable, type AdminTableColumn } from "@/components/admin/admin-content-table";
 import { AdminShell, type AdminNavKey } from "@/components/admin/admin-shell";
 import { AddAllowlistForm, RemoveAllowlistForm } from "@/components/admin/allowlist-forms";
 import { ContentLifecycleControl } from "@/components/admin/content-lifecycle-control";
@@ -40,16 +43,19 @@ import { requireAdministrator } from "@/lib/auth/access";
 import { formatDateTime } from "@/lib/format";
 import {
   addAllowlistAction,
+  bulkManageContentAction,
   moderateAnnotationAction,
   moderateAnnotationReplyAction,
   moderatePostAction,
   moderateReplyAction,
+  purgeContentAction,
   removeAllowlistAction,
 } from "./actions";
 
 export const dynamic = "force-dynamic";
 
 const statusLabels: Record<AdminContentStatus, string> = {
+  all: "全部",
   normal: "正常",
   deleted: "用户已删除",
   hidden: "管理员已隐藏",
@@ -74,6 +80,10 @@ const auditLabels: Record<string, string> = {
   ANNOTATION_UNHIDDEN: "取消隐藏批注",
   ANNOTATION_REPLY_HIDDEN: "隐藏批注回复",
   ANNOTATION_REPLY_UNHIDDEN: "取消隐藏批注回复",
+  POST_PURGED: "永久删除帖子",
+  REPLY_PURGED: "永久删除回复",
+  ANNOTATION_PURGED: "永久删除批注",
+  ANNOTATION_REPLY_PURGED: "永久删除批注回复",
 };
 
 function pageCopy(view: AdminView) {
@@ -86,7 +96,7 @@ function pageCopy(view: AdminView) {
   if (view.section === "content") {
     return {
       title: `${contentTypeLabels[view.type]}管理`,
-      description: "查找内容、核对状态，并执行可追溯的恢复或隐藏操作。",
+      description: "按状态和时间查找内容，并执行可追溯的隐藏、恢复或永久删除。",
     };
   }
   return { title: "管理后台", description: "掌握社区内容、成员和管理操作的当前状态。" };
@@ -123,7 +133,9 @@ export default async function AdminPage({
           </div>
         </header>
         <div className={showAside ? "admin-workspace" : "admin-workspace admin-workspace--single"}>
-          <main className="admin-workspace-main">
+          <main
+            className={`admin-workspace-main${view.section === "content" ? " admin-workspace-main--content" : ""}`}
+          >
             <RegionErrorBoundary
               title="管理列表暂时无法载入"
               description="当前筛选仍会保留，请稍后重试。"
@@ -210,12 +222,19 @@ async function AdminOverview({ view }: { view: AdminView }) {
 }
 
 async function AdminContent({ view }: { view: AdminView }) {
-  const options = { status: view.status, q: view.q, sort: view.sort, page: view.page };
+  const options = {
+    status: view.status,
+    q: view.q,
+    sort: view.sort,
+    from: view.from,
+    to: view.to,
+    page: view.page,
+  };
   if (view.type === "posts") {
     const result = await listAdminPosts(options);
     return (
       <ContentFrame view={view} result={result}>
-        <PostsTable rows={result.rows} />
+        <PostsTable rows={result.rows} viewKey={adminUrl(view)} />
       </ContentFrame>
     );
   }
@@ -223,7 +242,7 @@ async function AdminContent({ view }: { view: AdminView }) {
     const result = await listAdminReplies(options);
     return (
       <ContentFrame view={view} result={result}>
-        <RepliesTable rows={result.rows} />
+        <RepliesTable rows={result.rows} viewKey={adminUrl(view)} />
       </ContentFrame>
     );
   }
@@ -231,14 +250,14 @@ async function AdminContent({ view }: { view: AdminView }) {
     const result = await listAdminAnnotations(options);
     return (
       <ContentFrame view={view} result={result}>
-        <AnnotationsTable rows={result.rows} />
+        <AnnotationsTable rows={result.rows} viewKey={adminUrl(view)} />
       </ContentFrame>
     );
   }
   const result = await listAdminAnnotationReplies(options);
   return (
     <ContentFrame view={view} result={result}>
-      <AnnotationRepliesTable rows={result.rows} />
+      <AnnotationRepliesTable rows={result.rows} viewKey={adminUrl(view)} />
     </ContentFrame>
   );
 }
@@ -275,12 +294,15 @@ function ContentFrame<T>({
         status={view.status}
         query={view.q}
         sort={view.sort}
-        clearHref={adminUrl(view, { q: "", page: 1 })}
+        from={view.from}
+        to={view.to}
+        searchClearHref={adminUrl(view, { q: "", page: 1 })}
+        clearHref={adminUrl(view, { q: "", from: "", to: "", page: 1 })}
       />
       {result.total > 0 ? (
         <>
-          <p className="admin-table-hint">可左右滑动查看完整表格</p>
-          <div className="admin-table-scroll">{children}</div>
+          <p className="admin-table-hint">可在表格内上下、左右滚动查看内容</p>
+          {children}
         </>
       ) : (
         <p className="empty-copy">{adminEmptyCopy(view.type, view.status, view.q)}</p>
@@ -292,6 +314,7 @@ function ContentFrame<T>({
 
 function adminEmptyCopy(type: AdminContentType, status: AdminContentStatus, query: string) {
   if (query) return `没有找到包含“${query}”的${contentTypeLabels[type]}。`;
+  if (status === "all") return `当前日期范围内没有${contentTypeLabels[type]}。`;
   if (status === "deleted") return `没有被作者删除的${contentTypeLabels[type]}。`;
   if (status === "hidden") return `没有被管理员隐藏的${contentTypeLabels[type]}。`;
   return `没有处于正常状态的${contentTypeLabels[type]}。`;
@@ -364,152 +387,179 @@ function LifecyclePills({
   );
 }
 
-function MarkdownDisclosure({ markdown }: { markdown: string }) {
-  return (
-    <details className="admin-content-preview">
-      <summary>查看原始 Markdown</summary>
-      <pre>{markdown}</pre>
-    </details>
-  );
-}
-
 function excerpt(markdown: string) {
   const compact = markdown.replace(/\s+/g, " ").trim();
   return compact ? (compact.length > 96 ? `${compact.slice(0, 96)}…` : compact) : "（空内容）";
 }
 
-function PostsTable({ rows }: { rows: Awaited<ReturnType<typeof listAdminPosts>>["rows"] }) {
+function PostsTable({
+  rows,
+  viewKey,
+}: {
+  rows: Awaited<ReturnType<typeof listAdminPosts>>["rows"];
+  viewKey: string;
+}) {
+  type Row = (typeof rows)[number];
+  const columns: AdminTableColumn<Row>[] = [
+    {
+      label: "帖子",
+      render: ({ post }) => (
+        <>
+          <strong>{post.title}</strong>
+          {post.hiddenReason && <small>隐藏原因：{post.hiddenReason}</small>}
+        </>
+      ),
+    },
+    { label: "作者", render: ({ author }) => author.displayName },
+    {
+      label: "状态",
+      render: ({ post }) => <LifecyclePills record={post} />,
+    },
+    {
+      label: "时间",
+      render: ({ post }) => (
+        <>
+          <span>{formatDateTime(post.publishedAt)}</span>
+          {post.editedAt && <small>编辑于 {formatDateTime(post.editedAt)}</small>}
+        </>
+      ),
+    },
+    {
+      label: "操作",
+      className: "admin-table-operation",
+      render: ({ post }) => (
+        <div className="admin-table-actions">
+          <Link className="text-link" href={`/posts/${post.id}`}>
+            查看
+          </Link>
+          <Link className="text-link" href={`/admin/revisions/${post.id}`}>
+            Post revisions
+          </Link>
+          {post.deletedAt && (
+            <ContentLifecycleControl
+              key={`post-${post.id}-restore-${post.deletedAt.getTime()}`}
+              action={moderatePostAction.bind(null, post.id, "restore")}
+              operation="restore"
+              targetLabel="帖子"
+            />
+          )}
+          {post.hiddenAt ? (
+            <ContentLifecycleControl
+              key={`post-${post.id}-unhide-${post.hiddenAt.getTime()}`}
+              action={moderatePostAction.bind(null, post.id, "unhide")}
+              operation="unhide"
+              targetLabel="帖子"
+            />
+          ) : (
+            <ContentLifecycleControl
+              key={`post-${post.id}-hide`}
+              action={moderatePostAction.bind(null, post.id, "hide")}
+              operation="hide"
+              targetLabel="帖子"
+            />
+          )}
+          <ContentLifecycleControl
+            action={purgeContentAction.bind(null, "posts", post.id)}
+            operation="purge"
+            targetLabel="帖子"
+          />
+        </div>
+      ),
+    },
+  ];
   return (
-    <table className="admin-table">
-      <thead>
-        <tr>
-          <th scope="col">帖子</th>
-          <th scope="col">作者</th>
-          <th scope="col">状态</th>
-          <th scope="col">时间</th>
-          <th scope="col">操作</th>
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map(({ post, author }) => (
-          <tr key={post.id}>
-            <td>
-              <strong>{post.title}</strong>
-              {post.hiddenReason && <small>隐藏原因：{post.hiddenReason}</small>}
-            </td>
-            <td>{author.displayName}</td>
-            <td>
-              <LifecyclePills record={post} />
-            </td>
-            <td>
-              <span>{formatDateTime(post.publishedAt)}</span>
-              {post.editedAt && <small>编辑于 {formatDateTime(post.editedAt)}</small>}
-            </td>
-            <td>
-              <div className="admin-table-actions">
-                <Link className="text-link" href={`/posts/${post.id}`}>
-                  查看
-                </Link>
-                <Link className="text-link" href={`/admin/revisions/${post.id}`}>
-                  Post revisions
-                </Link>
-                {post.deletedAt && (
-                  <ContentLifecycleControl
-                    key={`post-${post.id}-restore-${post.deletedAt.getTime()}`}
-                    action={moderatePostAction.bind(null, post.id, "restore")}
-                    operation="restore"
-                    targetLabel="帖子"
-                  />
-                )}
-                {post.hiddenAt ? (
-                  <ContentLifecycleControl
-                    key={`post-${post.id}-unhide-${post.hiddenAt.getTime()}`}
-                    action={moderatePostAction.bind(null, post.id, "unhide")}
-                    operation="unhide"
-                    targetLabel="帖子"
-                  />
-                ) : (
-                  <ContentLifecycleControl
-                    key={`post-${post.id}-hide`}
-                    action={moderatePostAction.bind(null, post.id, "hide")}
-                    operation="hide"
-                    targetLabel="帖子"
-                  />
-                )}
-              </div>
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
+    <AdminBulkSelection
+      key={viewKey}
+      type="posts"
+      action={bulkManageContentAction.bind(null, "posts")}
+    >
+      <AdminContentTable rows={rows} columns={columns} getRowId={({ post }) => post.id} />
+    </AdminBulkSelection>
   );
 }
 
-function RepliesTable({ rows }: { rows: Awaited<ReturnType<typeof listAdminReplies>>["rows"] }) {
+function RepliesTable({
+  rows,
+  viewKey,
+}: {
+  rows: Awaited<ReturnType<typeof listAdminReplies>>["rows"];
+  viewKey: string;
+}) {
+  type Row = (typeof rows)[number];
+  const columns: AdminTableColumn<Row>[] = [
+    {
+      label: "回复内容",
+      className: "admin-table-preview-cell",
+      render: ({ reply }) => (
+        <>
+          <strong className="admin-preview-body">{excerpt(reply.markdown)}</strong>
+          {reply.hiddenReason && <small>隐藏原因：{reply.hiddenReason}</small>}
+        </>
+      ),
+    },
+    {
+      label: "所属帖子",
+      render: ({ post }) => (
+        <Link className="admin-table-title-link" href={`/posts/${post.id}`}>
+          {post.title}
+        </Link>
+      ),
+    },
+    { label: "作者", render: ({ author }) => author.displayName },
+    {
+      label: "状态",
+      render: ({ reply, post }) => <LifecyclePills record={reply} post={post} />,
+    },
+    { label: "时间", render: ({ reply }) => formatDateTime(reply.publishedAt) },
+    {
+      label: "操作",
+      className: "admin-table-operation",
+      render: ({ reply }) => (
+        <div className="admin-table-actions">
+          <Link className="text-link" href={`/posts/${reply.postId}#reply-${reply.id}`}>
+            定位
+          </Link>
+          <AdminContentPreview title="回复原文" markdown={reply.markdown} />
+          {reply.deletedAt && (
+            <ContentLifecycleControl
+              key={`reply-${reply.id}-restore-${reply.deletedAt.getTime()}`}
+              action={moderateReplyAction.bind(null, reply.id, "restore")}
+              operation="restore"
+              targetLabel="回复"
+            />
+          )}
+          {reply.hiddenAt ? (
+            <ContentLifecycleControl
+              key={`reply-${reply.id}-unhide-${reply.hiddenAt.getTime()}`}
+              action={moderateReplyAction.bind(null, reply.id, "unhide")}
+              operation="unhide"
+              targetLabel="回复"
+            />
+          ) : (
+            <ContentLifecycleControl
+              key={`reply-${reply.id}-hide`}
+              action={moderateReplyAction.bind(null, reply.id, "hide")}
+              operation="hide"
+              targetLabel="回复"
+            />
+          )}
+          <ContentLifecycleControl
+            action={purgeContentAction.bind(null, "replies", reply.id)}
+            operation="purge"
+            targetLabel="回复"
+          />
+        </div>
+      ),
+    },
+  ];
   return (
-    <table className="admin-table admin-table--wide">
-      <thead>
-        <tr>
-          <th scope="col">回复内容</th>
-          <th scope="col">所属帖子</th>
-          <th scope="col">作者</th>
-          <th scope="col">状态</th>
-          <th scope="col">时间</th>
-          <th scope="col">操作</th>
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map(({ reply, author, post }) => (
-          <tr key={reply.id}>
-            <td>
-              <strong>{excerpt(reply.markdown)}</strong>
-              {reply.hiddenReason && <small>隐藏原因：{reply.hiddenReason}</small>}
-              <MarkdownDisclosure markdown={reply.markdown} />
-            </td>
-            <td>
-              <Link className="admin-table-title-link" href={`/posts/${post.id}`}>
-                {post.title}
-              </Link>
-            </td>
-            <td>{author.displayName}</td>
-            <td>
-              <LifecyclePills record={reply} post={post} />
-            </td>
-            <td>{formatDateTime(reply.publishedAt)}</td>
-            <td>
-              <div className="admin-table-actions">
-                <Link className="text-link" href={`/posts/${reply.postId}#reply-${reply.id}`}>
-                  定位
-                </Link>
-                {reply.deletedAt && (
-                  <ContentLifecycleControl
-                    key={`reply-${reply.id}-restore-${reply.deletedAt.getTime()}`}
-                    action={moderateReplyAction.bind(null, reply.id, "restore")}
-                    operation="restore"
-                    targetLabel="回复"
-                  />
-                )}
-                {reply.hiddenAt ? (
-                  <ContentLifecycleControl
-                    key={`reply-${reply.id}-unhide-${reply.hiddenAt.getTime()}`}
-                    action={moderateReplyAction.bind(null, reply.id, "unhide")}
-                    operation="unhide"
-                    targetLabel="回复"
-                  />
-                ) : (
-                  <ContentLifecycleControl
-                    key={`reply-${reply.id}-hide`}
-                    action={moderateReplyAction.bind(null, reply.id, "hide")}
-                    operation="hide"
-                    targetLabel="回复"
-                  />
-                )}
-              </div>
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
+    <AdminBulkSelection
+      key={viewKey}
+      type="replies"
+      action={bulkManageContentAction.bind(null, "replies")}
+    >
+      <AdminContentTable rows={rows} columns={columns} getRowId={({ reply }) => reply.id} wide />
+    </AdminBulkSelection>
   );
 }
 
@@ -519,131 +569,185 @@ function annotationAuthorLabel(author: AnnotationAuthorView) {
 
 function AnnotationsTable({
   rows,
+  viewKey,
 }: {
   rows: Awaited<ReturnType<typeof listAdminAnnotations>>["rows"];
+  viewKey: string;
 }) {
+  type Row = (typeof rows)[number];
+  const columns: AdminTableColumn<Row>[] = [
+    {
+      label: "批注",
+      className: "admin-table-preview-cell",
+      render: ({ annotation }) => (
+        <>
+          <strong className="admin-preview-body">{excerpt(annotation.contentMarkdown)}</strong>
+          <small className="admin-preview-quote">
+            原选文：{excerpt(annotation.originalSelectedText)}
+          </small>
+          {annotation.hiddenReason && <small>隐藏原因：{annotation.hiddenReason}</small>}
+        </>
+      ),
+    },
+    {
+      label: "所属帖子",
+      render: ({ post }) => (
+        <Link className="admin-table-title-link" href={`/posts/${post.id}`}>
+          {post.title}
+        </Link>
+      ),
+    },
+    { label: "作者", render: ({ author }) => annotationAuthorLabel(author) },
+    {
+      label: "状态",
+      render: ({ annotation, post, isCurrent }) => (
+        <LifecyclePills record={annotation} post={post} current={isCurrent} />
+      ),
+    },
+    {
+      label: "时间",
+      render: ({ annotation }) =>
+        formatDateTime(annotation.sourceCreatedAt ?? annotation.createdAt),
+    },
+    {
+      label: "操作",
+      className: "admin-table-operation",
+      render: ({ annotation, post }) => (
+        <div className="admin-table-actions">
+          <Link className="text-link" href={`/posts/${post.id}?annotation=${annotation.id}`}>
+            定位
+          </Link>
+          <AdminContentPreview
+            title="批注原文"
+            markdown={annotation.contentMarkdown}
+            quote={annotation.originalSelectedText}
+          />
+          {annotation.hiddenAt ? (
+            <ContentLifecycleControl
+              key={`annotation-${annotation.id}-unhide-${annotation.hiddenAt.getTime()}`}
+              action={moderateAnnotationAction.bind(null, annotation.id, "unhide")}
+              operation="unhide"
+              targetLabel="批注"
+            />
+          ) : (
+            <ContentLifecycleControl
+              key={`annotation-${annotation.id}-hide`}
+              action={moderateAnnotationAction.bind(null, annotation.id, "hide")}
+              operation="hide"
+              targetLabel="批注"
+            />
+          )}
+          <ContentLifecycleControl
+            action={purgeContentAction.bind(null, "annotations", annotation.id)}
+            operation="purge"
+            targetLabel="批注"
+          />
+        </div>
+      ),
+    },
+  ];
   return (
-    <table className="admin-table admin-table--wide">
-      <thead>
-        <tr>
-          <th scope="col">批注</th>
-          <th scope="col">所属帖子</th>
-          <th scope="col">作者</th>
-          <th scope="col">状态</th>
-          <th scope="col">时间</th>
-          <th scope="col">操作</th>
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map(({ annotation, author, post, isCurrent }) => (
-          <tr key={annotation.id}>
-            <td>
-              <strong>{excerpt(annotation.contentMarkdown)}</strong>
-              <small>原选文：{excerpt(annotation.originalSelectedText)}</small>
-              {annotation.hiddenReason && <small>隐藏原因：{annotation.hiddenReason}</small>}
-              <MarkdownDisclosure markdown={annotation.contentMarkdown} />
-            </td>
-            <td>
-              <Link className="admin-table-title-link" href={`/posts/${post.id}`}>
-                {post.title}
-              </Link>
-            </td>
-            <td>{annotationAuthorLabel(author)}</td>
-            <td>
-              <LifecyclePills record={annotation} post={post} current={isCurrent} />
-            </td>
-            <td>{formatDateTime(annotation.sourceCreatedAt ?? annotation.createdAt)}</td>
-            <td>
-              <div className="admin-table-actions">
-                <Link className="text-link" href={`/posts/${post.id}?annotation=${annotation.id}`}>
-                  定位
-                </Link>
-                {annotation.hiddenAt ? (
-                  <ContentLifecycleControl
-                    key={`annotation-${annotation.id}-unhide-${annotation.hiddenAt.getTime()}`}
-                    action={moderateAnnotationAction.bind(null, annotation.id, "unhide")}
-                    operation="unhide"
-                    targetLabel="批注"
-                  />
-                ) : (
-                  <ContentLifecycleControl
-                    key={`annotation-${annotation.id}-hide`}
-                    action={moderateAnnotationAction.bind(null, annotation.id, "hide")}
-                    operation="hide"
-                    targetLabel="批注"
-                  />
-                )}
-              </div>
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
+    <AdminBulkSelection
+      key={viewKey}
+      type="annotations"
+      action={bulkManageContentAction.bind(null, "annotations")}
+    >
+      <AdminContentTable
+        rows={rows}
+        columns={columns}
+        getRowId={({ annotation }) => annotation.id}
+        wide
+      />
+    </AdminBulkSelection>
   );
 }
 
 function AnnotationRepliesTable({
   rows,
+  viewKey,
 }: {
   rows: Awaited<ReturnType<typeof listAdminAnnotationReplies>>["rows"];
+  viewKey: string;
 }) {
+  type Row = (typeof rows)[number];
+  const columns: AdminTableColumn<Row>[] = [
+    {
+      label: "批注回复",
+      className: "admin-table-preview-cell",
+      render: ({ reply, annotation }) => (
+        <>
+          <strong className="admin-preview-body">{excerpt(reply.contentMarkdown)}</strong>
+          <small className="admin-preview-quote">
+            回复批注：{excerpt(annotation.originalSelectedText)}
+          </small>
+          {reply.hiddenReason && <small>隐藏原因：{reply.hiddenReason}</small>}
+        </>
+      ),
+    },
+    {
+      label: "所属帖子",
+      render: ({ post }) => (
+        <Link className="admin-table-title-link" href={`/posts/${post.id}`}>
+          {post.title}
+        </Link>
+      ),
+    },
+    { label: "作者", render: ({ author }) => annotationAuthorLabel(author) },
+    {
+      label: "状态",
+      render: ({ reply, post, isCurrent }) => (
+        <LifecyclePills record={reply} post={post} current={isCurrent} />
+      ),
+    },
+    {
+      label: "时间",
+      render: ({ reply }) => formatDateTime(reply.sourceCreatedAt ?? reply.createdAt),
+    },
+    {
+      label: "操作",
+      className: "admin-table-operation",
+      render: ({ reply, annotation, post }) => (
+        <div className="admin-table-actions">
+          <Link className="text-link" href={`/posts/${post.id}?annotation=${annotation.id}`}>
+            定位
+          </Link>
+          <AdminContentPreview
+            title="批注回复原文"
+            markdown={reply.contentMarkdown}
+            quote={annotation.originalSelectedText}
+          />
+          {reply.hiddenAt ? (
+            <ContentLifecycleControl
+              key={`annotation-reply-${reply.id}-unhide-${reply.hiddenAt.getTime()}`}
+              action={moderateAnnotationReplyAction.bind(null, reply.id, "unhide")}
+              operation="unhide"
+              targetLabel="批注回复"
+            />
+          ) : (
+            <ContentLifecycleControl
+              key={`annotation-reply-${reply.id}-hide`}
+              action={moderateAnnotationReplyAction.bind(null, reply.id, "hide")}
+              operation="hide"
+              targetLabel="批注回复"
+            />
+          )}
+          <ContentLifecycleControl
+            action={purgeContentAction.bind(null, "annotation-replies", reply.id)}
+            operation="purge"
+            targetLabel="批注回复"
+          />
+        </div>
+      ),
+    },
+  ];
   return (
-    <table className="admin-table admin-table--wide">
-      <thead>
-        <tr>
-          <th scope="col">批注回复</th>
-          <th scope="col">所属帖子</th>
-          <th scope="col">作者</th>
-          <th scope="col">状态</th>
-          <th scope="col">时间</th>
-          <th scope="col">操作</th>
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map(({ reply, author, annotation, post, isCurrent }) => (
-          <tr key={reply.id}>
-            <td>
-              <strong>{excerpt(reply.contentMarkdown)}</strong>
-              <small>回复批注：{excerpt(annotation.originalSelectedText)}</small>
-              {reply.hiddenReason && <small>隐藏原因：{reply.hiddenReason}</small>}
-              <MarkdownDisclosure markdown={reply.contentMarkdown} />
-            </td>
-            <td>
-              <Link className="admin-table-title-link" href={`/posts/${post.id}`}>
-                {post.title}
-              </Link>
-            </td>
-            <td>{annotationAuthorLabel(author)}</td>
-            <td>
-              <LifecyclePills record={reply} post={post} current={isCurrent} />
-            </td>
-            <td>{formatDateTime(reply.sourceCreatedAt ?? reply.createdAt)}</td>
-            <td>
-              <div className="admin-table-actions">
-                <Link className="text-link" href={`/posts/${post.id}?annotation=${annotation.id}`}>
-                  定位
-                </Link>
-                {reply.hiddenAt ? (
-                  <ContentLifecycleControl
-                    key={`annotation-reply-${reply.id}-unhide-${reply.hiddenAt.getTime()}`}
-                    action={moderateAnnotationReplyAction.bind(null, reply.id, "unhide")}
-                    operation="unhide"
-                    targetLabel="批注回复"
-                  />
-                ) : (
-                  <ContentLifecycleControl
-                    key={`annotation-reply-${reply.id}-hide`}
-                    action={moderateAnnotationReplyAction.bind(null, reply.id, "hide")}
-                    operation="hide"
-                    targetLabel="批注回复"
-                  />
-                )}
-              </div>
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
+    <AdminBulkSelection
+      key={viewKey}
+      type="annotation-replies"
+      action={bulkManageContentAction.bind(null, "annotation-replies")}
+    >
+      <AdminContentTable rows={rows} columns={columns} getRowId={({ reply }) => reply.id} wide />
+    </AdminBulkSelection>
   );
 }
 
@@ -751,7 +855,7 @@ async function AdminAudit({ view }: { view: AdminView }) {
           {result.rows.map(({ audit, administrator }) => (
             <article key={audit.id}>
               <span
-                className={`admin-audit-dot admin-audit-dot--${audit.actionType.endsWith("_HIDDEN") ? "danger" : "normal"}`}
+                className={`admin-audit-dot admin-audit-dot--${audit.actionType.endsWith("_HIDDEN") || audit.actionType.endsWith("_PURGED") ? "danger" : "normal"}`}
                 aria-hidden="true"
               />
               <div>

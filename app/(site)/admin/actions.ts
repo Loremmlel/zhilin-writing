@@ -21,6 +21,41 @@ import {
   moderateAnnotationReplyByAdmin,
 } from "@/lib/annotations/service";
 import { logServerError } from "@/lib/logging";
+import type { AdminContentType } from "@/lib/admin/query";
+import { normalizeAdminSelection } from "@/lib/admin/purge-policy";
+import { purgeContentByAdmin } from "@/lib/admin/purge-service";
+
+export type AdminBulkActionState = LifecycleActionState & {
+  succeeded?: number;
+  skipped?: number;
+  failed?: number;
+};
+
+async function hideContentByAdmin(
+  type: AdminContentType,
+  id: string,
+  administratorId: string,
+  reason: string,
+  operationId: string,
+) {
+  if (type === "posts") return hidePostByAdmin(id, administratorId, reason, operationId);
+  if (type === "replies") return hideReplyByAdmin(id, administratorId, reason, operationId);
+  if (type === "annotations")
+    return moderateAnnotationByAdmin({
+      annotationId: id,
+      administratorId,
+      operation: "hide",
+      operationId,
+      reason,
+    });
+  return moderateAnnotationReplyByAdmin({
+    replyId: id,
+    administratorId,
+    operation: "hide",
+    operationId,
+    reason,
+  });
+}
 
 export type AllowlistActionState = {
   success?: boolean;
@@ -209,4 +244,87 @@ export async function moderateAnnotationReplyAction(
     });
     return { error: "批注回复状态更新失败，请稍后重试", incidentId };
   }
+}
+
+export async function purgeContentAction(
+  type: AdminContentType,
+  id: string,
+  _state: LifecycleActionState,
+  formData: FormData,
+): Promise<LifecycleActionState> {
+  void _state;
+  let actorUserId: string | undefined;
+  try {
+    const access = await getActionAdministratorAccess();
+    if (!access.ok) return actionAccessFailure(access.code);
+    actorUserId = access.member.id;
+    const operationId = validateLifecycleOperationId(String(formData.get("operationId") ?? ""));
+    await purgeContentByAdmin(type, id, actorUserId, operationId);
+    revalidatePath("/", "layout");
+    return { success: true };
+  } catch (error) {
+    const incidentId = logServerError({
+      operation: `admin.${type}.purge`,
+      entityId: id,
+      userId: actorUserId,
+      error,
+      errorCode: "ADMIN_CONTENT_PURGE_FAILED",
+    });
+    return { error: "内容永久删除失败，请稍后重试", incidentId };
+  }
+}
+
+export async function bulkManageContentAction(
+  type: AdminContentType,
+  _state: AdminBulkActionState,
+  formData: FormData,
+): Promise<AdminBulkActionState> {
+  void _state;
+  const access = await getActionAdministratorAccess();
+  if (!access.ok) return actionAccessFailure(access.code);
+  const operation = String(formData.get("operation") ?? "");
+  if (operation !== "hide" && operation !== "purge") return { error: "批量操作无效" };
+  let ids: string[];
+  let operationId: string;
+  try {
+    ids = normalizeAdminSelection(formData.getAll("ids").map(String));
+    operationId = validateLifecycleOperationId(String(formData.get("operationId") ?? ""));
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "批量操作无效" };
+  }
+  const reason = String(formData.get("reason") ?? "")
+    .trim()
+    .slice(0, 300);
+  let succeeded = 0;
+  let skipped = 0;
+  let failed = 0;
+  let incidentId: string | undefined;
+  for (const id of ids) {
+    try {
+      const result =
+        operation === "hide"
+          ? await hideContentByAdmin(type, id, access.member.id, reason, operationId)
+          : await purgeContentByAdmin(type, id, access.member.id, operationId);
+      if (typeof result === "boolean" ? result : result.changed) succeeded += 1;
+      else skipped += 1;
+    } catch (error) {
+      failed += 1;
+      incidentId ??= logServerError({
+        operation: `admin.${type}.bulk-${operation}`,
+        entityId: id,
+        userId: access.member.id,
+        error,
+        errorCode: "ADMIN_CONTENT_BULK_FAILED",
+      });
+    }
+  }
+  if (succeeded) revalidatePath("/", "layout");
+  return {
+    success: failed === 0,
+    succeeded,
+    skipped,
+    failed,
+    error: failed ? `有 ${failed} 条处理失败，请稍后重试` : undefined,
+    incidentId,
+  };
 }

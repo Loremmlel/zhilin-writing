@@ -528,6 +528,15 @@ input[type="file"] {
 .site-main:has(.admin-shell) + .site-footer {
   display: none;
 }
+.site-shell:has(.admin-shell) {
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+}
+.site-main:has(.admin-shell) {
+  min-height: 0;
+  overflow: hidden;
+}
 
 .button {
   min-height: 40px;
@@ -2347,15 +2356,16 @@ input[type="file"] {
 
 .admin-shell {
   width: min(1480px, 100%);
+  height: 100%;
+  min-height: 0;
   margin: 0 auto;
   display: grid;
   grid-template-columns: 220px minmax(0, 1fr);
-  align-items: start;
+  align-items: stretch;
 }
 .admin-sidebar {
-  position: sticky;
-  top: 76px;
-  height: calc(100dvh - 76px);
+  height: 100%;
+  min-height: 0;
   padding: 28px 18px 50px;
   border-right: 1px solid var(--line);
   overflow-y: auto;
@@ -2411,6 +2421,8 @@ input[type="file"] {
 }
 .admin-shell-main {
   min-width: 0;
+  min-height: 0;
+  overflow: hidden;
 }
 .admin-loading-shell > .admin-sidebar .skeleton-lines {
   gap: 16px;
@@ -2423,7 +2435,12 @@ input[type="file"] {
 }
 .admin-page {
   width: 100%;
-  padding: 24px clamp(20px, 2.6vw, 38px) 64px;
+  height: 100%;
+  min-height: 0;
+  padding: 24px clamp(20px, 2.6vw, 38px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 .admin-page-header {
   margin-bottom: 18px;
@@ -2447,10 +2464,12 @@ input[type="file"] {
   line-height: 1.7;
 }
 .admin-workspace {
+  flex: 1;
   min-width: 0;
+  min-height: 0;
   display: grid;
   grid-template-columns: minmax(0, 1fr) 292px;
-  align-items: start;
+  align-items: stretch;
   gap: 22px;
 }
 .admin-workspace--single {
@@ -2458,6 +2477,18 @@ input[type="file"] {
 }
 .admin-workspace-main {
   min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  scrollbar-gutter: stable;
+}
+.admin-workspace-main--content {
+  overflow: hidden;
+}
+.admin-workspace-main--content > .admin-content-section {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 .admin-section,
 .admin-overview,
@@ -2581,7 +2612,7 @@ input[type="file"] {
 }
 .admin-toolbar {
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) 138px auto;
+  grid-template-columns: minmax(220px, 1fr) repeat(2, 142px) 128px auto;
   align-items: center;
   gap: 9px;
   margin: 13px 0 18px;
@@ -2626,26 +2657,121 @@ input[type="file"] {
   font-size: 13px;
   cursor: pointer;
 }
+.admin-date-field {
+  display: grid;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.admin-date-field .text-input {
+  width: 100%;
+  height: 42px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+.admin-toolbar-actions {
+  display: flex;
+  align-self: end;
+  gap: 7px;
+  white-space: nowrap;
+}
+.admin-date-note {
+  grid-column: 1 / -1;
+  color: var(--muted);
+  font-size: 11px;
+}
 .admin-table-hint {
   display: none;
 }
 .admin-table-scroll {
+  min-height: 0;
   max-width: 100%;
-  overflow-x: auto;
+  overflow: auto;
+  scrollbar-gutter: stable both-edges;
   border: 1px solid var(--line);
   border-radius: 10px;
+}
+.admin-bulk-scope {
+  min-height: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.admin-bulk-scope > .admin-table-scroll {
+  flex: 1;
+}
+.admin-bulk-bar {
+  min-height: 48px;
+  padding: 0 2px 8px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.admin-bulk-bar > div {
+  display: flex;
+  gap: 7px;
+}
+.admin-bulk-bar > small {
+  margin-left: auto;
+  color: var(--green-dark);
+}
+.admin-bulk-result {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+.admin-raw-preview {
+  min-width: 0;
+  display: grid;
+  gap: 14px;
+}
+.admin-raw-preview blockquote,
+.admin-raw-preview pre {
+  max-height: min(42dvh, 360px);
+  overflow: auto;
+  margin: 0;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: #f8f8f3;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.admin-raw-preview blockquote {
+  max-height: 150px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.admin-raw-preview blockquote span {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--green-dark);
+  font-size: 11px;
+  font-weight: 750;
+}
+.admin-raw-preview pre {
+  color: var(--ink);
+  font:
+    12px/1.7 ui-monospace,
+    monospace;
 }
 .admin-table {
   width: 100%;
   min-width: 760px;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   color: #363d36;
   font-size: 13px;
 }
 .admin-table--wide {
-  min-width: 980px;
+  min-width: 1180px;
 }
 .admin-table th {
+  position: sticky;
+  top: 0;
+  z-index: 3;
   padding: 12px 13px;
   border-bottom: 1px solid var(--line);
   background: #fafaf6;
@@ -2660,6 +2786,10 @@ input[type="file"] {
   border-bottom: 1px solid var(--line);
   vertical-align: top;
   line-height: 1.55;
+  background: var(--paper-strong);
+}
+.admin-bulk-scope .admin-table tbody tr {
+  height: 128px;
 }
 .admin-table tbody tr:last-child td {
   border-bottom: 0;
@@ -2667,16 +2797,72 @@ input[type="file"] {
 .admin-table tbody tr:hover td {
   background: rgba(245, 248, 243, 0.66);
 }
+.admin-table-select {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  width: 44px;
+  min-width: 44px;
+  max-width: 44px;
+  text-align: center !important;
+}
+.admin-table th.admin-table-select {
+  z-index: 5;
+}
+.admin-table-select input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--green);
+}
+.admin-table-operation {
+  position: sticky !important;
+  right: 0;
+  z-index: 2;
+  width: 360px;
+  min-width: 360px;
+  max-width: 360px !important;
+  background: var(--paper-strong) !important;
+  box-shadow: -10px 0 14px -14px rgba(35, 48, 37, 0.7);
+}
+.admin-table th.admin-table-operation {
+  z-index: 5;
+  background: #fafaf6 !important;
+}
+.admin-table-preview-cell {
+  width: 320px;
+  min-width: 320px;
+  max-width: 320px !important;
+}
+.admin-preview-body,
+.admin-preview-quote {
+  height: 38px;
+  overflow: hidden;
+  display: -webkit-box !important;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.admin-preview-quote {
+  margin-top: 5px !important;
+}
+.admin-table-cell-content {
+  height: 100px;
+  overflow: hidden;
+}
 .admin-table td > strong,
-.admin-table td > small {
+.admin-table td > small,
+.admin-table-cell-content > strong,
+.admin-table-cell-content > small {
   display: block;
 }
-.admin-table td > strong {
+.admin-table td > strong,
+.admin-table-cell-content > strong {
   color: var(--ink);
   font-size: 13px;
 }
 .admin-table td > small,
 .admin-table td > span + small,
+.admin-table-cell-content > small,
+.admin-table-cell-content > span + small,
 .admin-table td small {
   margin-top: 4px;
   color: var(--muted);
@@ -2726,30 +2912,10 @@ input[type="file"] {
 }
 .admin-table-actions {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
-  gap: 5px 11px;
-}
-.admin-content-preview {
-  margin-top: 6px;
-  color: var(--green-dark);
-  font-size: 12px;
-}
-.admin-content-preview pre {
-  max-width: 520px;
-  max-height: 180px;
-  overflow: auto;
-  margin: 8px 0 0;
-  padding: 12px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: #f8f8f3;
-  color: #4e554e;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  font:
-    12px/1.65 ui-monospace,
-    monospace;
+  gap: 11px;
+  white-space: nowrap;
 }
 .admin-pagination {
   min-height: 39px;
@@ -2788,8 +2954,12 @@ input[type="file"] {
 }
 .admin-aside {
   min-width: 0;
+  min-height: 0;
   display: grid;
+  align-content: start;
   gap: 14px;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
 }
 .admin-aside-panel {
   padding: 18px;
@@ -3577,10 +3747,23 @@ input[type="file"] {
     grid-template-columns: minmax(0, 1fr);
   }
   .admin-aside {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    display: none;
   }
   .admin-metric-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .admin-toolbar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .admin-search-field {
+    grid-column: 1 / -1;
+  }
+  .admin-sort-field,
+  .admin-toolbar-actions {
+    align-self: end;
+  }
+  .admin-toolbar-actions {
+    justify-content: flex-end;
   }
 }
 
@@ -3634,6 +3817,7 @@ input[type="file"] {
   }
   .admin-shell {
     grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
   }
   .admin-sidebar {
     display: none;
@@ -3861,11 +4045,13 @@ input[type="file"] {
   .admin-metric-card {
     min-height: 138px;
   }
-  .admin-toolbar {
-    grid-template-columns: minmax(0, 1fr) auto;
+  .admin-bulk-bar {
+    align-items: flex-start;
+    flex-wrap: wrap;
   }
-  .admin-search-field {
-    grid-column: 1 / -1;
+  .admin-bulk-bar > small {
+    width: 100%;
+    margin-left: 0;
   }
   .admin-table-hint {
     margin: 0 0 7px;

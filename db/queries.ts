@@ -4,10 +4,12 @@ import {
   count,
   desc,
   eq,
+  gte,
   inArray,
   isNotNull,
   isNull,
   like,
+  lt,
   ne,
   or,
   sql,
@@ -37,6 +39,7 @@ import { parseDocxAttributionNoticeMetadata } from "@/lib/notifications/policy";
 import { resolveNotificationTarget } from "@/lib/notifications/target-resolution";
 import {
   ADMIN_PAGE_SIZE,
+  adminDateBounds,
   type AdminContentStatus,
   type AdminListOptions,
   type AdminPageResult,
@@ -999,17 +1002,20 @@ function lifecycleStatusCondition(
   status: AdminContentStatus,
   table: typeof posts | typeof replies,
 ) {
+  if (status === "all") return undefined;
   if (status === "deleted") return isNotNull(table.deletedAt);
   if (status === "hidden") return isNotNull(table.hiddenAt);
   return and(isNull(table.deletedAt), isNull(table.hiddenAt));
 }
 
 function statusCounts(row?: {
+  all: number | null;
   normal: number | null;
   deleted: number | null;
   hidden: number | null;
 }): AdminStatusCounts {
   return {
+    all: Number(row?.all ?? 0),
     normal: Number(row?.normal ?? 0),
     deleted: Number(row?.deleted ?? 0),
     hidden: Number(row?.hidden ?? 0),
@@ -1019,6 +1025,7 @@ function statusCounts(row?: {
 export async function countAdminPostsByStatus(): Promise<AdminStatusCounts> {
   const [row] = await getDb()
     .select({
+      all: count(),
       normal: sql<number>`sum(case when ${posts.deletedAt} is null and ${posts.hiddenAt} is null then 1 else 0 end)`,
       deleted: sql<number>`sum(case when ${posts.deletedAt} is not null then 1 else 0 end)`,
       hidden: sql<number>`sum(case when ${posts.hiddenAt} is not null then 1 else 0 end)`,
@@ -1030,6 +1037,7 @@ export async function countAdminPostsByStatus(): Promise<AdminStatusCounts> {
 export async function countAdminRepliesByStatus(): Promise<AdminStatusCounts> {
   const [row] = await getDb()
     .select({
+      all: count(),
       normal: sql<number>`sum(case when ${replies.deletedAt} is null and ${replies.hiddenAt} is null then 1 else 0 end)`,
       deleted: sql<number>`sum(case when ${replies.deletedAt} is not null then 1 else 0 end)`,
       hidden: sql<number>`sum(case when ${replies.hiddenAt} is not null then 1 else 0 end)`,
@@ -1043,12 +1051,13 @@ export async function listAdminPosts(
 ): Promise<AdminPageResult<Awaited<ReturnType<typeof selectAdminPostRows>>[number]>> {
   const db = getDb();
   const search = options.q ? `%${options.q}%` : null;
-  const condition = search
-    ? and(
-        lifecycleStatusCondition(options.status, posts),
-        or(like(posts.searchText, search), like(users.displayName, search)),
-      )
-    : lifecycleStatusCondition(options.status, posts);
+  const { start, endExclusive } = adminDateBounds(options);
+  const condition = and(
+    lifecycleStatusCondition(options.status, posts),
+    search ? or(like(posts.searchText, search), like(users.displayName, search)) : undefined,
+    start ? gte(posts.publishedAt, start) : undefined,
+    endExclusive ? lt(posts.publishedAt, endExclusive) : undefined,
+  );
   const [{ value: total = 0 } = { value: 0 }] = await db
     .select({ value: count() })
     .from(posts)
@@ -1084,16 +1093,19 @@ export async function listAdminReplies(
 ): Promise<AdminPageResult<Awaited<ReturnType<typeof selectAdminReplyRows>>[number]>> {
   const db = getDb();
   const search = options.q ? `%${options.q}%` : null;
-  const condition = search
-    ? and(
-        lifecycleStatusCondition(options.status, replies),
-        or(
+  const { start, endExclusive } = adminDateBounds(options);
+  const condition = and(
+    lifecycleStatusCondition(options.status, replies),
+    search
+      ? or(
           like(replies.markdown, search),
           like(posts.title, search),
           like(users.displayName, search),
-        ),
-      )
-    : lifecycleStatusCondition(options.status, replies);
+        )
+      : undefined,
+    start ? gte(replies.publishedAt, start) : undefined,
+    endExclusive ? lt(replies.publishedAt, endExclusive) : undefined,
+  );
   const [{ value: total = 0 } = { value: 0 }] = await db
     .select({ value: count() })
     .from(replies)

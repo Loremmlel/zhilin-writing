@@ -1,4 +1,18 @@
-import { and, asc, count, desc, eq, inArray, isNotNull, isNull, like, or, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  gte,
+  inArray,
+  isNotNull,
+  isNull,
+  like,
+  lt,
+  or,
+  sql,
+} from "drizzle-orm";
 import { alias } from "drizzle-orm/sqlite-core";
 
 import { getDb } from "@/db";
@@ -6,6 +20,7 @@ import { annotationReplies, annotations, postAnnotationAnchors, posts, users } f
 import { contentState } from "@/lib/lifecycle/policy";
 import {
   ADMIN_PAGE_SIZE,
+  adminDateBounds,
   type AdminContentStatus,
   type AdminListOptions,
   type AdminPageResult,
@@ -223,6 +238,7 @@ export async function listCurrentAnnotationThreads(
 }
 
 function annotationStatusCondition(status: AdminContentStatus) {
+  if (status === "all") return undefined;
   const condition =
     status === "deleted"
       ? isNotNull(annotations.deletedAt)
@@ -233,6 +249,7 @@ function annotationStatusCondition(status: AdminContentStatus) {
 }
 
 function annotationReplyStatusCondition(status: AdminContentStatus) {
+  if (status === "all") return undefined;
   return status === "deleted"
     ? isNotNull(annotationReplies.deletedAt)
     : status === "hidden"
@@ -241,11 +258,13 @@ function annotationReplyStatusCondition(status: AdminContentStatus) {
 }
 
 function statusCounts(row?: {
+  all: number | null;
   normal: number | null;
   deleted: number | null;
   hidden: number | null;
 }): AdminStatusCounts {
   return {
+    all: Number(row?.all ?? 0),
     normal: Number(row?.normal ?? 0),
     deleted: Number(row?.deleted ?? 0),
     hidden: Number(row?.hidden ?? 0),
@@ -255,6 +274,7 @@ function statusCounts(row?: {
 export async function countAdminAnnotationsByStatus(): Promise<AdminStatusCounts> {
   const [row] = await getDb()
     .select({
+      all: count(),
       normal: sql<number>`sum(case when ${annotations.deletedAt} is null and ${annotations.hiddenAt} is null then 1 else 0 end)`,
       deleted: sql<number>`sum(case when ${annotations.deletedAt} is not null then 1 else 0 end)`,
       hidden: sql<number>`sum(case when ${annotations.hiddenAt} is not null then 1 else 0 end)`,
@@ -266,6 +286,7 @@ export async function countAdminAnnotationsByStatus(): Promise<AdminStatusCounts
 export async function countAdminAnnotationRepliesByStatus(): Promise<AdminStatusCounts> {
   const [row] = await getDb()
     .select({
+      all: count(),
       normal: sql<number>`sum(case when ${annotationReplies.deletedAt} is null and ${annotationReplies.hiddenAt} is null then 1 else 0 end)`,
       deleted: sql<number>`sum(case when ${annotationReplies.deletedAt} is not null then 1 else 0 end)`,
       hidden: sql<number>`sum(case when ${annotationReplies.hiddenAt} is not null then 1 else 0 end)`,
@@ -278,19 +299,23 @@ export async function listAdminAnnotations(
   options: AdminListOptions,
 ): Promise<AdminPageResult<Awaited<ReturnType<typeof selectAdminAnnotationRows>>[number]>> {
   const search = options.q ? `%${options.q}%` : null;
-  const condition = search
-    ? and(
-        annotationStatusCondition(options.status),
-        or(
+  const { start, endExclusive } = adminDateBounds(options);
+  const authoredAt = sql<Date>`coalesce(${annotations.sourceCreatedAt}, ${annotations.createdAt})`;
+  const condition = and(
+    annotationStatusCondition(options.status),
+    search
+      ? or(
           like(annotations.contentMarkdown, search),
           like(annotations.originalSelectedText, search),
           like(posts.title, search),
           like(annotationAuthor.displayName, search),
           like(annotationAttributedUser.displayName, search),
           like(annotations.sourceAuthorName, search),
-        ),
-      )
-    : annotationStatusCondition(options.status);
+        )
+      : undefined,
+    start ? gte(authoredAt, start) : undefined,
+    endExclusive ? lt(authoredAt, endExclusive) : undefined,
+  );
   const [{ value: total = 0 } = { value: 0 }] = await getDb()
     .select({ value: count() })
     .from(annotations)
@@ -313,6 +338,7 @@ function selectAdminAnnotationRows(
   page: number,
   pageSize: number,
 ) {
+  const authoredAt = sql<Date>`coalesce(${annotations.sourceCreatedAt}, ${annotations.createdAt})`;
   return getDb()
     .select({
       annotation: annotations,
@@ -337,7 +363,7 @@ function selectAdminAnnotationRows(
     )
     .where(condition)
     .orderBy(
-      sort === "oldest" ? asc(annotations.createdAt) : desc(annotations.createdAt),
+      sort === "oldest" ? asc(authoredAt) : desc(authoredAt),
       sort === "oldest" ? asc(annotations.id) : desc(annotations.id),
     )
     .limit(pageSize)
@@ -356,19 +382,23 @@ export async function listAdminAnnotationReplies(
   options: AdminListOptions,
 ): Promise<AdminPageResult<Awaited<ReturnType<typeof selectAdminAnnotationReplyRows>>[number]>> {
   const search = options.q ? `%${options.q}%` : null;
-  const condition = search
-    ? and(
-        annotationReplyStatusCondition(options.status),
-        or(
+  const { start, endExclusive } = adminDateBounds(options);
+  const authoredAt = sql<Date>`coalesce(${annotationReplies.sourceCreatedAt}, ${annotationReplies.createdAt})`;
+  const condition = and(
+    annotationReplyStatusCondition(options.status),
+    search
+      ? or(
           like(annotationReplies.contentMarkdown, search),
           like(annotations.originalSelectedText, search),
           like(posts.title, search),
           like(replyAuthor.displayName, search),
           like(replyAttributedUser.displayName, search),
           like(annotationReplies.sourceAuthorName, search),
-        ),
-      )
-    : annotationReplyStatusCondition(options.status);
+        )
+      : undefined,
+    start ? gte(authoredAt, start) : undefined,
+    endExclusive ? lt(authoredAt, endExclusive) : undefined,
+  );
   const [{ value: total = 0 } = { value: 0 }] = await getDb()
     .select({ value: count() })
     .from(annotationReplies)
@@ -389,6 +419,7 @@ function selectAdminAnnotationReplyRows(
   page: number,
   pageSize: number,
 ) {
+  const authoredAt = sql<Date>`coalesce(${annotationReplies.sourceCreatedAt}, ${annotationReplies.createdAt})`;
   return getDb()
     .select({
       reply: annotationReplies,
@@ -412,7 +443,7 @@ function selectAdminAnnotationReplyRows(
     )
     .where(condition)
     .orderBy(
-      sort === "oldest" ? asc(annotationReplies.createdAt) : desc(annotationReplies.createdAt),
+      sort === "oldest" ? asc(authoredAt) : desc(authoredAt),
       sort === "oldest" ? asc(annotationReplies.id) : desc(annotationReplies.id),
     )
     .limit(pageSize)
