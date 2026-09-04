@@ -30,42 +30,56 @@ export function AdminSearchForm({
     <form className="admin-toolbar" action="/admin" method="get" noValidate>
       <input type="hidden" name="type" value={type} />
       <input type="hidden" name="status" value={status} />
-      <label className="admin-search-field">
-        <span className="sr-only">搜索当前内容</span>
-        <input
-          ref={inputRef}
-          className="text-input"
-          type="search"
-          name="q"
-          defaultValue={query}
-          maxLength={100}
-          placeholder="搜索内容、帖子或作者"
-        />
-        {query && (
-          <button
-            className="admin-search-clear"
-            type="button"
-            aria-label="清除搜索"
-            onClick={() => {
-              if (inputRef.current) inputRef.current.value = "";
-              inputRef.current?.focus();
-              router.push(searchClearHref);
-            }}
-          >
-            ×
-          </button>
-        )}
+      <label className="admin-filter-field admin-search-field">
+        <span>搜索</span>
+        <span className="admin-search-control">
+          <input
+            ref={inputRef}
+            className="text-input"
+            type="search"
+            name="q"
+            defaultValue={query}
+            maxLength={100}
+            placeholder="内容、帖子或作者"
+          />
+          {query && (
+            <button
+              className="admin-search-clear"
+              type="button"
+              aria-label="清除搜索"
+              onClick={() => {
+                if (inputRef.current) inputRef.current.value = "";
+                inputRef.current?.focus();
+                router.push(searchClearHref);
+              }}
+            >
+              ×
+            </button>
+          )}
+        </span>
       </label>
-      <label className="admin-date-field">
+      <label className="admin-filter-field admin-date-field">
         <span>开始日期</span>
-        <input className="text-input" type="date" name="from" defaultValue={from} />
+        <input
+          className="text-input"
+          type="date"
+          name="from"
+          defaultValue={from}
+          title="日期按北京时间计算，起止日均包含在内"
+        />
       </label>
-      <label className="admin-date-field">
+      <label className="admin-filter-field admin-date-field">
         <span>结束日期</span>
-        <input className="text-input" type="date" name="to" defaultValue={to} />
+        <input
+          className="text-input"
+          type="date"
+          name="to"
+          defaultValue={to}
+          title="日期按北京时间计算，起止日均包含在内"
+        />
       </label>
-      <label className="admin-sort-field">
-        <span className="sr-only">排序方式</span>
+      <label className="admin-filter-field admin-sort-field">
+        <span>排序</span>
         <select name="sort" defaultValue={sort}>
           <option value="newest">最新在前</option>
           <option value="oldest">最早在前</option>
@@ -85,7 +99,6 @@ export function AdminSearchForm({
           应用筛选
         </button>
       </div>
-      <small className="admin-date-note">日期按北京时间计算，起止日均包含在内。</small>
     </form>
   );
 }

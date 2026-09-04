@@ -124,14 +124,16 @@ export default async function AdminPage({
 
   return (
     <AdminShell active={active}>
-      <div className="admin-page">
-        <header className="admin-page-header">
-          <div>
-            <span className="eyebrow">管理员</span>
-            <h1>{copy.title}</h1>
-            <p>{copy.description}</p>
-          </div>
-        </header>
+      <div className={`admin-page${view.section === "content" ? " admin-page--content" : ""}`}>
+        {view.section !== "content" && (
+          <header className="admin-page-header">
+            <div>
+              <span className="eyebrow">管理员</span>
+              <h1>{copy.title}</h1>
+              <p>{copy.description}</p>
+            </div>
+          </header>
+        )}
         <div className={showAside ? "admin-workspace" : "admin-workspace admin-workspace--single"}>
           <main
             className={`admin-workspace-main${view.section === "content" ? " admin-workspace-main--content" : ""}`}
@@ -272,23 +274,25 @@ function ContentFrame<T>({
   children: ReactNode;
 }) {
   return (
-    <section className="admin-section admin-content-section">
-      <div className="section-heading">
-        <h2>{contentTypeLabels[view.type]}列表</h2>
-        <span>{result.total} 条</span>
+    <section className="admin-section admin-content-section" aria-labelledby="admin-content-title">
+      <h1 className="sr-only" id="admin-content-title">
+        {contentTypeLabels[view.type]}管理
+      </h1>
+      <div className="admin-content-topbar">
+        <nav className="list-tabs list-tabs--secondary" aria-label="内容状态">
+          {(Object.keys(statusLabels) as AdminContentStatus[]).map((status) => (
+            <Link
+              key={status}
+              href={adminUrl(view, { status, page: 1 })}
+              className={view.status === status ? "is-active" : ""}
+              aria-current={view.status === status ? "page" : undefined}
+            >
+              {statusLabels[status]}
+            </Link>
+          ))}
+        </nav>
+        <span className="admin-content-meta">北京时间 · {result.total} 条</span>
       </div>
-      <nav className="list-tabs list-tabs--secondary" aria-label="内容状态">
-        {(Object.keys(statusLabels) as AdminContentStatus[]).map((status) => (
-          <Link
-            key={status}
-            href={adminUrl(view, { status, page: 1 })}
-            className={view.status === status ? "is-active" : ""}
-            aria-current={view.status === status ? "page" : undefined}
-          >
-            {statusLabels[status]}
-          </Link>
-        ))}
-      </nav>
       <AdminSearchForm
         type={view.type}
         status={view.status}
@@ -433,7 +437,7 @@ function PostsTable({
             查看
           </Link>
           <Link className="text-link" href={`/admin/revisions/${post.id}`}>
-            Post revisions
+            历史版本
           </Link>
           {post.deletedAt && (
             <ContentLifecycleControl

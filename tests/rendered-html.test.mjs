@@ -65,13 +65,17 @@ test("production artifact contains administrator revision preview and restore su
 test("production artifact keeps administrator chrome within the viewport", async () => {
   const [source, styles] = await Promise.all([builtServerSource(), builtCssSource()]);
   assert.doesNotMatch(source, /返回总览/);
+  assert.match(source, /北京时间 ·/);
   assert.match(styles, /\.site-main:has\(\.admin-shell\)\+\.site-footer\{display:none\}/);
+  assert.match(styles, /\.admin-shell\{[^}]*width:min\(1800px,100%\)/);
   assert.match(styles, /\.admin-sidebar\{[^}]*height:100%[^}]*overflow-y:auto[^}]*\}/);
   assert.match(styles, /\.site-shell:has\(\.admin-shell\)\{[^}]*height:100dvh[^}]*overflow:hidden/);
   assert.match(styles, /\.admin-page\{[^}]*height:100%[^}]*overflow:hidden/);
   assert.match(styles, /\.admin-table-scroll\{[^}]*overflow:auto/);
   assert.match(styles, /\.admin-table-operation\{[^}]*position:sticky!important/);
   assert.match(styles, /\.admin-table-operation\{[^}]*right:0/);
+  assert.match(styles, /\.admin-table-operation\{[^}]*width:266px/);
+  assert.match(styles, /\.admin-toolbar \.text-input\{[^}]*height:36px/);
   assert.match(styles, /\.admin-page-header\{[^}]*margin-bottom:18px[^}]*\}/);
 });
 

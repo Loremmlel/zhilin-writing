@@ -2355,18 +2355,18 @@ input[type="file"] {
 }
 
 .admin-shell {
-  width: min(1480px, 100%);
+  width: min(1800px, 100%);
   height: 100%;
   min-height: 0;
   margin: 0 auto;
   display: grid;
-  grid-template-columns: 220px minmax(0, 1fr);
+  grid-template-columns: 208px minmax(0, 1fr);
   align-items: stretch;
 }
 .admin-sidebar {
   height: 100%;
   min-height: 0;
-  padding: 28px 18px 50px;
+  padding: 18px 12px 32px;
   border-right: 1px solid var(--line);
   overflow-y: auto;
 }
@@ -2442,6 +2442,9 @@ input[type="file"] {
   flex-direction: column;
   overflow: hidden;
 }
+.admin-page--content {
+  padding: 14px clamp(14px, 1.5vw, 24px);
+}
 .admin-page-header {
   margin-bottom: 18px;
   display: flex;
@@ -2468,9 +2471,9 @@ input[type="file"] {
   min-width: 0;
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 292px;
+  grid-template-columns: minmax(0, 1fr) 278px;
   align-items: stretch;
-  gap: 22px;
+  gap: 16px;
 }
 .admin-workspace--single {
   grid-template-columns: minmax(0, 1fr);
@@ -2501,6 +2504,9 @@ input[type="file"] {
 .admin-section,
 .admin-overview {
   padding: clamp(19px, 2.1vw, 26px);
+}
+.admin-content-section {
+  padding: 12px 16px 10px;
 }
 .admin-section .section-heading,
 .admin-overview .section-heading {
@@ -2603,37 +2609,69 @@ input[type="file"] {
 .admin-page .list-tabs a {
   flex: none;
 }
+.admin-content-topbar {
+  min-height: 40px;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 20px;
+}
+.admin-content-topbar .list-tabs {
+  flex: 1;
+  height: 40px;
+  min-width: 0;
+  margin: 0;
+  border-bottom: 0;
+}
+.admin-content-meta {
+  flex: none;
+  align-self: center;
+  color: var(--muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
 .list-tabs--secondary {
-  height: 44px;
-  gap: 24px;
-  margin-bottom: 15px;
+  height: 40px;
+  gap: 22px;
+  margin-bottom: 0;
   border-bottom: 1px solid var(--line);
   font-size: 13px;
 }
 .admin-toolbar {
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) repeat(2, 142px) 128px auto;
-  align-items: center;
-  gap: 9px;
-  margin: 13px 0 18px;
+  grid-template-columns:
+    minmax(230px, 1.5fr) repeat(2, minmax(128px, 0.72fr)) minmax(116px, 0.62fr)
+    auto;
+  align-items: end;
+  gap: 8px;
+  margin: 8px 0 10px;
 }
-.admin-search-field {
-  position: relative;
+.admin-filter-field {
   min-width: 0;
+  display: grid;
+  gap: 3px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 650;
+}
+.admin-search-control {
+  position: relative;
+  display: block;
 }
 .admin-search-field .text-input {
   width: 100%;
-  padding-right: 39px;
+  padding-right: 34px;
 }
 .admin-search-field input[type="search"]::-webkit-search-cancel-button {
   display: none;
 }
 .admin-search-clear {
   position: absolute;
-  right: 7px;
+  right: 5px;
   top: 50%;
-  width: 30px;
-  height: 30px;
+  width: 27px;
+  height: 27px;
   padding: 0;
   border: 0;
   border-radius: 50%;
@@ -2648,8 +2686,8 @@ input[type="file"] {
 }
 .admin-sort-field select {
   width: 100%;
-  height: 42px;
-  padding: 0 32px 0 12px;
+  height: 36px;
+  padding: 0 30px 0 10px;
   border: 1px solid var(--line-strong);
   border-radius: 9px;
   background: var(--paper-strong);
@@ -2657,28 +2695,20 @@ input[type="file"] {
   font-size: 13px;
   cursor: pointer;
 }
-.admin-date-field {
-  display: grid;
-  gap: 4px;
-  color: var(--muted);
-  font-size: 11px;
-}
-.admin-date-field .text-input {
+.admin-toolbar .text-input {
   width: 100%;
-  height: 42px;
+  height: 36px;
   padding: 0 10px;
   font-size: 12px;
 }
 .admin-toolbar-actions {
   display: flex;
-  align-self: end;
-  gap: 7px;
+  gap: 6px;
   white-space: nowrap;
 }
-.admin-date-note {
-  grid-column: 1 / -1;
-  color: var(--muted);
-  font-size: 11px;
+.admin-toolbar-actions .button {
+  min-height: 36px;
+  padding-inline: 11px;
 }
 .admin-table-hint {
   display: none;
@@ -2701,8 +2731,8 @@ input[type="file"] {
   flex: 1;
 }
 .admin-bulk-bar {
-  min-height: 48px;
-  padding: 0 2px 8px;
+  min-height: 40px;
+  padding: 0 2px 6px;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -2766,13 +2796,13 @@ input[type="file"] {
   font-size: 13px;
 }
 .admin-table--wide {
-  min-width: 1180px;
+  min-width: 1080px;
 }
 .admin-table th {
   position: sticky;
   top: 0;
   z-index: 3;
-  padding: 12px 13px;
+  padding: 9px 10px;
   border-bottom: 1px solid var(--line);
   background: #fafaf6;
   color: #4f564f;
@@ -2782,14 +2812,14 @@ input[type="file"] {
 }
 .admin-table td {
   max-width: 300px;
-  padding: 14px 13px;
+  padding: 11px 10px;
   border-bottom: 1px solid var(--line);
   vertical-align: top;
   line-height: 1.55;
   background: var(--paper-strong);
 }
 .admin-bulk-scope .admin-table tbody tr {
-  height: 128px;
+  height: 104px;
 }
 .admin-table tbody tr:last-child td {
   border-bottom: 0;
@@ -2818,9 +2848,10 @@ input[type="file"] {
   position: sticky !important;
   right: 0;
   z-index: 2;
-  width: 360px;
-  min-width: 360px;
-  max-width: 360px !important;
+  width: 266px;
+  min-width: 266px;
+  max-width: 266px !important;
+  padding-inline: 10px !important;
   background: var(--paper-strong) !important;
   box-shadow: -10px 0 14px -14px rgba(35, 48, 37, 0.7);
 }
@@ -2829,13 +2860,13 @@ input[type="file"] {
   background: #fafaf6 !important;
 }
 .admin-table-preview-cell {
-  width: 320px;
-  min-width: 320px;
-  max-width: 320px !important;
+  width: 290px;
+  min-width: 290px;
+  max-width: 290px !important;
 }
 .admin-preview-body,
 .admin-preview-quote {
-  height: 38px;
+  height: 32px;
   overflow: hidden;
   display: -webkit-box !important;
   -webkit-box-orient: vertical;
@@ -2845,7 +2876,7 @@ input[type="file"] {
   margin-top: 5px !important;
 }
 .admin-table-cell-content {
-  height: 100px;
+  height: 76px;
   overflow: hidden;
 }
 .admin-table td > strong,
@@ -2914,8 +2945,12 @@ input[type="file"] {
   display: flex;
   flex-wrap: nowrap;
   align-items: center;
-  gap: 11px;
+  gap: 6px;
   white-space: nowrap;
+}
+.admin-table-actions :is(.text-link, .text-button) {
+  padding-inline: 0;
+  font-size: 12px;
 }
 .admin-pagination {
   min-height: 39px;
@@ -4025,6 +4060,24 @@ input[type="file"] {
   .admin-page {
     width: 100%;
     padding: 19px 12px 50px;
+  }
+  .admin-toolbar {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .admin-search-field {
+    grid-column: auto;
+  }
+  .admin-toolbar-actions .button {
+    min-height: 44px;
+    flex: 1;
+  }
+  .admin-toolbar .text-input,
+  .admin-sort-field select {
+    height: 44px;
+  }
+  .admin-content-topbar,
+  .admin-content-topbar .list-tabs {
+    min-height: 44px;
   }
   .admin-page-header {
     margin-bottom: 18px;

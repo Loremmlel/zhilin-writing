@@ -50,9 +50,9 @@ export function ContentLifecycleControl({
           }
         : operation === "restore"
           ? {
-              label: "恢复作者删除",
+              label: "恢复",
               title: `恢复这条${targetLabel}？`,
-              description: "恢复当前内容，不会新增正文版本，也不会生成公开动态。",
+              description: "恢复作者删除的当前内容，不会新增正文版本，也不会生成公开动态。",
               danger: false,
             }
           : {
