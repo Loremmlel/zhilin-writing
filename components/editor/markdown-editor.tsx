@@ -91,6 +91,9 @@ function MarkdownEditorSession({
     annotationEditing?.initialConfirmedAnnotationDeletionIds ?? [],
   );
   const guardRef = useRef<ReturnType<typeof createAnnotationGuardPlugin> | null>(null);
+  const [initializationState, setInitializationState] = useState<"loading" | "ready" | "failed">(
+    "loading",
+  );
   const [pendingImpact, setPendingImpact] = useState<PendingAnnotationImpact | null>(null);
   const [guardMessage, setGuardMessage] = useState<string | null>(null);
   const [imageUploadTasks, setImageUploadTasks] = useState<ImageUploadTask[]>([]);
@@ -118,8 +121,8 @@ function MarkdownEditorSession({
   useEffect(() => {
     if (!rootRef.current) return;
     const failedImageFiles = failedImageFilesRef.current;
-    onEditorRootChangeRef.current?.(rootRef.current);
     let disposed = false;
+    let created = false;
     const performImageUpload = async (taskId: string, file: File) => {
       let controller = uploadAbortRef.current;
       if (!controller || controller.signal.aborted) {
@@ -287,7 +290,20 @@ function MarkdownEditorSession({
         if (!disposed && markdown !== previous) onChangeRef.current(markdown);
       });
     });
-    void crepe.create();
+    void crepe
+      .create()
+      .then(async () => {
+        created = true;
+        if (disposed) {
+          await crepe.destroy();
+          return;
+        }
+        onEditorRootChangeRef.current?.(rootRef.current);
+        setInitializationState("ready");
+      })
+      .catch(() => {
+        if (!disposed) setInitializationState("failed");
+      });
     return () => {
       disposed = true;
       uploadAbortRef.current?.abort();
@@ -298,18 +314,43 @@ function MarkdownEditorSession({
       onEditorRootChangeRef.current?.(null);
       guardRef.current?.discard();
       guardRef.current = null;
-      window.setTimeout(() => void crepe.destroy(), 0);
+      if (created) void crepe.destroy();
     };
   }, [allowImageUploads, compact]);
 
   return (
     <>
-      <div
-        ref={rootRef}
-        className={compact ? "markdown-editor markdown-editor--compact" : "markdown-editor"}
-        aria-busy={imageUploadTasks.some((task) => task.status === "uploading")}
-        aria-disabled={disabled}
-      />
+      <div className={`markdown-editor-host${compact ? " markdown-editor-host--compact" : ""}`}>
+        <div
+          ref={rootRef}
+          className={compact ? "markdown-editor markdown-editor--compact" : "markdown-editor"}
+          aria-busy={
+            initializationState === "loading" ||
+            imageUploadTasks.some((task) => task.status === "uploading")
+          }
+          aria-disabled={disabled}
+        />
+        {initializationState === "loading" && (
+          <div
+            className={`markdown-editor-loading editor-initializing-state${compact ? " markdown-editor-loading--compact" : ""}`}
+            role="status"
+          >
+            <span>{compact ? "正在加载编辑器…" : "正在加载正文…"}</span>
+          </div>
+        )}
+        {initializationState === "failed" && (
+          <div className="editor-load-state editor-initialization-failed" role="alert">
+            <span>正文编辑器加载失败，帖子内容没有丢失。</span>
+            <button
+              className="button button--ghost button--small"
+              type="button"
+              onClick={() => window.location.reload()}
+            >
+              重试
+            </button>
+          </div>
+        )}
+      </div>
       {imageUploadTasks.length > 0 && (
         <div
           className="asset-upload-list asset-upload-list--editor"

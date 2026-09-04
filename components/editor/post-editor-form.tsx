@@ -131,7 +131,6 @@ export function PostEditorForm({
     },
     {},
   );
-  const editorKey = `${draftId}:${hydrated ? "ready" : "initial"}`;
   const uploadPending =
     attachmentUploadTasks.some((task) => task.status === "uploading") || imageUploadPending;
   const accessBlocked = isBlockingAccessError(state.code);
@@ -311,9 +310,9 @@ export function PostEditorForm({
     window.setTimeout(() => formRef.current?.requestSubmit(), 0);
   }
 
-  const editor = (
+  const editor = hydrated ? (
     <MarkdownEditor
-      key={editorKey}
+      key={draftId}
       initialMarkdown={markdown}
       resetRevision={editorResetRevision}
       annotationEditing={
@@ -333,6 +332,10 @@ export function PostEditorForm({
         setDirty(true);
       }}
     />
+  ) : (
+    <div className="markdown-editor-loading editor-initializing-state" aria-busy="true">
+      <span>正在准备正文编辑器…</span>
+    </div>
   );
 
   return (

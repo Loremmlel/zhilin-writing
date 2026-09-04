@@ -973,6 +973,23 @@ input[type="file"] {
   background: white;
   overflow: hidden;
 }
+.markdown-editor-host {
+  position: relative;
+  margin-bottom: 22px;
+}
+.markdown-editor-host--compact,
+.annotated-editor-main .markdown-editor-host {
+  margin-bottom: 0;
+}
+.markdown-editor-host > .markdown-editor {
+  margin-bottom: 0;
+}
+.markdown-editor-host > .markdown-editor-loading,
+.markdown-editor-host > .editor-load-state {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+}
 .markdown-editor .milkdown {
   min-height: inherit;
   background: white;
@@ -1015,6 +1032,15 @@ input[type="file"] {
 }
 .markdown-editor-loading--compact {
   min-height: 115px;
+}
+.editor-initializing-state {
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  font-size: 13px;
+}
+.editor-initialization-failed {
+  min-height: 0;
 }
 .editor-load-state {
   min-height: 115px;
