@@ -24,6 +24,7 @@ import {
 } from "@/lib/docx-import/preview-store";
 import {
   normalizeAuthorMappings,
+  restoreImportedAnnotationText,
   validateEditedImportPreview,
   type EditedImportPreview,
 } from "@/lib/docx-import/preview-validation";
@@ -60,6 +61,7 @@ const errorLabels: Record<string, string> = {
   ASSET_NOT_CLAIMABLE: "预览图片已失效，请重新导入 DOCX。",
   IMPORT_COMMIT_FAILED: "未能完成导入。预览和临时图片仍保留，可以重试。",
   COMMIT_REQUEST_FAILED: "未能完成导入。预览仍保存在本地，可以重试。",
+  ANNOTATION_RESTORE_FAILED: "无法恢复这段批注原文。预览仍保留，请重新选择 DOCX。",
 };
 
 export function DocxImportWorkspace({ users }: { users: SiteUser[] }) {
@@ -82,6 +84,7 @@ export function DocxImportWorkspace({ users }: { users: SiteUser[] }) {
   const [dragOver, setDragOver] = useState(false);
   const [discardBatchId, setDiscardBatchId] = useState<string | null>(null);
   const [validationNow, setValidationNow] = useState(() => Date.now());
+  const [editorResetRevision, setEditorResetRevision] = useState(0);
   const validUserIds = useMemo(() => new Set(users.map((user) => user.id)), [users]);
 
   useEffect(() => {
@@ -464,6 +467,7 @@ export function DocxImportWorkspace({ users }: { users: SiteUser[] }) {
             preview={preview}
             users={users}
             validation={validation}
+            editorResetRevision={editorResetRevision}
             onTitleChange={(title) =>
               setPreview((current) => (current ? { ...current, title } : current))
             }
@@ -479,6 +483,19 @@ export function DocxImportWorkspace({ users }: { users: SiteUser[] }) {
                 return { ...current, authorMappings };
               })
             }
+            onRestoreAnnotationText={(annotationId) => {
+              const markdown = restoreImportedAnnotationText(preview, annotationId);
+              if (!markdown) {
+                setError({
+                  code: "ANNOTATION_RESTORE_FAILED",
+                  message: "Annotation source range could not be restored",
+                });
+                return;
+              }
+              setError(null);
+              setPreview({ ...preview, markdown });
+              setEditorResetRevision((current) => current + 1);
+            }}
           />
           <div className="docx-import-actions">
             <button

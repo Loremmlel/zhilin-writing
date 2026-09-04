@@ -2,7 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { DOCX_IMPORT_LIMITS } from "../lib/docx-import/limits.ts";
-import { validateEditedImportPreview } from "../lib/docx-import/preview-validation.ts";
+import {
+  restoreImportedAnnotationText,
+  validateEditedImportPreview,
+} from "../lib/docx-import/preview-validation.ts";
 import type { DocxPreviewRecord } from "../lib/docx-import/types.ts";
 
 const ROOT_ID = "ann_00000000-0000-4000-8000-000000000001";
@@ -101,6 +104,18 @@ test("blocks edited annotation text, nested directives, and overlapping imported
   });
   assert.equal(imageAnchor.ok, false);
   assert.ok(imageAnchor.errors.some((item) => item.code === "ANNOTATION_NON_TEXT_RANGE"));
+});
+
+test("restores only the changed imported annotation text", () => {
+  const preview = {
+    ...editableFixture(),
+    markdown: `前文已改 :annotation[正稿]{#${ROOT_ID}} 后文已改`,
+  };
+
+  assert.equal(
+    restoreImportedAnnotationText(preview, ROOT_ID),
+    `前文已改 :annotation[正文]{#${ROOT_ID}} 后文已改`,
+  );
 });
 
 test("blocks unsafe external URLs and error-severity import warnings", () => {

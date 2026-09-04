@@ -1,6 +1,9 @@
 "use client";
 
+import { useRef } from "react";
+
 import { MarkdownEditor } from "@/components/editor/markdown-editor";
+import { excerpt } from "@/lib/format";
 import { markdownToPlainText } from "@/lib/markdown/render";
 import {
   getImportedThreadSelectedText,
@@ -47,7 +50,7 @@ const validationLabels: Record<string, string> = {
   ANNOTATION_ANCHOR_MISSING: "正文中有批注锚点被移除，请恢复对应文字。",
   ANNOTATION_ANCHOR_UNKNOWN: "正文中出现了不属于本次导入的批注锚点。",
   ANNOTATION_ANCHOR_DUPLICATE: "同一批注锚点在正文中出现了多次。",
-  ANNOTATION_TEXT_CHANGED: "带批注的原文发生变化，请恢复该范围。",
+  ANNOTATION_TEXT_CHANGED: "这条批注圈住的原文已被修改。",
   ANNOTATION_NESTED: "批注锚点不能互相嵌套。",
   ANNOTATION_NON_TEXT_RANGE: "批注锚点不能包含图片或其他非正文内容。",
   ANNOTATION_CROSS_BLOCK: "跨段批注必须覆盖连续的正文段落。",
@@ -66,6 +69,8 @@ export function DocxImportPreview({
   onTitleChange,
   onMarkdownChange,
   onMappingChange,
+  onRestoreAnnotationText,
+  editorResetRevision,
 }: {
   preview: EditedImportPreview;
   users: SiteUser[];
@@ -73,7 +78,10 @@ export function DocxImportPreview({
   onTitleChange: (title: string) => void;
   onMarkdownChange: (markdown: string) => void;
   onMappingChange: (sourceAuthorName: string, userId: string) => void;
+  onRestoreAnnotationText: (annotationId: string) => void;
+  editorResetRevision: number;
 }) {
+  const editorRootRef = useRef<HTMLElement | null>(null);
   const summaryWarnings = warningsWithoutSkippedThreadDuplicates(
     preview.ir.warnings,
     preview.ir.skippedThreads,
@@ -110,6 +118,22 @@ export function DocxImportPreview({
     : validation.errors.find(
         (item) => item.code === "TITLE_REQUIRED" || item.code === "TITLE_TOO_LONG",
       );
+  const threadsById = new Map(preview.ir.threads.map((thread) => [thread.annotationId, thread]));
+
+  function locateAnnotation(annotationId: string) {
+    const ranges = [
+      ...(editorRootRef.current?.querySelectorAll<HTMLElement>("[data-annotation-id]") ?? []),
+    ].filter((item) => item.dataset.annotationId === annotationId);
+    const range = ranges[0];
+    if (!range) return;
+    ranges.forEach((item) => item.classList.add("is-active"));
+    range.focus({ preventScroll: true });
+    range.scrollIntoView({
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+      block: "center",
+    });
+    window.setTimeout(() => ranges.forEach((item) => item.classList.remove("is-active")), 1800);
+  }
 
   return (
     <div className="docx-import-preview">
@@ -148,6 +172,10 @@ export function DocxImportPreview({
           initialMarkdown={preview.markdown}
           onMarkdownChange={onMarkdownChange}
           allowImageUploads={false}
+          resetRevision={editorResetRevision}
+          onEditorRootChange={(root) => {
+            editorRootRef.current = root;
+          }}
         />
       </section>
 
@@ -270,12 +298,51 @@ export function DocxImportPreview({
             aria-labelledby="docx-validation-heading"
           >
             <h2 id="docx-validation-heading">需要先修正</h2>
+            <p className="docx-import-validation-help">
+              批注必须继续对应 Word 中圈选的原文。你可以先定位检查，或只恢复受影响的原文范围。
+            </p>
             <ul>
-              {validation.errors.map((error, index) => (
-                <li key={`${error.code}:${error.annotationId ?? ""}:${index}`}>
-                  {validationLabels[error.code] ?? "预览内容不符合导入要求。"}
-                </li>
-              ))}
+              {validation.errors.map((error, index) => {
+                const thread = error.annotationId ? threadsById.get(error.annotationId) : undefined;
+                const originalText = thread
+                  ? getImportedThreadSelectedText(
+                      preview.ir.blocks,
+                      thread.blockId,
+                      thread.blockLocalStart,
+                      thread.blockLocalEnd,
+                      thread.endBlockId,
+                    )
+                  : "";
+                const canRestore = error.code === "ANNOTATION_TEXT_CHANGED" && thread;
+                return (
+                  <li key={`${error.code}:${error.annotationId ?? ""}:${index}`}>
+                    <span>{validationLabels[error.code] ?? "预览内容不符合导入要求。"}</span>
+                    {canRestore && (
+                      <div className="docx-import-validation-detail">
+                        <span>
+                          {thread.sourceAuthorName} 的批注原文：<q>{excerpt(originalText, 80)}</q>
+                        </span>
+                        <div>
+                          <button
+                            type="button"
+                            className="text-button"
+                            onClick={() => locateAnnotation(thread.annotationId)}
+                          >
+                            定位到正文
+                          </button>
+                          <button
+                            type="button"
+                            className="button button--ghost button--small"
+                            onClick={() => onRestoreAnnotationText(thread.annotationId)}
+                          >
+                            恢复这段原文
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           </section>
         )}

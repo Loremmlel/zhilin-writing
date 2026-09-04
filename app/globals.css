@@ -3507,12 +3507,40 @@ input[type="file"] {
     "Noto Serif SC",
     serif;
 }
+.docx-import-validation-help {
+  margin: -3px 0 12px;
+  color: #704b47;
+  font-size: 12px;
+  line-height: 1.6;
+}
 .docx-import-validation li {
   padding-left: 15px;
   position: relative;
   color: #704b47;
   font-size: 12px;
   line-height: 1.55;
+}
+.docx-import-validation-detail {
+  margin-top: 7px;
+  padding: 9px 10px;
+  border-left: 2px solid #d8aaa5;
+  display: grid;
+  gap: 9px;
+  background: var(--annotation);
+}
+.docx-import-validation-detail > span {
+  display: grid;
+  gap: 3px;
+}
+.docx-import-validation-detail q {
+  color: var(--ink);
+  font-family: Georgia, "Noto Serif SC", serif;
+}
+.docx-import-validation-detail > div {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
 }
 .docx-import-validation li::before {
   content: "•";

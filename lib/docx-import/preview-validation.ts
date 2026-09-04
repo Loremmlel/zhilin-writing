@@ -4,6 +4,7 @@ import {
   type AnnotationInvariantIssueCode,
 } from "../annotations/invariants.ts";
 import { DOCX_IMPORT_LIMITS } from "./limits.ts";
+import { renderCanonicalImportMarkdown } from "./markdown.ts";
 import { importedThreadSelectedText, importedThreadSlices } from "./thread-range.ts";
 import type { DocxImportIR, DocxPreviewRecord, ImportBlock } from "./types.ts";
 
@@ -57,6 +58,10 @@ type PreviewNode = {
   alt?: string;
   attributes?: Record<string, string | null | undefined> | null;
   children?: PreviewNode[];
+  position?: {
+    start: { offset?: number };
+    end: { offset?: number };
+  };
 };
 
 const encoder = new TextEncoder();
@@ -257,6 +262,48 @@ export function getImportedThreadSelectedText(
     blockLocalStart: start,
     blockLocalEnd: end,
   });
+}
+
+export function restoreImportedAnnotationText(
+  preview: Pick<EditedImportPreview, "ir" | "markdown">,
+  annotationId: string,
+): string | null {
+  const originalMarkdown = renderCanonicalImportMarkdown(
+    preview.ir.blocks,
+    preview.ir.assets,
+    preview.ir.threads,
+  );
+  const currentRanges = annotationSourceRanges(preview.markdown, annotationId);
+  const originalRanges = annotationSourceRanges(originalMarkdown, annotationId);
+  if (currentRanges.length === 0 || currentRanges.length !== originalRanges.length) return null;
+
+  let restored = preview.markdown;
+  for (let index = currentRanges.length - 1; index >= 0; index -= 1) {
+    const current = currentRanges[index]!;
+    const original = originalRanges[index]!;
+    restored = `${restored.slice(0, current.from)}${originalMarkdown.slice(
+      original.from,
+      original.to,
+    )}${restored.slice(current.to)}`;
+  }
+  return restored;
+}
+
+function annotationSourceRanges(markdown: string, wantedId: string) {
+  const ranges: Array<{ from: number; to: number }> = [];
+  const tree = parseAnnotationMarkdown(markdown) as PreviewNode;
+  walk(tree, (node) => {
+    if (
+      node.type !== "textDirective" ||
+      node.name !== "annotation" ||
+      node.attributes?.id !== wantedId
+    )
+      return;
+    const from = node.position?.start.offset;
+    const to = node.position?.end.offset;
+    if (typeof from === "number" && typeof to === "number") ranges.push({ from, to });
+  });
+  return ranges;
 }
 
 function walk(node: PreviewNode, callback: (node: PreviewNode) => void) {
