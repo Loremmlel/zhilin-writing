@@ -39,17 +39,25 @@ export async function POST(request: Request) {
   } catch (error) {
     if (error instanceof AssetStorageError) {
       const status = error.code === "SERVER_FAILURE" ? 503 : 400;
-      if (status >= 500) logServerError({ operation: "asset.upload", userId: actorUserId, error });
-      return Response.json({ error: error.message, code: error.code }, { status });
+      const incidentId =
+        status >= 500
+          ? logServerError({
+              operation: "asset.upload",
+              userId: actorUserId,
+              error,
+              errorCode: "ASSET_UPLOAD_FAILED",
+            })
+          : undefined;
+      return Response.json({ error: error.message, code: error.code, incidentId }, { status });
     }
-    logServerError({
+    const incidentId = logServerError({
       operation: "asset.upload",
       userId: actorUserId,
       error,
       errorCode: "ASSET_UPLOAD_FAILED",
     });
     return Response.json(
-      { error: "文件上传失败，请稍后重试", code: "SERVER_FAILURE" },
+      { error: "文件上传失败，请稍后重试", code: "SERVER_FAILURE", incidentId },
       { status: 500 },
     );
   }

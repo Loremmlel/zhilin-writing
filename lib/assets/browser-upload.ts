@@ -11,6 +11,7 @@ export type BrowserAssetUploadResult = {
   markdown?: string;
   error?: string;
   code?: AssetUploadErrorCode;
+  incidentId?: string;
 };
 
 export function createSerialUploadQueue() {
@@ -63,7 +64,9 @@ export function uploadAsset(
         reject(
           new BrowserAssetUploadError(
             data.code ?? "SERVER_FAILURE",
-            data.error ?? "文件上传失败，请稍后重试",
+            data.incidentId
+              ? `${data.error ?? "文件上传失败，请稍后重试"}（错误编号：${data.incidentId}）`
+              : (data.error ?? "文件上传失败，请稍后重试"),
           ),
         );
         return;

@@ -18,6 +18,7 @@ import {
 } from "@/db/schema";
 import { activityEventId, notificationId, truncateActivityPreview } from "@/lib/activity/policy";
 import { derivePostActivityAfterInteractionChange } from "@/lib/lifecycle/service";
+import { markServerErrorStage } from "@/lib/logging";
 import { planAuthorDelete } from "@/lib/lifecycle/transitions";
 import { getCurrentAssetRefs, getCurrentImportedReplyStates } from "@/lib/revisions/service";
 import {
@@ -373,119 +374,140 @@ export async function deleteAnnotationByAuthor(
   annotationId: string,
   actorUserId: string,
 ) {
-  const annotation = await findAnnotation(annotationId);
-  if (!annotation) throw new Error("批注不存在");
-  assertAnnotationBelongsToPost(annotation.postId, postId);
-  assertNativeAnnotationMutation(annotation);
-  const db = getDb();
-  const discussionReplies = await db
-    .select()
-    .from(annotationReplies)
-    .where(eq(annotationReplies.annotationId, annotationId));
-  const now = new Date();
-  const lifecyclePlan = planAnnotationAuthorDelete(annotation, discussionReplies, actorUserId, now);
-  if (!lifecyclePlan.changed)
-    return { changed: false as const, postId: annotation.postId, retainedAnchor: false };
-  const post = (await db.select().from(posts).where(eq(posts.id, annotation.postId)).limit(1))[0];
-  if (!post?.currentRevisionId) throw new Error("帖子当前版本不存在");
-  const currentRevision = (
-    await db
+  let stage = "load-annotation";
+  try {
+    const annotation = await findAnnotation(annotationId);
+    if (!annotation) throw new Error("批注不存在");
+    stage = "validate-annotation";
+    assertAnnotationBelongsToPost(annotation.postId, postId);
+    assertNativeAnnotationMutation(annotation);
+    const db = getDb();
+    stage = "load-discussion";
+    const discussionReplies = await db
       .select()
-      .from(postRevisions)
-      .where(eq(postRevisions.id, post.currentRevisionId))
-      .limit(1)
-  )[0];
-  if (!currentRevision) throw new Error("帖子当前版本不存在");
-  const [currentStates, currentAssetRefs, currentImportedReplyStates] = await Promise.all([
-    getCurrentAnnotationStates(annotation.postId),
-    getCurrentAssetRefs(annotation.postId),
-    getCurrentImportedReplyStates(annotation.postId),
-  ]);
-  const currentAnchorIds = currentStates.map((state) => state.annotationId);
-  if (!currentAnchorIds.includes(annotationId)) throw new Error("该批注不属于当前正文");
-  const currentTree = parseAnnotationMarkdown(post.markdown);
-  assertCanonicalAnchors(post.markdown, currentAnchorIds);
-  const nextTree = lifecyclePlan.retainAnchor
-    ? currentTree
-    : unwrapAnnotation(currentTree, annotationId);
-  const nextMarkdown = stringifyAnnotationMarkdown(nextTree);
-  const nextStates = currentStates
-    .filter((state) => lifecyclePlan.retainAnchor || state.annotationId !== annotationId)
-    .map((state) =>
-      state.annotationId === annotationId
-        ? { ...state, deletedAt: now, deletedByUserId: actorUserId }
-        : state,
+      .from(annotationReplies)
+      .where(eq(annotationReplies.annotationId, annotationId));
+    const now = new Date();
+    stage = "plan-lifecycle";
+    const lifecyclePlan = planAnnotationAuthorDelete(
+      annotation,
+      discussionReplies,
+      actorUserId,
+      now,
     );
-  assertCanonicalAnchors(
-    nextMarkdown,
-    nextStates.map((state) => state.annotationId),
-  );
-  const lastActivityAt = await derivePostActivityAfterInteractionChange(annotation.postId, {
-    kind: "annotation",
-    id: annotationId,
-    deletedAt: now,
-    current: lifecyclePlan.retainAnchor,
-  });
-  const revisionId = crypto.randomUUID();
-  const operations: BatchItem<"sqlite">[] = [
-    db
-      .update(posts)
-      .set({
-        title: sql<string>`CASE WHEN ${posts.currentRevisionId} = ${currentRevision.id} THEN ${posts.title} ELSE NULL END`,
-      })
-      .where(eq(posts.id, annotation.postId)),
-    db.insert(postRevisions).values({
-      id: revisionId,
-      postId: annotation.postId,
-      revisionNumber: currentRevision.revisionNumber + 1,
-      kind: "ANNOTATION_STATE",
-      title: post.title,
-      markdown: nextMarkdown,
-      createdAt: now,
-      createdByUserId: actorUserId,
-      restoreSourceRevisionId: null,
-    }),
-    db
-      .update(annotations)
-      .set(lifecyclePlan.patch)
-      .where(
-        and(
-          eq(annotations.id, annotationId),
-          eq(annotations.sourceType, "NATIVE"),
-          eq(annotations.authorId, actorUserId),
-          isNull(annotations.deletedAt),
+    if (!lifecyclePlan.changed)
+      return { changed: false as const, postId: annotation.postId, retainedAnchor: false };
+    stage = "load-revision";
+    const post = (await db.select().from(posts).where(eq(posts.id, annotation.postId)).limit(1))[0];
+    if (!post?.currentRevisionId) throw new Error("帖子当前版本不存在");
+    const currentRevision = (
+      await db
+        .select()
+        .from(postRevisions)
+        .where(eq(postRevisions.id, post.currentRevisionId))
+        .limit(1)
+    )[0];
+    if (!currentRevision) throw new Error("帖子当前版本不存在");
+    stage = "load-snapshot";
+    const [currentStates, currentAssetRefs, currentImportedReplyStates] = await Promise.all([
+      getCurrentAnnotationStates(annotation.postId),
+      getCurrentAssetRefs(annotation.postId),
+      getCurrentImportedReplyStates(annotation.postId),
+    ]);
+    stage = "plan-document";
+    const currentAnchorIds = currentStates.map((state) => state.annotationId);
+    if (!currentAnchorIds.includes(annotationId)) throw new Error("该批注不属于当前正文");
+    const currentTree = parseAnnotationMarkdown(post.markdown);
+    assertCanonicalAnchors(post.markdown, currentAnchorIds);
+    const nextTree = lifecyclePlan.retainAnchor
+      ? currentTree
+      : unwrapAnnotation(currentTree, annotationId);
+    const nextMarkdown = stringifyAnnotationMarkdown(nextTree);
+    const nextStates = currentStates
+      .filter((state) => lifecyclePlan.retainAnchor || state.annotationId !== annotationId)
+      .map((state) =>
+        state.annotationId === annotationId
+          ? { ...state, deletedAt: now, deletedByUserId: actorUserId }
+          : state,
+      );
+    assertCanonicalAnchors(
+      nextMarkdown,
+      nextStates.map((state) => state.annotationId),
+    );
+    stage = "load-activity";
+    const lastActivityAt = await derivePostActivityAfterInteractionChange(annotation.postId, {
+      kind: "annotation",
+      id: annotationId,
+      deletedAt: now,
+      current: lifecyclePlan.retainAnchor,
+    });
+    stage = "prepare-commit";
+    const revisionId = crypto.randomUUID();
+    const operations: BatchItem<"sqlite">[] = [
+      db
+        .update(posts)
+        .set({
+          title: sql<string>`CASE WHEN ${posts.currentRevisionId} = ${currentRevision.id} THEN ${posts.title} ELSE NULL END`,
+        })
+        .where(eq(posts.id, annotation.postId)),
+      db.insert(postRevisions).values({
+        id: revisionId,
+        postId: annotation.postId,
+        revisionNumber: currentRevision.revisionNumber + 1,
+        kind: "ANNOTATION_STATE",
+        title: post.title,
+        markdown: nextMarkdown,
+        createdAt: now,
+        createdByUserId: actorUserId,
+        restoreSourceRevisionId: null,
+      }),
+      db
+        .update(annotations)
+        .set(lifecyclePlan.patch)
+        .where(
+          and(
+            eq(annotations.id, annotationId),
+            eq(annotations.sourceType, "NATIVE"),
+            eq(annotations.authorId, actorUserId),
+            isNull(annotations.deletedAt),
+          ),
         ),
-      ),
-    db
-      .update(posts)
-      .set({ markdown: nextMarkdown, currentRevisionId: revisionId, lastActivityAt })
-      .where(and(eq(posts.id, annotation.postId), eq(posts.currentRevisionId, currentRevision.id))),
-    ...(!lifecyclePlan.retainAnchor
-      ? [
-          db
-            .delete(postAnnotationAnchors)
-            .where(
-              and(
-                eq(postAnnotationAnchors.postId, annotation.postId),
-                eq(postAnnotationAnchors.annotationId, annotationId),
+      db
+        .update(posts)
+        .set({ markdown: nextMarkdown, currentRevisionId: revisionId, lastActivityAt })
+        .where(
+          and(eq(posts.id, annotation.postId), eq(posts.currentRevisionId, currentRevision.id)),
+        ),
+      ...(!lifecyclePlan.retainAnchor
+        ? [
+            db
+              .delete(postAnnotationAnchors)
+              .where(
+                and(
+                  eq(postAnnotationAnchors.postId, annotation.postId),
+                  eq(postAnnotationAnchors.annotationId, annotationId),
+                ),
               ),
-            ),
-        ]
-      : []),
-    ...currentAssetRefs.map((ref) => db.insert(revisionAssetRefs).values({ revisionId, ...ref })),
-    ...nextStates.map((state) =>
-      db.insert(revisionAnnotationStates).values({ revisionId, ...state }),
-    ),
-    ...currentImportedReplyStates.map((state) =>
-      db.insert(revisionImportedReplyStates).values({ revisionId, ...state }),
-    ),
-  ];
-  await commitAnnotationMutation((items) => db.batch(asBatch(items)), operations);
-  return {
-    changed: true as const,
-    postId: annotation.postId,
-    retainedAnchor: lifecyclePlan.retainAnchor,
-  };
+          ]
+        : []),
+      ...currentAssetRefs.map((ref) => db.insert(revisionAssetRefs).values({ revisionId, ...ref })),
+      ...nextStates.map((state) =>
+        db.insert(revisionAnnotationStates).values({ revisionId, ...state }),
+      ),
+      ...currentImportedReplyStates.map((state) =>
+        db.insert(revisionImportedReplyStates).values({ revisionId, ...state }),
+      ),
+    ];
+    stage = "commit";
+    await commitAnnotationMutation((items) => db.batch(asBatch(items)), operations);
+    return {
+      changed: true as const,
+      postId: annotation.postId,
+      retainedAnchor: lifecyclePlan.retainAnchor,
+    };
+  } catch (error) {
+    throw markServerErrorStage(error, stage);
+  }
 }
 
 export async function removeImportedAnnotationThread(

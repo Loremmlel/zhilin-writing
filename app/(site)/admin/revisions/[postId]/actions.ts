@@ -9,7 +9,11 @@ import { validateLifecycleOperationId } from "@/lib/lifecycle/policy";
 import { restorePostRevision } from "@/lib/revisions/service";
 import { logServerError } from "@/lib/logging";
 
-export type RestoreRevisionActionState = { error?: string; code?: ActionAccessErrorCode };
+export type RestoreRevisionActionState = {
+  error?: string;
+  code?: ActionAccessErrorCode;
+  incidentId?: string;
+};
 
 export async function restoreRevisionAction(
   postId: string,
@@ -26,14 +30,14 @@ export async function restoreRevisionAction(
     const operationId = validateLifecycleOperationId(String(formData.get("operationId") ?? ""));
     newRevisionId = await restorePostRevision(postId, revisionId, member.id, operationId);
   } catch (error) {
-    logServerError({
+    const incidentId = logServerError({
       operation: "revision.restore",
       entityId: revisionId,
       userId: member.id,
       error,
       errorCode: "REVISION_RESTORE_FAILED",
     });
-    return { error: "恢复失败，请稍后重试" };
+    return { error: "恢复失败，请稍后重试", incidentId };
   }
   revalidatePath(`/posts/${postId}`);
   revalidatePath(`/admin/revisions/${postId}`);

@@ -7,6 +7,7 @@ import type {
   LifecycleActionState,
   LifecycleFormAction,
 } from "@/components/lifecycle/delete-content-control";
+import { ActionErrorMessage } from "@/components/action-error-message";
 import { ModalDialog } from "@/components/modal-dialog";
 
 export function ContentLifecycleControl({
@@ -85,11 +86,7 @@ export function ContentLifecycleControl({
               />
             </label>
           )}
-          {state.error && (
-            <p className="form-error" role="alert">
-              {state.error}
-            </p>
-          )}
+          <ActionErrorMessage error={state.error} incidentId={state.incidentId} />
           <div className="dialog-actions">
             <button
               className="button button--ghost"

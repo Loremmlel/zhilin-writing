@@ -74,7 +74,11 @@ export function DocxImportWorkspace({ users }: { users: SiteUser[] }) {
   const [stage, setStage] = useState<DocxWorkerProgressStage>("package-validation");
   const [uploadedCount, setUploadedCount] = useState(0);
   const [uploadTotal, setUploadTotal] = useState(0);
-  const [error, setError] = useState<{ code: string; message: string } | null>(null);
+  const [error, setError] = useState<{
+    code: string;
+    message: string;
+    incidentId?: string;
+  } | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [discardBatchId, setDiscardBatchId] = useState<string | null>(null);
   const [validationNow, setValidationNow] = useState(() => Date.now());
@@ -270,11 +274,12 @@ export function DocxImportWorkspace({ users }: { users: SiteUser[] }) {
       });
       const data = (await response.json()) as {
         result?: { postId: string };
-        error?: { code?: string; message?: string };
+        error?: { code?: string; message?: string; incidentId?: string };
       };
       if (!response.ok || !data.result) {
         throw Object.assign(new Error(data.error?.message ?? "导入提交失败"), {
           code: data.error?.code ?? "COMMIT_REQUEST_FAILED",
+          incidentId: data.error?.incidentId,
         });
       }
       discardedRef.current.add(preview.importBatchId);
@@ -295,7 +300,15 @@ export function DocxImportWorkspace({ users }: { users: SiteUser[] }) {
         typeof caught === "object" && caught && "code" in caught
           ? String(caught.code)
           : "COMMIT_REQUEST_FAILED";
-      setError({ code, message: caught instanceof Error ? caught.message : "导入提交失败" });
+      const incidentId =
+        typeof caught === "object" && caught && "incidentId" in caught
+          ? String(caught.incidentId)
+          : undefined;
+      setError({
+        code,
+        message: caught instanceof Error ? caught.message : "导入提交失败",
+        incidentId,
+      });
       setPhase("previewing");
     }
   }
@@ -378,6 +391,11 @@ export function DocxImportWorkspace({ users }: { users: SiteUser[] }) {
               <div>
                 <strong>未能准备预览</strong>
                 <p>{errorLabels[error.code] ?? error.message}</p>
+                {error.incidentId && (
+                  <span className="incident-reference">
+                    错误编号：<code>{error.incidentId}</code>
+                  </span>
+                )}
               </div>
               {lastFile &&
                 error.code !== "INVALID_EXTENSION" &&
@@ -434,6 +452,11 @@ export function DocxImportWorkspace({ users }: { users: SiteUser[] }) {
               <div>
                 <strong>本地预览状态</strong>
                 <p>{errorLabels[error.code] ?? error.message}</p>
+                {error.incidentId && (
+                  <span className="incident-reference">
+                    错误编号：<code>{error.incidentId}</code>
+                  </span>
+                )}
               </div>
             </div>
           )}
@@ -561,9 +584,15 @@ async function uploadImageAsset(
   const response = await fetch("/api/assets", { method: "POST", body: formData, signal });
   const data = (await response.json()) as {
     error?: string;
+    incidentId?: string;
     asset?: { id: string; filename: string; mimeType: string; url: string };
   };
-  if (!response.ok || !data.asset) throw new Error(data.error ?? `图片 ${asset.filename} 上传失败`);
+  if (!response.ok || !data.asset)
+    throw new Error(
+      data.incidentId
+        ? `${data.error ?? "图片上传失败"}（错误编号：${data.incidentId}）`
+        : (data.error ?? `图片 ${asset.filename} 上传失败`),
+    );
   return {
     assetId: data.asset.id,
     temporaryUrl: data.asset.url,

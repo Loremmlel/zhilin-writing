@@ -1197,6 +1197,16 @@ input[type="file"] {
   border-radius: 8px;
   background: #fbefed;
 }
+.incident-reference {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.incident-reference code {
+  color: inherit;
+}
 .draft-recovery,
 .conflict-warning {
   margin: -4px 0 22px;

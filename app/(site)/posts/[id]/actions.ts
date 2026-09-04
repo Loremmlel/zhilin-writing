@@ -25,11 +25,13 @@ export type AnnotationActionState = {
   annotationId?: string;
   error?: string;
   code?: ActionAccessErrorCode;
+  incidentId?: string;
 };
 export type AnnotationReplyActionState = {
   annotationReplyId?: string;
   error?: string;
   code?: ActionAccessErrorCode;
+  incidentId?: string;
 };
 
 function parseAnnotationSelection(value: FormDataEntryValue | null): AnnotationSelectionDescriptor {
@@ -109,14 +111,14 @@ export async function updatePostAction(
     }
     if (error instanceof AnnotationIntegrityError)
       return { error: error.message, code: error.code };
-    logServerError({
+    const incidentId = logServerError({
       operation: "post.update",
       entityId: postId,
       userId: actorUserId,
       error,
       errorCode: "POST_UPDATE_FAILED",
     });
-    return { error: "保存失败，请稍后重试" };
+    return { error: "保存失败，请稍后重试", incidentId };
   }
 }
 
@@ -143,14 +145,14 @@ export async function createReplyAction(
     revalidatePath("/");
     return { replyId };
   } catch (error) {
-    logServerError({
+    const incidentId = logServerError({
       operation: "post-reply.create",
       entityId: targetReplyId ?? postId,
       userId: actorUserId,
       error,
       errorCode: "POST_REPLY_CREATE_FAILED",
     });
-    return { error: "回复失败，请稍后重试" };
+    return { error: "回复失败，请稍后重试", incidentId };
   }
 }
 
@@ -179,14 +181,14 @@ export async function createAnnotationAction(
     revalidatePath(`/users/${member.id}`);
     return { annotationId };
   } catch (error) {
-    logServerError({
+    const incidentId = logServerError({
       operation: "annotation.create",
       entityId: postId,
       userId: actorUserId,
       error,
       errorCode: "ANNOTATION_CREATE_FAILED",
     });
-    return { error: "批注发布失败，请稍后重试" };
+    return { error: "批注发布失败，请稍后重试", incidentId };
   }
 }
 
@@ -217,14 +219,14 @@ export async function createAnnotationReplyAction(
     revalidatePath(`/users/${member.id}`);
     return { annotationReplyId };
   } catch (error) {
-    logServerError({
+    const incidentId = logServerError({
       operation: "annotation-reply.create",
       entityId: targetReplyId ?? annotationId,
       userId: actorUserId,
       error,
       errorCode: "ANNOTATION_REPLY_CREATE_FAILED",
     });
-    return { error: "批注回复发布失败，请稍后重试" };
+    return { error: "批注回复发布失败，请稍后重试", incidentId };
   }
 }
 
@@ -243,14 +245,14 @@ export async function deletePostAction(
     revalidatePath("/", "layout");
     return { success: true };
   } catch (error) {
-    logServerError({
+    const incidentId = logServerError({
       operation: "post.delete",
       entityId: postId,
       userId: actorUserId,
       error,
       errorCode: "POST_DELETE_FAILED",
     });
-    return { error: "删除帖子失败，请稍后重试" };
+    return { error: "删除帖子失败，请稍后重试", incidentId };
   }
 }
 
@@ -270,14 +272,14 @@ export async function deleteReplyAction(
     revalidatePath("/", "layout");
     return { success: true };
   } catch (error) {
-    logServerError({
+    const incidentId = logServerError({
       operation: "post-reply.delete",
       entityId: replyId,
       userId: actorUserId,
       error,
       errorCode: "POST_REPLY_DELETE_FAILED",
     });
-    return { error: "删除回复失败，请稍后重试" };
+    return { error: "删除回复失败，请稍后重试", incidentId };
   }
 }
 
@@ -297,14 +299,14 @@ export async function deleteAnnotationAction(
     revalidatePath("/", "layout");
     return { success: true };
   } catch (error) {
-    logServerError({
+    const incidentId = logServerError({
       operation: "annotation.delete",
       entityId: annotationId,
       userId: actorUserId,
       error,
       errorCode: "ANNOTATION_DELETE_FAILED",
     });
-    return { error: "删除批注失败，请稍后重试" };
+    return { error: "删除批注失败，请稍后重试", incidentId };
   }
 }
 
@@ -324,14 +326,14 @@ export async function deleteAnnotationReplyAction(
     revalidatePath("/", "layout");
     return { success: true };
   } catch (error) {
-    logServerError({
+    const incidentId = logServerError({
       operation: "annotation-reply.delete",
       entityId: replyId,
       userId: actorUserId,
       error,
       errorCode: "ANNOTATION_REPLY_DELETE_FAILED",
     });
-    return { error: "删除批注回复失败，请稍后重试" };
+    return { error: "删除批注回复失败，请稍后重试", incidentId };
   }
 }
 
@@ -351,13 +353,13 @@ export async function removeImportedAnnotationThreadAction(
     revalidatePath("/", "layout");
     return { success: true };
   } catch (error) {
-    logServerError({
+    const incidentId = logServerError({
       operation: "annotation-import.remove",
       entityId: annotationId,
       userId: actorUserId,
       error,
       errorCode: "ANNOTATION_IMPORT_REMOVE_FAILED",
     });
-    return { error: "移除 Word 导入批注失败，请稍后重试" };
+    return { error: "移除 Word 导入批注失败，请稍后重试", incidentId };
   }
 }

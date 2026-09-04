@@ -3,6 +3,7 @@
 import { startTransition, useActionState } from "react";
 
 import type { ProfileActionState } from "@/app/(site)/settings/profile/actions";
+import { ActionErrorMessage } from "@/components/action-error-message";
 import { Avatar } from "@/components/avatar";
 
 type ProfileFormProps = {
@@ -66,11 +67,7 @@ export function ProfileForm({ action, member, initialError }: ProfileFormProps) 
           disabled={pending || state.code === "ACCESS_REVOKED"}
         />
       </label>
-      {state.error && (
-        <p className="form-error" role="alert">
-          {state.error}
-        </p>
-      )}
+      <ActionErrorMessage error={state.error} incidentId={state.incidentId} />
       <div className="form-actions">
         <button
           className={`button button--primary${pending ? " button--pending" : ""}`}

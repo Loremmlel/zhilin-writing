@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useRef, useState } from "react";
 
 import type { AnnotationCardView } from "@/components/annotations/annotation-thread";
+import { ActionErrorMessage } from "@/components/action-error-message";
 import { ModalDialog } from "@/components/modal-dialog";
 import { uploadAsset } from "@/lib/assets/browser-upload";
 import { isValidSubmissionKey } from "@/lib/activity/policy";
@@ -26,6 +27,7 @@ import {
 export type PostActionState = {
   error?: string;
   code?: "ANNOTATION_INTEGRITY_ERROR" | ActionAccessErrorCode;
+  incidentId?: string;
   postId?: string;
   currentRevisionId?: string;
   conflict?: EditConflictSnapshot;
@@ -556,9 +558,7 @@ export function PostEditorForm({
           </div>
         )}
         {state.error && !state.conflict && (
-          <p className="form-error" role="alert">
-            {state.error}
-          </p>
+          <ActionErrorMessage error={state.error} incidentId={state.incidentId} />
         )}
         <div className="form-actions">
           <Link href={cancelHref} className="button button--ghost">

@@ -3,10 +3,12 @@
 export function ErrorState({
   title,
   description,
+  incidentId,
   reset,
 }: {
   title: string;
   description: string;
+  incidentId?: string;
   reset: () => void;
 }) {
   return (
@@ -15,6 +17,11 @@ export function ErrorState({
         <span className="eyebrow">暂时遇到问题</span>
         <h1>{title}</h1>
         <p>{description}</p>
+        {incidentId && (
+          <span className="incident-reference">
+            错误编号：<code>{incidentId}</code>
+          </span>
+        )}
         <div className="route-error-actions">
           <button className="button button--primary" type="button" onClick={reset}>
             重新加载

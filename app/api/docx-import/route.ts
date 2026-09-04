@@ -57,13 +57,16 @@ export async function POST(request: Request) {
     return Response.json({ result }, { status: result.alreadyCommitted ? 200 : 201 });
   } catch (error) {
     if (error instanceof DocxImportCommitError) {
-      if (error.status >= 500)
-        logServerError({
-          operation: "docx.commit",
-          entityId: importBatchId,
-          userId: access.member.id,
-          error,
-        });
+      const incidentId =
+        error.status >= 500
+          ? logServerError({
+              operation: "docx.commit",
+              entityId: importBatchId,
+              userId: access.member.id,
+              error,
+              errorCode: "IMPORT_COMMIT_FAILED",
+            })
+          : undefined;
       return Response.json(
         {
           error: {
@@ -71,12 +74,13 @@ export async function POST(request: Request) {
             message:
               errorMessages[error.code] ??
               (error.status >= 500 ? "未能完成导入，请稍后重试。" : "导入内容未通过校验。"),
+            incidentId,
           },
         },
         { status: error.status },
       );
     }
-    logServerError({
+    const incidentId = logServerError({
       operation: "docx.commit",
       entityId: importBatchId,
       userId: access.member.id,
@@ -84,7 +88,13 @@ export async function POST(request: Request) {
       errorCode: "IMPORT_COMMIT_FAILED",
     });
     return Response.json(
-      { error: { code: "IMPORT_COMMIT_FAILED", message: "未能完成导入，请稍后重试。" } },
+      {
+        error: {
+          code: "IMPORT_COMMIT_FAILED",
+          message: "未能完成导入，请稍后重试。",
+          incidentId,
+        },
+      },
       { status: 500 },
     );
   }

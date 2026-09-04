@@ -9,7 +9,11 @@ import { actionAccessFailure, type ActionAccessErrorCode } from "@/lib/actions/r
 import { validateDisplayName } from "@/lib/domain/rules";
 import { logServerError } from "@/lib/logging";
 
-export type ProfileActionState = { error?: string; code?: ActionAccessErrorCode };
+export type ProfileActionState = {
+  error?: string;
+  code?: ActionAccessErrorCode;
+  incidentId?: string;
+};
 
 export async function updateProfileAction(
   _previous: ProfileActionState,
@@ -37,14 +41,14 @@ export async function updateProfileAction(
       await updateUserProfile(member.id, { displayName, bio });
     }
   } catch (caught) {
-    logServerError({
+    const incidentId = logServerError({
       operation: "profile.update",
       entityId: member.id,
       userId: member.id,
       error: caught,
       errorCode: "PROFILE_UPDATE_FAILED",
     });
-    return { error: "资料保存失败，请稍后重试" };
+    return { error: "资料保存失败，请稍后重试", incidentId };
   }
   redirect(`/users/${member.id}`);
 }

@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 
 import type { NotificationActionState } from "@/app/(site)/notifications/actions";
+import { ActionErrorMessage } from "@/components/action-error-message";
 import { PendingSubmitButton } from "@/components/pending/pending-submit-button";
 
 export function MarkAllNotificationsForm({
@@ -21,11 +22,11 @@ export function MarkAllNotificationsForm({
       >
         全部标记已读
       </PendingSubmitButton>
-      {state.error && (
-        <p className="form-error notification-action-error" role="alert">
-          {state.error}
-        </p>
-      )}
+      <ActionErrorMessage
+        error={state.error}
+        incidentId={state.incidentId}
+        className="form-error notification-action-error"
+      />
     </form>
   );
 }

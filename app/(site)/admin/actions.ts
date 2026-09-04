@@ -26,6 +26,7 @@ export type AllowlistActionState = {
   success?: boolean;
   error?: string;
   code?: ActionAccessErrorCode;
+  incidentId?: string;
 };
 
 export async function addAllowlistAction(
@@ -40,13 +41,13 @@ export async function addAllowlistAction(
   try {
     if (!(await findAllowedUser(email))) await addAllowedUser(email, false, member.id);
   } catch (error) {
-    logServerError({
+    const incidentId = logServerError({
       operation: "allowlist.add",
       userId: member.id,
       error,
       errorCode: "ALLOWLIST_ADD_FAILED",
     });
-    return { error: "白名单更新失败，请稍后重试" };
+    return { error: "白名单更新失败，请稍后重试", incidentId };
   }
   revalidatePath("/admin");
   return { success: true };
@@ -63,14 +64,14 @@ export async function removeAllowlistAction(
   try {
     if (id) await removeAllowedUser(id);
   } catch (error) {
-    logServerError({
+    const incidentId = logServerError({
       operation: "allowlist.remove",
       entityId: id,
       userId: member.id,
       error,
       errorCode: "ALLOWLIST_REMOVE_FAILED",
     });
-    return { error: "白名单更新失败，请稍后重试" };
+    return { error: "白名单更新失败，请稍后重试", incidentId };
   }
   revalidatePath("/admin");
   return { success: true };
@@ -97,14 +98,14 @@ export async function moderatePostAction(
     revalidatePath("/", "layout");
     return { success: true };
   } catch (error) {
-    logServerError({
+    const incidentId = logServerError({
       operation: `post.admin-${operation}`,
       entityId: postId,
       userId: actorUserId,
       error,
       errorCode: "POST_MODERATION_FAILED",
     });
-    return { error: "帖子状态更新失败，请稍后重试" };
+    return { error: "帖子状态更新失败，请稍后重试", incidentId };
   }
 }
 
@@ -129,14 +130,14 @@ export async function moderateReplyAction(
     revalidatePath("/", "layout");
     return { success: true };
   } catch (error) {
-    logServerError({
+    const incidentId = logServerError({
       operation: `post-reply.admin-${operation}`,
       entityId: replyId,
       userId: actorUserId,
       error,
       errorCode: "POST_REPLY_MODERATION_FAILED",
     });
-    return { error: "回复状态更新失败，请稍后重试" };
+    return { error: "回复状态更新失败，请稍后重试", incidentId };
   }
 }
 
@@ -164,14 +165,14 @@ export async function moderateAnnotationAction(
     revalidatePath("/", "layout");
     return { success: true };
   } catch (error) {
-    logServerError({
+    const incidentId = logServerError({
       operation: `annotation.admin-${operation}`,
       entityId: annotationId,
       userId: actorUserId,
       error,
       errorCode: "ANNOTATION_MODERATION_FAILED",
     });
-    return { error: "批注状态更新失败，请稍后重试" };
+    return { error: "批注状态更新失败，请稍后重试", incidentId };
   }
 }
 
@@ -199,13 +200,13 @@ export async function moderateAnnotationReplyAction(
     revalidatePath("/", "layout");
     return { success: true };
   } catch (error) {
-    logServerError({
+    const incidentId = logServerError({
       operation: `annotation-reply.admin-${operation}`,
       entityId: replyId,
       userId: actorUserId,
       error,
       errorCode: "ANNOTATION_REPLY_MODERATION_FAILED",
     });
-    return { error: "批注回复状态更新失败，请稍后重试" };
+    return { error: "批注回复状态更新失败，请稍后重试", incidentId };
   }
 }

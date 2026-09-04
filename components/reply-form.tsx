@@ -4,9 +4,15 @@ import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useRef, useState } from "react";
 
 import { LazyMarkdownEditor } from "@/components/editor/lazy-markdown-editor";
+import { ActionErrorMessage } from "@/components/action-error-message";
 import { isBlockingAccessError, type ActionAccessErrorCode } from "@/lib/actions/result";
 
-export type ReplyActionState = { error?: string; code?: ActionAccessErrorCode; replyId?: string };
+export type ReplyActionState = {
+  error?: string;
+  code?: ActionAccessErrorCode;
+  incidentId?: string;
+  replyId?: string;
+};
 export type ReplyFormAction = (
   state: ReplyActionState,
   formData: FormData,
@@ -62,11 +68,7 @@ export function ReplyForm({
         compact
         disabled={pending || accessBlocked}
       />
-      {state.error && (
-        <p className="form-error" role="alert">
-          {state.error}
-        </p>
-      )}
+      <ActionErrorMessage error={state.error} incidentId={state.incidentId} />
       <div className="reply-form-actions">
         <span className="muted">回复发布后不能编辑</span>
         <button

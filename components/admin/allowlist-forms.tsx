@@ -4,6 +4,7 @@ import { useActionState, useEffect, useId, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import type { AllowlistActionState } from "@/app/(site)/admin/actions";
+import { ActionErrorMessage } from "@/components/action-error-message";
 import { ModalDialog } from "@/components/modal-dialog";
 
 type AllowlistAction = (
@@ -47,11 +48,11 @@ export function AddAllowlistForm({ action }: { action: AllowlistAction }) {
       >
         {pending ? "正在添加…" : "加入白名单"}
       </button>
-      {state.error && (
-        <p className="form-error" id={`${inputId}-error`} role="alert">
-          {state.error}
-        </p>
-      )}
+      <ActionErrorMessage
+        error={state.error}
+        incidentId={state.incidentId}
+        id={`${inputId}-error`}
+      />
     </form>
   );
 }
@@ -96,11 +97,7 @@ export function RemoveAllowlistForm({
       >
         <form action={formAction} className="moderation-form" noValidate aria-busy={pending}>
           <input type="hidden" name="id" value={id} />
-          {state.error && (
-            <p className="form-error" role="alert">
-              {state.error}
-            </p>
-          )}
+          <ActionErrorMessage error={state.error} incidentId={state.incidentId} />
           <div className="dialog-actions">
             <button
               className="button button--ghost"

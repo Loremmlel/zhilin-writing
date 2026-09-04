@@ -44,12 +44,12 @@ export async function createPostAction(
     revalidatePath("/");
     return { postId };
   } catch (error) {
-    logServerError({
+    const incidentId = logServerError({
       operation: "post.create",
       userId: actorUserId,
       error,
       errorCode: "POST_CREATE_FAILED",
     });
-    return { error: "发布失败，请稍后重试" };
+    return { error: "发布失败，请稍后重试", incidentId };
   }
 }

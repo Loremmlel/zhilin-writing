@@ -4,12 +4,14 @@ import { useActionState, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { ModalDialog } from "@/components/modal-dialog";
+import { ActionErrorMessage } from "@/components/action-error-message";
 import type { ActionAccessErrorCode } from "@/lib/actions/result";
 
 export type LifecycleActionState = {
   success?: boolean;
   error?: string;
   code?: ActionAccessErrorCode;
+  incidentId?: string;
 };
 export type LifecycleFormAction = (
   state: LifecycleActionState,
@@ -62,11 +64,7 @@ export function DeleteContentControl({
         alert
       >
         <form action={formAction} className="dialog-actions" noValidate>
-          {state.error && (
-            <p className="form-error" role="alert">
-              {state.error}
-            </p>
-          )}
+          <ActionErrorMessage error={state.error} incidentId={state.incidentId} />
           <button
             className="button button--ghost"
             type="button"

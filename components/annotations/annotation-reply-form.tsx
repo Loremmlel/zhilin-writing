@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useRef, useState } from "react";
 
 import type { AnnotationReplyActionState } from "@/app/(site)/posts/[id]/actions";
+import { ActionErrorMessage } from "@/components/action-error-message";
 import { LazyMarkdownEditor } from "@/components/editor/lazy-markdown-editor";
 import { replyMarkdownAfterResult } from "@/lib/annotations/reply-composer";
 import { isBlockingAccessError } from "@/lib/actions/result";
@@ -72,11 +73,7 @@ export function AnnotationReplyForm({
         resetRevision={resetRevision}
         disabled={pending || accessBlocked}
       />
-      {state.error && (
-        <p className="form-error" role="alert">
-          {state.error}
-        </p>
-      )}
+      <ActionErrorMessage error={state.error} incidentId={state.incidentId} />
       <div className="annotation-reply-form-actions">
         <span className="muted">发布后不可编辑</span>
         <button

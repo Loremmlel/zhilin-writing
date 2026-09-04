@@ -11,6 +11,7 @@ export type NotificationActionState = {
   success?: boolean;
   error?: string;
   code?: ActionAccessErrorCode;
+  incidentId?: string;
 };
 
 export async function markAllNotificationsReadAction(
@@ -25,13 +26,13 @@ export async function markAllNotificationsReadAction(
   try {
     await markAllNotificationsRead(member.id);
   } catch (error) {
-    logServerError({
+    const incidentId = logServerError({
       operation: "notification.mark-all-read",
       userId: member.id,
       error,
       errorCode: "NOTIFICATION_MARK_READ_FAILED",
     });
-    return { error: "未能标记通知，请稍后重试" };
+    return { error: "未能标记通知，请稍后重试", incidentId };
   }
   revalidatePath("/notifications");
   revalidatePath("/", "layout");

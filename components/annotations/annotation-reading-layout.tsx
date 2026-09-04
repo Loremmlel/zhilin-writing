@@ -12,6 +12,7 @@ import {
 } from "react";
 
 import type { AnnotationActionState } from "@/app/(site)/posts/[id]/actions";
+import { ActionErrorMessage } from "@/components/action-error-message";
 import { AnnotationSheet } from "@/components/annotations/annotation-sheet";
 import {
   AnnotationThread,
@@ -151,11 +152,10 @@ function AnnotationComposer({
           compact
           disabled={pending || accessBlocked}
         />
-        {(clientError || state.error) && (
-          <p className="form-error" role="alert">
-            {clientError ?? state.error}
-          </p>
-        )}
+        <ActionErrorMessage
+          error={clientError ?? state.error}
+          incidentId={clientError ? undefined : state.incidentId}
+        />
         <div className="dialog-actions">
           <button
             type="button"

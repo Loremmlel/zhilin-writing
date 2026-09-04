@@ -4,9 +4,14 @@ import { useActionState, useState } from "react";
 
 import { ModalDialog } from "@/components/modal-dialog";
 import { PendingSubmitButton } from "@/components/pending/pending-submit-button";
+import { ActionErrorMessage } from "@/components/action-error-message";
 import type { ActionAccessErrorCode } from "@/lib/actions/result";
 
-type RestoreRevisionActionState = { error?: string; code?: ActionAccessErrorCode };
+type RestoreRevisionActionState = {
+  error?: string;
+  code?: ActionAccessErrorCode;
+  incidentId?: string;
+};
 
 export function RestoreRevisionForm({
   revisionNumber,
@@ -52,11 +57,11 @@ export function RestoreRevisionForm({
           aria-busy={pending}
         >
           <input type="hidden" name="operationId" value={operationId} />
-          {state.error && (
-            <p className="form-error dialog-form-error" role="alert">
-              {state.error}
-            </p>
-          )}
+          <ActionErrorMessage
+            error={state.error}
+            incidentId={state.incidentId}
+            className="form-error dialog-form-error"
+          />
           <button
             type="button"
             className="button button--ghost"
