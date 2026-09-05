@@ -1,0 +1,1703 @@
+<!doctype html>
+<html lang="zh-CN" data-visualize-standalone>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; style-src 'unsafe-inline' blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; img-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; font-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; media-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; worker-src blob:; connect-src blob: data:; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>知临中学 · 已认可设计样板</title>
+<style>:root{color-scheme:light dark;background:light-dark(rgb(255 255 255), rgb(24 24 24))}html,body{margin:0}body{box-sizing:border-box;padding:1rem;background:inherit}iframe{display:block;width:100%;max-width:1024px;height:calc(100vh - 2rem);margin:0 auto;border:0}</style>
+</head>
+<body>
+<iframe sandbox="allow-scripts" referrerpolicy="no-referrer" title="知临中学 · 已认可设计样板" srcdoc="&lt;!doctype html&gt;
+&lt;html lang=&quot;zh-CN&quot; data-visualize-standalone&gt;
+&lt;head&gt;
+&lt;meta charset=&quot;utf-8&quot;&gt;
+&lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;&gt;
+&lt;meta name=&quot;referrer&quot; content=&quot;no-referrer&quot;&gt;
+&lt;meta http-equiv=&quot;Content-Security-Policy&quot; content=&quot;default-src &#x27;none&#x27;; script-src &#x27;unsafe-inline&#x27; &#x27;unsafe-eval&#x27; &#x27;wasm-unsafe-eval&#x27; blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; style-src &#x27;unsafe-inline&#x27; blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; img-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; font-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; media-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; worker-src blob:; connect-src blob: data:; frame-src &#x27;none&#x27;; object-src &#x27;none&#x27;; base-uri &#x27;none&#x27;; form-action &#x27;none&#x27;&quot;&gt;
+&lt;title&gt;知临中学 · 已认可设计样板&lt;/title&gt;
+&lt;style&gt;:root {
+  color-scheme: light dark;
+  background-color: var(
+    --background,
+    var(--color-background-primary, light-dark(rgb(255 255 255), rgb(24 24 24)))
+  ) !important;
+
+  /* Agent-facing contract; keep in sync with SKILL.md. */
+  --background: var(
+    --color-background-primary,
+    light-dark(rgb(255 255 255), rgb(24 24 24))
+  );
+  --foreground: var(
+    --color-text-primary,
+    light-dark(rgb(26 28 31), rgb(255 255 255))
+  );
+  --card: color-mix(in oklab, var(--foreground) 5%, var(--background));
+  --card-foreground: var(
+    --color-text-primary,
+    light-dark(rgb(26 28 31), rgb(255 255 255))
+  );
+  --popover: var(
+    --color-background-secondary,
+    light-dark(rgb(255 255 255), rgb(45 45 45))
+  );
+  --popover-foreground: var(
+    --color-text-primary,
+    light-dark(rgb(26 28 31), rgb(255 255 255))
+  );
+  --primary: var(
+    --color-text-info,
+    light-dark(rgb(51 156 255), rgb(131 195 255))
+  );
+  --primary-foreground: var(
+    --color-text-inverse,
+    light-dark(rgb(255 255 255), rgb(13 13 13))
+  );
+  --secondary: var(
+    --color-background-secondary,
+    light-dark(rgb(255 255 255 / 96%), rgb(54 54 54 / 96%))
+  );
+  --secondary-foreground: var(
+    --color-text-primary,
+    light-dark(rgb(26 28 31), rgb(255 255 255))
+  );
+  --muted: color-mix(in srgb, var(--foreground) 10%, transparent);
+  --muted-foreground: var(
+    --color-text-secondary,
+    light-dark(rgb(26 28 31 / 49.4%), rgb(255 255 255 / 49.8%))
+  );
+  --accent: var(
+    --color-background-info,
+    light-dark(rgb(229 242 255), rgb(13 39 63))
+  );
+  --accent-foreground: var(
+    --color-text-info,
+    light-dark(rgb(51 156 255), rgb(131 195 255))
+  );
+  --destructive: var(
+    --color-text-warning,
+    light-dark(rgb(226 85 7), rgb(255 133 73))
+  );
+  --border: var(
+    --color-border-secondary,
+    light-dark(rgb(26 28 31 / 8%), rgb(255 255 255 / 8.2%))
+  );
+  --input: var(
+    --color-border-primary,
+    light-dark(
+      rgb(26 28 31 / 11.8%),
+      color-mix(in oklab, rgb(0 0 0) 10%, transparent)
+    )
+  );
+  --ring: var(
+    --color-ring-primary,
+    light-dark(rgb(51 156 255), rgb(131 195 255 / 76%))
+  );
+  --font-size-base: var(--font-text-md-size, 14px);
+  --blue: light-dark(rgb(51 156 255), rgb(51 156 255));
+  --orange: light-dark(rgb(226 85 7), rgb(251 106 34));
+  --green: light-dark(rgb(0 162 64), rgb(64 201 119));
+  --red: light-dark(rgb(224 46 42), rgb(255 103 100));
+  --purple: light-dark(rgb(146 79 247), rgb(173 123 249));
+  --yellow: light-dark(rgb(255 195 0), rgb(255 210 64));
+  --viz-series-1: var(--primary);
+  --viz-series-2: light-dark(rgb(243 136 59), rgb(245 154 86));
+  --viz-series-3: light-dark(rgb(93 201 119), rgb(116 213 139));
+  --viz-series-4: light-dark(rgb(235 119 177), rgb(240 143 192));
+  --viz-series-5: light-dark(rgb(155 121 236), rgb(170 145 239));
+  --viz-series-6: light-dark(rgb(58 185 177), rgb(90 203 194));
+
+  /* Internal implementation variables; not part of the agent contract. */
+  --font-sans: -apple-system, system-ui, &quot;Segoe UI&quot;, sans-serif;
+  --font-mono:
+    ui-monospace, SFMono-Regular, &quot;SF Mono&quot;, Menlo, Consolas, &quot;Liberation Mono&quot;,
+    monospace;
+  --font-size-normal: max(11px, var(--font-size-base));
+  --font-size-tooltip: calc(var(--font-size-base) - 1px);
+  --font-size-small: max(11px, calc(var(--font-size-base) - 2px));
+  --font-size-h1: calc(var(--font-size-normal) * 1.7142857143);
+  --font-size-h2: calc(var(--font-size-normal) * 1.4285714286);
+  --font-size-h3: calc(var(--font-size-normal) * 1.2857142857);
+  --font-weight-normal: 430;
+  --font-weight-medium: 500;
+  --icon-size: 16px;
+  --line-height-normal: calc(var(--font-size-normal) * 1.5);
+  --line-height-tooltip: calc(var(--font-size-tooltip) * 1.4285714286);
+  --line-height-small: calc(var(--font-size-small) + 4px);
+  --corner-shape: round;
+  --radius: var(--border-radius-lg, 10px);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-2xl: calc(var(--radius) * 1.6);
+  --radius-full: 9999px;
+  --shadow-sm: 0 1px 2px -1px rgb(0 0 0 / 8%);
+  --checkmark-image: url(&quot;data:image/svg+xml,%3Csvg xmlns=&#x27;http://www.w3.org/2000/svg&#x27; viewBox=&#x27;0 0 17 17&#x27;%3E%3Cpath d=&#x27;M12.8961 3.64101C13.1297 3.41418 13.4984 3.37523 13.7779 3.56581C14.0571 3.75635 14.1554 4.11331 14.0299 4.41347L13.9615 4.53847L7.71151 13.7045C7.59411 13.8767 7.4063 13.9877 7.19881 14.0072C6.99136 14.0267 6.78564 13.9533 6.63826 13.806L2.88826 10.056L2.79842 9.9457C2.6192 9.67407 2.64927 9.30496 2.88826 9.06581C3.12738 8.82669 3.49647 8.79676 3.76815 8.97597L3.8785 9.06581L7.03084 12.2182L12.8053 3.74941L12.8961 3.64101Z&#x27;/%3E%3C/svg%3E&quot;);
+
+  /* Legacy aliases; not part of the current agent contract. */
+  --viz-bg: transparent;
+  --viz-panel: var(--card);
+  --viz-border: var(--border);
+  --viz-text: var(--foreground);
+  --viz-muted: var(--muted-foreground);
+  --viz-accent: var(--primary);
+  --viz-accent-text: var(--primary-foreground);
+  --viz-accent-bg: var(--accent);
+  --viz-font-size: var(--font-size-base);
+  --viz-warning: var(--destructive);
+}
+
+:root[data-theme=&quot;light&quot;] {
+  color-scheme: light;
+}
+
+:root[data-theme=&quot;dark&quot;] {
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html &gt; body {
+  /* Preserve MCP aliases for older inline renderers without creating :root cycles. */
+  --color-background-primary: var(
+    --background,
+    light-dark(rgb(255 255 255), rgb(24 24 24))
+  );
+  --color-text-primary: var(
+    --foreground,
+    light-dark(rgb(26 28 31), rgb(255 255 255))
+  );
+  --color-border-secondary: var(
+    --border,
+    light-dark(rgb(26 28 31 / 8%), rgb(255 255 255 / 8.2%))
+  );
+
+  margin: 0;
+  padding: var(--visualize-paint-gutter, 0px);
+  color: var(--foreground);
+  background: transparent !important;
+  font-family: var(--font-sans) !important;
+  font-size: var(--font-size-normal);
+  font-weight: var(--font-weight-normal);
+  line-height: var(--line-height-normal);
+}
+
+:root:not([data-app-block-surface], [data-visualize-standalone]) &gt; body {
+  padding: 12px;
+}
+
+a {
+  color: color-mix(in srgb, var(--viz-accent) 80%, var(--viz-text) 20%);
+  cursor: pointer;
+  font-weight: var(--font-weight-medium, 500);
+  text-decoration: none;
+  text-underline-offset: 2px;
+}
+
+a:is(:hover, :focus-visible) {
+  text-decoration-line: underline;
+  text-decoration-style: dashed;
+  text-decoration-thickness: 0.5px;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p {
+  margin-block: 0;
+}
+
+h1 {
+  font-size: var(--font-size-h1);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.25;
+}
+
+h2 {
+  font-size: var(--font-size-h2);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.25;
+}
+
+h3,
+h4,
+h5,
+h6 {
+  font-size: var(--font-size-h3);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.3;
+}
+
+b,
+strong,
+th {
+  font-weight: var(--font-weight-medium);
+}
+
+code:not(pre code) {
+  display: inline;
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  corner-shape: var(--corner-shape);
+  background: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+  overflow-wrap: anywhere;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  word-break: break-word;
+}
+
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  color: var(--foreground);
+  font: inherit;
+  text-align: start;
+}
+
+.table :is(th, td) {
+  padding-block: 10px;
+  padding-inline: 0 24px;
+  overflow-wrap: anywhere;
+  border-bottom: 1px solid var(--border);
+  text-align: start;
+  vertical-align: top;
+}
+
+.table-responsive &gt; .table :is(th, td) {
+  overflow-wrap: break-word;
+}
+
+.table :is(th, td):last-child {
+  padding-inline-end: 0;
+}
+
+.table :is(caption, thead th) {
+  font-weight: 600;
+}
+
+.table thead th {
+  padding-block: 8px;
+  border-bottom-color: color-mix(in srgb, var(--foreground) 16%, transparent);
+}
+
+.table tbody tr:last-child :is(th, td) {
+  border-bottom: 0;
+}
+
+.table.table-sm :is(th, td) {
+  padding-block: 6px;
+}
+
+.table.table-sm :is(th, td):not(:last-child) {
+  padding-inline-end: 16px;
+}
+
+.table :is(.text-end, [align=&quot;right&quot;]) {
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+
+.table :is(.text-center, [align=&quot;center&quot;]) {
+  text-align: center;
+}
+
+.table .text-nowrap {
+  white-space: nowrap;
+}
+
+#widget {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  padding: 0;
+  background: transparent !important;
+}
+
+.card {
+  min-width: 0;
+  padding: 12px;
+  overflow: hidden;
+  overflow-wrap: break-word;
+  border-radius: var(--radius-2xl);
+  corner-shape: var(--corner-shape);
+  color: var(--card-foreground);
+  background: var(--card);
+}
+
+#widget &gt; :not(.card, .progress) {
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.tooltip {
+  position: fixed;
+  z-index: 50;
+  top: 0;
+  left: 0;
+  width: max-content;
+  max-width: min(
+    20rem,
+    var(--tooltip-available-width, calc(100vw - 10px)),
+    calc(100vw - 10px)
+  );
+  max-height: min(
+    var(--tooltip-available-height, calc(100vh - 10px)),
+    calc(100vh - 10px)
+  );
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  corner-shape: var(--corner-shape);
+  color: var(--popover-foreground);
+  background: var(--popover);
+  box-shadow: none;
+  font-size: var(--font-size-tooltip);
+  line-height: var(--line-height-tooltip);
+  overflow-wrap: break-word;
+  white-space: normal;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* The shared runtime owns data-tooltip; suppress AppBlock&#x27;s pseudo-tooltip. */
+main [data-tooltip]::after {
+  content: none;
+}
+
+.viz-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(max(180px, 24%), 1fr));
+  gap: 10px;
+}
+
+.viz-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.viz-stat-value {
+  font-size: var(--font-size-h2);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.25;
+}
+
+.viz-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+hr {
+  width: 100%;
+  height: 1px;
+  margin-block: 6px;
+  border: 0;
+  background: var(--border);
+}
+
+.nav {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 4px;
+}
+
+.progress {
+  display: flex;
+  height: 8px;
+  margin-block: calc((var(--line-height-normal, 1.5em) - 8px) / 2);
+  overflow: hidden;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: var(--muted);
+}
+
+.progress-bar:only-child {
+  border-radius: var(--radius-full);
+}
+
+.progress-bar {
+  height: 100%;
+  flex-shrink: 0;
+  border: 0;
+  background: var(--viz-series-1);
+}
+
+.viz-badge {
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  color: var(--accent-foreground);
+  background: var(--accent);
+  font-weight: var(--font-weight-medium);
+}
+
+small,
+.text-small,
+.viz-badge {
+  font-size: var(--font-size-small);
+  line-height: var(--line-height-small);
+}
+
+.text-muted {
+  color: var(--muted-foreground);
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.viz-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.viz-controls &gt; .form-label {
+  display: grid;
+  min-width: min(100%, 260px);
+  flex: 1 1 280px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 2px 12px;
+  margin-bottom: 0;
+}
+
+.viz-controls &gt; .form-label &gt; :is(.form-control, .form-range, .form-select) {
+  grid-column: 1 / -1;
+}
+
+.btn,
+.nav-link,
+.form-check-input,
+.form-control,
+.form-range,
+.form-select {
+  font: inherit;
+}
+
+.btn,
+.nav-link {
+  appearance: button;
+  display: inline-flex;
+  inline-size: fit-content;
+  max-inline-size: 100%;
+  min-height: 28px;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin: 0;
+  padding: 0 8px;
+  -webkit-app-region: no-drag;
+  border: 1px solid var(--input);
+  border-radius: var(--radius-lg);
+  corner-shape: var(--corner-shape);
+  color: var(--secondary-foreground);
+  background: var(--secondary);
+  cursor: var(--cursor-interaction, pointer);
+  text-align: center;
+  text-decoration: none;
+  white-space: nowrap;
+  user-select: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+.btn:is(.btn-block, .viz-tile) {
+  inline-size: 100%;
+}
+
+.btn.viz-tile {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+a.btn {
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.btn:not(:disabled):hover,
+.nav-link:not(:disabled):not([aria-disabled=&quot;true&quot;]):hover {
+  background: color-mix(in srgb, var(--foreground) 6%, var(--secondary));
+}
+
+.btn-primary {
+  border-color: transparent;
+  color: var(--primary-foreground);
+  background: var(--foreground);
+  background-clip: padding-box;
+}
+
+.btn-primary .text-muted {
+  color: color-mix(in srgb, var(--primary-foreground) 50%, transparent);
+}
+
+.btn-primary:not(:disabled):hover {
+  background: color-mix(in srgb, var(--foreground) 80%, transparent);
+  background-clip: padding-box;
+}
+
+.btn-ghost {
+  border-color: transparent;
+  color: var(--muted-foreground);
+  background: transparent;
+}
+
+.btn-ghost:not(:disabled):hover {
+  color: var(--foreground);
+  background: color-mix(in srgb, var(--foreground) 6%, var(--secondary));
+}
+
+.nav-pills .nav-link {
+  min-width: 0;
+  border-color: transparent;
+  color: var(--muted-foreground);
+  background: transparent;
+}
+
+.nav-justified .nav-link {
+  flex: 1 1 0;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.nav-pills .nav-link.active {
+  color: var(--foreground);
+  background: var(--muted);
+}
+
+.btn:disabled,
+.nav-link:disabled,
+.nav-link[aria-disabled=&quot;true&quot;] {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+[data-lucide] {
+  stroke-width: 1.6;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--foreground);
+}
+
+.form-control {
+  display: block;
+  width: 100%;
+  min-height: 28px;
+  padding: 0 8px;
+  outline: none;
+  border: 1px solid var(--input);
+  border-radius: var(--radius-lg);
+  corner-shape: var(--corner-shape);
+  color: var(--foreground);
+  background: var(--secondary);
+}
+
+.form-control::placeholder {
+  color: var(--muted-foreground);
+}
+
+.form-control[type=&quot;file&quot;] {
+  padding: 0;
+  overflow: hidden;
+  cursor: var(--cursor-interaction, pointer);
+}
+
+.form-control[type=&quot;file&quot;]::file-selector-button {
+  min-height: 26px;
+  margin-right: 8px;
+  padding: 0 8px;
+  border: 0;
+  border-right: 1px solid var(--input);
+  color: var(--secondary-foreground);
+  background: var(--secondary);
+  cursor: inherit;
+  font: inherit;
+}
+
+.form-control[type=&quot;file&quot;]:not(:disabled):hover::file-selector-button {
+  background: color-mix(in srgb, var(--foreground) 6%, var(--secondary));
+}
+
+.form-control-color[type=&quot;color&quot;] {
+  width: 40px;
+  height: 28px;
+  padding: 3px;
+  cursor: var(--cursor-interaction, pointer);
+}
+
+.form-control-color[type=&quot;color&quot;]::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.form-control-color[type=&quot;color&quot;]::-webkit-color-swatch {
+  border: 0;
+  border-radius: calc(var(--radius-lg) - 4px);
+  corner-shape: var(--corner-shape);
+}
+
+textarea.form-control {
+  height: auto;
+  min-height: 72px;
+  padding: 8px 10px;
+  resize: vertical;
+}
+
+.form-control:focus-visible {
+  border-color: var(--ring);
+  box-shadow: inset 0 0 0 1px var(--ring);
+}
+
+.form-control:disabled,
+.form-select:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.form-select {
+  appearance: none;
+  display: block;
+  width: 100%;
+  min-height: 28px;
+  margin: 0;
+  padding: 0 32px 0 8px;
+  outline: none;
+  border: 1px solid var(--input);
+  border-radius: var(--radius-lg);
+  corner-shape: var(--corner-shape);
+  color: var(--foreground);
+  background-color: var(--secondary);
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--muted-foreground) 50%),
+    linear-gradient(135deg, var(--muted-foreground) 50%, transparent 50%);
+  background-position:
+    calc(100% - 14px) 50%,
+    calc(100% - 10px) 50%;
+  background-repeat: no-repeat;
+  background-size: 4px 4px;
+  cursor: var(--cursor-interaction, default);
+}
+
+.form-select:not(:disabled):hover {
+  background-color: color-mix(in srgb, var(--foreground) 6%, var(--secondary));
+}
+
+.form-select:focus-visible {
+  border-color: var(--ring);
+  box-shadow: inset 0 0 0 1px var(--ring);
+}
+
+.form-check {
+  display: flex;
+  min-height: 20px;
+  align-items: center;
+  gap: 6px;
+}
+
+.form-check-input {
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  margin: 0;
+  border: 1px solid var(--input);
+  color: var(--primary-foreground);
+  background-color: transparent;
+  cursor: var(--cursor-interaction, default);
+  transition:
+    background-color 150ms,
+    border-color 150ms,
+    box-shadow 150ms;
+}
+
+.form-check:not(.form-switch) .form-check-input[type=&quot;checkbox&quot;] {
+  border-color: var(--input);
+  border-radius: var(--radius-sm);
+  corner-shape: var(--corner-shape);
+  background-color: var(--secondary);
+  box-shadow: var(--shadow-sm);
+}
+
+.form-check:not(.form-switch)
+  .form-check-input:not(:disabled):not(:checked):hover {
+  background-color: var(--card);
+}
+
+.form-check:not(.form-switch) .form-check-input[type=&quot;checkbox&quot;]:checked {
+  border-color: var(--primary);
+  background-color: var(--primary);
+}
+
+.form-check:not(.form-switch)
+  .form-check-input[type=&quot;checkbox&quot;]:checked::before {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--primary-foreground);
+  content: &quot;&quot;;
+  mask: var(--checkmark-image) center / 12px 12px no-repeat;
+}
+
+.form-check-input[type=&quot;radio&quot;] {
+  width: 14px;
+  height: 14px;
+  border-radius: var(--radius-full);
+}
+
+.form-check-input[type=&quot;radio&quot;]:checked {
+  border: 2px solid var(--primary);
+  background:
+    radial-gradient(circle, var(--primary-foreground) 0 2.5px, transparent 3px),
+    var(--primary);
+}
+
+.form-check:not(.form-switch) .form-check-input:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.form-check:not(.form-switch) .form-check-input:disabled {
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.form-check:not(.form-switch) .form-check-input:disabled + .form-check-label {
+  cursor: not-allowed;
+}
+
+.form-switch .form-check-input:disabled,
+.form-switch .form-check-input:disabled + .form-check-label {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.form-check-label {
+  color: var(--foreground);
+  cursor: var(--cursor-interaction, default);
+}
+
+.form-switch .form-check-input {
+  position: relative;
+  width: 32px;
+  height: 20px;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: var(--muted);
+  box-shadow: none;
+  transition: background-color 200ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+.form-switch .form-check-input::before {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 16px;
+  height: 16px;
+  box-sizing: border-box;
+  border: 1px solid light-dark(var(--primary-foreground), var(--foreground));
+  border-radius: var(--radius-full);
+  background: light-dark(var(--primary-foreground), var(--foreground));
+  box-shadow: var(--shadow-sm);
+  content: &quot;&quot;;
+  transform: translate(2px, -50%);
+  transition: transform 200ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+.form-switch .form-check-input:checked {
+  background: var(--primary);
+}
+
+.form-switch .form-check-input:checked::before {
+  transform: translate(14px, -50%);
+}
+
+.form-switch .form-check-input:focus-visible {
+  box-shadow: 0 0 0 2px var(--ring);
+}
+
+.form-range {
+  appearance: none;
+  display: block;
+  width: 100%;
+  height: 28px;
+  flex: 1;
+  margin: 0;
+  padding: 0;
+  outline: none;
+  border: 0;
+  accent-color: var(--primary);
+  background: linear-gradient(
+      color-mix(in srgb, var(--foreground) 7%, transparent),
+      color-mix(in srgb, var(--foreground) 7%, transparent)
+    )
+    center / 100% 2px no-repeat;
+}
+
+.form-range::-webkit-slider-runnable-track {
+  height: 28px;
+  background: transparent;
+}
+
+.form-range::-webkit-slider-thumb {
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  margin-top: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: light-dark(var(--primary-foreground), var(--foreground));
+}
+
+.form-range:focus-visible::-webkit-slider-thumb {
+  border-color: var(--ring);
+  box-shadow: inset 0 0 0 1px var(--ring);
+}
+
+.form-range::-moz-range-track {
+  height: 28px;
+  background: transparent;
+}
+
+.form-range::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: light-dark(var(--primary-foreground), var(--foreground));
+}
+
+.form-range:focus-visible::-moz-range-thumb {
+  border-color: var(--ring);
+  box-shadow: inset 0 0 0 1px var(--ring);
+}
+
+.form-range:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.btn:not(.btn-primary, .viz-tile):is(
+  [aria-pressed=&quot;true&quot;],
+  [aria-selected=&quot;true&quot;],
+  .is-selected
+) {
+  border-color: var(--primary);
+  color: var(--primary-foreground);
+  background: var(--primary);
+}
+
+.btn.viz-tile:is([aria-pressed=&quot;true&quot;], [aria-selected=&quot;true&quot;], .is-selected) {
+  border-color: var(--primary);
+  box-shadow: inset 0 0 0 1px var(--primary);
+}
+
+.btn:focus-visible,
+.nav-link:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+@media (pointer: coarse) {
+  .btn,
+  .nav-link,
+  .form-control,
+  .form-select {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  /* Keep small-screen WebKit from zooming when a text field receives focus. */
+  .form-control,
+  .form-select {
+    font-size: max(16px, var(--font-size-normal));
+  }
+
+  .form-control[type=&quot;file&quot;]::file-selector-button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .form-control-color[type=&quot;color&quot;] {
+    width: 44px;
+    height: 44px;
+  }
+
+  .form-control:is(
+    [type=&quot;date&quot;],
+    [type=&quot;datetime-local&quot;],
+    [type=&quot;month&quot;],
+    [type=&quot;time&quot;],
+    [type=&quot;week&quot;]
+  ) {
+    min-width: 0;
+    max-width: 100%;
+    padding-block: 8px;
+  }
+
+  .form-check {
+    min-height: 44px;
+    padding-inline: 15px;
+  }
+
+  .form-check-input {
+    position: relative;
+  }
+
+  .form-check-input::after {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 44px;
+    height: 44px;
+    content: &quot;&quot;;
+    transform: translate(-50%, -50%);
+  }
+
+  .form-check-label {
+    display: inline-flex;
+    min-width: 44px;
+    min-height: 44px;
+    align-items: center;
+  }
+
+  .form-range {
+    height: 44px;
+    touch-action: pan-y;
+  }
+
+  .form-range::-webkit-slider-runnable-track {
+    height: 44px;
+  }
+
+  .form-range::-moz-range-track {
+    height: 44px;
+  }
+
+  .form-range::-webkit-slider-thumb {
+    margin-top: 12px;
+  }
+}
+
+svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+#widget &gt; svg {
+  width: 100%;
+}
+
+/* Model-authored chart rules can otherwise stretch icons after these styles load. */
+svg.lucide {
+  display: block;
+  width: var(--icon-size) !important;
+  height: var(--icon-size) !important;
+  flex: none;
+  margin: 0 !important;
+  stroke-width: 1.6;
+}
+
+.text-warning,
+.text-destructive {
+  color: var(--destructive);
+}
+
+html&gt;body{padding:0}&lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;div id=&quot;zhilin-study&quot;&gt;
+  &lt;style&gt;
+    #zhilin-study{--zl-paper:#fbfaf7;--zl-surface:#fffefa;--zl-ink:#242d27;--zl-muted:#626b62;--zl-line:#e3e6de;--zl-green:#386647;--zl-soft:#edf3eb;--zl-red:#833f3a;--zl-rose:#f8e9e5;--zl-warning:#7b5c24;color-scheme:light;color:var(--zl-ink);font-family:Inter,&quot;Noto Sans SC&quot;,&quot;Microsoft YaHei&quot;,system-ui,sans-serif;font-size:14px;line-height:1.5;width:100%;isolation:isolate}
+    #zhilin-study *{box-sizing:border-box}
+    #zhilin-study [hidden]{display:none!important}
+    #zhilin-study button,#zhilin-study input,#zhilin-study textarea{font:inherit}
+    #zhilin-study button{cursor:pointer}
+    #zhilin-study button:disabled{cursor:default;opacity:.5}
+    #zhilin-study button:focus-visible,#zhilin-study input:focus-visible,#zhilin-study textarea:focus-visible,#zhilin-study summary:focus-visible{outline:3px solid #769783;outline-offset:3px}
+    #zhilin-study button{transition:background 140ms,border-color 140ms,color 140ms}
+    #zhilin-study h1,#zhilin-study h2,#zhilin-study h3,#zhilin-study p{margin:0}
+    #zhilin-study svg{width:18px;height:18px;flex:none;stroke-width:1.65}
+    #zhilin-study .zl-review{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;padding:0 0 14px}
+    #zhilin-study .zl-review-label{font-size:12px;color:var(--zl-muted)}
+    #zhilin-study .zl-review-nav{display:flex;gap:5px;flex-wrap:wrap}
+    #zhilin-study .zl-review-nav button{border:1px solid var(--zl-line);border-radius:7px;padding:7px 12px;color:var(--zl-muted);background:var(--zl-surface)}
+    #zhilin-study .zl-review-nav button[aria-pressed=true]{border-color:var(--zl-green);background:var(--zl-green);color:var(--zl-surface)}
+    #zhilin-study .zl-app{background:var(--zl-paper);border:1px solid var(--zl-line);border-radius:12px;overflow:clip;min-width:0}
+    #zhilin-study .zl-header{display:flex;align-items:center;gap:24px;padding:0 28px;min-height:64px;border-bottom:1px solid var(--zl-line);background:var(--zl-surface)}
+    #zhilin-study .zl-brand{display:flex;align-items:center;gap:9px;padding:0;background:transparent;border:0;color:var(--zl-green);white-space:nowrap}
+    #zhilin-study .zl-brand span{font-family:&quot;Noto Serif SC&quot;,&quot;Songti SC&quot;,SimSun,serif;font-size:23px;font-weight:700;letter-spacing:1px}
+    #zhilin-study .zl-brand svg{width:25px;height:25px}
+    #zhilin-study .zl-header-search{margin-left:auto;display:flex;align-items:center;gap:9px;max-width:285px;flex:1;min-width:110px;background:var(--zl-paper);border:1px solid var(--zl-line);border-radius:7px;padding:8px 10px;color:var(--zl-muted)}
+    #zhilin-study .zl-header-search input{width:100%;min-width:0;border:0;background:transparent;color:var(--zl-ink);font-size:13px;outline-offset:5px}
+    #zhilin-study .zl-header-search input::placeholder{color:var(--zl-muted)}
+    #zhilin-study .zl-header-actions{display:flex;gap:12px;align-items:center}
+    #zhilin-study .zl-icon-button{display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:34px;border:0;background:transparent;color:var(--zl-muted);border-radius:7px;padding:5px}
+    #zhilin-study .zl-icon-button:hover{background:var(--zl-soft);color:var(--zl-green)}
+    #zhilin-study .zl-button{min-height:36px;padding:7px 12px;display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--zl-line);border-radius:7px;background:var(--zl-surface);color:var(--zl-ink);white-space:nowrap;font-weight:500}
+    #zhilin-study .zl-button:hover{background:var(--zl-soft);border-color:#bacdbb}
+    #zhilin-study .zl-button-primary{background:var(--zl-green);border-color:var(--zl-green);color:var(--zl-surface)}
+    #zhilin-study .zl-button-primary:hover{background:#2d553b;border-color:#2d553b}
+    #zhilin-study .zl-avatar{height:30px;width:30px;border-radius:50%;display:inline-grid;place-items:center;background:#e6ede2;border:1px solid #d4e0d0;color:#3d6447;flex:none;font-family:&quot;Noto Serif SC&quot;,SimSun,serif;font-size:13px}
+    #zhilin-study .zl-main{padding:28px 38px 30px;max-width:1060px;margin:auto;min-width:0}
+    #zhilin-study .zl-page-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:20px}
+    #zhilin-study .zl-page-heading h1{font-size:25px;font-weight:650;letter-spacing:-.5px;line-height:1.3}
+    #zhilin-study .zl-count{color:var(--zl-muted);font-size:12px;margin-left:10px;font-weight:400;letter-spacing:0;white-space:nowrap}
+    #zhilin-study .zl-link-button{border:0;background:transparent;color:var(--zl-green);padding:4px 0;font-size:13px;display:inline-flex;align-items:center;gap:6px}
+    #zhilin-study .zl-link-button:hover{text-decoration:underline}
+    #zhilin-study .zl-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid var(--zl-line)}
+    #zhilin-study .zl-tabs{display:flex;align-items:center;gap:24px}
+    #zhilin-study .zl-tabs button{border:0;border-bottom:2px solid transparent;background:transparent;padding:0 1px 12px;color:var(--zl-muted)}
+    #zhilin-study .zl-tabs button[aria-pressed=true]{border-bottom-color:var(--zl-green);color:var(--zl-green);font-weight:650}
+    #zhilin-study .zl-view-note{font-size:12px;color:var(--zl-muted);padding-bottom:12px}
+    #zhilin-study .zl-post-row{position:relative;display:grid;grid-template-columns:minmax(0,1fr) 90px;gap:24px;padding:19px 4px;border-bottom:1px solid var(--zl-line);background:transparent}
+    #zhilin-study .zl-post-row:hover{background:#f4f6ef}
+    #zhilin-study .zl-post-title{border:0;background:transparent;text-align:left;color:var(--zl-ink);font-size:18px;font-weight:650;padding:0;line-height:1.5;overflow-wrap:anywhere}
+    #zhilin-study .zl-post-title:hover{color:var(--zl-green)}
+    #zhilin-study .zl-excerpt{margin-top:5px!important;font-size:14px;line-height:1.65;color:var(--zl-muted);display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}
+    #zhilin-study .zl-meta{display:flex;align-items:center;gap:9px;flex-wrap:wrap;font-size:12px;color:var(--zl-muted);margin-top:9px}
+    #zhilin-study .zl-meta .zl-avatar{width:20px;height:20px;font-size:11px}
+    #zhilin-study .zl-meta .zl-dot{color:#9ba59b}
+    #zhilin-study .zl-tag{display:inline-flex;align-items:center;font-size:12px;color:var(--zl-green);border:0;border-radius:4px;background:var(--zl-soft);padding:2px 6px}
+    #zhilin-study .zl-row-activity{align-self:center;display:flex;flex-direction:column;align-items:flex-end;gap:5px;font-size:12px;color:var(--zl-muted)}
+    #zhilin-study .zl-row-activity span:first-child{display:flex;align-items:center;gap:5px;font-size:14px;color:var(--zl-green)}
+    #zhilin-study .zl-row-activity svg{width:16px;height:16px}
+    #zhilin-study .zl-pagination{display:flex;align-items:center;justify-content:space-between;gap:16px;padding-top:20px;font-size:12px;color:var(--zl-muted)}
+    #zhilin-study .zl-pages{display:flex;gap:5px;align-items:center}
+    #zhilin-study .zl-pages button{min-width:34px;height:34px;border:1px solid transparent;border-radius:6px;padding:4px 9px;background:transparent;color:var(--zl-muted)}
+    #zhilin-study .zl-pages button[aria-current=page]{background:var(--zl-soft);border-color:#d0ddce;color:var(--zl-green);font-weight:650}
+    #zhilin-study .zl-pages button:hover:not(:disabled){background:var(--zl-soft)}
+    #zhilin-study .zl-empty{padding:48px 8px;text-align:center;color:var(--zl-muted)}
+    #zhilin-study .zl-workspace{padding:22px 28px 32px}
+    #zhilin-study .zl-context-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:19px;font-size:13px}
+    #zhilin-study .zl-breadcrumb{display:flex;gap:8px;align-items:center;color:var(--zl-muted)}
+    #zhilin-study .zl-reading-grid{display:grid;grid-template-columns:minmax(0,1fr) 252px;gap:28px;align-items:start}
+    #zhilin-study .zl-paper{min-width:0;background:var(--zl-surface);border:1px solid var(--zl-line);border-radius:9px;padding:30px 34px 36px;box-shadow:0 4px 16px #24332805}
+    #zhilin-study .zl-article-title{font-family:&quot;Noto Serif SC&quot;,&quot;Songti SC&quot;,SimSun,serif;font-size:29px;line-height:1.5;letter-spacing:.02em;font-weight:650;margin-top:8px}
+    #zhilin-study .zl-byline{display:flex;align-items:center;gap:8px;flex-wrap:wrap;color:var(--zl-muted);font-size:12px;padding:12px 0 22px;border-bottom:1px solid var(--zl-line);margin-bottom:24px}
+    #zhilin-study .zl-prose{font-family:&quot;Noto Serif SC&quot;,&quot;Songti SC&quot;,SimSun,serif;font-size:17px;line-height:1.95;color:#303a31;overflow-wrap:anywhere}
+    #zhilin-study .zl-prose p+p{margin-top:20px}
+    #zhilin-study .zl-range{font:inherit;line-height:inherit;text-align:left;display:inline;padding:0 1px;border:0;border-bottom:1px dotted #b47c73;background:var(--zl-rose);color:inherit;box-decoration-break:clone;-webkit-box-decoration-break:clone;cursor:pointer;border-radius:2px}
+    #zhilin-study .zl-range[aria-pressed=true]{background:#f0d2c9;border-bottom-color:var(--zl-red)}
+    #zhilin-study .zl-rail{min-width:0}
+    #zhilin-study .zl-rail-heading{display:flex;align-items:center;justify-content:space-between;color:var(--zl-muted);font-size:12px;margin:6px 0 15px}
+    #zhilin-study .zl-annotation{padding:14px 15px;border:1px solid #e8d9d2;background:#fffaf7;border-radius:8px;transition:border-color 140ms,box-shadow 140ms;margin-bottom:14px}
+    #zhilin-study .zl-annotation.is-selected{border-color:#bc8f81;box-shadow:inset 3px 0 #a56e60}
+    #zhilin-study .zl-thread-meta{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--zl-muted);margin-bottom:9px;flex-wrap:wrap}
+    #zhilin-study .zl-thread-meta strong{font-size:13px;font-weight:650;color:var(--zl-ink)}
+    #zhilin-study .zl-thread-meta .zl-avatar{width:22px;height:22px;font-size:11px}
+    #zhilin-study .zl-annotation p{font-size:13px;line-height:1.7}
+    #zhilin-study .zl-thread-actions{display:flex;align-items:center;gap:15px;margin-top:10px}
+    #zhilin-study .zl-thread-actions button{border:0;background:transparent;padding:0;font-size:12px;color:var(--zl-red)}
+    #zhilin-study .zl-thread-reply{border-top:1px solid #eaded7;margin-top:12px;padding-top:10px}
+    #zhilin-study .zl-thread-reply p{margin-top:4px}
+    #zhilin-study .zl-thread-input{margin-top:12px;display:grid;gap:8px}
+    #zhilin-study textarea{min-height:110px;width:100%;resize:none;border:1px solid var(--zl-line);border-radius:6px;padding:8px;background:var(--zl-surface);color:var(--zl-ink)}
+    #zhilin-study .zl-thread-input .zl-button{justify-self:end;font-size:12px}
+    #zhilin-study .zl-discussion{border-top:1px solid var(--zl-line);padding-top:24px;margin-top:30px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+    #zhilin-study .zl-discussion h2{font-family:inherit;font-size:17px;font-weight:650}
+    #zhilin-study .zl-import-grid{display:grid;grid-template-columns:minmax(0,1fr) 268px;gap:24px;align-items:start}
+    #zhilin-study .zl-import-top{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:20px;flex-wrap:wrap}
+    #zhilin-study .zl-import-top h1{font-size:23px;font-weight:650;line-height:1.4}
+    #zhilin-study .zl-file-meta{display:flex;align-items:center;gap:6px;color:var(--zl-muted);font-size:12px;margin-top:5px}
+    #zhilin-study .zl-import-actions{display:flex;align-items:center;gap:8px}
+    #zhilin-study .zl-field-title{width:100%;padding:0 0 12px;border:0;border-bottom:1px solid var(--zl-line);color:var(--zl-ink);background:transparent;font-family:&quot;Noto Serif SC&quot;,&quot;Songti SC&quot;,SimSun,serif;font-size:26px;font-weight:650;line-height:1.5;border-radius:0}
+    #zhilin-study .zl-edit-tools{display:flex;gap:4px;align-items:center;flex-wrap:wrap;border-bottom:1px solid var(--zl-line);padding:8px 0;margin-bottom:23px}
+    #zhilin-study .zl-edit-tools button{height:30px;min-width:30px;padding:4px;display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:4px;background:transparent;color:var(--zl-muted)}
+    #zhilin-study .zl-edit-tools button:hover{background:var(--zl-soft)}
+    #zhilin-study .zl-edit-tools .zl-separator{height:17px;width:1px;background:var(--zl-line);margin:0 5px}
+    #zhilin-study .zl-panel{background:var(--zl-surface);border:1px solid var(--zl-line);border-radius:8px;padding:15px;margin-bottom:12px}
+    #zhilin-study .zl-panel h2{font-size:14px;font-weight:650;display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+    #zhilin-study .zl-check-line{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--zl-green);margin-top:9px}
+    #zhilin-study .zl-panel details{border-top:1px solid var(--zl-line);padding-top:12px;margin-top:13px}
+    #zhilin-study .zl-panel summary{display:flex;align-items:center;gap:7px;cursor:pointer;color:var(--zl-warning);font-size:13px;list-style:none}
+    #zhilin-study .zl-panel details[open] summary{margin-bottom:9px}
+    #zhilin-study .zl-panel details p{font-size:13px;line-height:1.65;color:var(--zl-muted)}
+    #zhilin-study .zl-panel .zl-warning-copy{padding:10px;border-radius:5px;background:#f7f0e2;color:#725522}
+    #zhilin-study .zl-origin{font-size:11px;color:var(--zl-muted);padding:2px 5px;border:1px solid var(--zl-line);border-radius:4px}
+    #zhilin-study .zl-map-row{display:grid;grid-template-columns:1fr auto;gap:10px;padding:9px 0;border-top:1px solid var(--zl-line);font-size:13px;align-items:center}
+    #zhilin-study .zl-map-row:first-of-type{border-top:0;padding-top:0}
+    #zhilin-study .zl-map-row small{display:block;font-size:11px;color:var(--zl-muted);margin-top:3px}
+    #zhilin-study .zl-map-row select{font:inherit;max-width:110px;border:1px solid var(--zl-line);border-radius:5px;padding:5px;background:var(--zl-surface);color:var(--zl-green)}
+    #zhilin-study .zl-footnote{font-size:12px;color:var(--zl-muted);line-height:1.65}
+    #zhilin-study .zl-import-annotation{border-top:1px solid var(--zl-line);padding-top:12px;margin-top:12px}
+    #zhilin-study .zl-import-annotation p{font-size:13px;line-height:1.7;margin:7px 0}
+    #zhilin-study .zl-import-ready{font-size:12px;color:var(--zl-green);display:flex;align-items:center;gap:6px}
+    #zhilin-study .zl-preview-notice{padding:12px 0;font-size:13px;color:var(--zl-muted)}
+    #zhilin-study .zl-mobile-search{display:none}
+    #zhilin-study .zl-sheet{width:calc(100% - 24px);max-width:440px;max-height:85dvh;overflow:auto;padding:20px;border:1px solid var(--zl-line);border-radius:12px;background:var(--zl-surface);color:var(--zl-ink);margin:auto auto 12px;box-shadow:0 12px 35px #24332822}
+    #zhilin-study .zl-sheet::backdrop{background:#24332855}
+    #zhilin-study .zl-sheet-top{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:16px}
+    #zhilin-study .zl-sheet-top h2{font-size:17px;font-weight:650}
+    #zhilin-study .zl-sheet p{font-size:14px;line-height:1.8;margin-top:10px}
+    #zhilin-study .zl-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+    @container zl-frame (max-width:900px){
+      #zhilin-study .zl-header{gap:14px;padding:0 18px}
+      #zhilin-study .zl-header-search{max-width:200px}
+      #zhilin-study .zl-main{padding:24px}
+      #zhilin-study .zl-reading-grid,#zhilin-study .zl-import-grid{grid-template-columns:minmax(0,1fr)}
+      #zhilin-study .zl-reading-grid .zl-rail{display:none}
+      #zhilin-study .zl-rail-heading{grid-column:1/-1;margin-bottom:0}
+      #zhilin-study .zl-annotation{margin:0}
+      #zhilin-study .zl-paper{padding:26px 30px}
+      #zhilin-study .zl-import-rail{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+      #zhilin-study .zl-import-rail .zl-panel{margin:0}
+      #zhilin-study .zl-import-rail .zl-panel:last-of-type{grid-column:1/-1}
+      #zhilin-study .zl-import-rail&gt;.zl-footnote{grid-column:1/-1}
+    }
+    @container zl-frame (max-width:520px){
+      #zhilin-study .zl-header{min-height:60px;gap:8px;padding:10px 14px;flex-wrap:wrap}
+      #zhilin-study .zl-brand span{font-size:20px}
+      #zhilin-study .zl-brand svg{width:21px;height:21px}
+      #zhilin-study .zl-header-search{display:none}
+      #zhilin-study .zl-mobile-search{display:inline-flex}
+      #zhilin-study .zl-header-search.is-open{display:flex;order:3;flex-basis:100%;max-width:none;margin:3px 0 0}
+      #zhilin-study .zl-header-actions{margin-left:auto;gap:5px}
+      #zhilin-study .zl-header-actions&gt;.zl-button span{display:none}
+      #zhilin-study .zl-header-actions&gt;.zl-button{padding:7px 9px}
+      #zhilin-study .zl-header-actions&gt;.zl-avatar{display:inline-grid;width:26px;height:26px}
+      #zhilin-study .zl-main{padding:22px 17px}
+      #zhilin-study .zl-page-heading{margin-bottom:19px}
+      #zhilin-study .zl-page-heading h1{font-size:23px}
+      #zhilin-study .zl-post-row{gap:10px;grid-template-columns:minmax(0,1fr) 46px;padding:17px 0}
+      #zhilin-study .zl-post-title{font-size:17px}
+      #zhilin-study .zl-row-activity span:last-child{display:none}
+      #zhilin-study .zl-excerpt{-webkit-line-clamp:2;font-size:14px}
+      #zhilin-study .zl-meta{gap:6px}
+      #zhilin-study .zl-count,#zhilin-study .zl-view-note{display:none}
+      #zhilin-study .zl-workspace{padding:18px 14px 24px}
+      #zhilin-study .zl-paper{padding:23px 21px}
+      #zhilin-study .zl-article-title{font-size:26px}
+      #zhilin-study .zl-import-rail{display:block}
+      #zhilin-study .zl-rail-heading{margin:4px 0 12px}
+      #zhilin-study .zl-annotation,#zhilin-study .zl-import-rail .zl-panel{margin-bottom:12px}
+      #zhilin-study .zl-import-top{display:block}
+      #zhilin-study .zl-import-actions{justify-content:space-between;margin-top:15px}
+      #zhilin-study .zl-file-meta{flex-wrap:wrap}
+      #zhilin-study .zl-field-title{font-size:23px}
+      #zhilin-study .zl-context-bar .zl-import-ready{display:none}
+      #zhilin-study .zl-pagination{align-items:flex-start;flex-direction:column;gap:10px}
+      #zhilin-study .zl-review-nav button{padding:7px 9px;font-size:13px}
+    }
+    @media(pointer:coarse){#zhilin-study .zl-button,#zhilin-study .zl-icon-button,#zhilin-study .zl-pages button,#zhilin-study .zl-review-nav button,#zhilin-study .zl-thread-actions button,#zhilin-study .zl-edit-tools button{min-height:44px;min-width:44px}#zhilin-study input,#zhilin-study textarea,#zhilin-study select{font-size:16px}}
+    @media(prefers-reduced-motion:reduce){#zhilin-study *{transition:none!important;scroll-behavior:auto!important}}
+  &lt;/style&gt;
+  &lt;div class=&quot;zl-review&quot;&gt;
+    &lt;div class=&quot;zl-review-nav&quot; aria-label=&quot;切换设计样板&quot;&gt;
+      &lt;button type=&quot;button&quot; data-view=&quot;home&quot; aria-pressed=&quot;true&quot;&gt;首页&lt;/button&gt;
+      &lt;button type=&quot;button&quot; data-view=&quot;reading&quot; aria-pressed=&quot;false&quot;&gt;文章详情&lt;/button&gt;
+      &lt;button type=&quot;button&quot; data-view=&quot;import&quot; aria-pressed=&quot;false&quot;&gt;导入预览&lt;/button&gt;
+    &lt;/div&gt;
+    &lt;span class=&quot;zl-review-label&quot;&gt;设计样板 · 示例内容&lt;/span&gt;
+  &lt;/div&gt;
+  &lt;div class=&quot;zl-app&quot; style=&quot;container-type:inline-size;container-name:zl-frame&quot;&gt;
+    &lt;header class=&quot;zl-header&quot;&gt;
+      &lt;button class=&quot;zl-brand&quot; type=&quot;button&quot; data-go=&quot;home&quot; aria-label=&quot;知临中学首页&quot;&gt;&lt;i data-lucide=&quot;leaf&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;span&gt;知临中学&lt;/span&gt;&lt;/button&gt;
+      &lt;form class=&quot;zl-header-search&quot; id=&quot;zl-search-form&quot; role=&quot;search&quot;&gt;&lt;i data-lucide=&quot;search&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;input id=&quot;zl-query&quot; aria-label=&quot;搜索示例帖子&quot; placeholder=&quot;搜索标题或正文&quot;&gt;&lt;button class=&quot;zl-icon-button&quot; id=&quot;zl-clear&quot; type=&quot;button&quot; aria-label=&quot;清除搜索&quot; hidden&gt;&lt;i data-lucide=&quot;x&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/button&gt;&lt;/form&gt;
+      &lt;nav class=&quot;zl-header-actions&quot; aria-label=&quot;主导航&quot;&gt;
+        &lt;button class=&quot;zl-icon-button zl-mobile-search&quot; type=&quot;button&quot; id=&quot;zl-mobile-search&quot; aria-label=&quot;展开搜索&quot; aria-expanded=&quot;false&quot;&gt;&lt;i data-lucide=&quot;search&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/button&gt;
+        &lt;button class=&quot;zl-icon-button&quot; type=&quot;button&quot; data-notice=&quot;通知界面将沿用紧凑标题、筛选和列表结构。&quot; aria-label=&quot;通知&quot;&gt;&lt;i data-lucide=&quot;bell&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/button&gt;
+        &lt;button class=&quot;zl-button zl-button-primary&quot; type=&quot;button&quot; data-notice=&quot;写帖与编辑将沿用文章纸面和顶部操作区；此处展示前三个设计样板。&quot; aria-label=&quot;写帖子&quot;&gt;&lt;i data-lucide=&quot;pen-line&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;span&gt;写帖子&lt;/span&gt;&lt;/button&gt;
+        &lt;span class=&quot;zl-avatar&quot; aria-label=&quot;柚子&quot;&gt;柚&lt;/span&gt;
+      &lt;/nav&gt;
+    &lt;/header&gt;
+    &lt;section data-panel=&quot;home&quot; class=&quot;zl-main&quot; aria-label=&quot;首页设计样板&quot;&gt;
+      &lt;div class=&quot;zl-page-heading&quot;&gt;&lt;h1&gt;帖子&lt;span class=&quot;zl-count&quot; id=&quot;zl-total&quot;&gt;12 篇&lt;/span&gt;&lt;/h1&gt;&lt;button class=&quot;zl-link-button&quot; type=&quot;button&quot; data-go=&quot;import&quot;&gt;&lt;i data-lucide=&quot;file-input&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;导入 DOCX&lt;/button&gt;&lt;/div&gt;
+      &lt;div class=&quot;zl-toolbar&quot;&gt;&lt;div class=&quot;zl-tabs&quot; aria-label=&quot;帖子排序&quot;&gt;&lt;button type=&quot;button&quot; data-sort=&quot;latest&quot; aria-pressed=&quot;true&quot;&gt;最新&lt;/button&gt;&lt;button type=&quot;button&quot; data-sort=&quot;active&quot; aria-pressed=&quot;false&quot;&gt;最近活跃&lt;/button&gt;&lt;/div&gt;&lt;span class=&quot;zl-view-note&quot;&gt;文字与讨论&lt;/span&gt;&lt;/div&gt;
+      &lt;div id=&quot;zl-posts&quot;&gt;&lt;/div&gt;
+      &lt;div class=&quot;zl-pagination&quot;&gt;&lt;span id=&quot;zl-range-label&quot;&gt;第 1–6 篇，共 12 篇&lt;/span&gt;&lt;nav class=&quot;zl-pages&quot; id=&quot;zl-pages&quot; aria-label=&quot;帖子分页&quot;&gt;&lt;/nav&gt;&lt;/div&gt;
+    &lt;/section&gt;
+    &lt;section data-panel=&quot;reading&quot; class=&quot;zl-workspace&quot; aria-label=&quot;文章详情设计样板&quot; hidden&gt;
+      &lt;div class=&quot;zl-context-bar&quot;&gt;&lt;div class=&quot;zl-breadcrumb&quot;&gt;&lt;button class=&quot;zl-link-button&quot; type=&quot;button&quot; data-go=&quot;home&quot;&gt;&lt;i data-lucide=&quot;arrow-left&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;帖子&lt;/button&gt;&lt;span&gt;/&lt;/span&gt;&lt;span&gt;正文&lt;/span&gt;&lt;/div&gt;&lt;button class=&quot;zl-link-button&quot; type=&quot;button&quot; id=&quot;zl-open-annotations&quot;&gt;&lt;i data-lucide=&quot;messages-square&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;2 条批注&lt;/button&gt;&lt;/div&gt;
+      &lt;div class=&quot;zl-reading-grid&quot;&gt;
+        &lt;article class=&quot;zl-paper&quot;&gt;
+          &lt;span class=&quot;zl-tag&quot;&gt;大学篇&lt;/span&gt;
+          &lt;h1 class=&quot;zl-article-title&quot;&gt;报到日，风从紫金港吹来&lt;/h1&gt;
+          &lt;div class=&quot;zl-byline&quot;&gt;&lt;span class=&quot;zl-avatar&quot;&gt;柚&lt;/span&gt;&lt;span&gt;柚子&lt;/span&gt;&lt;span&gt;2026年9月5日 14:30&lt;/span&gt;&lt;span&gt;· 已编辑&lt;/span&gt;&lt;/div&gt;
+          &lt;div class=&quot;zl-prose&quot;&gt;
+            &lt;p&gt;走过螃蟹楼，宿舍区的声音渐渐清楚起来。行李箱的轮子压过砖缝，路边的帐篷一顶挨着一顶，有人举着学院的牌子，有人在树荫下等迟迟没有到来的室友。&lt;/p&gt;
+            &lt;p&gt;吴晨阳还在说他的工位。笔记本带去教室，桌上再配一台台式机——他说到这里，连拖箱子的脚步都轻快了些。&lt;/p&gt;
+            &lt;p&gt;&lt;button class=&quot;zl-range&quot; type=&quot;button&quot; data-annotation=&quot;one&quot; aria-pressed=&quot;false&quot;&gt;“先去宿舍吧。”林昭把手里的地图折好，“校园卡明天也能办。”&lt;/button&gt;林柚子点点头，又回头看了一眼路口。他们刚刚走过的地方，还不断有新生推着箱子进来。&lt;/p&gt;
+            &lt;p&gt;到了岔路，几个人停下来对了一遍宿舍的位置。吴晨阳分在蓝田，林柚子要去紫云。地图上只隔着一小段路，真正站在这里，才发现接下来得分头走。&lt;/p&gt;
+            &lt;p&gt;&lt;button class=&quot;zl-range&quot; type=&quot;button&quot; data-annotation=&quot;two&quot; aria-pressed=&quot;false&quot;&gt;项铃把一瓶还没开封的水塞进他背包侧袋，顺手把翘起来的肩带理平了。&lt;/button&gt;“安顿好了发个消息。”她说。&lt;/p&gt;
+          &lt;/div&gt;
+          &lt;div class=&quot;zl-discussion&quot;&gt;&lt;h2&gt;讨论 &lt;span class=&quot;zl-count&quot;&gt;3 条回复&lt;/span&gt;&lt;/h2&gt;&lt;button class=&quot;zl-button&quot; type=&quot;button&quot; data-reply-target=&quot;article&quot;&gt;回复文章&lt;/button&gt;&lt;/div&gt;
+          &lt;form class=&quot;zl-thread-input&quot; data-composer=&quot;article&quot; hidden&gt;&lt;label class=&quot;zl-footnote&quot; for=&quot;zl-article-reply&quot;&gt;回复文章&lt;/label&gt;&lt;textarea id=&quot;zl-article-reply&quot; placeholder=&quot;写下你的想法&quot;&gt;&lt;/textarea&gt;&lt;button class=&quot;zl-button zl-button-primary&quot; type=&quot;submit&quot;&gt;发送回复&lt;/button&gt;&lt;/form&gt;
+        &lt;/article&gt;
+        &lt;aside class=&quot;zl-rail&quot; id=&quot;zl-annotations&quot; aria-label=&quot;正文批注&quot;&gt;
+          &lt;div class=&quot;zl-rail-heading&quot;&gt;&lt;span&gt;正文批注&lt;/span&gt;&lt;span&gt;2 条&lt;/span&gt;&lt;/div&gt;
+          &lt;article class=&quot;zl-annotation&quot; data-thread=&quot;one&quot;&gt;&lt;div class=&quot;zl-thread-meta&quot;&gt;&lt;span class=&quot;zl-avatar&quot;&gt;林&lt;/span&gt;&lt;strong&gt;林昭&lt;/strong&gt;&lt;span&gt;15:12&lt;/span&gt;&lt;/div&gt;&lt;p&gt;这里先让大家去宿舍很自然。校园卡的推销可以留一点环境声，不必展开成一整段。&lt;/p&gt;&lt;div class=&quot;zl-thread-actions&quot;&gt;&lt;button type=&quot;button&quot; data-reply-target=&quot;one&quot;&gt;回复批注&lt;/button&gt;&lt;button type=&quot;button&quot; data-locate=&quot;one&quot;&gt;定位原文&lt;/button&gt;&lt;/div&gt;&lt;form class=&quot;zl-thread-input&quot; data-composer=&quot;one&quot; hidden&gt;&lt;label class=&quot;zl-sr&quot; for=&quot;zl-reply-one&quot;&gt;回复林昭&lt;/label&gt;&lt;textarea id=&quot;zl-reply-one&quot; placeholder=&quot;回复林昭…&quot;&gt;&lt;/textarea&gt;&lt;button class=&quot;zl-button zl-button-primary&quot; type=&quot;submit&quot;&gt;发送回复&lt;/button&gt;&lt;/form&gt;&lt;div class=&quot;zl-thread-reply&quot;&gt;&lt;div class=&quot;zl-thread-meta&quot;&gt;&lt;strong&gt;柚子&lt;/strong&gt;&lt;span&gt;15:24&lt;/span&gt;&lt;/div&gt;&lt;p&gt;嗯，保留路边的热闹，把重心放回几个人身上。&lt;/p&gt;&lt;/div&gt;&lt;/article&gt;
+          &lt;article class=&quot;zl-annotation&quot; data-thread=&quot;two&quot;&gt;&lt;div class=&quot;zl-thread-meta&quot;&gt;&lt;span class=&quot;zl-avatar&quot;&gt;姬&lt;/span&gt;&lt;strong&gt;姬瑕&lt;/strong&gt;&lt;span&gt;16:08&lt;/span&gt;&lt;/div&gt;&lt;p&gt;这个小动作可以留下。不用再解释她舍不得，读到这里已经能感觉到了。&lt;/p&gt;&lt;div class=&quot;zl-thread-actions&quot;&gt;&lt;button type=&quot;button&quot; data-reply-target=&quot;two&quot;&gt;回复批注&lt;/button&gt;&lt;button type=&quot;button&quot; data-locate=&quot;two&quot;&gt;定位原文&lt;/button&gt;&lt;/div&gt;&lt;form class=&quot;zl-thread-input&quot; data-composer=&quot;two&quot; hidden&gt;&lt;label class=&quot;zl-sr&quot; for=&quot;zl-reply-two&quot;&gt;回复姬瑕&lt;/label&gt;&lt;textarea id=&quot;zl-reply-two&quot; placeholder=&quot;回复姬瑕…&quot;&gt;&lt;/textarea&gt;&lt;button class=&quot;zl-button zl-button-primary&quot; type=&quot;submit&quot;&gt;发送回复&lt;/button&gt;&lt;/form&gt;&lt;/article&gt;
+        &lt;/aside&gt;
+      &lt;/div&gt;
+    &lt;/section&gt;
+    &lt;section data-panel=&quot;import&quot; class=&quot;zl-workspace&quot; aria-label=&quot;DOCX 导入预览设计样板&quot; hidden&gt;
+      &lt;div class=&quot;zl-context-bar&quot;&gt;&lt;div class=&quot;zl-breadcrumb&quot;&gt;&lt;button class=&quot;zl-link-button&quot; type=&quot;button&quot; data-go=&quot;home&quot;&gt;&lt;i data-lucide=&quot;arrow-left&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;帖子&lt;/button&gt;&lt;span&gt;/&lt;/span&gt;&lt;span&gt;导入 DOCX&lt;/span&gt;&lt;/div&gt;&lt;span class=&quot;zl-import-ready&quot;&gt;&lt;i data-lucide=&quot;check&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;预览已准备好&lt;/span&gt;&lt;/div&gt;
+      &lt;div class=&quot;zl-import-top&quot;&gt;&lt;div&gt;&lt;h1&gt;检查并导入&lt;/h1&gt;&lt;div class=&quot;zl-file-meta&quot;&gt;&lt;i data-lucide=&quot;file-text&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;大学篇·报到日.docx&lt;span&gt;·&lt;/span&gt;&lt;span&gt;正文及 2 条批注&lt;/span&gt;&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;zl-import-actions&quot;&gt;&lt;button class=&quot;zl-button&quot; type=&quot;button&quot; id=&quot;zl-rechoose&quot;&gt;重新选文件&lt;/button&gt;&lt;button class=&quot;zl-button zl-button-primary&quot; type=&quot;button&quot; id=&quot;zl-import-confirm&quot;&gt;确认导入&lt;/button&gt;&lt;/div&gt;&lt;/div&gt;
+      &lt;div class=&quot;zl-import-grid&quot;&gt;
+        &lt;article class=&quot;zl-paper&quot;&gt;&lt;label class=&quot;zl-sr&quot; for=&quot;zl-import-title&quot;&gt;帖子标题&lt;/label&gt;&lt;input class=&quot;zl-field-title&quot; id=&quot;zl-import-title&quot; value=&quot;报到日，风从紫金港吹来&quot;&gt;&lt;div class=&quot;zl-edit-tools&quot; aria-label=&quot;正文工具栏&quot;&gt;&lt;button type=&quot;button&quot; data-format=&quot;标题&quot; aria-label=&quot;标题&quot;&gt;&lt;i data-lucide=&quot;heading-2&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/button&gt;&lt;span class=&quot;zl-separator&quot;&gt;&lt;/span&gt;&lt;button type=&quot;button&quot; data-format=&quot;粗体&quot; aria-label=&quot;粗体&quot;&gt;&lt;i data-lucide=&quot;bold&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/button&gt;&lt;button type=&quot;button&quot; data-format=&quot;斜体&quot; aria-label=&quot;斜体&quot;&gt;&lt;i data-lucide=&quot;italic&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/button&gt;&lt;button type=&quot;button&quot; data-format=&quot;引用&quot; aria-label=&quot;引用&quot;&gt;&lt;i data-lucide=&quot;quote&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/button&gt;&lt;button type=&quot;button&quot; data-format=&quot;列表&quot; aria-label=&quot;列表&quot;&gt;&lt;i data-lucide=&quot;list&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/button&gt;&lt;span class=&quot;zl-separator&quot;&gt;&lt;/span&gt;&lt;button type=&quot;button&quot; data-format=&quot;链接&quot; aria-label=&quot;链接&quot;&gt;&lt;i data-lucide=&quot;link&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/button&gt;&lt;button type=&quot;button&quot; data-format=&quot;图片&quot; aria-label=&quot;图片&quot;&gt;&lt;i data-lucide=&quot;image&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/button&gt;&lt;/div&gt;&lt;div class=&quot;zl-prose&quot;&gt;&lt;p&gt;走过螃蟹楼，宿舍区的声音渐渐清楚起来。行李箱的轮子压过砖缝，路边的帐篷一顶挨着一顶，有人举着学院的牌子，有人在树荫下等迟迟没有到来的室友。&lt;/p&gt;&lt;p&gt;吴晨阳还在说他的工位。笔记本带去教室，桌上再配一台台式机——他说到这里，连拖箱子的脚步都轻快了些。&lt;/p&gt;&lt;p&gt;&lt;span class=&quot;zl-range&quot;&gt;“先去宿舍吧。”林昭把手里的地图折好，“校园卡明天也能办。”&lt;/span&gt;林柚子点点头，又回头看了一眼路口。他们刚刚走过的地方，还不断有新生推着箱子进来。&lt;/p&gt;&lt;p&gt;到了岔路，几个人停下来对了一遍宿舍的位置。吴晨阳分在蓝田，林柚子要去紫云。地图上只隔着一小段路，真正站在这里，才发现接下来得分头走。&lt;/p&gt;&lt;p&gt;&lt;span class=&quot;zl-range&quot;&gt;项铃把一瓶还没开封的水塞进他背包侧袋，顺手把翘起来的肩带理平了。&lt;/span&gt;“安顿好了发个消息。”她说。&lt;/p&gt;&lt;/div&gt;&lt;/article&gt;
+        &lt;aside class=&quot;zl-import-rail&quot; aria-label=&quot;导入检查&quot;&gt;
+          &lt;section class=&quot;zl-panel&quot;&gt;&lt;h2&gt;导入检查&lt;/h2&gt;&lt;div class=&quot;zl-check-line&quot;&gt;&lt;i data-lucide=&quot;check&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;正文已解析&lt;/div&gt;&lt;div class=&quot;zl-check-line&quot;&gt;&lt;i data-lucide=&quot;check&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;2 条批注已保留&lt;/div&gt;&lt;details open&gt;&lt;summary&gt;&lt;i data-lucide=&quot;triangle-alert&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;1 项格式提醒&lt;i data-lucide=&quot;chevron-down&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/summary&gt;&lt;p class=&quot;zl-warning-copy&quot;&gt;页眉中的文字未导入。若属于正文，请补入后再确认。&lt;/p&gt;&lt;/details&gt;&lt;/section&gt;
+          &lt;section class=&quot;zl-panel&quot;&gt;&lt;h2&gt;批注作者 &lt;span class=&quot;zl-origin&quot;&gt;Word 导入&lt;/span&gt;&lt;/h2&gt;&lt;div class=&quot;zl-map-row&quot;&gt;&lt;div&gt;林昭&lt;small&gt;Word 原作者&lt;/small&gt;&lt;/div&gt;&lt;label&gt;&lt;span class=&quot;zl-sr&quot;&gt;关联林昭的站内用户&lt;/span&gt;&lt;select&gt;&lt;option&gt;不关联&lt;/option&gt;&lt;option&gt;林昭&lt;/option&gt;&lt;option&gt;姬瑕&lt;/option&gt;&lt;/select&gt;&lt;/label&gt;&lt;/div&gt;&lt;div class=&quot;zl-map-row&quot;&gt;&lt;div&gt;姬瑕&lt;small&gt;Word 原作者&lt;/small&gt;&lt;/div&gt;&lt;label&gt;&lt;span class=&quot;zl-sr&quot;&gt;关联姬瑕的站内用户&lt;/span&gt;&lt;select&gt;&lt;option&gt;不关联&lt;/option&gt;&lt;option&gt;姬瑕&lt;/option&gt;&lt;option&gt;林昭&lt;/option&gt;&lt;/select&gt;&lt;/label&gt;&lt;/div&gt;&lt;p class=&quot;zl-footnote&quot;&gt;关联后可通知站内用户；批注仍署名 Word 原作者。&lt;/p&gt;&lt;/section&gt;
+          &lt;section class=&quot;zl-panel&quot;&gt;&lt;h2&gt;正文批注 &lt;span class=&quot;zl-count&quot;&gt;2 条&lt;/span&gt;&lt;/h2&gt;&lt;div class=&quot;zl-import-annotation&quot;&gt;&lt;div class=&quot;zl-thread-meta&quot;&gt;&lt;strong&gt;林昭&lt;/strong&gt;&lt;span class=&quot;zl-origin&quot;&gt;Word 导入&lt;/span&gt;&lt;/div&gt;&lt;p&gt;这里先让大家去宿舍很自然。校园卡的推销可以留一点环境声。&lt;/p&gt;&lt;/div&gt;&lt;div class=&quot;zl-import-annotation&quot;&gt;&lt;div class=&quot;zl-thread-meta&quot;&gt;&lt;strong&gt;姬瑕&lt;/strong&gt;&lt;span class=&quot;zl-origin&quot;&gt;Word 导入&lt;/span&gt;&lt;/div&gt;&lt;p&gt;这个小动作可以留下。不用再解释她舍不得。&lt;/p&gt;&lt;/div&gt;&lt;/section&gt;
+          &lt;p class=&quot;zl-footnote&quot;&gt;原始 DOCX 不会上传。确认后发布为新帖子，之后仍可编辑。&lt;/p&gt;
+        &lt;/aside&gt;
+      &lt;/div&gt;
+    &lt;/section&gt;
+    &lt;dialog class=&quot;zl-sheet&quot; id=&quot;zl-sheet&quot; aria-labelledby=&quot;zl-sheet-title&quot;&gt;&lt;div class=&quot;zl-sheet-top&quot;&gt;&lt;h2 id=&quot;zl-sheet-title&quot;&gt;正文批注&lt;/h2&gt;&lt;button class=&quot;zl-icon-button&quot; id=&quot;zl-sheet-close&quot; type=&quot;button&quot; aria-label=&quot;关闭批注&quot;&gt;&lt;i data-lucide=&quot;x&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/button&gt;&lt;/div&gt;&lt;div id=&quot;zl-sheet-content&quot;&gt;&lt;/div&gt;&lt;/dialog&gt;
+  &lt;/div&gt;
+  &lt;div id=&quot;zl-notice&quot; class=&quot;zl-preview-notice&quot; role=&quot;status&quot; aria-live=&quot;polite&quot; hidden&gt;&lt;/div&gt;
+  &lt;script&gt;
+    (function(){
+      const root=document.getElementById(&#x27;zhilin-study&#x27;);
+      const posts=[
+        [&#x27;报到日，风从紫金港吹来&#x27;,&#x27;走过螃蟹楼，宿舍区的声音渐渐清楚起来。几个人到了岔路，才发现接下来得分头走。&#x27;,&#x27;柚子&#x27;,&#x27;大学篇&#x27;,&#x27;今天 14:30&#x27;,3,2,12],
+        [&#x27;晚自习以后，操场的灯还亮着&#x27;,&#x27;把这一段的节奏放慢一点。并肩走回教室的路上，他们其实没有说什么重要的事情。&#x27;,&#x27;姬瑕&#x27;,&#x27;校园日常&#x27;,&#x27;昨天 21:16&#x27;,8,4,3],
+        [&#x27;人物小记：那些没有说出口的话&#x27;,&#x27;一些关于人物动机的整理，也收录了讨论里几处我很喜欢的细节。&#x27;,&#x27;柚子&#x27;,&#x27;人物设定&#x27;,&#x27;9月3日&#x27;,5,3,8],
+        [&#x27;把夏天留在最后一排&#x27;,&#x27;风扇转到第三档，试卷的边角被吹起来。窗外的知了声一直没有停。&#x27;,&#x27;林昭&#x27;,&#x27;短篇&#x27;,&#x27;9月2日&#x27;,2,1,5],
+        [&#x27;关于大学篇开场的一点讨论&#x27;,&#x27;新生见面不一定要靠惊叹和自我介绍推进。可以让性格从一件很小的事情里露出来。&#x27;,&#x27;姬瑕&#x27;,&#x27;创作讨论&#x27;,&#x27;9月1日&#x27;,12,0,1],
+        [&#x27;雨停之前，先坐一会儿&#x27;,&#x27;便利店门口只有两把椅子，他们把湿伞靠在墙边，等街上的积水慢慢退下去。&#x27;,&#x27;柚子&#x27;,&#x27;生活片段&#x27;,&#x27;8月31日&#x27;,4,2,10],
+        [&#x27;寝室门牌上的名字&#x27;,&#x27;放下行李之后，空荡荡的寝室开始有了一点生活的形状。&#x27;,&#x27;林昭&#x27;,&#x27;大学篇&#x27;,&#x27;8月30日&#x27;,3,0,7],
+        [&#x27;周末去哪里&#x27;,&#x27;没有安排好的下午，往往比按计划走过的路线更容易记住。&#x27;,&#x27;姬瑕&#x27;,&#x27;校园日常&#x27;,&#x27;8月29日&#x27;,6,1,2],
+        [&#x27;一封写了一半的信&#x27;,&#x27;最后一句停在纸上，第二天又被轻轻划掉了。&#x27;,&#x27;柚子&#x27;,&#x27;短篇&#x27;,&#x27;8月28日&#x27;,2,0,11],
+        [&#x27;章节整理：从预科到高三&#x27;,&#x27;按时间整理几篇已经完成的章节，便于之后回头查找。&#x27;,&#x27;柚子&#x27;,&#x27;创作讨论&#x27;,&#x27;8月27日&#x27;,1,0,6],
+        [&#x27;走廊另一端的笑声&#x27;,&#x27;熟悉的人还没走过来，先听见了他们的声音。&#x27;,&#x27;林昭&#x27;,&#x27;生活片段&#x27;,&#x27;8月26日&#x27;,4,2,9],
+        [&#x27;第一篇，写在开学之前&#x27;,&#x27;留一块地方，把这些文字和讨论慢慢放下来。&#x27;,&#x27;柚子&#x27;,&#x27;校园日常&#x27;,&#x27;8月25日&#x27;,9,0,4]
+      ];
+      let page=1,sort=&#x27;latest&#x27;,query=&#x27;&#x27;;
+      const byId=id=&gt;root.querySelector(&#x27;#&#x27;+id);
+      function notice(message){const box=byId(&#x27;zl-notice&#x27;);box.textContent=message;box.hidden=false;}
+      function icons(){if(typeof lucide!==&#x27;undefined&#x27;)lucide.createIcons({attrs:{width:18,height:18}});}
+      function show(view){root.querySelectorAll(&#x27;[data-panel]&#x27;).forEach(p=&gt;p.hidden=p.dataset.panel!==view);root.querySelectorAll(&#x27;[data-view]&#x27;).forEach(b=&gt;b.setAttribute(&#x27;aria-pressed&#x27;,String(b.dataset.view===view)));byId(&#x27;zl-notice&#x27;).hidden=true;}
+      function render(){
+        let rows=posts.filter(p=&gt;!query||(p[0]+p[1]+p[2]+p[3]).includes(query));
+        if(sort===&#x27;active&#x27;)rows=rows.slice().sort((a,b)=&gt;a[7]-b[7]);
+        const pages=Math.max(1,Math.ceil(rows.length/6));page=Math.min(page,pages);
+        byId(&#x27;zl-total&#x27;).textContent=rows.length+&#x27; 篇&#x27;;
+        byId(&#x27;zl-posts&#x27;).innerHTML=rows.length?rows.slice((page-1)*6,page*6).map(p=&gt;&#x27;&lt;article class=&quot;zl-post-row&quot;&gt;&lt;div&gt;&lt;button class=&quot;zl-post-title&quot; type=&quot;button&quot; data-post=&quot;&#x27;+posts.indexOf(p)+&#x27;&quot;&gt;&#x27;+p[0]+&#x27;&lt;/button&gt;&lt;p class=&quot;zl-excerpt&quot;&gt;&#x27;+p[1]+&#x27;&lt;/p&gt;&lt;div class=&quot;zl-meta&quot;&gt;&lt;span class=&quot;zl-avatar&quot;&gt;&#x27;+p[2].slice(0,1)+&#x27;&lt;/span&gt;&lt;span&gt;&#x27;+p[2]+&#x27;&lt;/span&gt;&lt;span class=&quot;zl-dot&quot;&gt;·&lt;/span&gt;&lt;span&gt;&#x27;+p[4]+&#x27;&lt;/span&gt;&lt;span class=&quot;zl-tag&quot;&gt;&#x27;+p[3]+&#x27;&lt;/span&gt;&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;zl-row-activity&quot;&gt;&lt;span&gt;&lt;i data-lucide=&quot;message-circle&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&#x27;+p[5]+&#x27; 回复&lt;/span&gt;&lt;span&gt;&#x27;+p[6]+&#x27; 条批注&lt;/span&gt;&lt;/div&gt;&lt;/article&gt;&#x27;).join(&#x27;&#x27;):&#x27;&lt;div class=&quot;zl-empty&quot;&gt;没有匹配的示例帖子，试试“大学”或“校园”。&lt;/div&gt;&#x27;;
+        byId(&#x27;zl-range-label&#x27;).textContent=rows.length?&#x27;第 &#x27;+((page-1)*6+1)+&#x27;–&#x27;+Math.min(page*6,rows.length)+&#x27; 篇，共 &#x27;+rows.length+&#x27; 篇&#x27;:&#x27;0 篇&#x27;;
+        byId(&#x27;zl-pages&#x27;).innerHTML=pages&gt;1?&#x27;&lt;button type=&quot;button&quot; data-page=&quot;&#x27;+(page-1)+&#x27;&quot; &#x27;+(page===1?&#x27;disabled&#x27;:&#x27;&#x27;)+&#x27; aria-label=&quot;上一页&quot;&gt;‹&lt;/button&gt;&#x27;+Array.from({length:pages},(_,i)=&gt;&#x27;&lt;button type=&quot;button&quot; data-page=&quot;&#x27;+(i+1)+&#x27;&quot; &#x27;+(page===i+1?&#x27;aria-current=&quot;page&quot;&#x27;:&#x27;&#x27;)+&#x27;&gt;&#x27;+(i+1)+&#x27;&lt;/button&gt;&#x27;).join(&#x27;&#x27;)+&#x27;&lt;button type=&quot;button&quot; data-page=&quot;&#x27;+(page+1)+&#x27;&quot; &#x27;+(page===pages?&#x27;disabled&#x27;:&#x27;&#x27;)+&#x27; aria-label=&quot;下一页&quot;&gt;›&lt;/button&gt;&#x27;:&#x27;&#x27;;
+        icons();
+      }
+      function selectAnnotation(id){root.querySelectorAll(&#x27;[data-thread]&#x27;).forEach(e=&gt;e.classList.toggle(&#x27;is-selected&#x27;,e.dataset.thread===id));root.querySelectorAll(&#x27;[data-annotation]&#x27;).forEach(e=&gt;e.setAttribute(&#x27;aria-pressed&#x27;,String(e.dataset.annotation===id)));}
+      function openAnnotation(id){selectAnnotation(id);if(getComputedStyle(byId(&#x27;zl-annotations&#x27;)).display===&#x27;none&#x27;){const thread=root.querySelector(&#x27;[data-thread=&quot;&#x27;+id+&#x27;&quot;]&#x27;);byId(&#x27;zl-sheet-content&#x27;).innerHTML=&#x27;&lt;strong&gt;&#x27;+thread.querySelector(&#x27;strong&#x27;).textContent+&#x27;&lt;/strong&gt;&lt;p&gt;&#x27;+thread.querySelector(&#x27;p&#x27;).textContent+&#x27;&lt;/p&gt;&#x27;;byId(&#x27;zl-sheet&#x27;).showModal();}}
+      root.addEventListener(&#x27;click&#x27;,event=&gt;{
+        const button=event.target.closest(&#x27;button&#x27;);if(!button||!root.contains(button))return;
+        if(button.dataset.view)show(button.dataset.view);
+        if(button.dataset.go)show(button.dataset.go);
+        if(button.dataset.notice)notice(button.dataset.notice);
+        if(button.dataset.sort){sort=button.dataset.sort;page=1;root.querySelectorAll(&#x27;[data-sort]&#x27;).forEach(e=&gt;e.setAttribute(&#x27;aria-pressed&#x27;,String(e.dataset.sort===sort)));render();}
+        if(button.dataset.page){page=Number(button.dataset.page);render();}
+        if(button.dataset.post!==undefined){show(&#x27;reading&#x27;);if(button.dataset.post!==&#x27;0&#x27;)notice(&#x27;详情页以《报到日，风从紫金港吹来》为统一样例。&#x27;);}
+        if(button.dataset.annotation)openAnnotation(button.dataset.annotation);
+        if(button.dataset.locate){selectAnnotation(button.dataset.locate);const target=root.querySelector(&#x27;[data-annotation=&quot;&#x27;+button.dataset.locate+&#x27;&quot;]&#x27;);target.focus({preventScroll:true});target.scrollIntoView({block:&#x27;nearest&#x27;,behavior:&#x27;auto&#x27;});}
+        if(button.dataset.replyTarget){const form=root.querySelector(&#x27;[data-composer=&quot;&#x27;+button.dataset.replyTarget+&#x27;&quot;]&#x27;);form.hidden=!form.hidden;if(!form.hidden)form.querySelector(&#x27;textarea&#x27;).focus({preventScroll:true});}
+        if(button.dataset.format)notice(&#x27;样板展示“&#x27;+button.dataset.format+&#x27;”入口的位置；正式页面继续使用现有 Markdown 编辑器。&#x27;);
+      });
+      byId(&#x27;zl-query&#x27;).addEventListener(&#x27;input&#x27;,event=&gt;{byId(&#x27;zl-clear&#x27;).hidden=!event.target.value;});
+      byId(&#x27;zl-search-form&#x27;).addEventListener(&#x27;submit&#x27;,event=&gt;{event.preventDefault();query=byId(&#x27;zl-query&#x27;).value.trim();page=1;show(&#x27;home&#x27;);render();});
+      byId(&#x27;zl-clear&#x27;).addEventListener(&#x27;click&#x27;,()=&gt;{byId(&#x27;zl-query&#x27;).value=&#x27;&#x27;;byId(&#x27;zl-clear&#x27;).hidden=true;query=&#x27;&#x27;;page=1;show(&#x27;home&#x27;);render();byId(&#x27;zl-query&#x27;).focus();});
+      byId(&#x27;zl-open-annotations&#x27;).addEventListener(&#x27;click&#x27;,()=&gt;{openAnnotation(&#x27;one&#x27;);if(getComputedStyle(byId(&#x27;zl-annotations&#x27;)).display!==&#x27;none&#x27;)byId(&#x27;zl-annotations&#x27;).scrollIntoView({block:&#x27;nearest&#x27;,behavior:&#x27;auto&#x27;});});
+      byId(&#x27;zl-sheet-close&#x27;).addEventListener(&#x27;click&#x27;,()=&gt;byId(&#x27;zl-sheet&#x27;).close());
+      byId(&#x27;zl-mobile-search&#x27;).addEventListener(&#x27;click&#x27;,()=&gt;{const open=byId(&#x27;zl-search-form&#x27;).classList.toggle(&#x27;is-open&#x27;);byId(&#x27;zl-mobile-search&#x27;).setAttribute(&#x27;aria-expanded&#x27;,String(open));if(open)byId(&#x27;zl-query&#x27;).focus();});
+      byId(&#x27;zl-rechoose&#x27;).addEventListener(&#x27;click&#x27;,()=&gt;notice(&#x27;重新选文件会返回紧凑的文件选择步骤；当前是导入预览样板。&#x27;));
+      byId(&#x27;zl-import-confirm&#x27;).addEventListener(&#x27;click&#x27;,()=&gt;notice(&#x27;这里只预览布局，未创建帖子或上传文件。&#x27;));
+      root.querySelectorAll(&#x27;[data-composer]&#x27;).forEach(form=&gt;form.addEventListener(&#x27;submit&#x27;,event=&gt;{event.preventDefault();notice(&#x27;回复仅用于体验输入区布局，未发送任何内容。&#x27;);}));
+      render();
+    })();
+  &lt;/script&gt;
+&lt;/div&gt;
+
+&lt;script src=&quot;https://unpkg.com/@floating-ui/core@1.7.3/dist/floating-ui.core.umd.min.js&quot;&gt;&lt;/script&gt;
+&lt;script src=&quot;https://unpkg.com/@floating-ui/dom@1.7.4/dist/floating-ui.dom.umd.min.js&quot;&gt;&lt;/script&gt;
+&lt;script&gt;
+(() =&gt; {
+  if (window.FloatingUIDOM == null) {
+    return;
+  }
+  const { autoUpdate, computePosition, flip, offset, shift, size } =
+    window.FloatingUIDOM;
+  const tooltipPlacements = new Set([&quot;top&quot;, &quot;right&quot;, &quot;bottom&quot;, &quot;left&quot;]);
+  const tooltipId = `codex-visualization-tooltip-${
+    window.crypto?.randomUUID?.() ?? Date.now().toString(36)
+  }`;
+  const tooltipGap = 5;
+  const hoverDelay = 700;
+  const skipDelay = 300;
+  let activeTrigger = null;
+  let pendingTrigger = null;
+  let tooltip = null;
+  let openTimeout = null;
+  let autoUpdateCleanup = null;
+  let positionRequest = 0;
+  let skipDelayUntil = 0;
+  let lastPointerWasTouch = false;
+  let pinnedByTouch = false;
+
+  const getTrigger = (target) =&gt;
+    target?.nodeType === Node.ELEMENT_NODE
+      ? target.closest(&quot;[data-tooltip]&quot;)
+      : null;
+  const containsTarget = (trigger, target) =&gt;
+    target?.nodeType != null &amp;&amp; trigger.contains(target);
+  const getContent = (trigger) =&gt;
+    trigger.getAttribute(&quot;data-tooltip&quot;)?.trim() ?? &quot;&quot;;
+  const getPlacement = (trigger) =&gt; {
+    const placement = trigger.getAttribute(&quot;data-tooltip-placement&quot;);
+    return tooltipPlacements.has(placement) ? placement : &quot;top&quot;;
+  };
+  const getTooltip = () =&gt; {
+    if (tooltip == null) {
+      tooltip = document.createElement(&quot;div&quot;);
+      tooltip.id = tooltipId;
+      tooltip.className = &quot;tooltip&quot;;
+      tooltip.setAttribute(&quot;role&quot;, &quot;tooltip&quot;);
+    }
+    return tooltip;
+  };
+  const setDescribedBy = (trigger, described) =&gt; {
+    const ids = new Set(
+      (trigger.getAttribute(&quot;aria-describedby&quot;) ?? &quot;&quot;)
+        .split(/\s+/)
+        .filter(Boolean),
+    );
+    if (described) {
+      ids.add(tooltipId);
+    } else {
+      ids.delete(tooltipId);
+    }
+    if (ids.size === 0) {
+      trigger.removeAttribute(&quot;aria-describedby&quot;);
+    } else {
+      trigger.setAttribute(&quot;aria-describedby&quot;, [...ids].join(&quot; &quot;));
+    }
+  };
+  const clearOpenTimeout = () =&gt; {
+    if (openTimeout != null) {
+      window.clearTimeout(openTimeout);
+      openTimeout = null;
+    }
+    pendingTrigger = null;
+  };
+  const closeTooltip = (activateSkipDelay = true) =&gt; {
+    clearOpenTimeout();
+    pinnedByTouch = false;
+    positionRequest += 1;
+    autoUpdateCleanup?.();
+    autoUpdateCleanup = null;
+    if (activeTrigger == null) {
+      return;
+    }
+    setDescribedBy(activeTrigger, false);
+    activeTrigger = null;
+    tooltip?.remove();
+    if (activateSkipDelay) {
+      skipDelayUntil = Date.now() + skipDelay;
+    }
+  };
+  const updatePosition = (trigger, floating) =&gt; {
+    const request = ++positionRequest;
+    void computePosition(trigger, floating, {
+      middleware: [
+        offset(tooltipGap),
+        flip({ padding: tooltipGap }),
+        shift({ padding: tooltipGap }),
+        size({
+          padding: tooltipGap,
+          apply({ availableHeight, availableWidth, elements }) {
+            elements.floating.style.setProperty(
+              &quot;--tooltip-available-width&quot;,
+              `${Math.max(0, availableWidth)}px`,
+            );
+            elements.floating.style.setProperty(
+              &quot;--tooltip-available-height&quot;,
+              `${Math.max(0, availableHeight)}px`,
+            );
+          },
+        }),
+      ],
+      placement: getPlacement(trigger),
+      strategy: &quot;fixed&quot;,
+    })
+      .then(({ x, y }) =&gt; {
+        if (activeTrigger !== trigger || request !== positionRequest) {
+          return;
+        }
+        const scale = window.devicePixelRatio || 1;
+        floating.style.transform = `translate(${Math.round(x * scale) / scale}px, ${Math.round(y * scale) / scale}px)`;
+        floating.style.visibility = &quot;visible&quot;;
+      })
+      .catch(() =&gt; {
+        if (activeTrigger === trigger &amp;&amp; request === positionRequest) {
+          closeTooltip(false);
+        }
+      });
+  };
+  const openTooltip = (trigger) =&gt; {
+    const content = getContent(trigger);
+    if (!trigger.isConnected || content.length === 0) {
+      return;
+    }
+    clearOpenTimeout();
+    if (activeTrigger === trigger) {
+      return;
+    }
+    closeTooltip();
+    const floating = getTooltip();
+    floating.textContent = content;
+    floating.style.visibility = &quot;hidden&quot;;
+    floating.style.transform = &quot;translate(0, 0)&quot;;
+    document.body.appendChild(floating);
+    activeTrigger = trigger;
+    setDescribedBy(trigger, true);
+    autoUpdateCleanup = autoUpdate(trigger, floating, () =&gt; {
+      updatePosition(trigger, floating);
+    });
+  };
+  const requestOpen = (trigger, immediate = false) =&gt; {
+    if (
+      getContent(trigger).length === 0 ||
+      activeTrigger === trigger ||
+      pendingTrigger === trigger
+    ) {
+      return;
+    }
+    clearOpenTimeout();
+    pendingTrigger = trigger;
+    const delay =
+      immediate || activeTrigger != null || Date.now() &lt; skipDelayUntil
+        ? 0
+        : hoverDelay;
+    if (delay === 0) {
+      openTooltip(trigger);
+      return;
+    }
+    openTimeout = window.setTimeout(() =&gt; {
+      openTimeout = null;
+      pendingTrigger = null;
+      openTooltip(trigger);
+    }, delay);
+  };
+  const handlePointerOpen = (event) =&gt; {
+    if (event.pointerType === &quot;touch&quot;) {
+      return;
+    }
+    const trigger = getTrigger(event.target);
+    if (trigger == null || containsTarget(trigger, event.relatedTarget)) {
+      return;
+    }
+    requestOpen(trigger);
+  };
+  const handlePointer = (event) =&gt; {
+    lastPointerWasTouch =
+      event.type === &quot;pointerdown&quot; &amp;&amp; event.pointerType === &quot;touch&quot;;
+  };
+  const handleTouchClick = (event) =&gt; {
+    const isTouch = event.pointerType === &quot;touch&quot; || lastPointerWasTouch;
+    lastPointerWasTouch = false;
+    if (!isTouch || event.detail === 0) {
+      return;
+    }
+    const trigger = getTrigger(event.target);
+    if (
+      trigger == null ||
+      !trigger.isConnected ||
+      getContent(trigger).length === 0 ||
+      (pinnedByTouch &amp;&amp; activeTrigger === trigger)
+    ) {
+      if (pinnedByTouch) {
+        closeTooltip();
+      }
+      return;
+    }
+    openTooltip(trigger);
+    pinnedByTouch = activeTrigger === trigger;
+    window.setTimeout(() =&gt; {
+      if (activeTrigger === trigger &amp;&amp; !trigger.isConnected) {
+        closeTooltip(false);
+      }
+    }, 0);
+  };
+  const handleLeave = (event) =&gt; {
+    if (pinnedByTouch) {
+      return;
+    }
+    const trigger = getTrigger(event.target);
+    if (trigger == null || containsTarget(trigger, event.relatedTarget)) {
+      return;
+    }
+    if (activeTrigger === trigger || pendingTrigger === trigger) {
+      closeTooltip();
+    }
+  };
+  const handleFocusIn = (event) =&gt; {
+    const trigger = getTrigger(event.target);
+    if (trigger?.matches(&quot;:focus-visible&quot;)) {
+      requestOpen(trigger, true);
+    }
+  };
+  const handleKeyDown = (event) =&gt; {
+    if (event.key === &quot;Escape&quot;) {
+      closeTooltip();
+    }
+  };
+  const handleContextMenu = (event) =&gt; {
+    lastPointerWasTouch = false;
+    const trigger = getTrigger(event.target);
+    if (activeTrigger === trigger || pendingTrigger === trigger) {
+      closeTooltip();
+    }
+  };
+  const destroy = () =&gt; {
+    closeTooltip(false);
+    lastPointerWasTouch = false;
+    document.removeEventListener(&quot;pointerover&quot;, handlePointerOpen);
+    document.removeEventListener(&quot;pointerdown&quot;, handlePointer);
+    document.removeEventListener(&quot;pointercancel&quot;, handlePointer);
+    document.removeEventListener(&quot;click&quot;, handleTouchClick);
+    document.removeEventListener(&quot;pointerout&quot;, handleLeave);
+    document.removeEventListener(&quot;focusin&quot;, handleFocusIn);
+    document.removeEventListener(&quot;focusout&quot;, handleLeave);
+    document.removeEventListener(&quot;keydown&quot;, handleKeyDown);
+    document.removeEventListener(&quot;contextmenu&quot;, handleContextMenu);
+    tooltip = null;
+  };
+
+  document.addEventListener(&quot;pointerover&quot;, handlePointerOpen);
+  document.addEventListener(&quot;pointerdown&quot;, handlePointer);
+  document.addEventListener(&quot;pointercancel&quot;, handlePointer);
+  document.addEventListener(&quot;click&quot;, handleTouchClick);
+  document.addEventListener(&quot;pointerout&quot;, handleLeave);
+  document.addEventListener(&quot;focusin&quot;, handleFocusIn);
+  document.addEventListener(&quot;focusout&quot;, handleLeave);
+  document.addEventListener(&quot;keydown&quot;, handleKeyDown);
+  document.addEventListener(&quot;contextmenu&quot;, handleContextMenu);
+  window.addEventListener(&quot;pagehide&quot;, destroy, { once: true });
+})();
+&lt;/script&gt;
+&lt;script id=&quot;codex-visualization-tabs&quot;&gt;
+(() =&gt; {
+  const selector = &#x27;.nav[role=&quot;tablist&quot;] [role=&quot;tab&quot;]&#x27;;
+  const disabled = &#x27;:disabled,[aria-disabled=&quot;true&quot;]&#x27;;
+  const selectTab = (selected) =&gt; {
+    const panelId = selected.getAttribute(&quot;aria-controls&quot;);
+    for (const tab of selected.closest(&#x27;[role=&quot;tablist&quot;]&#x27;).querySelectorAll(&#x27;[role=&quot;tab&quot;]&#x27;)) {
+      const active = tab === selected;
+      tab.classList.toggle(&quot;active&quot;, active);
+      tab.setAttribute(&quot;aria-selected&quot;, String(active));
+      const id = tab.getAttribute(&quot;aria-controls&quot;);
+      const panel = id &amp;&amp; document.getElementById(id);
+      if (panel != null) {
+        panel.hidden = id !== panelId;
+        if (!panel.hidden &amp;&amp; selected.id) {
+          panel.setAttribute(&quot;aria-labelledby&quot;, selected.id);
+        }
+      }
+    }
+  };
+  const interact = (event) =&gt; {
+    const tab = event.target?.closest?.(selector);
+    if (event.defaultPrevented || tab == null || tab.matches(disabled)) {
+      return;
+    }
+    if (event.type === &quot;click&quot;) {
+      selectTab(tab);
+      return;
+    }
+    const tabs = Array.from(
+      tab.closest(&#x27;[role=&quot;tablist&quot;]&#x27;).querySelectorAll(&#x27;[role=&quot;tab&quot;]&#x27;),
+    ).filter((candidate) =&gt; !candidate.matches(disabled));
+    const current = tabs.indexOf(tab);
+    let next;
+    if (event.key === &quot;ArrowRight&quot; || event.key === &quot;ArrowDown&quot;) {
+      next = (current + 1) % tabs.length;
+    } else if (event.key === &quot;ArrowLeft&quot; || event.key === &quot;ArrowUp&quot;) {
+      next = (current + tabs.length - 1) % tabs.length;
+    } else if (event.key === &quot;Home&quot;) {
+      next = 0;
+    } else if (event.key === &quot;End&quot;) {
+      next = tabs.length - 1;
+    } else {
+      return;
+    }
+    event.preventDefault();
+    tabs[next].focus();
+    selectTab(tabs[next]);
+  };
+
+  for (const list of document.querySelectorAll(&#x27;.nav[role=&quot;tablist&quot;]&#x27;)) {
+    const selected =
+      list.querySelector(&#x27;[role=&quot;tab&quot;][aria-selected=&quot;true&quot;]&#x27;) ??
+      list.querySelector(&#x27;[role=&quot;tab&quot;].active&#x27;) ??
+      list.querySelector(&#x27;[role=&quot;tab&quot;]&#x27;);
+    if (selected != null) {
+      selectTab(selected);
+    }
+  }
+  document.addEventListener(&quot;click&quot;, interact);
+  document.addEventListener(&quot;keydown&quot;, interact);
+  window.addEventListener(&quot;pagehide&quot;, () =&gt; {
+    document.removeEventListener(&quot;click&quot;, interact);
+    document.removeEventListener(&quot;keydown&quot;, interact);
+  }, { once: true });
+})();
+&lt;/script&gt;
+&lt;script id=&quot;codex-visualization-lucide&quot; async src=&quot;https://unpkg.com/lucide@1.17.0/dist/umd/lucide.js&quot;&gt;&lt;/script&gt;
+&lt;script&gt;
+(() =&gt; {
+  const initialize = () =&gt; {
+    globalThis.lucide?.createIcons({ attrs: { width: 16, height: 16 } });
+  };
+  if (globalThis.lucide != null) {
+    initialize();
+    return;
+  }
+  document
+    .getElementById(&quot;codex-visualization-lucide&quot;)
+    ?.addEventListener(&quot;load&quot;, initialize, { once: true });
+})();
+&lt;/script&gt;
+
+&lt;/body&gt;
+&lt;/html&gt;
+"></iframe>
+</body>
+</html>
