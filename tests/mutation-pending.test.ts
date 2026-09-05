@@ -20,11 +20,7 @@ test("shared submit feedback is immediate, duplicate-safe, and accessible", asyn
 
 test("post, annotation, reply, delete, and moderation mutations expose their existing pending state", async () => {
   const contracts = [
-    [
-      "../components/editor/post-editor-form.tsx",
-      /pending\s*\?\s*"保存中…"/,
-      /aria-busy=\{pending\}/,
-    ],
+    ["../components/editor/post-editor-form.tsx", /pendingLabel="保存中…"/, /PendingSubmitButton/],
     [
       "../components/annotations/annotation-reading-layout.tsx",
       /pending\s*\?\s*"发布中…"/,

@@ -1,6 +1,8 @@
 import Link from "next/link";
 
 import type { SiteUser } from "@/db/schema";
+import { HeaderSearch } from "./search-form";
+import { HeaderHeight } from "./header-height";
 import { AccountMenu } from "./account-menu";
 
 export function SiteHeader({
@@ -14,6 +16,7 @@ export function SiteHeader({
 }) {
   return (
     <header className="site-header">
+      <HeaderHeight />
       <div className="header-inner">
         <Link href="/" className="brand" aria-label="知临中学首页">
           <svg className="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
@@ -27,15 +30,8 @@ export function SiteHeader({
             />
           </svg>
           <span className="brand-name">知临中学</span>
-          <span className="brand-subtitle">私人 Markdown 写作社区</span>
         </Link>
-        <form action="/search" className="header-search" role="search" noValidate>
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <circle cx="11" cy="11" r="7" />
-            <path d="m16.5 16.5 4 4" />
-          </svg>
-          <input name="q" aria-label="搜索帖子" placeholder="搜索帖子标题或正文" />
-        </form>
+        <HeaderSearch />
         <nav className="header-actions" aria-label="主导航">
           <Link
             href="/notifications"

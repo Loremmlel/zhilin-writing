@@ -1,32 +1,52 @@
+import Link from "next/link";
 import { PostCard } from "@/components/post-card";
-import { listPosts } from "@/db/queries";
-
-export default async function TagPage({ params }: { params: Promise<{ name: string }> }) {
-  const { name } = await params;
+import { PageHeader } from "@/components/page-header";
+import { Pagination } from "@/components/pagination";
+import { listPostsPage } from "@/db/queries";
+import { parsePage } from "@/lib/pagination";
+import { canonicalPage } from "@/lib/page-navigation";
+export const metadata = { title: "标签帖子" };
+export default async function TagPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ name: string }>;
+  searchParams: Promise<{ page?: string }>;
+}) {
+  const [{ name }, query] = await Promise.all([params, searchParams]);
   const decoded = decodeURIComponent(name);
-  const items = await listPosts({ tagName: decoded });
+  const path = `/tags/${encodeURIComponent(decoded)}`;
+  const result = await listPostsPage({ tagName: decoded, page: parsePage(query.page) });
+  canonicalPage(query.page, result.page, path);
   const displayName =
-    items[0]?.tags.find((tag) => tag.normalizedName === decoded.toLocaleLowerCase("zh-CN"))?.name ??
-    decoded;
+    result.items[0]?.tags.find((tag) => tag.normalizedName === decoded.toLocaleLowerCase("zh-CN"))
+      ?.name ?? decoded;
   return (
     <div className="page-column">
-      <header className="page-header">
-        <span className="eyebrow">标签</span>
-        <h1>{displayName}</h1>
-        <p>{items.length} 篇当前可见的帖子</p>
-      </header>
-      {items.length > 0 ? (
-        <section className="post-list">
-          {items.map((item) => (
+      <PageHeader
+        title={displayName}
+        count={result.total}
+        actions={
+          <Link className="button button--ghost" href="/tags">
+            全部标签
+          </Link>
+        }
+      />
+      {result.items.length ? (
+        <section className="post-list" aria-label="标签帖子">
+          {result.items.map((item) => (
             <PostCard key={item.post.id} {...item} />
           ))}
         </section>
       ) : (
         <div className="empty-state">
-          <h2>没有找到帖子</h2>
-          <p>这个标签暂时没有可见内容。</p>
+          <p>这个标签下还没有可见帖子。</p>
+          <Link className="button button--ghost" href="/tags">
+            浏览全部标签
+          </Link>
         </div>
       )}
+      <Pagination {...result} path={path} />
     </div>
   );
 }

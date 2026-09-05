@@ -1,7 +1,7 @@
 import Link from "next/link";
 
-import type { listUserActivity } from "@/db/queries";
-import { formatDateTime } from "@/lib/format";
+import type { listUserActivityPage } from "@/db/queries";
+import { formatDateTime, formatListDateTime } from "@/lib/format";
 import {
   annotationReplyTargetHref,
   annotationTargetHref,
@@ -15,7 +15,7 @@ import {
   targetHrefWithNotice,
 } from "@/lib/notifications/target-resolution";
 
-type ActivityItem = Awaited<ReturnType<typeof listUserActivity>>[number];
+type ActivityItem = Awaited<ReturnType<typeof listUserActivityPage>>["items"][number];
 
 function ActivityCopy({ item }: { item: ActivityItem }) {
   if (!item.post || !item.postReachable) {
@@ -187,7 +187,13 @@ export function ActivityList({ items }: { items: ActivityItem[] }) {
           <span className="activity-dot" aria-hidden="true" />
           <div className="activity-content">
             <ActivityCopy item={item} />
-            <time>{formatDateTime(item.event.createdAt)}</time>
+            <time
+              dateTime={item.event.createdAt.toISOString()}
+              title={formatDateTime(item.event.createdAt)}
+              aria-label={formatDateTime(item.event.createdAt)}
+            >
+              {formatListDateTime(item.event.createdAt)}
+            </time>
           </div>
         </article>
       ))}

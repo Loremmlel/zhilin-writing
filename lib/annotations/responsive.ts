@@ -1,5 +1,5 @@
-// 720px reading column + 56px gutter + 340px minimum rail.
-export const ANNOTATION_DESKTOP_MIN_WIDTH = 1116;
+// Measured combination: 786px paper (720px body + padding/borders) + 56px gutter + 340px rail.
+export const ANNOTATION_DESKTOP_MIN_WIDTH = 1182;
 
 export type AnnotationLayoutMode = "compact" | "desktop";
 
@@ -24,4 +24,14 @@ export function resolveAnnotationSheetId(
   visibleAnnotationIds: readonly string[],
 ): string | null {
   return requestedId && visibleAnnotationIds.includes(requestedId) ? requestedId : null;
+}
+
+// Focus is temporary; leaving a thread restores the last explicitly selected anchor.
+export function resolveActiveAnnotationId(
+  selected: string | null,
+  focused: string | null,
+  visible: readonly string[],
+) {
+  if (focused && visible.includes(focused)) return focused;
+  return selected && visible.includes(selected) ? selected : null;
 }

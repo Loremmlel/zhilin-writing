@@ -2,14 +2,16 @@ import Link from "next/link";
 
 import { listTags } from "@/db/queries";
 
+export const metadata = { title: "标签" };
+
 export default async function TagsPage() {
   const tags = await listTags();
   return (
     <div className="page-column">
       <header className="page-header">
-        <span className="eyebrow">标签</span>
-        <h1>从一个话题开始阅读</h1>
-        <p>标签只是轻量的阅读入口，不承担分类层级。</p>
+        <div>
+          <h1>标签</h1>
+        </div>
       </header>
       {tags.length > 0 ? (
         <div className="tag-grid">
@@ -26,8 +28,10 @@ export default async function TagsPage() {
         </div>
       ) : (
         <div className="empty-state">
-          <h2>还没有标签</h2>
-          <p>成员发帖时可以创建第一个标签。</p>
+          <p>还没有使用过的标签。</p>
+          <Link className="button button--ghost" href="/">
+            浏览帖子
+          </Link>
         </div>
       )}
     </div>

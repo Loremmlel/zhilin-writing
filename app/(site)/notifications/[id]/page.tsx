@@ -14,6 +14,8 @@ import {
   targetHrefWithNotice,
 } from "@/lib/notifications/target-resolution";
 
+export const metadata = { title: "通知详情" };
+
 export default async function OpenNotificationPage({
   params,
 }: {

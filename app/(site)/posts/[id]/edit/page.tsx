@@ -10,6 +10,8 @@ import { formatDateTime } from "@/lib/format";
 import { renderMarkdown } from "@/lib/markdown/render";
 import { updatePostAction } from "../actions";
 
+export const metadata = { title: "编辑帖子" };
+
 export default async function EditPostPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const [{ member }, item, rawAnnotations] = await Promise.all([
@@ -59,11 +61,6 @@ export default async function EditPostPage({ params }: { params: Promise<{ id: s
     <div
       className={`page-column editor-page${annotationViews.length > 0 ? " editor-page--annotated" : ""}`}
     >
-      <header className="page-header">
-        <span className="eyebrow">编辑帖子</span>
-        <h1>{item.post.title}</h1>
-        <p>保存后会显示编辑时间，但不会把帖子顶到“活跃”首位。</p>
-      </header>
       <PostEditorForm
         userId={member.id}
         draftId={id}

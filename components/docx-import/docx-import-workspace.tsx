@@ -319,6 +319,8 @@ export function DocxImportWorkspace({ users }: { users: SiteUser[] }) {
   return (
     <section
       className="docx-import-workspace"
+      data-phase={phase}
+      data-workspace-expanded={Boolean(preview)}
       aria-busy={phase === "parsing" || phase === "uploading" || phase === "committing"}
     >
       {phase === "selecting" && (
@@ -450,6 +452,40 @@ export function DocxImportWorkspace({ users }: { users: SiteUser[] }) {
 
       {phase === "previewing" && preview && validation && (
         <>
+          <div className="docx-import-actions editor-action-bar">
+            <div>
+              <h1>检查并导入</h1>
+              <span className="muted">{preview.ir.source.filename}</span>
+            </div>
+            <button
+              type="button"
+              className="button button--ghost"
+              onClick={() => setDiscardBatchId(preview.importBatchId)}
+            >
+              重新选文件
+            </button>
+            <div>
+              <span>
+                {validation.ok
+                  ? "预览就绪，可以保存"
+                  : `还有 ${validation.errors.length} 项需要修正`}
+              </span>
+              {!validation.ok && (
+                <a className="text-link" href="#docx-validation-heading">
+                  查看待处理项
+                </a>
+              )}
+              <button
+                type="button"
+                className="button button--primary"
+                disabled={!validation.ok}
+                aria-disabled={!validation.ok}
+                onClick={() => void confirmImport()}
+              >
+                确认导入
+              </button>
+            </div>
+          </div>
           {error && (
             <div className="docx-import-error" role="alert">
               <div>
@@ -497,31 +533,6 @@ export function DocxImportWorkspace({ users }: { users: SiteUser[] }) {
               setEditorResetRevision((current) => current + 1);
             }}
           />
-          <div className="docx-import-actions">
-            <button
-              type="button"
-              className="button button--ghost"
-              onClick={() => setDiscardBatchId(preview.importBatchId)}
-            >
-              取消导入
-            </button>
-            <div>
-              <span>
-                {validation.ok
-                  ? "预览就绪，可以保存"
-                  : `还有 ${validation.errors.length} 项需要修正`}
-              </span>
-              <button
-                type="button"
-                className="button button--primary"
-                disabled={!validation.ok}
-                aria-disabled={!validation.ok}
-                onClick={() => void confirmImport()}
-              >
-                确认导入
-              </button>
-            </div>
-          </div>
         </>
       )}
 

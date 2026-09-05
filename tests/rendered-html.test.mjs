@@ -67,7 +67,7 @@ test("production artifact keeps administrator chrome within the viewport", async
   assert.doesNotMatch(source, /返回总览/);
   assert.match(source, /北京时间 ·/);
   assert.match(styles, /\.site-main:has\(\.admin-shell\)\+\.site-footer\{display:none\}/);
-  assert.match(styles, /\.admin-shell\{[^}]*width:min\(1800px,100%\)/);
+  assert.match(styles, /\.admin-shell\{[^}]*width:min\(var\(--page-max\),/);
   assert.match(styles, /\.admin-sidebar\{[^}]*height:100%[^}]*overflow-y:auto[^}]*\}/);
   assert.match(styles, /\.site-shell:has\(\.admin-shell\)\{[^}]*height:100dvh[^}]*overflow:hidden/);
   assert.match(styles, /\.admin-page\{[^}]*height:100%[^}]*overflow:hidden/);
@@ -117,7 +117,7 @@ test("production artifact contains V6 annotation reading, discussion, and guarde
 
 test("production artifact contains the V5.5 DOCX import entry and Preview workspace", async () => {
   const [source, styles] = await Promise.all([builtServerSource(), builtCssSource()]);
-  assert.match(source, /从 DOCX 导入/);
+  assert.match(source, /导入 DOCX/);
   assert.match(source, /选择 DOCX 文件/);
   assert.match(source, /解析进度/);
   assert.match(source, /Word 作者关联/);

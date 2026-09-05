@@ -138,13 +138,9 @@ export function DocxImportPreview({
   return (
     <div className="docx-import-preview">
       <section className="docx-import-document" aria-labelledby="docx-preview-heading">
-        <div className="docx-import-preview-heading">
-          <div>
-            <span className="eyebrow">导入预览</span>
-            <h2 id="docx-preview-heading">检查正文与批注位置</h2>
-          </div>
-          <span className="docx-import-source">{preview.ir.source.filename}</span>
-        </div>
+        <h2 id="docx-preview-heading" className="sr-only">
+          正文预览
+        </h2>
         <label className="field-label" htmlFor="docx-import-title">
           帖子标题
         </label>
@@ -180,81 +176,6 @@ export function DocxImportPreview({
       </section>
 
       <aside className="docx-import-rail" aria-label="导入检查信息">
-        <section className="docx-import-panel">
-          <div className="section-heading">
-            <h2>Word 批注</h2>
-            <span>{preview.ir.threads.length} 条</span>
-          </div>
-          {preview.ir.threads.length === 0 ? (
-            <p className="empty-copy">没有可导入的正文批注。</p>
-          ) : (
-            <div className="docx-import-thread-list">
-              {preview.ir.threads.map((thread) => (
-                <ImportedThreadPreview
-                  key={thread.annotationId}
-                  thread={thread}
-                  selectedText={getImportedThreadSelectedText(
-                    preview.ir.blocks,
-                    thread.blockId,
-                    thread.blockLocalStart,
-                    thread.blockLocalEnd,
-                    thread.endBlockId,
-                  )}
-                />
-              ))}
-            </div>
-          )}
-        </section>
-
-        <section className="docx-import-panel">
-          <div className="section-heading">
-            <h2>Word 作者关联</h2>
-            <span>{authors.length} 位</span>
-          </div>
-          <p className="muted">关联只用于通知和说明，Word 原作者身份始终保留。</p>
-          <div className="docx-import-author-list">
-            {authors.map((author, index) => (
-              <label key={author}>
-                <span>
-                  {author} <small>Word 导入</small>
-                </span>
-                {/* Native select is intentional: this small mapping list accepts the platform-owned popup. */}
-                <select
-                  value={preview.authorMappings[author] ?? ""}
-                  aria-invalid={Boolean(
-                    preview.authorMappings[author] &&
-                    !users.some((user) => user.id === preview.authorMappings[author]),
-                  )}
-                  aria-describedby={
-                    preview.authorMappings[author] &&
-                    !users.some((user) => user.id === preview.authorMappings[author])
-                      ? `docx-author-${index}-error`
-                      : undefined
-                  }
-                  onChange={(event) => onMappingChange(author, event.target.value)}
-                >
-                  <option value="">不关联站内用户</option>
-                  {preview.authorMappings[author] &&
-                  !users.some((user) => user.id === preview.authorMappings[author]) ? (
-                    <option value={preview.authorMappings[author]}>原关联用户已不可用</option>
-                  ) : null}
-                  {users.map((user) => (
-                    <option key={user.id} value={user.id}>
-                      {user.displayName}
-                    </option>
-                  ))}
-                </select>
-                {preview.authorMappings[author] &&
-                !users.some((user) => user.id === preview.authorMappings[author]) ? (
-                  <small id={`docx-author-${index}-error`} className="form-error">
-                    原关联用户已不可用，请重新选择。
-                  </small>
-                ) : null}
-              </label>
-            ))}
-          </div>
-        </section>
-
         <section className="docx-import-panel docx-import-warning-summary">
           <div className="section-heading">
             <h2>导入提醒</h2>
@@ -346,6 +267,81 @@ export function DocxImportPreview({
             </ul>
           </section>
         )}
+
+        <section className="docx-import-panel">
+          <div className="section-heading">
+            <h2>Word 批注</h2>
+            <span>{preview.ir.threads.length} 条</span>
+          </div>
+          {preview.ir.threads.length === 0 ? (
+            <p className="empty-copy">没有可导入的正文批注。</p>
+          ) : (
+            <div className="docx-import-thread-list">
+              {preview.ir.threads.map((thread) => (
+                <ImportedThreadPreview
+                  key={thread.annotationId}
+                  thread={thread}
+                  selectedText={getImportedThreadSelectedText(
+                    preview.ir.blocks,
+                    thread.blockId,
+                    thread.blockLocalStart,
+                    thread.blockLocalEnd,
+                    thread.endBlockId,
+                  )}
+                />
+              ))}
+            </div>
+          )}
+        </section>
+
+        <section className="docx-import-panel">
+          <div className="section-heading">
+            <h2>Word 作者关联</h2>
+            <span>{authors.length} 位</span>
+          </div>
+          <p className="muted">关联只用于通知和说明，Word 原作者身份始终保留。</p>
+          <div className="docx-import-author-list">
+            {authors.map((author, index) => (
+              <label key={author}>
+                <span>
+                  {author} <small>Word 导入</small>
+                </span>
+                {/* Native select is intentional: this small mapping list accepts the platform-owned popup. */}
+                <select
+                  value={preview.authorMappings[author] ?? ""}
+                  aria-invalid={Boolean(
+                    preview.authorMappings[author] &&
+                    !users.some((user) => user.id === preview.authorMappings[author]),
+                  )}
+                  aria-describedby={
+                    preview.authorMappings[author] &&
+                    !users.some((user) => user.id === preview.authorMappings[author])
+                      ? `docx-author-${index}-error`
+                      : undefined
+                  }
+                  onChange={(event) => onMappingChange(author, event.target.value)}
+                >
+                  <option value="">不关联站内用户</option>
+                  {preview.authorMappings[author] &&
+                  !users.some((user) => user.id === preview.authorMappings[author]) ? (
+                    <option value={preview.authorMappings[author]}>原关联用户已不可用</option>
+                  ) : null}
+                  {users.map((user) => (
+                    <option key={user.id} value={user.id}>
+                      {user.displayName}
+                    </option>
+                  ))}
+                </select>
+                {preview.authorMappings[author] &&
+                !users.some((user) => user.id === preview.authorMappings[author]) ? (
+                  <small id={`docx-author-${index}-error`} className="form-error">
+                    原关联用户已不可用，请重新选择。
+                  </small>
+                ) : null}
+              </label>
+            ))}
+          </div>
+        </section>
       </aside>
     </div>
   );

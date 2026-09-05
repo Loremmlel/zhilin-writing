@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { PendingSubmitButton } from "@/components/pending/pending-submit-button";
 import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useRef, useState } from "react";
 
@@ -357,14 +358,34 @@ export function PostEditorForm({
           value={JSON.stringify(confirmedAnnotationDeletionIds)}
         />
         <input type="hidden" name="creationSubmissionKey" value={creationSubmissionKey} />
-        <div className="editor-topline">
-          <span className={`draft-status draft-status--${draftStatus}`} role="status">
-            {draftStatus === "loading" && "检查本地修改…"}
-            {draftStatus === "saving" && "保存中…"}
-            {draftStatus === "saved" && "本地修改已保存"}
-            {draftStatus === "failed" && "本地保存失败"}
-          </span>
-          <span>Markdown 将作为正文的唯一存储格式</span>
+        <div className="editor-action-bar">
+          <div>
+            <h1>{draftId === "new" ? "写帖子" : "编辑帖子"}</h1>
+            <span className={`draft-status draft-status--${draftStatus}`} role="status">
+              {draftStatus === "loading" && "检查本地修改…"}
+              {draftStatus === "saving" && "保存中…"}
+              {draftStatus === "saved" && "本地修改已保存"}
+              {draftStatus === "failed" && "本地保存失败"}
+            </span>
+          </div>
+          <div className="form-actions">
+            {draftId === "new" && (
+              <Link href="/posts/import" className="button button--text">
+                导入 DOCX
+              </Link>
+            )}
+            <Link href={cancelHref} className="button button--ghost">
+              取消
+            </Link>
+            <PendingSubmitButton
+              className="button button--primary"
+              pendingLabel="保存中…"
+              reserveLabels={["等待上传完成", "请先处理冲突"]}
+              disabled={pending || accessBlocked || saveBlocked || !hydrated || uploadPending}
+            >
+              {uploadPending ? "等待上传完成" : saveBlocked ? "请先处理冲突" : submitLabel}
+            </PendingSubmitButton>
+          </div>
         </div>
         {recoverableDraft && (
           <section className="draft-recovery" aria-labelledby="draft-recovery-title">
@@ -408,180 +429,159 @@ export function PostEditorForm({
             </button>
           </section>
         )}
-        <label className="field-label" htmlFor="post-title">
-          标题
-        </label>
-        <input
-          id="post-title"
-          className="title-input"
-          name="title"
-          value={title}
-          onChange={(event) => {
-            setTitle(event.target.value);
-            setDirty(true);
-          }}
-          maxLength={120}
-          placeholder="给这篇文字起一个标题"
-          aria-invalid={Boolean(state.error && !conflict)}
-          disabled={pending || accessBlocked}
-        />
-        <label className="field-label">正文</label>
-        {confirmedAnnotationDeletionIds.length > 0 && (
-          <p className="annotation-editor-pending" role="status">
-            保存后将撤下 {confirmedAnnotationDeletionIds.length} 条批注；撤销正文修改可恢复。
-          </p>
-        )}
-        {annotationThreads.length > 0 ? (
-          <AnnotatedEditorLayout
-            editorRoot={editorRoot}
-            annotations={annotationThreads}
-            pendingRetiredAnnotationIds={confirmedAnnotationDeletionIds}
-          >
-            {editor}
-          </AnnotatedEditorLayout>
-        ) : (
-          editor
-        )}
-        <div className="editor-subgrid">
-          <label>
-            <span className="field-label">标签（最多 5 个，用逗号分隔）</span>
+        <AnnotatedEditorLayout
+          editorRoot={editorRoot}
+          annotations={annotationThreads}
+          pendingRetiredAnnotationIds={confirmedAnnotationDeletionIds}
+        >
+          <div className="editor-paper">
+            <label className="field-label" htmlFor="post-title">
+              标题
+            </label>
             <input
-              className="text-input"
-              name="tags"
-              value={tags}
+              id="post-title"
+              className="title-input"
+              name="title"
+              value={title}
               onChange={(event) => {
-                setTags(event.target.value);
+                setTitle(event.target.value);
                 setDirty(true);
               }}
-              placeholder="随笔，生活"
+              maxLength={120}
+              placeholder="给这篇文字起一个标题"
+              aria-invalid={Boolean(state.error && !conflict)}
               disabled={pending || accessBlocked}
             />
-          </label>
-          <label
-            className="attachment-upload"
-            aria-busy={attachmentUploadTasks.some((task) => task.status === "uploading")}
-          >
-            <span className="field-label">附件</span>
-            <input
-              type="file"
-              multiple
-              disabled={pending || accessBlocked}
-              onChange={(event) => {
-                for (const file of Array.from(event.target.files ?? []))
-                  void uploadAttachment(file);
-                event.currentTarget.value = "";
-              }}
-            />
-            <span className="muted">可选择多个文件；成功项会立即保留。</span>
-          </label>
-        </div>
-        {attachmentUploadTasks.length > 0 && (
-          <div className="asset-upload-list" aria-label="附件上传状态" aria-live="polite">
-            {attachmentUploadTasks.map((task) => (
-              <div className="asset-upload-task" key={task.id}>
-                <div>
-                  <strong>{task.file.name}</strong>
-                  {task.status === "uploading" ? (
-                    <>
-                      <span>上传中 · {task.percent}%</span>
-                      <progress
-                        max={100}
-                        value={task.percent}
-                        aria-label={`${task.file.name} 上传进度`}
-                      />
-                    </>
-                  ) : (
-                    <span className="form-error" role="alert">
-                      上传失败 · {task.error}
-                    </span>
-                  )}
-                </div>
-                {task.status === "failed" && (
-                  <span className="asset-row-actions">
-                    <button
-                      type="button"
-                      className="text-button"
-                      onClick={() => void uploadAttachment(task.file, task.id)}
-                      disabled={pending || accessBlocked}
-                    >
-                      重试
-                    </button>
-                    <button
-                      type="button"
-                      className="text-button text-button--danger"
-                      onClick={() =>
-                        setAttachmentUploadTasks((current) =>
-                          current.filter((item) => item.id !== task.id),
-                        )
-                      }
-                      disabled={pending}
-                    >
-                      移除
-                    </button>
-                  </span>
-                )}
+            <label className="editor-tags">
+              <span className="field-label">标签（最多 5 个，用逗号分隔）</span>
+              <input
+                className="text-input"
+                name="tags"
+                value={tags}
+                onChange={(event) => {
+                  setTags(event.target.value);
+                  setDirty(true);
+                }}
+                placeholder="随笔，生活"
+                disabled={pending || accessBlocked}
+              />
+            </label>
+            <label className="field-label">正文</label>
+            {confirmedAnnotationDeletionIds.length > 0 && (
+              <p className="annotation-editor-pending" role="status">
+                保存后将撤下 {confirmedAnnotationDeletionIds.length} 条批注；撤销正文修改可恢复。
+              </p>
+            )}
+            {editor}
+            <div className="editor-subgrid">
+              <label
+                className="attachment-upload"
+                aria-busy={attachmentUploadTasks.some((task) => task.status === "uploading")}
+              >
+                <span className="field-label">附件</span>
+                <input
+                  type="file"
+                  multiple
+                  disabled={pending || accessBlocked}
+                  onChange={(event) => {
+                    for (const file of Array.from(event.target.files ?? []))
+                      void uploadAttachment(file);
+                    event.currentTarget.value = "";
+                  }}
+                />
+                <span className="muted">可选择多个文件；成功项会立即保留。</span>
+              </label>
+            </div>
+            {attachmentUploadTasks.length > 0 && (
+              <div className="asset-upload-list" aria-label="附件上传状态" aria-live="polite">
+                {attachmentUploadTasks.map((task) => (
+                  <div className="asset-upload-task" key={task.id}>
+                    <div>
+                      <strong>{task.file.name}</strong>
+                      {task.status === "uploading" ? (
+                        <>
+                          <span>上传中 · {task.percent}%</span>
+                          <progress
+                            max={100}
+                            value={task.percent}
+                            aria-label={`${task.file.name} 上传进度`}
+                          />
+                        </>
+                      ) : (
+                        <span className="form-error" role="alert">
+                          上传失败 · {task.error}
+                        </span>
+                      )}
+                    </div>
+                    {task.status === "failed" && (
+                      <span className="asset-row-actions">
+                        <button
+                          type="button"
+                          className="text-button"
+                          onClick={() => void uploadAttachment(task.file, task.id)}
+                          disabled={pending || accessBlocked}
+                        >
+                          重试
+                        </button>
+                        <button
+                          type="button"
+                          className="text-button text-button--danger"
+                          onClick={() =>
+                            setAttachmentUploadTasks((current) =>
+                              current.filter((item) => item.id !== task.id),
+                            )
+                          }
+                          disabled={pending}
+                        >
+                          移除
+                        </button>
+                      </span>
+                    )}
+                  </div>
+                ))}
               </div>
-            ))}
+            )}
+            {attachments.length > 0 && (
+              <div className="asset-list" aria-label="帖子附件">
+                {attachments
+                  .filter((asset) => attachmentIds.includes(asset.id))
+                  .map((asset) => (
+                    <div key={asset.id} className="asset-row">
+                      <span>{asset.filename}</span>
+                      <span className="asset-row-actions">
+                        <button
+                          type="button"
+                          className="text-button"
+                          onClick={() => {
+                            setMarkdown((current) => `${current.trimEnd()}\n\n${asset.markdown}\n`);
+                            setEditorResetRevision((current) => current + 1);
+                            setDirty(true);
+                          }}
+                          disabled={pending}
+                        >
+                          插入正文
+                        </button>
+                        <button
+                          type="button"
+                          className="text-button text-button--danger"
+                          onClick={() => {
+                            setAttachmentIds((current) => current.filter((id) => id !== asset.id));
+                            setDirty(true);
+                          }}
+                          disabled={pending}
+                        >
+                          移除附件
+                        </button>
+                      </span>
+                    </div>
+                  ))}
+              </div>
+            )}
+            {state.error && !state.conflict && (
+              <ActionErrorMessage error={state.error} incidentId={state.incidentId} />
+            )}
           </div>
-        )}
-        {attachments.length > 0 && (
-          <div className="asset-list" aria-label="帖子附件">
-            {attachments
-              .filter((asset) => attachmentIds.includes(asset.id))
-              .map((asset) => (
-                <div key={asset.id} className="asset-row">
-                  <span>{asset.filename}</span>
-                  <span className="asset-row-actions">
-                    <button
-                      type="button"
-                      className="text-button"
-                      onClick={() => {
-                        setMarkdown((current) => `${current.trimEnd()}\n\n${asset.markdown}\n`);
-                        setEditorResetRevision((current) => current + 1);
-                        setDirty(true);
-                      }}
-                      disabled={pending}
-                    >
-                      插入正文
-                    </button>
-                    <button
-                      type="button"
-                      className="text-button text-button--danger"
-                      onClick={() => {
-                        setAttachmentIds((current) => current.filter((id) => id !== asset.id));
-                        setDirty(true);
-                      }}
-                      disabled={pending}
-                    >
-                      移除附件
-                    </button>
-                  </span>
-                </div>
-              ))}
-          </div>
-        )}
-        {state.error && !state.conflict && (
-          <ActionErrorMessage error={state.error} incidentId={state.incidentId} />
-        )}
-        <div className="form-actions">
-          <Link href={cancelHref} className="button button--ghost">
-            取消
-          </Link>
-          <button
-            type="submit"
-            className="button button--primary"
-            disabled={pending || accessBlocked || saveBlocked || !hydrated || uploadPending}
-            aria-busy={pending}
-          >
-            {pending
-              ? "保存中…"
-              : uploadPending
-                ? "等待上传完成"
-                : saveBlocked
-                  ? "请先处理冲突"
-                  : submitLabel}
-          </button>
-        </div>
+        </AnnotatedEditorLayout>
       </form>
 
       <ModalDialog

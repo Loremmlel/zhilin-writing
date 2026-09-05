@@ -2,6 +2,8 @@ import { ProfileForm } from "@/components/profile/profile-form";
 import { requireMember } from "@/lib/auth/access";
 import { updateProfileAction } from "./actions";
 
+export const metadata = { title: "个人资料" };
+
 export default async function ProfileSettingsPage({
   searchParams,
 }: {
@@ -14,9 +16,10 @@ export default async function ProfileSettingsPage({
   return (
     <div className="page-column settings-page">
       <header className="page-header">
-        <span className="eyebrow">个人资料</span>
-        <h1>编辑社区中的自己</h1>
-        <p>过去的帖子会自动显示你当前的名称与头像。</p>
+        <div>
+          <h1>个人资料</h1>
+          <p>过去的帖子会显示你当前的名称与头像。</p>
+        </div>
       </header>
       <ProfileForm
         action={updateProfileAction}

@@ -146,7 +146,7 @@ test("annotation reading activates on click without duplicating selected text in
   ]);
 
   assert.match(readingLayout, /onClick=\{\(event\) =>/);
-  assert.match(readingLayout, /layoutAnnotationCards\(anchors, cardHeights, 8\)/);
+  assert.match(readingLayout, /layoutAnnotationCards\(anchors, cardHeights, 14\)/);
   assert.doesNotMatch(readingLayout, /onPointerOver=/);
   assert.doesNotMatch(annotationThread, /annotation-card-excerpt/);
   assert.doesNotMatch(annotationSheet, /选中文字/);
@@ -167,7 +167,7 @@ test("home cards, admin tabs, and the compact header keep their interaction cont
   assert.match(styles, /\.button--write[^}]*white-space: nowrap/);
   assert.match(
     styles,
-    /@media \(max-width: 640px\)[\s\S]*\.header-actions\s*\{[^}]*gap:\s*8px;[^}]*\}[\s\S]*\.account-menu-trigger\s*\{[^}]*min-width:\s*44px/,
+    /@media \(max-width: 640px\)[\s\S]*\.header-actions\s*\{[^}]*gap:\s*4px;[^}]*\}[\s\S]*\.account-menu-trigger\s*\{[^}]*min-width:\s*44px/,
   );
   assert.match(admin, /所属帖子：用户已删除/);
   assert.match(admin, /所属帖子：管理员已隐藏/);

@@ -42,9 +42,7 @@ function Cards({ count = 3 }: { count?: number }) {
 function PageHeading() {
   return (
     <div className="skeleton-page-heading">
-      <span className="skeleton-block skeleton-block--eyebrow" />
       <span className="skeleton-block skeleton-block--title" />
-      <span className="skeleton-block skeleton-block--copy" />
     </div>
   );
 }
@@ -77,27 +75,18 @@ export function PostDetailSkeleton() {
 
 export function PostBodySkeleton() {
   return (
-    <article className="post-article skeleton-post" aria-busy="true" aria-live="polite">
-      <span className="sr-only">正在加载正文和批注</span>
-      <div aria-hidden="true">
-        <div className="skeleton-post-header">
-          <span className="skeleton-block skeleton-block--eyebrow" />
-          <span className="skeleton-block skeleton-block--hero-title" />
-          <span className="skeleton-block skeleton-block--meta" />
-        </div>
-        <div className="skeleton-reading-layout">
-          <Lines count={7} />
-          <div className="skeleton-annotation-rail">
-            <div className="skeleton-card">
-              <Lines count={3} />
-            </div>
-            <div className="skeleton-card">
-              <Lines count={2} />
-            </div>
+    <div className="reading-workspace">
+      <article className="annotation-paper skeleton-post" aria-busy="true" aria-live="polite">
+        <span className="sr-only">正在加载正文和批注</span>
+        <div aria-hidden="true">
+          <div className="skeleton-post-header">
+            <span className="skeleton-block skeleton-block--hero-title" />
+            <span className="skeleton-block skeleton-block--meta" />
           </div>
+          <Lines count={7} />
         </div>
-      </div>
-    </article>
+      </article>
+    </div>
   );
 }
 
@@ -120,6 +109,10 @@ export function ProfileSkeleton() {
         <span className="skeleton-block skeleton-block--avatar" />
         <PageHeading />
       </div>
+      <div className="skeleton-tabs">
+        <span />
+        <span />
+      </div>
       <ProfileContentSkeleton />
     </LoadingShell>
   );
@@ -130,10 +123,6 @@ export function ProfileContentSkeleton() {
     <div className="skeleton-region" aria-busy="true" aria-live="polite">
       <span className="sr-only">正在加载个人内容</span>
       <div aria-hidden="true">
-        <div className="skeleton-tabs">
-          <span />
-          <span />
-        </div>
         <Cards />
       </div>
     </div>
@@ -144,6 +133,10 @@ export function NotificationsSkeleton() {
   return (
     <LoadingShell className="page-column notifications-page loading-shell" label="正在加载通知">
       <PageHeading />
+      <div className="skeleton-tabs">
+        <span />
+        <span />
+      </div>
       <NotificationsListSkeleton />
     </LoadingShell>
   );
@@ -154,10 +147,6 @@ export function NotificationsListSkeleton() {
     <div className="skeleton-region" aria-busy="true" aria-live="polite">
       <span className="sr-only">正在加载通知列表</span>
       <div aria-hidden="true">
-        <div className="skeleton-tabs">
-          <span />
-          <span />
-        </div>
         <Cards count={4} />
       </div>
     </div>

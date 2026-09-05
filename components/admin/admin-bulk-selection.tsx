@@ -110,7 +110,11 @@ export function AdminBulkSelection({
       }}
     >
       <div className="admin-bulk-bar" aria-live="polite">
-        <span>已选 {selected.length} 条（仅当前页）</span>
+        <span>
+          {selected.length
+            ? `已选 ${selected.length} 条（仅当前页）`
+            : "选择当前页内容后可批量操作"}
+        </span>
         <div>
           <button
             className="button button--ghost button--small"
@@ -121,7 +125,7 @@ export function AdminBulkSelection({
             批量隐藏
           </button>
           <button
-            className="button button--danger button--small"
+            className="button button--danger-quiet button--small"
             type="button"
             disabled={selected.length === 0}
             onClick={() => open("purge")}

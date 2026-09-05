@@ -54,6 +54,8 @@ function targetKindFromQuery(target: string | undefined): NotificationTargetKind
   return null;
 }
 
+export const metadata = { title: "阅读帖子" };
+
 export default async function PostPage({
   params,
   searchParams,
@@ -74,9 +76,7 @@ export default async function PostPage({
   const discussionVisible = item.lifecycle.contentVisible || item.lifecycle.discussionReachable;
 
   return (
-    <div
-      className={`reading-page page-column${rawAnnotations.length ? " reading-page--annotated" : ""}`}
-    >
+    <div className="reading-page page-column">
       <RegionErrorBoundary
         title="正文暂时无法显示"
         description="帖子地址与定位目标仍会保留，请稍后重试。"
@@ -186,49 +186,67 @@ async function PostBodyRegion({
     ),
   ]);
 
+  const paperHeader = (
+    <header className="post-header">
+      <div className="post-kicker">
+        {item.tags.map((tag) => (
+          <Link
+            className="tag"
+            key={tag.id}
+            href={`/tags/${encodeURIComponent(tag.normalizedName)}`}
+          >
+            {tag.name}
+          </Link>
+        ))}
+      </div>
+      <h1>{item.title}</h1>
+      <div className="post-byline">
+        <Link href={`/users/${item.author.id}`} className="author-link">
+          <Avatar name={item.author.displayName} assetId={item.author.avatarAssetId} />
+          <span>{item.author.displayName}</span>
+        </Link>
+        <span>发布于 {formatDateTime(item.post.publishedAt)}</span>
+        {item.post.editedAt && <span>编辑于 {formatDateTime(item.post.editedAt)}</span>}
+        {item.post.authorId === memberId && (
+          <Link href={`/posts/${id}/edit`} className="text-link">
+            编辑帖子
+          </Link>
+        )}
+        {item.post.authorId === memberId && (
+          <DeleteContentControl
+            action={deletePostAction.bind(null, id)}
+            label="删除帖子"
+            title="删除这篇帖子？"
+            description={deletePostConfirmation(item.lifecycle.hasOtherMemberDiscussion)}
+          />
+        )}
+      </div>
+    </header>
+  );
+  const paperFooter = (
+    <>
+      {item.attachments.length > 0 && (
+        <section className="attachment-area">
+          <h2>附件</h2>
+          {item.attachments.map((asset) => (
+            <a href={`/api/assets/${asset.id}`} key={asset.id} className="attachment-link">
+              <span>{asset.filename}</span>
+              <small>{Math.ceil(asset.byteSize / 1024)} KB</small>
+            </a>
+          ))}
+        </section>
+      )}
+    </>
+  );
+
   return (
     <>
       {item.lifecycle.contentVisible ? (
-        <article
-          className={`post-article${annotationViews.length ? " post-article--annotated" : ""}`}
-        >
-          <header className="post-header">
-            <div className="post-kicker">
-              {item.tags.map((tag) => (
-                <Link
-                  className="tag"
-                  key={tag.id}
-                  href={`/tags/${encodeURIComponent(tag.normalizedName)}`}
-                >
-                  {tag.name}
-                </Link>
-              ))}
-            </div>
-            <h1>{item.title}</h1>
-            <div className="post-byline">
-              <Link href={`/users/${item.author.id}`} className="author-link">
-                <Avatar name={item.author.displayName} assetId={item.author.avatarAssetId} />
-                <span>{item.author.displayName}</span>
-              </Link>
-              <span>发布于 {formatDateTime(item.post.publishedAt)}</span>
-              {item.post.editedAt && <span>编辑于 {formatDateTime(item.post.editedAt)}</span>}
-              {item.post.authorId === memberId && (
-                <Link href={`/posts/${id}/edit`} className="text-link">
-                  编辑帖子
-                </Link>
-              )}
-              {item.post.authorId === memberId && (
-                <DeleteContentControl
-                  action={deletePostAction.bind(null, id)}
-                  label="删除帖子"
-                  title="删除这篇帖子？"
-                  description={deletePostConfirmation(item.lifecycle.hasOtherMemberDiscussion)}
-                />
-              )}
-            </div>
-          </header>
+        <article className="reading-workspace">
           {item.post.currentRevisionId ? (
             <AnnotationReadingLayout
+              header={paperHeader}
+              footer={paperFooter}
               postId={id}
               html={postHtml}
               annotations={annotationViews}
@@ -244,18 +262,11 @@ async function PostBodyRegion({
               }
             />
           ) : (
-            <div className="markdown-body" dangerouslySetInnerHTML={{ __html: postHtml }} />
-          )}
-          {item.attachments.length > 0 && (
-            <section className="attachment-area">
-              <h2>附件</h2>
-              {item.attachments.map((asset) => (
-                <a href={`/api/assets/${asset.id}`} key={asset.id} className="attachment-link">
-                  <span>{asset.filename}</span>
-                  <small>{Math.ceil(asset.byteSize / 1024)} KB</small>
-                </a>
-              ))}
-            </section>
+            <div className="annotation-paper">
+              {paperHeader}
+              <div className="markdown-body" dangerouslySetInnerHTML={{ __html: postHtml }} />
+              {paperFooter}
+            </div>
           )}
         </article>
       ) : (
@@ -369,9 +380,19 @@ async function DiscussionRegion({
         targetId={query.target === "post-reply" && query.reply ? `reply-${query.reply}` : undefined}
       />
       <div className="section-heading">
-        <h2>回复</h2>
+        <h2>讨论</h2>
         <span>{visibleReplyCount} 条</span>
       </div>
+      {contentVisible && (
+        <div className="new-reply-block">
+          <LazyReplyForm
+            action={createReplyAction.bind(null, id, null)}
+            initialSubmissionKey={crypto.randomUUID()}
+            label="写回复"
+            openLabel="回复文章"
+          />
+        </div>
+      )}
       {replyViews.length > 0 ? (
         <ReplyList
           items={replyViews}
@@ -381,17 +402,6 @@ async function DiscussionRegion({
         />
       ) : (
         <p className="empty-copy">还没有回复。可以从一句认真读过的话开始。</p>
-      )}
-      {contentVisible && (
-        <div className="new-reply-block">
-          <h3>写一条回复</h3>
-          <LazyReplyForm
-            action={createReplyAction.bind(null, id, null)}
-            initialSubmissionKey={crypto.randomUUID()}
-            label="写回复"
-            openLabel="开始写回复"
-          />
-        </div>
       )}
     </section>
   );

@@ -6,6 +6,7 @@ import { useFormStatus } from "react-dom";
 type PendingSubmitButtonProps = Omit<ComponentPropsWithoutRef<"button">, "children" | "type"> & {
   children: ReactNode;
   pendingLabel: string;
+  reserveLabels?: string[];
 };
 
 export function PendingSubmitButton({
@@ -13,6 +14,7 @@ export function PendingSubmitButton({
   className = "",
   disabled,
   pendingLabel,
+  reserveLabels = [],
   ...props
 }: PendingSubmitButtonProps) {
   const { pending } = useFormStatus();
@@ -29,6 +31,11 @@ export function PendingSubmitButton({
         <span className="pending-submit-labels">
           <span aria-hidden={pending}>{children}</span>
           <span aria-hidden={!pending}>{pendingLabel}</span>
+          {reserveLabels.map((label) => (
+            <span key={label} aria-hidden="true">
+              {label}
+            </span>
+          ))}
         </span>
       </button>
       <span className="sr-only" role="status" aria-live="polite">

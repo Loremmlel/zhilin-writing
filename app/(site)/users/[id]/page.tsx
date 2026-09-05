@@ -8,26 +8,31 @@ import Link from "next/link";
 import { ActivityList } from "@/components/activity-list";
 import { ProfileContentSkeleton } from "@/components/loading/skeletons";
 import { RegionErrorBoundary } from "@/components/region-error-boundary";
-import { findUserById, listPosts, listUserActivity } from "@/db/queries";
+import { findUserById, listPostsPage, listUserActivityPage } from "@/db/queries";
 import { formatJoinedDate } from "@/lib/format";
+
+import { Pagination } from "@/components/pagination";
+import { parsePage } from "@/lib/pagination";
+import { canonicalPage } from "@/lib/page-navigation";
+import { requireMember } from "@/lib/auth/access";
+export const metadata = { title: "成员主页" };
 
 export default async function UserPage({
   params,
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ tab?: string }>;
+  searchParams: Promise<{ tab?: string; page?: string }>;
 }) {
   const [{ id }, query] = await Promise.all([params, searchParams]);
   const tab = query.tab === "activity" ? "activity" : "posts";
-  const user = await findUserById(id);
+  const [user, { member }] = await Promise.all([findUserById(id), requireMember(`/users/${id}`)]);
   if (!user) notFound();
   return (
     <div className="page-column profile-page">
       <header className="profile-header">
         <Avatar name={user.displayName} assetId={user.avatarAssetId} size="large" />
         <div>
-          <span className="eyebrow">社区成员</span>
           <h1>{user.displayName}</h1>
           <p>{user.bio || "还没有写个人简介。"}</p>
           <span className="muted">{formatJoinedDate(user.joinedAt)} 加入</span>
@@ -46,26 +51,61 @@ export default async function UserPage({
         description="当前标签页仍会保留，请稍后重试。"
       >
         <Suspense fallback={<ProfileContentSkeleton />}>
-          <ProfileContent userId={id} tab={tab} />
+          <ProfileContent userId={id} tab={tab} rawPage={query.page} own={member.id === id} />
         </Suspense>
       </RegionErrorBoundary>
     </div>
   );
 }
 
-async function ProfileContent({ userId, tab }: { userId: string; tab: "posts" | "activity" }) {
-  if (tab === "activity") return <ActivityList items={await listUserActivity(userId)} />;
-  const posts = await listPosts({ authorId: userId });
-  return posts.length > 0 ? (
-    <section className="post-list">
-      {posts.map((item) => (
-        <PostCard key={item.post.id} {...item} />
-      ))}
-    </section>
-  ) : (
-    <div className="empty-state">
-      <h2>还没有发布帖子</h2>
-      <p>这里会显示这位成员当前可见的文章。</p>
-    </div>
+async function ProfileContent({
+  userId,
+  tab,
+  rawPage,
+  own,
+}: {
+  userId: string;
+  tab: "posts" | "activity";
+  rawPage?: string;
+  own: boolean;
+}) {
+  const path = `/users/${userId}`;
+  const filters = { tab: tab === "activity" ? "activity" : undefined };
+  const result =
+    tab === "activity"
+      ? await listUserActivityPage(userId, parsePage(rawPage))
+      : await listPostsPage({ authorId: userId, page: parsePage(rawPage) });
+  canonicalPage(rawPage, result.page, path, filters);
+  return (
+    <>
+      {tab === "activity" ? (
+        result.items.length ? (
+          <ActivityList
+            items={result.items as Awaited<ReturnType<typeof listUserActivityPage>>["items"]}
+          />
+        ) : (
+          <div className="empty-state">
+            <p>暂时没有可见动态。</p>
+            <Link className="button button--ghost" href={path}>
+              查看该成员的帖子
+            </Link>
+          </div>
+        )
+      ) : result.items.length ? (
+        <section className="post-list">
+          {(result.items as Awaited<ReturnType<typeof listPostsPage>>["items"]).map((item) => (
+            <PostCard key={item.post.id} {...item} />
+          ))}
+        </section>
+      ) : (
+        <div className="empty-state">
+          <p>{own ? "你还没有发布帖子。" : "这位成员还没有可见帖子。"}</p>
+          <Link className="button button--ghost" href={own ? "/posts/new" : "/"}>
+            {own ? "写帖子" : "浏览帖子"}
+          </Link>
+        </div>
+      )}
+      <Pagination {...result} path={path} filters={filters} />
+    </>
   );
 }

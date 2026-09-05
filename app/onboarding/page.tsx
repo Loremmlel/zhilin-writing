@@ -5,6 +5,8 @@ import { createProfileAction } from "./actions";
 
 export const dynamic = "force-dynamic";
 
+export const metadata = { title: "完善个人资料" };
+
 export default async function OnboardingPage({
   searchParams,
 }: {

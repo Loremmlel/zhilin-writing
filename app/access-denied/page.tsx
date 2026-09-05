@@ -1,5 +1,7 @@
 import { chatGPTSignOutPath } from "@/app/chatgpt-auth";
 
+export const metadata = { title: "访问受限" };
+
 export default function AccessDeniedPage() {
   return (
     <main className="centered-page">

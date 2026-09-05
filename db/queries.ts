@@ -46,6 +46,8 @@ import {
   type AdminStatusCounts,
 } from "@/lib/admin/query";
 
+import { pageBounds } from "@/lib/pagination";
+
 export type PostSort = "latest" | "active";
 
 const visiblePost = and(isNull(posts.deletedAt), isNull(posts.hiddenAt));
@@ -294,13 +296,13 @@ export async function updateUserProfileWithAvatar(
   return findUserById(id);
 }
 
-export async function listPosts(
+export async function listPostsPage(
   options: {
     sort?: PostSort;
     query?: string;
     authorId?: string;
     tagName?: string;
-    limit?: number;
+    page?: number;
   } = {},
 ) {
   const conditions = [isNull(posts.deletedAt), isNull(posts.hiddenAt)];
@@ -318,27 +320,38 @@ export async function listPosts(
         .where(eq(tags.normalizedName, options.tagName.toLocaleLowerCase("zh-CN")))
         .limit(1)
     )[0];
-    if (!tag) return [];
-    conditions.push(
-      inArray(
-        posts.id,
-        getDb()
-          .select({ postId: postTags.postId })
-          .from(postTags)
-          .where(eq(postTags.tagId, tag.id)),
-      ),
-    );
+    if (!tag) conditions.push(sql`0 = 1`);
+    if (tag)
+      conditions.push(
+        inArray(
+          posts.id,
+          getDb()
+            .select({ postId: postTags.postId })
+            .from(postTags)
+            .where(eq(postTags.tagId, tag.id)),
+        ),
+      );
   }
 
+  const [countRow] = await getDb()
+    .select({ value: count() })
+    .from(posts)
+    .innerJoin(users, eq(posts.authorId, users.id))
+    .where(and(...conditions));
+  const bounds = pageBounds(countRow?.value ?? 0, options.page);
   const rows = await getDb()
     .select({ post: posts, author: users })
     .from(posts)
     .innerJoin(users, eq(posts.authorId, users.id))
     .where(and(...conditions))
-    .orderBy(options.sort === "active" ? desc(posts.lastActivityAt) : desc(posts.publishedAt))
-    .limit(Math.min(Math.max(options.limit ?? 40, 1), 60));
+    .orderBy(
+      options.sort === "active" ? desc(posts.lastActivityAt) : desc(posts.publishedAt),
+      desc(posts.id),
+    )
+    .limit(bounds.pageSize)
+    .offset(bounds.offset);
   const ids = rows.map((row) => row.post.id);
-  if (ids.length === 0) return [];
+  if (ids.length === 0) return { ...bounds, items: [] };
   const [tagRows, countRows] = await Promise.all([
     getDb()
       .select({
@@ -367,11 +380,12 @@ export async function listPosts(
       { id: tag.id, name: tag.name, normalizedName: tag.normalizedName },
     ]);
   const countByPostId = new Map(countRows.map((row) => [row.postId, row.value]));
-  return rows.map((row) => ({
+  const items = rows.map((row) => ({
     ...row,
     tags: tagsByPostId.get(row.post.id) ?? [],
     replyCount: countByPostId.get(row.post.id) ?? 0,
   }));
+  return { ...bounds, items };
 }
 
 export async function getPost(id: string) {
@@ -618,15 +632,47 @@ export async function findPostByCreationSubmissionKey(authorId: string, submissi
   );
 }
 
-export async function listUserActivity(actorUserId: string, limit = 50) {
+export async function listUserActivityPage(actorUserId: string, page?: number) {
+  const conditions = and(
+    eq(activityEvents.actorUserId, actorUserId),
+    isNull(activityEvents.invalidatedAt),
+  );
+  const [countRow] = await getDb()
+    .select({ value: count() })
+    .from(activityEvents)
+    .innerJoin(users, eq(activityEvents.actorUserId, users.id))
+    .where(conditions);
+  const bounds = pageBounds(countRow?.value ?? 0, page);
   const rows = await getDb()
     .select({
       event: activityEvents,
-      actor: users,
-      post: posts,
-      reply: replies,
-      annotation: annotations,
-      annotationReply: annotationReplies,
+      actor: { id: users.id, displayName: users.displayName },
+      post: {
+        id: posts.id,
+        authorId: posts.authorId,
+        title: posts.title,
+        deletedAt: posts.deletedAt,
+        hiddenAt: posts.hiddenAt,
+      },
+      reply: {
+        id: replies.id,
+        markdown: replies.markdown,
+        deletedAt: replies.deletedAt,
+        hiddenAt: replies.hiddenAt,
+      },
+      annotation: {
+        id: annotations.id,
+        contentMarkdown: annotations.contentMarkdown,
+        originalSelectedText: annotations.originalSelectedText,
+        deletedAt: annotations.deletedAt,
+        hiddenAt: annotations.hiddenAt,
+      },
+      annotationReply: {
+        id: annotationReplies.id,
+        contentMarkdown: annotationReplies.contentMarkdown,
+        deletedAt: annotationReplies.deletedAt,
+        hiddenAt: annotationReplies.hiddenAt,
+      },
     })
     .from(activityEvents)
     .innerJoin(users, eq(activityEvents.actorUserId, users.id))
@@ -634,9 +680,10 @@ export async function listUserActivity(actorUserId: string, limit = 50) {
     .leftJoin(replies, eq(activityEvents.replyId, replies.id))
     .leftJoin(annotations, eq(activityEvents.annotationId, annotations.id))
     .leftJoin(annotationReplies, eq(activityEvents.annotationReplyId, annotationReplies.id))
-    .where(and(eq(activityEvents.actorUserId, actorUserId), isNull(activityEvents.invalidatedAt)))
-    .orderBy(desc(activityEvents.createdAt))
-    .limit(Math.min(Math.max(limit, 1), 50));
+    .where(conditions)
+    .orderBy(desc(activityEvents.createdAt), desc(activityEvents.id))
+    .limit(bounds.pageSize)
+    .offset(bounds.offset);
   const replyToIds = rows
     .map((row) => row.event.replyToUserId)
     .filter((id): id is string => Boolean(id));
@@ -645,7 +692,7 @@ export async function listUserActivity(actorUserId: string, limit = 50) {
     findUsersByIds(replyToIds),
   ]);
   const replyToById = new Map(replyToUsers.map((user) => [user.id, user]));
-  return rows.map((row) => {
+  const items = rows.map((row) => {
     const postState = row.post ? contentState(row.post).state : "deleted";
     const replyState = row.reply ? contentState(row.reply).state : "deleted";
     const annotationState = row.annotation ? contentState(row.annotation).state : "deleted";
@@ -720,6 +767,7 @@ export async function listUserActivity(actorUserId: string, limit = 50) {
       annotationReplyState,
     };
   });
+  return { ...bounds, items };
 }
 
 export async function countUnreadNotifications(recipientUserId: string): Promise<number> {
@@ -777,12 +825,19 @@ const notificationSelection = {
   },
 };
 
-export async function listNotifications(
+export async function listNotificationsPage(
   recipientUserId: string,
-  options: { unreadOnly?: boolean; limit?: number } = {},
+  options: { unreadOnly?: boolean; page?: number } = {},
 ) {
   const conditions = [eq(notifications.recipientUserId, recipientUserId)];
   if (options.unreadOnly) conditions.push(isNull(notifications.readAt));
+  const [countRow] = await getDb()
+    .select({ value: count() })
+    .from(notifications)
+    .innerJoin(activityEvents, eq(notifications.eventId, activityEvents.id))
+    .innerJoin(users, eq(notifications.actorUserId, users.id))
+    .where(and(...conditions));
+  const bounds = pageBounds(countRow?.value ?? 0, options.page);
   const rows = await getDb()
     .select(notificationSelection)
     .from(notifications)
@@ -793,12 +848,16 @@ export async function listNotifications(
     .leftJoin(annotations, eq(notifications.annotationId, annotations.id))
     .leftJoin(annotationReplies, eq(notifications.annotationReplyId, annotationReplies.id))
     .where(and(...conditions))
-    .orderBy(desc(notifications.createdAt))
-    .limit(Math.min(Math.max(options.limit ?? 60, 1), 60));
+    .orderBy(desc(notifications.createdAt), desc(notifications.id))
+    .limit(bounds.pageSize)
+    .offset(bounds.offset);
   const context = await loadLifecycleQueryContext(
     rows.flatMap((row) => (row.post ? [row.post.id] : [])),
   );
-  return Promise.all(rows.map((row) => lifecycleNotificationRow(row, context)));
+  return {
+    ...bounds,
+    items: await Promise.all(rows.map((row) => lifecycleNotificationRow(row, context))),
+  };
 }
 
 export async function findOwnedNotification(id: string, recipientUserId: string) {

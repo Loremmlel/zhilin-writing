@@ -27,6 +27,7 @@ import {
 } from "@/lib/annotations/layout";
 import {
   annotationLayoutMode,
+  resolveActiveAnnotationId,
   resolveAnnotationSheetId,
   type AnnotationLayoutMode,
 } from "@/lib/annotations/responsive";
@@ -52,6 +53,7 @@ export function AnnotatedEditorLayout({
   const sidebarRef = useRef<HTMLElement>(null);
   const cardRefs = useRef(new Map<string, HTMLElement>());
   const activeIdRef = useRef<string | null>(null);
+  const [focusedId, setFocusedId] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [sheetId, setSheetId] = useState<string | null>(null);
   const [cardTops, setCardTops] = useState<Record<string, number>>({});
@@ -71,13 +73,13 @@ export function AnnotatedEditorLayout({
     () => annotations.filter((annotation) => visibleIdSet.has(annotation.id)),
     [annotations, visibleIdSet],
   );
-  const resolvedActiveId = activeId && visibleIdSet.has(activeId) ? activeId : null;
+  const resolvedActiveId = resolveActiveAnnotationId(activeId, focusedId, visibleIds);
   const resolvedSheetId = resolveAnnotationSheetId(sheetId, visibleIds);
 
   useEffect(() => {
-    activeIdRef.current = activeId;
-    if (editorRoot) syncActiveAnchors(editorRoot, activeId);
-  }, [activeId, editorRoot]);
+    activeIdRef.current = resolvedActiveId;
+    if (editorRoot) syncActiveAnchors(editorRoot, resolvedActiveId);
+  }, [resolvedActiveId, editorRoot]);
 
   const measure = useCallback(() => {
     const layout = layoutRef.current;
@@ -111,7 +113,7 @@ export function AnnotatedEditorLayout({
       anchors.push({ annotationId: annotation.id, ...geometry });
       cardHeights.set(annotation.id, card.offsetHeight);
     }
-    const placement = layoutAnnotationCards(anchors, cardHeights, 8);
+    const placement = layoutAnnotationCards(anchors, cardHeights, 14);
     const anchorsById = new Map(anchors.map((anchor) => [anchor.annotationId, anchor]));
     const tops: Record<string, number> = {};
     const nextConnectors: AnnotationConnector[] = [];
@@ -202,13 +204,11 @@ export function AnnotatedEditorLayout({
     };
     editorRoot.addEventListener("click", activateFromEvent);
     editorRoot.addEventListener("focusin", activateFromEvent);
-    editorRoot.addEventListener("pointerover", activateFromEvent);
     editorRoot.addEventListener("keydown", activateFromKeyboard);
     document.addEventListener("selectionchange", activateFromSelection);
     return () => {
       editorRoot.removeEventListener("click", activateFromEvent);
       editorRoot.removeEventListener("focusin", activateFromEvent);
-      editorRoot.removeEventListener("pointerover", activateFromEvent);
       editorRoot.removeEventListener("keydown", activateFromKeyboard);
       document.removeEventListener("selectionchange", activateFromSelection);
     };
@@ -236,13 +236,15 @@ export function AnnotatedEditorLayout({
     <div className="annotated-editor-layout" data-annotation-layout={layoutMode} ref={layoutRef}>
       <div className="annotated-editor-main">{children}</div>
       <svg className="annotation-connectors" aria-hidden="true">
-        {connectors.map((connector) => (
-          <path
-            key={connector.annotationId}
-            d={connector.path}
-            className={resolvedActiveId === connector.annotationId ? "is-active" : ""}
-          />
-        ))}
+        {connectors
+          .filter((connector) => connector.annotationId === resolvedActiveId)
+          .map((connector) => (
+            <path
+              key={connector.annotationId}
+              d={connector.path}
+              className={resolvedActiveId === connector.annotationId ? "is-active" : ""}
+            />
+          ))}
       </svg>
       <aside
         ref={sidebarRef}
@@ -262,8 +264,12 @@ export function AnnotatedEditorLayout({
               className={`annotation-card${resolvedActiveId === annotation.id ? " is-active" : ""}`}
               style={{ top: cardTops[annotation.id] ?? 0 }}
               tabIndex={-1}
-              onFocusCapture={() => setActiveId(annotation.id)}
-              onPointerEnter={() => setActiveId(annotation.id)}
+              onFocusCapture={() => setFocusedId(annotation.id)}
+              onBlurCapture={(event) => {
+                if (!event.currentTarget.contains(event.relatedTarget as Node | null))
+                  setFocusedId(null);
+              }}
+              onClick={() => setActiveId(annotation.id)}
             >
               <AnnotationReadonlyThread
                 annotation={annotation}
@@ -284,8 +290,8 @@ export function AnnotatedEditorLayout({
         </button>
       )}
       <AnnotationSheet
-        annotation={sheetAnnotation}
-        open={Boolean(resolvedSheetId)}
+        annotation={layoutMode === "compact" ? sheetAnnotation : null}
+        open={layoutMode === "compact" && Boolean(resolvedSheetId)}
         onClose={() => setSheetId(null)}
         onLocate={() => sheetAnnotation && locateAnnotation(sheetAnnotation.id)}
         readOnly

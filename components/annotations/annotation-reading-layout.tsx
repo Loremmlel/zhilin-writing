@@ -9,6 +9,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type ReactNode,
 } from "react";
 
 import type { AnnotationActionState } from "@/app/(site)/posts/[id]/actions";
@@ -38,6 +39,7 @@ import {
 } from "@/lib/annotations/layout";
 import {
   annotationLayoutMode,
+  resolveActiveAnnotationId,
   nextAnnotationSheetState,
   type AnnotationLayoutMode,
 } from "@/lib/annotations/responsive";
@@ -179,6 +181,8 @@ function AnnotationComposer({
 }
 
 export function AnnotationReadingLayout({
+  header,
+  footer,
   postId,
   html,
   annotations,
@@ -191,6 +195,8 @@ export function AnnotationReadingLayout({
   initialAnnotationId,
   initialAnnotationReplyId,
 }: {
+  header?: ReactNode;
+  footer?: ReactNode;
   postId: string;
   html: string;
   annotations: AnnotationCardView[];
@@ -211,6 +217,7 @@ export function AnnotationReadingLayout({
   const documentEpochRef = useRef(0);
   // React 19 rewrites innerHTML when this wrapper changes, replacing live Range nodes.
   const renderedBody = useMemo(() => ({ __html: html }), [html]);
+  const [focusedId, setFocusedId] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(initialAnnotationId ?? null);
   const [selectionContext, setSelectionContext] = useState<SelectionContext | null>(null);
   const [cardTops, setCardTops] = useState<Record<string, number>>({});
@@ -222,6 +229,11 @@ export function AnnotationReadingLayout({
     annotationId: string;
     replyId: string | null;
   } | null>(null);
+  const highlightedId = resolveActiveAnnotationId(
+    activeId,
+    focusedId,
+    annotations.map((item) => item.id),
+  );
   const currentSelectionContext =
     selectionContext?.saved.postId === postId &&
     selectionContext.saved.baseRevisionId === baseRevisionId
@@ -297,7 +309,7 @@ export function AnnotationReadingLayout({
       anchors.push({ annotationId: annotation.id, ...geometry });
       cardHeights.set(annotation.id, card.offsetHeight);
     }
-    const placement = layoutAnnotationCards(anchors, cardHeights, 8);
+    const placement = layoutAnnotationCards(anchors, cardHeights, 14);
     const byId = new Map(anchors.map((anchor) => [anchor.annotationId, anchor]));
     const tops: Record<string, number> = {};
     const paths: AnnotationConnector[] = [];
@@ -400,15 +412,15 @@ export function AnnotationReadingLayout({
     body
       .querySelectorAll(".annotation-range.is-active, .annotation-range.is-deep-linked")
       .forEach((element) => element.classList.remove("is-active", "is-deep-linked"));
-    if (activeId)
-      findAnnotationAnchorElements(body, activeId).forEach((element) =>
+    if (highlightedId)
+      findAnnotationAnchorElements(body, highlightedId).forEach((element) =>
         element.classList.add("is-active"),
       );
     if (deepLinkHighlight)
       findAnnotationAnchorElements(body, deepLinkHighlight.annotationId).forEach((element) =>
         element.classList.add("is-deep-linked"),
       );
-  }, [activeId, deepLinkHighlight]);
+  }, [highlightedId, deepLinkHighlight]);
 
   const inspectSelection = useCallback(
     (eventTarget?: EventTarget | null) => {
@@ -560,41 +572,47 @@ export function AnnotationReadingLayout({
       data-annotation-layout={layoutMode}
       ref={layoutRef}
     >
-      <div
-        ref={bodyRef}
-        className="markdown-body annotation-document-body"
-        tabIndex={-1}
-        onClick={(event) => {
-          const target = event.target instanceof Element ? event.target : null;
-          const anchor = target?.closest<HTMLElement>(".annotation-range");
-          if (
-            target &&
-            anchor &&
-            !isNestedInteractiveTarget(target, anchor) &&
-            layoutMode === "compact"
-          )
-            event.preventDefault();
-          activateFromBody(event.target, true);
-        }}
-        onFocus={(event) => activateFromBody(event.target)}
-        onKeyDown={(event) => {
-          const target = event.target instanceof Element ? event.target : null;
-          const anchor = target?.closest<HTMLElement>(".annotation-range");
-          if (target === anchor && (event.key === "Enter" || event.key === " ")) {
-            event.preventDefault();
+      <div className="annotation-paper">
+        {header}
+        <div
+          ref={bodyRef}
+          className="markdown-body annotation-document-body"
+          tabIndex={-1}
+          onClick={(event) => {
+            const target = event.target instanceof Element ? event.target : null;
+            const anchor = target?.closest<HTMLElement>(".annotation-range");
+            if (
+              target &&
+              anchor &&
+              !isNestedInteractiveTarget(target, anchor) &&
+              layoutMode === "compact"
+            )
+              event.preventDefault();
             activateFromBody(event.target, true);
-          }
-        }}
-        dangerouslySetInnerHTML={renderedBody}
-      />
+          }}
+          onFocus={(event) => activateFromBody(event.target)}
+          onKeyDown={(event) => {
+            const target = event.target instanceof Element ? event.target : null;
+            const anchor = target?.closest<HTMLElement>(".annotation-range");
+            if (target === anchor && (event.key === "Enter" || event.key === " ")) {
+              event.preventDefault();
+              activateFromBody(event.target, true);
+            }
+          }}
+          dangerouslySetInnerHTML={renderedBody}
+        />
+        {footer}
+      </div>
       <svg className="annotation-connectors" aria-hidden="true">
-        {connectors.map((connector) => (
-          <path
-            key={connector.annotationId}
-            d={connector.path}
-            className={activeId === connector.annotationId ? "is-active" : ""}
-          />
-        ))}
+        {connectors
+          .filter((connector) => connector.annotationId === highlightedId)
+          .map((connector) => (
+            <path
+              key={connector.annotationId}
+              d={connector.path}
+              className={highlightedId === connector.annotationId ? "is-active" : ""}
+            />
+          ))}
       </svg>
       <aside
         ref={sidebarRef}
@@ -611,11 +629,15 @@ export function AnnotationReadingLayout({
                 if (element) cardRefs.current.set(annotation.id, element);
                 else cardRefs.current.delete(annotation.id);
               }}
-              className={`annotation-card${activeId === annotation.id ? " is-active" : ""}${deepLinkHighlight?.annotationId === annotation.id && !deepLinkHighlight.replyId ? " is-deep-linked" : ""}`}
+              className={`annotation-card${highlightedId === annotation.id ? " is-active" : ""}${deepLinkHighlight?.annotationId === annotation.id && !deepLinkHighlight.replyId ? " is-deep-linked" : ""}`}
               style={{ top: cardTops[annotation.id] ?? 0 }}
               tabIndex={-1}
-              onFocusCapture={() => setActiveId(annotation.id)}
-              onPointerEnter={() => setActiveId(annotation.id)}
+              onFocusCapture={() => setFocusedId(annotation.id)}
+              onBlurCapture={(event) => {
+                if (!event.currentTarget.contains(event.relatedTarget as Node | null))
+                  setFocusedId(null);
+              }}
+              onClick={() => setActiveId(annotation.id)}
             >
               <AnnotationThread
                 annotation={annotation}
@@ -643,8 +665,12 @@ export function AnnotationReadingLayout({
           ))}
       </aside>
       <AnnotationSheet
-        annotation={annotations.find((annotation) => annotation.id === sheetId) ?? null}
-        open={Boolean(sheetId)}
+        annotation={
+          layoutMode === "compact"
+            ? (annotations.find((annotation) => annotation.id === sheetId) ?? null)
+            : null
+        }
+        open={layoutMode === "compact" && Boolean(sheetId)}
         onClose={() =>
           setSheetId((current) => nextAnnotationSheetState(current, { type: "close" }))
         }

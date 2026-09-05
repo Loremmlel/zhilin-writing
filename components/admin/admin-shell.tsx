@@ -5,11 +5,11 @@ import type { AdminContentType } from "@/lib/admin/query";
 
 export type AdminNavKey = "overview" | AdminContentType | "members" | "audit";
 
-const contentLinks: Array<{ key: AdminContentType; label: string; mark: string }> = [
-  { key: "posts", label: "帖子", mark: "帖" },
-  { key: "replies", label: "回复", mark: "回" },
-  { key: "annotations", label: "批注", mark: "批" },
-  { key: "annotation-replies", label: "批注回复", mark: "答" },
+const contentLinks: Array<{ key: AdminContentType; label: string }> = [
+  { key: "posts", label: "帖子" },
+  { key: "replies", label: "回复" },
+  { key: "annotations", label: "批注" },
+  { key: "annotation-replies", label: "批注回复" },
 ];
 
 function Navigation({ active }: { active: AdminNavKey }) {
@@ -20,7 +20,6 @@ function Navigation({ active }: { active: AdminNavKey }) {
         className={active === "overview" ? "is-active" : ""}
         aria-current={active === "overview" ? "page" : undefined}
       >
-        <span aria-hidden="true">总</span>
         总览
       </Link>
       <p>内容管理</p>
@@ -31,7 +30,6 @@ function Navigation({ active }: { active: AdminNavKey }) {
           className={active === item.key ? "is-active" : ""}
           aria-current={active === item.key ? "page" : undefined}
         >
-          <span aria-hidden="true">{item.mark}</span>
           {item.label}
         </Link>
       ))}
@@ -41,7 +39,6 @@ function Navigation({ active }: { active: AdminNavKey }) {
         className={active === "members" ? "is-active" : ""}
         aria-current={active === "members" ? "page" : undefined}
       >
-        <span aria-hidden="true">员</span>
         成员与白名单
       </Link>
       <p>系统</p>
@@ -50,7 +47,6 @@ function Navigation({ active }: { active: AdminNavKey }) {
         className={active === "audit" ? "is-active" : ""}
         aria-current={active === "audit" ? "page" : undefined}
       >
-        <span aria-hidden="true">志</span>
         操作日志
       </Link>
     </nav>

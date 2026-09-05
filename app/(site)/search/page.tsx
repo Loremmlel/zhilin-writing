@@ -1,44 +1,45 @@
 import { PostCard } from "@/components/post-card";
-import { listPosts } from "@/db/queries";
-
+import { PageHeader } from "@/components/page-header";
+import { Pagination } from "@/components/pagination";
+import { SearchForm, FocusSearchButton } from "@/components/search-form";
+import { listPostsPage } from "@/db/queries";
+import { parsePage } from "@/lib/pagination";
+import { canonicalPage } from "@/lib/page-navigation";
+export const metadata = { title: "搜索帖子" };
 export default async function SearchPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; page?: string }>;
 }) {
-  const { q = "" } = await searchParams;
-  const query = q.trim();
-  const items = query ? await listPosts({ query }) : [];
+  const params = await searchParams;
+  const query = typeof params.q === "string" ? params.q.trim() : "";
+  const result = query
+    ? await listPostsPage({ query, page: parsePage(params.page) })
+    : { items: [], total: 0, page: 1, pageSize: 20 };
+  canonicalPage(params.page, result.page, "/search", { q: query });
   return (
     <div className="page-column">
-      <header className="page-header">
-        <span className="eyebrow">站内搜索</span>
-        <h1>{query ? `“${query}”` : "搜索帖子"}</h1>
-        <p>搜索当前帖子标题和正文，不包含回复。</p>
-      </header>
-      <form action="/search" className="search-page-form" noValidate>
-        <input
-          className="text-input"
-          name="q"
-          defaultValue={query}
-          placeholder="输入标题或正文中的词语"
-          autoFocus
-        />
-        <button className="button button--primary">搜索</button>
-      </form>
-      {query &&
-        (items.length > 0 ? (
-          <section className="post-list">
-            {items.map((item) => (
+      <PageHeader title="搜索帖子" count={query ? result.total : undefined} />
+      <SearchForm query={query} id="post-search" />
+      {query ? (
+        result.items.length ? (
+          <section className="post-list" aria-label="搜索结果">
+            {result.items.map((item) => (
               <PostCard key={item.post.id} {...item} />
             ))}
           </section>
         ) : (
           <div className="empty-state">
-            <h2>没有找到匹配内容</h2>
-            <p>换一个更短或更具体的词试试。</p>
+            <p>没有找到匹配的帖子，试试更短的关键词。</p>
+            <FocusSearchButton id="post-search" />
           </div>
-        ))}
+        )
+      ) : (
+        <div className="empty-state">
+          <p>输入关键词搜索帖子</p>
+        </div>
+      )}
+      <Pagination {...result} path="/search" filters={{ q: query }} />
     </div>
   );
 }

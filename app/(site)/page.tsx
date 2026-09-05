@@ -1,70 +1,63 @@
 import Link from "next/link";
-
-import { listPosts, listTags } from "@/db/queries";
+import { listPostsPage } from "@/db/queries";
 import { PostCard } from "@/components/post-card";
+import { PageHeader } from "@/components/page-header";
+import { Pagination } from "@/components/pagination";
+import { parsePage } from "@/lib/pagination";
+import { canonicalPage } from "@/lib/page-navigation";
 
 export const dynamic = "force-dynamic";
-
+export const metadata = { title: "帖子" };
 export default async function HomePage({
   searchParams,
 }: {
-  searchParams: Promise<{ sort?: string }>;
+  searchParams: Promise<{ sort?: string; page?: string }>;
 }) {
-  const { sort } = await searchParams;
-  const active = sort === "active";
-  const [items, tags] = await Promise.all([
-    listPosts({ sort: active ? "active" : "latest" }),
-    listTags(),
-  ]);
+  const params = await searchParams;
+  const active = params.sort === "active";
+  const filters = { sort: active ? "active" : undefined };
+  const result = await listPostsPage({
+    sort: active ? "active" : "latest",
+    page: parsePage(params.page),
+  });
+  canonicalPage(params.page, result.page, "/", filters);
   return (
     <div className="home-page page-column">
-      <section className="home-intro">
-        <div>
-          <span className="eyebrow">只对受邀成员开放</span>
-          <h1>近来写下的文字</h1>
-        </div>
-        <p>在文字里，我们彼此靠近。这里是安静写作、耐心阅读和友善交流的地方。</p>
-      </section>
+      <PageHeader title="帖子" count={result.total} />
       <nav className="list-tabs" aria-label="帖子排序">
-        <Link href="/" className={!active ? "is-active" : ""}>
+        <Link
+          href="/"
+          className={!active ? "is-active" : ""}
+          aria-current={!active ? "page" : undefined}
+        >
           最新
         </Link>
-        <Link href="/?sort=active" className={active ? "is-active" : ""}>
-          活跃
+        <Link
+          href="/?sort=active"
+          className={active ? "is-active" : ""}
+          aria-current={active ? "page" : undefined}
+        >
+          最近活跃
         </Link>
         <Link href="/tags" className="tab-spacer">
           浏览标签
         </Link>
       </nav>
-      {items.length > 0 ? (
+      {result.items.length ? (
         <section className="post-list" aria-label={active ? "活跃帖子" : "最新帖子"}>
-          {items.map((item) => (
-            <PostCard key={item.post.id} {...item} />
+          {result.items.map((item) => (
+            <PostCard key={item.post.id} {...item} active={active} />
           ))}
         </section>
       ) : (
         <section className="empty-state">
-          <h2>这里还很安静</h2>
-          <p>写下第一篇帖子，让这个小社区有一个开头。</p>
+          <p>还没有帖子，写下第一篇吧。</p>
           <Link className="button button--primary" href="/posts/new">
-            写第一篇帖子
+            写帖子
           </Link>
         </section>
       )}
-      {tags.length > 0 && (
-        <section className="home-tag-strip" aria-label="最近标签">
-          <span>最近使用的标签</span>
-          {tags.slice(0, 8).map((tag) => (
-            <Link
-              className="tag"
-              href={`/tags/${encodeURIComponent(tag.normalizedName)}`}
-              key={tag.id}
-            >
-              {tag.name}
-            </Link>
-          ))}
-        </section>
-      )}
+      <Pagination {...result} path="/" filters={filters} />
     </div>
   );
 }

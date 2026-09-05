@@ -44,6 +44,7 @@ export function AccountMenu({ member, isAdmin }: { member: SiteUser; isAdmin: bo
         ref={triggerRef}
         type="button"
         className="account-menu-trigger"
+        aria-label={`账户菜单，${member.displayName}`}
         aria-expanded={open}
         onClick={() => setOpen((current) => !current)}
       >

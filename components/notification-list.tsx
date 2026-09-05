@@ -1,14 +1,14 @@
 import Link from "next/link";
 
 import { Avatar } from "@/components/avatar";
-import type { listNotifications } from "@/db/queries";
+import type { listNotificationsPage } from "@/db/queries";
 import { truncateActivityPreview } from "@/lib/activity/policy";
-import { formatDateTime } from "@/lib/format";
+import { formatDateTime, formatListDateTime } from "@/lib/format";
 import { markdownToPlainText } from "@/lib/markdown/render";
 import { formatDocxAttributionNotice } from "@/lib/notifications/policy";
 import { notificationTargetNotice } from "@/lib/notifications/target-resolution";
 
-type NotificationItem = Awaited<ReturnType<typeof listNotifications>>[number];
+type NotificationItem = Awaited<ReturnType<typeof listNotificationsPage>>["items"][number];
 
 export function NotificationList({
   items,
@@ -20,13 +20,17 @@ export function NotificationList({
   if (items.length === 0)
     return emptyKind === "unread" ? (
       <div className="empty-state">
-        <h2>没有未读通知</h2>
-        <p>新的直接回应会显示在这里。</p>
+        <p>没有未读通知。</p>
+        <Link className="button button--ghost" href="/notifications">
+          查看全部通知
+        </Link>
       </div>
     ) : (
       <div className="empty-state">
-        <h2>这里很安静</h2>
-        <p>有同学回复你的内容，或 DOCX 导入关联了你的 Word 批注后，会在这里通知你。</p>
+        <p>暂时没有通知。</p>
+        <Link className="button button--ghost" href="/">
+          浏览帖子
+        </Link>
       </div>
     );
   return (
@@ -107,7 +111,13 @@ export function NotificationList({
                   </blockquote>
                 )}
               <div className="notification-meta">
-                <time>{formatDateTime(item.notification.createdAt)}</time>
+                <time
+                  dateTime={item.notification.createdAt.toISOString()}
+                  title={formatDateTime(item.notification.createdAt)}
+                  aria-label={formatDateTime(item.notification.createdAt)}
+                >
+                  {formatListDateTime(item.notification.createdAt)}
+                </time>
                 <span>{isUnread ? "未读" : "已读"}</span>
               </div>
             </div>
