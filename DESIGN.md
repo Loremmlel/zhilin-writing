@@ -1,38 +1,46 @@
 ---
-version: "1.3"
+version: "2.0"
 name: "知临中学"
 description: "面向少数受邀同学的私密 Markdown 写作社区，以旧校刊纸张与克制校园绿构成安静、可信的阅读界面。"
 colors:
   paper: "#FBFAF7"
   paper-strong: "#FFFEFA"
-  ink: "#20251F"
-  muted: "#737970"
+  ink: "#242D27"
+  muted: "#626B62"
   line: "#E6E4DC"
-  primary: "#4F825F"
+  primary: "#386647"
   primary-dark: "#356145"
-  primary-soft: "#EDF4EE"
+  primary-soft: "#EDF3EB"
   primary-pale: "#F5F8F3"
-  danger: "#A44D47"
-  warning: "#8B6A2C"
-  warning-soft: "#F6F0DF"
-  annotation: "#F7E8E6"
-  annotation-active: "#EFCBC6"
-  annotation-ink: "#7D3934"
+  danger: "#9B3933"
+  danger-soft: "#FBECEA"
+  info: "#536257"
+  info-soft: "#F0F3EF"
+  placeholder: "#F2F3EE"
+  warning: "#75591F"
+  warning-soft: "#F7F0E2"
+  annotation: "#F8E9E5"
+  annotation-active: "#F0D2C9"
+  annotation-ink: "#833F3A"
 typography:
   display:
-    fontFamily: "Georgia, Noto Serif SC, serif"
+    fontFamily: "Noto Serif SC, Songti SC, STSong, SimSun, serif"
   sans:
     fontFamily: "Inter, system-ui, Noto Sans SC, Microsoft YaHei, sans-serif"
   mono:
     fontFamily: "ui-monospace, monospace"
 rounded:
-  DEFAULT: "14px"
+  DEFAULT: "10px"
   sm: "8px"
   md: "10px"
-  lg: "14px"
+  lg: "12px"
 spacing:
-  section-gap: "28px"
-  page-max: "920px"
+  section-gap: "24px"
+  page-max: "1040px"
+  workspace-max: "1320px"
+  admin-max: "1800px"
+  paper-width: "786px"
+  paper-padding: "32px"
 components:
   button: {}
   card: {}
@@ -68,15 +76,21 @@ components:
 
 ## Colors
 
-`paper`/`paper-strong` 提供两层暖白表面，`ink` 与 `muted` 建立正文和辅助信息层级。`primary` 是品牌、焦点和当前选择，`primary-soft` 仅用于轻提示与选中背景。`annotation` 是克制的淡红正文范围，`annotation-active` 只在 hover、focus 或联动激活时增强，`annotation-ink` 用于批注操作与连线；批注范围另有点状下划线、焦点与语义标签，不能只靠颜色。`warning`/`warning-soft` 标记作者已撤回的内容，`danger` 标记管理员隐藏与高后果确认；强制色模式退回系统颜色。
+`paper`/`paper-strong` 提供两层暖白表面，`ink` 与 `muted` 建立正文和辅助信息层级。`primary` 是品牌、焦点和当前选择，`primary-soft` 仅用于轻提示与选中背景。`annotation` 是克制的淡红正文范围，`annotation-active` 只在 hover、focus 或联动激活时增强，`annotation-ink` 用于批注操作与连线；批注范围另有点状下划线、焦点与语义标签，不能只靠颜色。`warning`/`warning-soft` 标记需要处理的风险，`danger`/`danger-soft` 标记高后果动作与错误；已删除/隐藏内容使用 `muted`/`placeholder` 的中性正常字重占位；强制色模式退回系统颜色。
 
 ## Typography
 
-标题、帖子正文和历史预览使用 Georgia 与 `Noto Serif SC` 回退，保持校刊式阅读感；控件、导航和元数据使用无衬线栈；Markdown 原文比较使用等宽字体。正文行高约 1.9，控件不使用全大写中文，技术 ID 不直接暴露给普通用户。
+文章正文和品牌使用本地 `Noto Serif SC, Songti SC, STSong, SimSun, serif`，本轮不引入 Web 字体；Windows 明确接受 SimSun/系统 serif 回退。导航、列表、管理界面和批注使用无衬线，Windows 回退 Microsoft YaHei。功能标题 26px/1.35（手机24），文章标题32px/1.45（手机27），列表标题18px/1.5，长文18px/1.9，控件14px；桌面批注13px/1.7，Sheet14px/1.7，元数据12–13px。Windows 实机观感尚待实际验收，不能以 Linux 静态检查替代。
 
 ## Layout
 
-普通内容列最大宽度 920px，编辑器 1080px。管理后台扩展至 1800px，以 208px 索引式左栏、弹性工作区和 278px 摘要栏组成；内容页不重复“管理员 / 帖子管理”类说明标题，筛选控件共享标签基线和 36px 控件高度。1200px 以下收起摘要栏，900px 以下左栏收进“管理导航”。后台不显示社区页脚，并占满站点 Header 下方的剩余视口；页面本身不滚动，内容表格负责双轴滚动，总览、成员、日志和摘要栏各自在面板内滚动。表头、选择列和 266px 操作列保持可见，内容预览与引用各占固定高度，行操作不换行。带批注的桌面帖子扩展至 1320px，以舒适的 720px 正文列、56px 连线沟槽和 340–400px 右栏构成；卡片按正文位置顺序错开。Annotation 组件以自身可用宽度为唯一布局来源：至少 1116px（720px 正文 + 56px gutter + 340px rail）才显示侧栏和引导线，否则使用底部 Sheet。管理员历史在宽屏采用 320px 左侧时间线和右侧预览；900px 以下堆叠，时间线自身限高滚动。所有固定弹窗保留安全边距，移动端转为单列操作。
+浏览外框及 Header 内框1040px；阅读、编辑、导入预览1320px；后台1800px。外侧gutter桌面24px、手机16px，顶部24–28px/20px，Header64px/60px可增高。壳由当前路由实际渲染的页面类型（含对应骨架）在CSS中同步决定，导入随预览阶段整体扩展。通知880px、设置与初始导入720px是外框内居中内列。首页单列，不新增通用右侧栏。
+
+阅读组合 W=min(C,1242px)，C为扣除外侧gutter后的可用宽度。W≥1182px时，纸面786px（720正文+两侧32padding+两侧1border）、沟槽56px、右栏min(400,W−842)；不足1182px进Sheet。读取和编辑共享 `lib/annotations/responsive.ts`，测量组合容器而非正文。CSS容器规则只预置首次渲染纸面位置，线程挂载与connector以组件模式为准。有无批注均固定第一列，空栏不渲染可聚焦控件。普通讨论最大净宽720px，跟随同一纸面列，根回复+一层子回复，缩进24px/12px。
+
+导入预览纸面786px、间距24px、检查栏320px；实际容器不足1130px时堆叠。写作与导入主操作区sticky于Header下方，由同一个Header高度测量供给偏移；工具栏正常文档流。新建页保留DOCX入口；标签仍为最多5个的逗号输入，自动本地草稿不改成服务器草稿。
+
+管理后台保留208px纯文字导航、弹性工作区和278px摘要栏；1200px以下摘要退让，900px以下导航收进details。后台不显示社区页脚，继续占满Header以下视口；表格双轴滚动，总览/成员/日志/摘要各自滚动。表头、选择列和266px操作列保持可达。历史时间线320px，900px以下堆叠。固定弹窗保持安全边距与焦点恢复。
 
 ## Elevation & Depth
 
@@ -84,7 +98,7 @@ components:
 
 ## Shapes
 
-主要容器 14px 圆角，字段和小卡 8–10px，计数与状态胶囊使用全圆角。边线始终轻薄；危险动作不通过夸张形状吸引注意。
+纸面10px、弹窗12px、控件8px圆角，计数与状态胶囊使用全圆角。边线始终轻薄；危险动作不通过夸张形状吸引注意。
 
 ## Components
 
@@ -94,11 +108,13 @@ components:
 
 ### Buttons and actions
 
+现有 `.button` 为共享视觉入口：primary绿底、ghost保留现有次级描边语义、text透明、danger-quiet危险入口、danger仅最终确认。常规40px、紧凑36px、粗指针44px目标；hover仅颜色边线，不上浮。`PendingSubmitButton`负责提交pending、重复提交禁用和叠放文案保宽；编辑页追加上传/冲突占位文案，保留一个提交入口。
+
 主操作为实心绿色，次操作为暖白描边，危险确认为实心暗红。作者删除与管理员隐藏都使用共享确认弹窗，明确说明其他成员讨论是否保留。危险操作与安全主操作分开，弹窗默认首先聚焦取消或保留选项。
 
 ### Navigation and data display
 
-顶部导航保持紧凑；帖子与动态用列表卡片；revision 用带版本号、创建者、时间和状态徽标的纵向时间线。管理后台的内容类型只出现在左侧索引导航，主区使用状态页签、显式搜索、北京时间日期区间、单一排序和共享原生语义表格，不重复内容类型切换，也不引入通用 DataGrid。总览卡只呈现帖子、回复、批注、批注回复的真实状态计数，不展示推算趋势。Normal、User Deleted、Admin Hidden 可并列显示；批注另显示是否属于当前版本。当前页选择最多 20 条，批量隐藏或永久删除使用固定反馈区和共享确认弹窗。历史正文使用与当前帖子一致的 Markdown 渲染器。
+顶部导航保持紧凑；帖子采用细分隔线轻列表，动态按时间线展示；revision 用带版本号、创建者、时间和状态徽标的纵向时间线。管理后台的内容类型只出现在左侧索引导航，主区使用状态页签、显式搜索、北京时间日期区间、单一排序和共享原生语义表格，不重复内容类型切换，也不引入通用 DataGrid。总览卡只呈现帖子、回复、批注、批注回复的真实状态计数，不展示推算趋势。Normal、User Deleted、Admin Hidden 可并列显示；批注另显示是否属于当前版本。当前页选择最多 20 条，批量隐藏或永久删除使用固定反馈区和共享确认弹窗。历史正文使用与当前帖子一致的 Markdown 渲染器。
 
 ### Forms and overlays
 
@@ -110,7 +126,7 @@ components:
 
 ### Annotation reading
 
-正文范围、右侧卡片、SVG connector 与移动端 Sheet 全部用稳定 `annotation_id` 联动。同一逻辑批注可以由连续正文块中的多个 inline mark 表达；所有同 ID mark 必须一起高亮、激活和定位，桌面 connector 与卡片以第一段可见范围为稳定锚点。正文 mark 可聚焦，卡片可键盘访问；内部普通链接仍保持导航语义。悬停正文 mark 只提供局部视觉反馈，不滚动或改变侧栏位置；点击、键盘激活和通知深链才联动定位。桌面卡片按文档位置排列并避免重叠，使用紧凑的 13px 批注正文与收紧的回复间距，并且不重复展示已由正文高亮表达的选区原文；字体、图片、容器和卡片尺寸变化才合并重测几何，普通 scroll 不触发 React 布局更新，也不重新解析 Markdown。删除或隐藏的根内容只显示占位，其他成员讨论不被连带移除。
+正文范围、右侧卡片、SVG connector 与移动端 Sheet 全部用稳定 `annotation_id` 联动。同一逻辑批注可以由连续正文块中的多个 inline mark 表达；所有同 ID mark 必须一起高亮、激活和定位，桌面 connector 与卡片以第一段可见范围为稳定锚点。正文 mark 可聚焦，卡片可键盘访问；内部普通链接仍保持导航语义。悬停正文 mark 只提供局部视觉反馈，不滚动或改变侧栏位置；点击、键盘激活和通知深链才联动定位。桌面卡片按文档位置排列并避免重叠，间距14px；默认不绘制全量连线，仅激活或焦点线程显示一条细实线；hover不改变选中ID或滚动。使用紧凑的 13px 批注正文与收紧的回复间距，并且不重复展示已由正文高亮表达的选区原文；字体、图片、容器和卡片尺寸变化才合并重测几何，普通 scroll 不触发 React 布局更新，也不重新解析 Markdown。删除或隐藏的根内容只显示占位，其他成员讨论不被连带移除。
 
 合法正文选区在“添加批注”入口、输入弹窗和发布 pending/失败期间必须持续可见；以已保存且含 revision/epoch 的 range 为权威，原生 Selection 只负责最初捕获。视觉优先使用 CSS Custom Highlight，fallback overlay 仍需同时具备背景与点状下划线，不能只靠颜色。每个 thread 只有一个回复输入区，固定放在根批注正文之后、回复计数和列表之前；回复某条回复只重定向并聚焦这个输入区，失败保留草稿，成功后才清空。
 
@@ -142,3 +158,18 @@ DOCX 导入是现有写作表面的受控入口，不是营销上传页。初始
 - **Don't:** 把 DOCX 导入做成 Word 像素预览，或让 attributed user 看起来像站内原生作者。
 - **Don't:** 把 revision、restore 或编辑操作混入公开 Activity。
 - **Don't:** 用都市 SaaS 渐变、巨型指标或过度圆润卡片破坏私密校刊感。
+
+## Implementation map and verification
+
+批准依据：[重构方案](docs/plans/zhilin-design-refactor-plan.md)与[三页样板](docs/plans/zhilin-design-reference.html)，样板优先于审查者推测；演示数据与JS不得替代真实查询。
+
+| 角色           | 唯一运行时入口                                                               | 消费方                            |
+| -------------- | ---------------------------------------------------------------------------- | --------------------------------- |
+| 品牌/语义色    | globals.css :root；primary→--green，danger/info/warning/annotation按同名变量 | 按钮、文字、批注、状态            |
+| 页面框架       | globals.css --page-max、--page-gutter与页面类型选择器                        | Header、PageHeader、页面外框      |
+| 纸面字体       | globals.css --font-serif                                                     | 阅读、写作、导入、历史正文        |
+| 标题/列表/搜索 | PageHeader、PostCard、SearchForm                                             | 首页、标签、个人、搜索、通知      |
+| 分页           | lib/pagination.ts、db/queries.ts分页入口、Pagination                         | 社区六类列表                      |
+| sticky偏移     | HeaderHeight→--header-height                                                 | 写作/导入操作区、输入焦点滚动间距 |
+
+实际执行记录见 [实施记录](docs/plans/design-refresh-progress.md)。静态审计、类型检查和构建不代表浏览器视觉验收；预览访问被环境策略阻止时，明确保留视觉/Windows/端到端验收缺口。

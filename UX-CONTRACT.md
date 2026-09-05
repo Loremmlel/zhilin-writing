@@ -7,7 +7,7 @@
 - Target market(s): 私密中文社区。
 - Active locales: `zh-CN`。
 - Language/content register: 直白、安静、非营销式中文；管理员界面可保留少量准确英文术语。
-- Timezone/calendar policy: 时间经项目 `formatDateTime()` 统一展示；管理员日期筛选使用北京时间（UTC+8）公历自然日，起止日均包含。
+- Timezone/calendar policy: 时间经项目 `formatDateTime()` / `formatListDateTime()` 按 `Asia/Shanghai` 统一展示；管理员日期筛选使用北京时间（UTC+8）公历自然日，起止日均包含。
 - Accessibility target: WCAG 2.2 AA。
 
 ## Business-context sources
@@ -73,7 +73,11 @@
 ## Dataset navigation
 
 - Admin revision list: per-post bounded timeline; community size is intentionally only a few users/posts, so V3 does not add pagination.
-- Exploratory lists: existing latest/recent-active routes and fixed limits remain canonical.
+- Community post/search/tag/profile-post/activity/notification lists use real 20-row pages, returning items/total/page/pageSize. COUNT and rows share filters; current-page related records are fetched in batches. D1 projections stay below 100 columns.
+- Positive safe integers only for page; malformed input→1, overflow→last page, empty→1. Canonical redirects retain valid query/sort/tab. Sort/query/tab changes reset page. Deletion, visibility and unread changes recompute bounds. Stable timestamp DESC + id DESC ordering; offset pagination does not promise snapshots.
+- URL state: home `sort=active&page=2`, search `q=词&page=2`, tag `page=2`, user `tab=activity&page=2`, notifications `tab=unread&page=2`. First page/default filters may be omitted. Browser back preserves source URL; an all-posts link must not claim to restore the previous search.
+- Search explicitly submits title/body terms, suppresses Enter during IME composition, labels inputs and exposes clear immediately for nonempty text. Clear resets page and returns search to its unqueried prompt; no new author/reply search scope.
+- Lists use absolute short dates (omit current year) with semantic datetime and accessible full time; details/admin use full year. No timer or persisted timestamp changes.
 - URL state: selected revision lives in `?revision=`; search query remains `?q=`.
 - Admin root is the overview. Content types live only in the left navigation; members use `?section=members` and logs use `?section=audit`.
 - Admin content filters live in `?type=posts|replies|annotations|annotation-replies&status=all|normal|deleted|hidden&q=<term>&sort=newest|oldest&from=YYYY-MM-DD&to=YYYY-MM-DD&page=<n>`. Lists use server pagination with 20 rows; invalid values fall back safely, reversed valid dates normalize to chronological order, and out-of-range pages clamp to the last page. Deleted and hidden filters may each include an item when both flags are present.
@@ -116,14 +120,14 @@
 
 ## Navigation and responsive behavior
 
-- 管理总览、内容类型、成员、日志和历史版本都提供诚实的页面标题；普通内容详情仍沿用现有元数据策略。
+- 管理总览、内容类型、成员、日志和历史版本都提供诚实的页面标题；普通页面也使用本地化任务标题；受保护详情使用不暴露正文的通用标题。
 - Forbidden administrator navigation is enforced server-side and returns to the community root under the current auth contract.
 - Revision selection is URL-addressable; the route itself remains administrator-only.
 - The admin shell keeps one left navigation for overview, four content types, members, and audit. Content screens do not repeat an administrator/title/description masthead; their status tabs and compact, consistently labelled filters begin at the top of the work area. A 278px summary rail is optional and is removed below 1200px so the main task retains space.
 - Administrator routes omit the community footer and occupy the remaining viewport below the sticky Header. The document does not scroll: content tables own both axes; overview, member, audit and summary panels own their local vertical overflow.
 - Admin tables preserve status, committed query, inclusive Beijing date range, sort and page in the URL. The header, left selection column and compact 266px right operation column stay visible while the table scrolls. Preview body and quote each use a fixed two-line region; operations never wrap vertically.
 - At 900px the revision timeline stacks above preview; at 640px dialogs and actions become one column.
-- Annotation reading derives one layout mode from its actual container: at 1116px or wider it preserves a 720px reading column, 56px gutter and 340–400px rail; below that it removes sidebar/connectors and opens the selected thread in a bottom Sheet. Hover never changes scroll position; click, keyboard activation and deep links may locate the linked card/range. CSS, connector logic and sheet behavior consume this same mode; native text selection and page scrolling remain available.
+- Annotation reading derives one layout mode from its actual container: at 1182px or wider it preserves a 786px paper (720px net body), 56px gutter and min(400px, combinationWidth−842px) rail; combination width is capped at 1242px; below that it removes sidebar/connectors and opens the selected thread in a bottom Sheet. Hover never changes scroll position; click, keyboard activation and deep links may locate the linked card/range. CSS, connector logic and sheet behavior consume this same mode; native text selection and page scrolling remain available.
 - At 900px DOCX Preview stacks the document, annotation threads, author mappings and warnings; desktop keeps the document as the dominant surface with one bounded right rail.
 - Focus must remain visible below the sticky header; modal focus is trapped and restored.
 
@@ -133,6 +137,9 @@
 - Destructive confirmation: discard draft, overwrite latest, restore historical content, author delete, administrator hide, and administrator purge each require an app-owned confirmation. Purge copy states irreversibility and the target-specific cascade; it has no Undo.
 - Alert/banner: local draft recovery and conflict blocking are persistent until resolved.
 - Unsaved changes: device-local IndexedDB autosave; server post changes only after explicit save.
+- Reading/editor papers occupy the same first column with or without annotations. Below the measured threshold only the Sheet thread mounts; desktop and Sheet never mount two writable thread inputs simultaneously. Default connector count is zero; selected/focused thread produces at most one, thread focus takes priority and leaving it restores the selected ID. Hover stays local.
+- Header follows the page's outer shell (1040/1320/1800), not arbitrary per-screen widths. Notifications/forms are explicit narrower inner columns. Editor actions remain sticky below measured Header, toolbar flows normally, title/tags precede body, attachments follow it, and the original draft/conflict/submit ownership remains unchanged.
+- Plain replies retain root + one nested level, no new collapsing/paging, composer before reply list. Deleted roots keep neutral placeholders and surviving discussion.
 - Layer contract: header 400 < popover 450 < backdrop 500 < dialog 600.
 - Annotation floating selection action uses popover 450; mobile Sheet reuses backdrop/dialog layers and focus contract.
 - DOCX parsing progress is inline and cancellable; unsafe or over-limit files use a persistent typed error, never a partial Preview.

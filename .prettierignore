@@ -15,3 +15,6 @@ tests/fixtures/docx/generated
 
 *.docx
 *.png
+
+# Immutable exported design reference; preserve approved fragment bytes.
+docs/plans/zhilin-design-reference.html
