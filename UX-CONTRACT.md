@@ -1,5 +1,35 @@
 # UX Contract
 
+版本：2.1 · 2026-09-05。现行交互合同；视觉值以 [DESIGN.md](DESIGN.md) 为唯一规范入口。用户已接受公开版本的整体效果，本合同固定其交互语义，不把所有历史技术细节视为必须永久保留的实现方式。
+
+## Cross-flow invariants
+
+以下规则适用于新页面和现有页面。允许替换实现，但不得改变这些可观察行为；领域权限与数据安全继续以 Business-context sources 为依据。
+
+| 规则                | 必须保持的交互                                                             | 评审时观察什么                                                                           |
+| ------------------- | -------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| U1 操作诚实         | 导航用链接、动作用按钮；可点击反馈与实际点击区域一致；图标有可访问名称     | PostCard 整行主链接可打开帖子，作者/标签/回复链接仍各自可用；不以 div click 模拟所有操作 |
+| U2 提交唯一         | 同一操作只有一个提交所有者；pending禁止重复提交，文案保宽；失败保留输入    | 双击/慢响应不产生重复写入；错误出现后可继续编辑或重试                                    |
+| U3 危险动作有边界   | 普通页面使用安静入口，最终确认说明对象、范围与后果，先聚焦安全选项         | 弹窗位于全局层；批量范围仅当前页，0选中不可提交，部分失败给准确结果                      |
+| U4 草稿与服务端分离 | 自动本地草稿不宣称发布/同步完成；成功后才清空输入；冲突不静默覆盖          | 失败、离线、过期登录时保留可恢复工作；批注相关冲突禁止强覆盖                             |
+| U5 导航可恢复       | 已提交查询/筛选/排序/页码由URL表达；修改筛选重置页码，数据变化后校准边界   | 刷新/返回恢复相同筛选；删除或未读数变化不落到虚假空页；不承诺结果快照                    |
+| U6 输入不抢操作     | 中文组合输入期间Enter不触发提交或搜索；搜索显式提交，非空有即时清除        | 清除后返回未查询态和输入焦点；不自行改成逐字远程搜索                                     |
+| U7 关联由稳定ID决定 | 批注范围、卡片、连线、Sheet、通知共享annotation_id；hover仅局部反馈        | 点击/键盘/深链才定位；默认无连线，激活/焦点最多一条，焦点优先；禁止文本搜索重定位        |
+| U8 选区与讨论可持续 | 合法选区在创建、pending与失败期间可见；一个线程只有一个回复输入区          | 输入在根批注后、回复列表前；desktop/Sheet不双挂载可写线程；失败保留草稿                  |
+| U9 响应式不改变语义 | 模式切换只重排表面，不改变权限、数据、提交次数或选中线程；滚动有明确所有者 | 焦点不被sticky遮挡；Sheet可关闭并恢复焦点；普通阅读不被hover自动滚走                     |
+| U10 状态明确        | 加载、无内容、无结果、错误、不可用分开表达；危险/不可用信息不能只靠颜色    | 空态给真实下一步；错误给安全原因/恢复路径，必要时事件编号；无假成功或敏感原文泄漏        |
+
+## State and recovery contract
+
+| 状态           | 用户必须能知道                               | 恢复/退出                                                   |
+| -------------- | -------------------------------------------- | ----------------------------------------------------------- |
+| 路由或区域加载 | 哪个内容仍在载入；共享壳与已完成区域继续可用 | 几何匹配骨架与非阻塞进度，失败转可重试状态                  |
+| 首次为空       | 这里尚无内容                                 | 根据权限提供写帖、返回浏览等已有动作；不为凑CTA新增功能     |
+| 查询无结果     | 当前查询/筛选没有匹配项，而非系统失败        | 修改/清除查询或切换筛选，保留有用上下文                     |
+| 提交中/失败    | 操作是否仍在进行、输入是否保留               | 操作就近pending；失败保留草稿和可修正错误；成功后才确认完成 |
+| 删除/隐藏/失效 | 内容不可访问的具体类别                       | 中性占位，保留仍可见的讨论；不泄露历史正文                  |
+| 冲突/权限变化  | 为什么无法继续提交，本地内容是否仍在         | 按既定冲突/重新登录流程恢复；不自动重试高风险写入           |
+
 ## Product context
 
 - Audience: 少数受邀、彼此认识的中文用户；唯一管理员负责成员与内容保险。
@@ -35,10 +65,17 @@
 - Supported themes: 浅色与 forced-colors；不声明暗色主题。
 - Design-context owner/review policy: 新增持久视觉/行为决策时同一变更更新本合同。
 
+只在 DESIGN.md 维护尺寸、颜色、字体、圆角与层级数值；本合同仅引用其命名布局与状态。通用“最佳实践”不能覆盖已批准的项目交互，例如显式搜索、本地草稿、两层普通回复和单列帖子浏览。
+
 ## Canonical UI Map
 
 | Capability                 | Canonical owner                              | Source of truth                                                                                                   | Allowed variants                                         | Verification                                |
 | -------------------------- | -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- | ------------------------------------------- |
+| Page heading / post list   | `PageHeader` / `PostCard`                    | `components/page-header.tsx`, `components/post-card.tsx`                                                          | title/count/actions；published/active                    | sibling visual comparison + semantic links  |
+| Community search           | `SearchForm` / `HeaderSearch`                | `components/search-form.tsx`                                                                                      | compact/page                                             | clear + IME + URL restoration               |
+| Community pagination       | `Pagination` + query helpers                 | `components/pagination.tsx`, `lib/pagination.ts`, `lib/page-navigation.ts`, `db/queries.ts`                       | six community list types                                 | real query pagination tests + navigation    |
+| Submit feedback            | `PendingSubmitButton`                        | `components/pending/pending-submit-button.tsx`                                                                    | pending/upload/conflict labels                           | duplicate prevention + stable dimensions    |
+| Sticky offset              | `HeaderHeight`                               | `components/header-height.tsx`, `app/globals.css`                                                                 | measured Header with responsive search                   | expanded Header + focus visibility          |
 | Form                       | `PostEditorForm` 与现有 server actions       | `components/editor/post-editor-form.tsx`                                                                          | new / edit / conflict                                    | unit + build                                |
 | Scrollbar                  | global baseline + admin table scroll owner   | `app/globals.css`                                                                                                 | document / bounded admin panel / dual-axis table         | static audit                                |
 | Dialog                     | `ModalDialog`                                | `components/modal-dialog.tsx`                                                                                     | dialog / alertdialog                                     | keyboard policy + build                     |
@@ -60,7 +97,7 @@
 
 | Component             | Default                                               | Hover                      | Focus                       | Active                           | Disabled                             | Busy                                 | Error                            |
 | --------------------- | ----------------------------------------------------- | -------------------------- | --------------------------- | -------------------------------- | ------------------------------------ | ------------------------------------ | -------------------------------- |
-| Button                | labelled action                                       | tone strengthens           | visible native/project ring | slight press/selected state      | non-interactive, reduced opacity     | fixed width, progress copy           | inline actionable copy           |
+| Button                | labelled action                                       | tone strengthens           | visible native/project ring | tone/selected state; no movement | non-interactive, reduced opacity     | fixed width, progress copy           | inline actionable copy           |
 | Input                 | white paper field                                     | border visible             | green ring                  | n/a                              | non-interactive                      | submit owns pending                  | text + `aria-invalid`            |
 | Search                | explicit submit                                       | border visible             | green ring                  | n/a                              | n/a                                  | route transition                     | results/empty state              |
 | Admin table           | sticky header/select/action columns; fixed previews   | row tone                   | native checkbox/action ring | current-page selection count     | bulk actions disabled at zero        | bounded pessimistic mutation         | exact counts + incident ID       |
@@ -123,12 +160,12 @@
 - 管理总览、内容类型、成员、日志和历史版本都提供诚实的页面标题；普通页面也使用本地化任务标题；受保护详情使用不暴露正文的通用标题。
 - Forbidden administrator navigation is enforced server-side and returns to the community root under the current auth contract.
 - Revision selection is URL-addressable; the route itself remains administrator-only.
-- The admin shell keeps one left navigation for overview, four content types, members, and audit. Content screens do not repeat an administrator/title/description masthead; their status tabs and compact, consistently labelled filters begin at the top of the work area. A 278px summary rail is optional and is removed below 1200px so the main task retains space.
+- The admin shell keeps one left navigation for overview, four content types, members, and audit. Content screens do not repeat an administrator/title/description masthead; their status tabs and compact, consistently labelled filters begin at the top of the work area. The optional summary rail yields space according to DESIGN.md Layout.
 - Administrator routes omit the community footer and occupy the remaining viewport below the sticky Header. The document does not scroll: content tables own both axes; overview, member, audit and summary panels own their local vertical overflow.
-- Admin tables preserve status, committed query, inclusive Beijing date range, sort and page in the URL. The header, left selection column and compact 266px right operation column stay visible while the table scrolls. Preview body and quote each use a fixed two-line region; operations never wrap vertically.
-- At 900px the revision timeline stacks above preview; at 640px dialogs and actions become one column.
-- Annotation reading derives one layout mode from its actual container: at 1182px or wider it preserves a 786px paper (720px net body), 56px gutter and min(400px, combinationWidth−842px) rail; combination width is capped at 1242px; below that it removes sidebar/connectors and opens the selected thread in a bottom Sheet. Hover never changes scroll position; click, keyboard activation and deep links may locate the linked card/range. CSS, connector logic and sheet behavior consume this same mode; native text selection and page scrolling remain available.
-- At 900px DOCX Preview stacks the document, annotation threads, author mappings and warnings; desktop keeps the document as the dominant surface with one bounded right rail.
+- Admin tables preserve status, committed query, inclusive Beijing date range, sort and page in the URL. The header, left selection column and right operation column stay visible while the table scrolls. Preview body and quote each use a fixed two-line region; operations remain reachable and never wrap vertically; dimensions follow DESIGN.md Layout.
+- Revision timeline and dialog/action stacking follow DESIGN.md Layout; narrowing the viewport must not remove version selection, confirmation or cancellation.
+- Annotation reading derives one layout mode from its actual container, using DESIGN.md Layout and `lib/annotations/responsive.ts`. Below the defined threshold it removes sidebar/connectors and opens the selected thread in a bottom Sheet. Hover never changes scroll position; click, keyboard activation and deep links may locate the linked card/range. CSS, connector logic and sheet behavior consume this same mode; native text selection and page scrolling remain available.
+- DOCX Preview follows the actual-container stacking rule in DESIGN.md Layout, not the old 900px viewport rule. Parsing/validation/mapping state and import batch IDs survive layout changes; blocking checks appear before thread discussion, with the relevant correction action accessible from the error.
 - Focus must remain visible below the sticky header; modal focus is trapped and restored.
 
 ## Overlays and feedback
@@ -138,10 +175,9 @@
 - Alert/banner: local draft recovery and conflict blocking are persistent until resolved.
 - Unsaved changes: device-local IndexedDB autosave; server post changes only after explicit save.
 - Reading/editor papers occupy the same first column with or without annotations. Below the measured threshold only the Sheet thread mounts; desktop and Sheet never mount two writable thread inputs simultaneously. Default connector count is zero; selected/focused thread produces at most one, thread focus takes priority and leaving it restores the selected ID. Hover stays local.
-- Header follows the page's outer shell (1040/1320/1800), not arbitrary per-screen widths. Notifications/forms are explicit narrower inner columns. Editor actions remain sticky below measured Header, toolbar flows normally, title/tags precede body, attachments follow it, and the original draft/conflict/submit ownership remains unchanged.
+- Header and inner-column alignment follow DESIGN.md Layout. Editor actions remain sticky below measured Header, toolbar flows normally, title/tags precede body, attachments follow it, and the original draft/conflict/submit ownership remains unchanged.
 - Plain replies retain root + one nested level, no new collapsing/paging, composer before reply list. Deleted roots keep neutral placeholders and surviving discussion.
-- Layer contract: header 400 < popover 450 < backdrop 500 < dialog 600.
-- Annotation floating selection action uses popover 450; mobile Sheet reuses backdrop/dialog layers and focus contract.
+- Layer values follow DESIGN.md Elevation & Depth. Annotation floating selection action uses the popover layer; mobile Sheet reuses backdrop/dialog layers and focus contract.
 - DOCX parsing progress is inline and cancellable; unsafe or over-limit files use a persistent typed error, never a partial Preview.
 
 ## Async and resilience
@@ -193,8 +229,15 @@
 
 ## Verification
 
-- Required static commands: `npx tsc --noEmit`, `npm run lint`, `npm test`, strict premium audit, Sites checkpoint build.
+- Verification is scoped to the change: documentation-only work checks contracts, source mappings, links and formatting; product-source work runs relevant typecheck/lint/tests, with build and actual-browser checks when runtime/visual behavior changes. Typical commands: `npx tsc --noEmit`, `npm run lint`, `npm test`, strict premium audit, Sites checkpoint build. Static audit never proves the runtime flow.
 - Accessibility: native semantics, keyboard dismissal, focus trap/restoration, forced-colors fallback.
 - Canonical sibling flow: existing post edit flow and administrator allowlist sections.
 - CRUD evidence: admin purge policy tests, annotation round-trip/selection/lifecycle/revision tests, static cascade review, production artifact test, and Sites checkpoint build.
 - Failure evidence: stale base, repeated race, draft discard confirmation, upload error, unauthorized route boundary.
+
+## Contract changes and acceptance
+
+- 新增流程先选择已有 Canonical UI Map 所有者与 U1–U10；需要新行为时，先说明可观察差异与领域依据，并在同一变更同步合同、共享实现和必要验证。不得复制一个页面组件后形成隐形变体。
+- Flow ledger 记录动作和结果；不承担页面像素规格。新增页面只增加真正不同的流程，不重复登记同一搜索、分页或弹窗行为。
+- 评审至少覆盖被修改规则的一次成功和一次相关失败/取消路径；共享行为同时核对一个同类调用方。仅当改动涉及对应风险时扩展到IME、Sheet切换、离线、冲突、权限等矩阵。
+- 完成记录须区分工程检查、用户验收与代理浏览器证据。2026-09-05 Version 33已公开发布，用户反馈整体无问题；这不等价于全设备、全状态或性能验收。后续只为具体改动补相关证据。
