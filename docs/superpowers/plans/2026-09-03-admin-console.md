@@ -152,8 +152,8 @@
 - Modify: `DESIGN.md`
 - Modify: `UX-CONTRACT.md`
 - Create: `lib/admin/query.ts`
-- Create: `tests/admin-query.test.ts`
-- Modify: `tests/v7-contract.test.ts`
+- Create: `tests/admin/admin-query.test.ts`
+- Modify: `tests/platform/v7-contract.test.ts`
 
 **Steps:**
 

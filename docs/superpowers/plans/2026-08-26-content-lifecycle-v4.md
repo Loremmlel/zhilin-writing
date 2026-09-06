@@ -26,9 +26,9 @@
 **Files:**
 
 - Create: `lib/lifecycle/policy.ts`
-- Create: `tests/lifecycle-policy.test.ts`
+- Create: `tests/lifecycle/lifecycle-policy.test.ts`
 - Modify: `db/schema.ts`
-- Create: `tests/lifecycle-migration.test.ts`
+- Create: `tests/lifecycle/lifecycle-migration.test.ts`
 - Create: `drizzle/0003_*.sql` and matching Drizzle metadata
 
 **Interfaces:**
@@ -37,7 +37,7 @@
 - Produces schema fields `deletedByUserId`, `hiddenByUserId`, `hiddenReason`, `replyToReplyId`, and table `adminAuditLog`.
 
 - [ ] Write literal, table-driven failing tests for state priority, dependent placeholder retention, other-member discussion reachability, derived activity time, GC reference rules, and audit transition keys.
-- [ ] Run `npm run test:unit -- tests/lifecycle-policy.test.ts` and confirm failures are caused by the missing lifecycle module.
+- [ ] Run `npm run test:unit -- tests/lifecycle/lifecycle-policy.test.ts` and confirm failures are caused by the missing lifecycle module.
 - [ ] Implement the minimal pure policy module and rerun the targeted test to green.
 - [ ] Write a migration test that applies V1–V4 migrations, verifies existing content survives, verifies new lifecycle fields/audit table, and checks deterministic legacy direct-target backfill.
 - [ ] Run the migration test and confirm it fails before the migration exists.
@@ -72,7 +72,7 @@
 
 - Modify: `db/queries.ts`
 - Create: `lib/lifecycle/views.ts`
-- Create: `tests/lifecycle-views.test.ts`
+- Create: `tests/lifecycle/lifecycle-views.test.ts`
 - Modify: `components/activity-list.tsx`
 - Modify: `components/notification-list.tsx`
 - Modify: `app/(site)/notifications/[id]/page.tsx`
@@ -96,7 +96,7 @@
 - Create: `lib/assets/gc.ts`
 - Modify: `lib/assets/storage.ts`
 - Modify: `app/api/assets/[id]/route.ts`
-- Create: `tests/asset-lifecycle.test.ts`
+- Create: `tests/lifecycle/asset-lifecycle.test.ts`
 
 **Interfaces:**
 
@@ -143,7 +143,7 @@
 - Modify: `app/(site)/admin/revisions/[postId]/page.tsx`
 - Modify: `app/(site)/admin/revisions/[postId]/actions.ts`
 - Modify: `app/globals.css`
-- Modify: `tests/rendered-html.test.mjs`
+- Modify: `tests/build/rendered-html.test.mjs`
 
 **Interfaces:**
 

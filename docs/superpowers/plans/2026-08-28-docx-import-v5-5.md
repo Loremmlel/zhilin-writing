@@ -58,7 +58,7 @@ UI files stay under `components/docx-import/`; existing V5 Annotation components
 - Create: `scripts/fixtures/generate-docx-fixtures.mjs`
 - Create: `scripts/probe-officeparser.mjs`
 - Create: `lib/docx-import/officeparser-probe.ts`
-- Create: `tests/docx-officeparser-probe.test.ts`
+- Create: `tests/docx/docx-officeparser-probe.test.ts`
 - Create: `tests/fixtures/docx/generated/probe-adjacent.docx`
 - Create: `tests/fixtures/docx/generated/probe-overlap-nested.docx`
 - Create: `tests/fixtures/docx/generated/probe-threaded-resolved.docx`
@@ -102,7 +102,7 @@ test("officeparser is eligible only when every required comment capability passe
 
 - [x] **Step 3: Run RED**
 
-Run: `npm run test:unit -- tests/docx-officeparser-probe.test.ts`
+Run: `npm run test:unit -- tests/docx/docx-officeparser-probe.test.ts`
 
 Expected: FAIL because `lib/docx-import/officeparser-probe.ts` does not exist.
 
@@ -129,7 +129,7 @@ The fixture generator must write OPC parts with fixed timestamps and fixed XML s
 Run:
 
 ```powershell
-npm run test:unit -- tests/docx-officeparser-probe.test.ts
+npm run test:unit -- tests/docx/docx-officeparser-probe.test.ts
 node scripts/fixtures/generate-docx-fixtures.mjs
 node scripts/probe-officeparser.mjs
 ```
@@ -151,7 +151,7 @@ Write the actual version, gate evidence, and conclusion in the ADR. Update the p
 - Create: `lib/docx-import/xml.ts`
 - Create: `lib/docx-import/package.ts`
 - Create: `tests/helpers/docx-fixture.ts`
-- Create: `tests/docx-package-security.test.ts`
+- Create: `tests/docx/docx-package-security.test.ts`
 - Modify: `docs/v5-5-docx-import-progress.md`
 
 **Interfaces:**
@@ -190,7 +190,7 @@ Also assert extension, ZIP magic, OLE magic, encrypted entry, duplicate/ambiguou
 
 - [x] **Step 2: Run RED**
 
-Run: `npm run test:unit -- tests/docx-package-security.test.ts`
+Run: `npm run test:unit -- tests/docx/docx-package-security.test.ts`
 
 Expected: FAIL on missing `limits.ts`, `package.ts`, and `xml.ts` exports.
 
@@ -250,8 +250,8 @@ Open Zip.js with `checkAmbiguity: true`, `strictness: "strict"`, and bounded app
 Run:
 
 ```powershell
-npm run test:unit -- tests/docx-package-security.test.ts
-npm run test:unit -- tests/asset-lifecycle.test.ts tests/markdown.test.ts
+npm run test:unit -- tests/docx/docx-package-security.test.ts
+npm run test:unit -- tests/lifecycle/asset-lifecycle.test.ts tests/posts/markdown.test.ts
 ```
 
 Expected: all pass with no warning output.
@@ -270,7 +270,7 @@ Update progress with each safety case and the exact dependency APIs used. Run `g
 - Create: `lib/docx-import/walker.ts`
 - Create: `lib/docx-import/markdown.ts`
 - Create: `lib/docx-import/parse.ts`
-- Create: `tests/docx-import-body.test.ts`
+- Create: `tests/docx/docx-import-body.test.ts`
 - Modify: `tests/helpers/docx-fixture.ts`
 - Modify: `docs/v5-5-docx-import-progress.md`
 
@@ -308,7 +308,7 @@ Add table-driven list tests for bullet/numeric/alphabetic/roman formats and leve
 
 - [x] **Step 2: Run RED**
 
-Run: `npm run test:unit -- tests/docx-import-body.test.ts`
+Run: `npm run test:unit -- tests/docx/docx-import-body.test.ts`
 
 Expected: FAIL because lookups, walker, renderer, and orchestrator do not exist.
 
@@ -339,8 +339,8 @@ Render only IR semantics: H1–H4, paragraphs, quotes, three-level ordered/unord
 Run:
 
 ```powershell
-npm run test:unit -- tests/docx-import-body.test.ts
-npm run test:unit -- tests/markdown.test.ts tests/annotation-roundtrip.test.ts
+npm run test:unit -- tests/docx/docx-import-body.test.ts
+npm run test:unit -- tests/posts/markdown.test.ts tests/annotations/annotation-roundtrip.test.ts
 ```
 
 Expected: body tests and the existing V5 canonical parser/stringifier tests pass.
@@ -356,7 +356,7 @@ Update progress with supported style/list/field rules and warning evidence. Comm
 **Files:**
 
 - Create: `lib/docx-import/annotations.ts`
-- Create: `tests/docx-import-comments.test.ts`
+- Create: `tests/docx/docx-import-comments.test.ts`
 - Modify: `lib/docx-import/lookups.ts`
 - Modify: `lib/docx-import/walker.ts`
 - Modify: `lib/docx-import/parse.ts`
@@ -401,7 +401,7 @@ test("keeps adjacent ranges and greedily skips an intersecting candidate", async
 
 - [x] **Step 2: Run RED**
 
-Run: `npm run test:unit -- tests/docx-import-comments.test.ts`
+Run: `npm run test:unit -- tests/docx/docx-import-comments.test.ts`
 
 Expected: FAIL because comment catalog, graph, and range resolver do not exist.
 
@@ -428,8 +428,8 @@ For each block, sort root candidates by `start ASC`, `length DESC`, `sourceComme
 Wrap accepted inline ranges as the existing `:annotation[]{#ann_*}` canonical directive after IDs are finalized. For the pre-finalized parser test, use stable injected ID factories. Run:
 
 ```powershell
-npm run test:unit -- tests/docx-import-comments.test.ts
-npm run test:unit -- tests/annotation-selection.test.ts tests/annotation-roundtrip.test.ts tests/markdown.test.ts
+npm run test:unit -- tests/docx/docx-import-comments.test.ts
+npm run test:unit -- tests/annotations/annotation-selection.test.ts tests/annotations/annotation-roundtrip.test.ts tests/posts/markdown.test.ts
 ```
 
 Expected: all range/graph tests and all existing V5 annotation tests pass.
@@ -444,7 +444,7 @@ Update progress with the single-pass proof, UTF-16 cases, graph fallback, and ov
 
 **Files:**
 
-- Create: `tests/docx-import-rich-content.test.ts`
+- Create: `tests/docx/docx-import-rich-content.test.ts`
 - Modify: `lib/docx-import/types.ts`
 - Modify: `lib/docx-import/lookups.ts`
 - Modify: `lib/docx-import/walker.ts`
@@ -477,7 +477,7 @@ test("degrades merged tables and notes without raw HTML or lost text", async () 
 
 - [ ] **Step 2: Run RED**
 
-Run: `npm run test:unit -- tests/docx-import-rich-content.test.ts`
+Run: `npm run test:unit -- tests/docx/docx-import-rich-content.test.ts`
 
 Expected: FAIL on missing table/image/note behavior.
 
@@ -498,8 +498,8 @@ Assign a shared stable sequence to footnote/endnote references, render `[N]` in 
 Run:
 
 ```powershell
-npm run test:unit -- tests/docx-import-rich-content.test.ts
-npm run test:unit -- tests/docx-import-body.test.ts tests/docx-import-comments.test.ts tests/asset-lifecycle.test.ts
+npm run test:unit -- tests/docx/docx-import-rich-content.test.ts
+npm run test:unit -- tests/docx/docx-import-body.test.ts tests/docx/docx-import-comments.test.ts tests/lifecycle/asset-lifecycle.test.ts
 ```
 
 Expected: all pass; warning aggregation has one cosmetic row per code and one detailed row per skipped thread.
@@ -520,8 +520,8 @@ Update progress with table/image/note behavior and limit evidence. Commit as `fe
 - Create: `lib/docx-import/docx-import.worker.ts`
 - Create: `lib/docx-import/browser.ts`
 - Create: `lib/docx-import/preview-store.ts`
-- Create: `tests/docx-worker.test.ts`
-- Create: `tests/docx-preview-store.test.ts`
+- Create: `tests/docx/docx-worker.test.ts`
+- Create: `tests/docx/docx-preview-store.test.ts`
 - Modify: `docs/v5-5-docx-import-progress.md`
 
 **Interfaces:**
@@ -549,7 +549,7 @@ test("terminates a timed-out DOCX worker with a typed error", async () => {
 
 Use `fake-indexeddb/auto`. Start one case from the current version-1 `drafts` database, upgrade it, and prove the draft remains readable. Prove the Preview record contains the source filename/hash, parsed IR, warnings, temporary asset refs, mappings, and final IDs but not original bytes. Prove records at or beyond 24 hours are purged.
 
-Run: `npm run test:unit -- tests/docx-worker.test.ts tests/docx-preview-store.test.ts`
+Run: `npm run test:unit -- tests/docx/docx-worker.test.ts tests/docx/docx-preview-store.test.ts`
 
 Expected: FAIL because the protocol/controller/store do not exist.
 
@@ -568,8 +568,8 @@ Compute source SHA-256 with `crypto.subtle.digest`. Generate one `import_batch_i
 Run:
 
 ```powershell
-npm run test:unit -- tests/docx-worker.test.ts tests/docx-preview-store.test.ts
-npm run test:unit -- tests/draft-indexed-db.test.ts
+npm run test:unit -- tests/docx/docx-worker.test.ts tests/docx/docx-preview-store.test.ts
+npm run test:unit -- tests/posts/draft-indexed-db.test.ts
 ```
 
 Expected: all pass; no Preview value contains a `File`, `Blob`, or ArrayBuffer of the original DOCX.
@@ -588,10 +588,10 @@ Update progress with protocol states, cancellation/timeout evidence, IndexedDB m
 - Create: `components/docx-import/docx-import-workspace.tsx`
 - Create: `components/docx-import/docx-import-preview.tsx`
 - Create: `lib/docx-import/preview-validation.ts`
-- Create: `tests/docx-import-preview.test.ts`
+- Create: `tests/docx/docx-import-preview.test.ts`
 - Modify: `app/(site)/posts/new/page.tsx`
 - Modify: `app/globals.css`
-- Modify: `tests/rendered-html.test.mjs`
+- Modify: `tests/build/rendered-html.test.mjs`
 - Modify: `docs/v5-5-docx-import-progress.md`
 
 **Interfaces:**
@@ -616,7 +616,7 @@ test("blocks commit after the editor removes an imported anchor", () => {
 
 Assert that the new-post page exposes the import entry point and the import route contains the file-picker, progress, warning summary, mapping controls, Annotation-lock notice, cancel, and disabled-confirm states.
 
-Run: `npm run test:unit -- tests/docx-import-preview.test.ts && npm run test:rendered`
+Run: `npm run test:unit -- tests/docx/docx-import-preview.test.ts && npm run test:rendered`
 
 Expected: FAIL because the route/components do not exist.
 
@@ -635,7 +635,7 @@ After title/body edits, rerun Preview validation. Any `severity="error"` or vali
 Run:
 
 ```powershell
-npm run test:unit -- tests/docx-import-preview.test.ts
+npm run test:unit -- tests/docx/docx-import-preview.test.ts
 npm run test:rendered
 npx tsc --noEmit
 ```
@@ -656,7 +656,7 @@ Update progress with the state machine, validation rules, warning cap, restore b
 - Create: `drizzle/0005_docx_import.sql`
 - Modify: `drizzle/meta/_journal.json`
 - Create or modify: `drizzle/meta/0005_snapshot.json`
-- Create: `tests/docx-import-migration.test.ts`
+- Create: `tests/docx/docx-import-migration.test.ts`
 - Modify: `docs/v5-5-docx-import-progress.md`
 
 **Schema changes:**
@@ -671,7 +671,7 @@ Update progress with the state machine, validation rules, warning cap, restore b
 
 Create a pre-migration SQLite database with representative V5 native data, apply all migrations, then assert native author/annotation/reply/history rows survive. Insert a legal imported root/reply, reject an imported row with non-null author, and reject a duplicate attribution notice.
 
-Run: `npm run test:unit -- tests/docx-import-migration.test.ts`
+Run: `npm run test:unit -- tests/docx/docx-import-migration.test.ts`
 
 Expected: FAIL because migration 0005 and the new Drizzle fields do not exist.
 
@@ -688,7 +688,7 @@ Where SQLite cannot alter nullability/check constraints, rebuild the table insid
 Run:
 
 ```powershell
-npm run test:unit -- tests/docx-import-migration.test.ts
+npm run test:unit -- tests/docx/docx-import-migration.test.ts
 npx drizzle-kit check
 rg -n "DROP TABLE|CREATE TABLE|FOREIGN KEY|UNIQUE INDEX" drizzle/0005_docx_import.sql
 ```
@@ -709,7 +709,7 @@ Update progress with migration replay and constraint evidence. Commit as `feat: 
 - Create: `lib/docx-import/commit-plan.ts`
 - Create: `lib/docx-import/commit-service.ts`
 - Create: `app/api/docx-import/route.ts`
-- Create: `tests/docx-import-commit.test.ts`
+- Create: `tests/docx/docx-import-commit.test.ts`
 - Modify: `components/docx-import/docx-import-workspace.tsx`
 - Modify: `docs/v5-5-docx-import-progress.md`
 
@@ -734,7 +734,7 @@ test("cannot forge native authorship in an imported thread", async () => {
 
 - [ ] **Step 2: Run RED**
 
-Run: `npm run test:unit -- tests/docx-import-commit.test.ts`
+Run: `npm run test:unit -- tests/docx/docx-import-commit.test.ts`
 
 Expected: FAIL because no commit schema/service exists.
 
@@ -759,8 +759,8 @@ The route obtains the authenticated allowlisted member and passes only their ID 
 Run:
 
 ```powershell
-npm run test:unit -- tests/docx-import-commit.test.ts
-npm run test:unit -- tests/posts.test.ts tests/asset-lifecycle.test.ts tests/annotations.test.ts
+npm run test:unit -- tests/docx/docx-import-commit.test.ts
+npm run test:unit -- tests/posts.test.ts tests/lifecycle/asset-lifecycle.test.ts tests/annotations.test.ts
 npx tsc --noEmit
 ```
 
@@ -785,9 +785,9 @@ Update progress with validation matrix, chunk size, rollback evidence, asset gua
 - Modify: `app/(site)/posts/[id]/page.tsx`
 - Modify: `components/annotations/annotation-thread.tsx`
 - Modify: `components/annotations/annotation-sheet.tsx`
-- Create: `tests/docx-import-identity.test.ts`
-- Modify: `tests/annotation-replies.test.ts`
-- Modify: `tests/annotation-lifecycle.test.ts`
+- Create: `tests/docx/docx-import-identity.test.ts`
+- Modify: `tests/annotations/annotation-replies.test.ts`
+- Modify: `tests/annotations/annotation-lifecycle.test.ts`
 - Modify: `docs/v5-5-docx-import-progress.md`
 
 **View model:**
@@ -817,7 +817,7 @@ Prove imported root/replies are immutable, the attributed user receives no edit/
 Run:
 
 ```powershell
-npm run test:unit -- tests/docx-import-identity.test.ts tests/annotation-replies.test.ts tests/annotation-lifecycle.test.ts
+npm run test:unit -- tests/docx/docx-import-identity.test.ts tests/annotations/annotation-replies.test.ts tests/annotations/annotation-lifecycle.test.ts
 ```
 
 Expected: FAIL on nullable joins/source identity and imported-thread policy.
@@ -839,8 +839,8 @@ Implement `removeImportedAnnotationThread` only for the post author/original imp
 Run:
 
 ```powershell
-npm run test:unit -- tests/docx-import-identity.test.ts tests/annotation-replies.test.ts tests/annotation-lifecycle.test.ts
-npm run test:unit -- tests/annotations.test.ts tests/annotation-visibility.test.ts
+npm run test:unit -- tests/docx/docx-import-identity.test.ts tests/annotations/annotation-replies.test.ts tests/annotations/annotation-lifecycle.test.ts
+npm run test:unit -- tests/annotations.test.ts tests/annotations/annotation-visibility.test.ts
 npx tsc --noEmit
 ```
 
@@ -863,8 +863,8 @@ Update progress with identity rendering, ordering, permission matrix, and both s
 - Modify: `lib/notifications/policy.ts`
 - Modify: `app/(site)/notifications/page.tsx`
 - Modify: `app/(site)/notifications/[id]/page.tsx`
-- Create: `tests/docx-import-revision.test.ts`
-- Create: `tests/docx-attribution-notification.test.ts`
+- Create: `tests/docx/docx-import-revision.test.ts`
+- Create: `tests/docx/docx-attribution-notification.test.ts`
 - Modify: `docs/v5-5-docx-import-progress.md`
 
 - [ ] **Step 1: Write failing full-snapshot tests**
@@ -878,7 +878,7 @@ Map several roots/replies in one batch to the same member and others to a second
 Run:
 
 ```powershell
-npm run test:unit -- tests/docx-import-revision.test.ts tests/docx-attribution-notification.test.ts
+npm run test:unit -- tests/docx/docx-import-revision.test.ts tests/docx/docx-attribution-notification.test.ts
 ```
 
 Expected: FAIL because imported reply snapshots and the new notice rendering are absent.
@@ -896,7 +896,7 @@ Store stable metadata containing post ID/title, importer display name, and mappe
 Run:
 
 ```powershell
-npm run test:unit -- tests/docx-import-revision.test.ts tests/docx-attribution-notification.test.ts
+npm run test:unit -- tests/docx/docx-import-revision.test.ts tests/docx/docx-attribution-notification.test.ts
 npm run test:unit -- tests/revisions.test.ts tests/notifications.test.ts tests/activity.test.ts
 npx tsc --noEmit
 ```
@@ -922,8 +922,8 @@ Update progress with snapshot round-trip and notification aggregation evidence. 
 - Create when provenance is verified: `tests/fixtures/docx/public/word-online.docx`
 - Modify: `scripts/fixtures/generate-docx-fixtures.mjs`
 - Create: `scripts/fixtures/fetch-public-docx-fixtures.mjs`
-- Create: `tests/docx-import-producers.test.ts`
-- Create: `tests/docx-import-e2e.test.ts`
+- Create: `tests/docx/docx-import-producers.test.ts`
+- Create: `tests/docx/docx-import-e2e.test.ts`
 - Create: `tests/fixtures/docx/expected/normalized-ir.json`
 - Modify: `docs/v5-5-docx-import-progress.md`
 
@@ -954,7 +954,7 @@ assert.equal(first.canonicalMarkdown, second.canonicalMarkdown);
 assert.equal(JSON.stringify(first.warnings), JSON.stringify(second.warnings));
 ```
 
-Run: `npm run test:unit -- tests/docx-import-producers.test.ts tests/docx-import-e2e.test.ts`
+Run: `npm run test:unit -- tests/docx/docx-import-producers.test.ts tests/docx/docx-import-e2e.test.ts`
 
 Expected: FAIL until the manifest, expected IR, and full pipeline harness exist.
 
@@ -969,7 +969,7 @@ Run:
 ```powershell
 node scripts/fixtures/fetch-public-docx-fixtures.mjs --verify
 node scripts/fixtures/generate-docx-fixtures.mjs --check
-npm run test:unit -- tests/docx-import-producers.test.ts tests/docx-import-e2e.test.ts
+npm run test:unit -- tests/docx/docx-import-producers.test.ts tests/docx/docx-import-e2e.test.ts
 npm run test:unit
 ```
 

@@ -25,7 +25,7 @@
 
 **Files:**
 
-- Create: `tests/revision-policy.test.ts`
+- Create: `tests/posts/revision-policy.test.ts`
 - Create: `lib/revisions/policy.ts`
 
 **Interfaces:**
@@ -33,7 +33,7 @@
 - Produces: `extractMarkdownAssetIds(markdown)`, `classifyPostChange(current, next)`, `resolveSaveBase(currentRevisionId, submittedBaseRevisionId, overwriteBaseRevisionId?)`, and `EditConflictError`.
 
 - [ ] Write tests proving title/Markdown/inline/attachment changes are content changes, tags are ignored, Markdown asset IDs are stable/deduplicated, and stale bases produce `EDIT_CONFLICT`.
-- [ ] Run `npm run test:unit -- tests/revision-policy.test.ts` and verify failure because the policy module is absent.
+- [ ] Run `npm run test:unit -- tests/posts/revision-policy.test.ts` and verify failure because the policy module is absent.
 - [ ] Implement the smallest pure policy module satisfying the tests.
 - [ ] Re-run the focused tests and all unit tests.
 
@@ -43,7 +43,7 @@
 
 - Modify: `db/schema.ts`
 - Create: generated `drizzle/0002_*.sql` and snapshot metadata
-- Create: `tests/revision-migration.test.ts`
+- Create: `tests/posts/revision-migration.test.ts`
 
 **Interfaces:**
 
@@ -81,7 +81,7 @@
 - Modify: `components/editor/post-editor-form.tsx`
 - Modify: `app/(site)/posts/[id]/edit/page.tsx`
 - Modify: `app/(site)/posts/[id]/actions.ts`
-- Create: `tests/editor-conflict.test.ts`
+- Create: `tests/posts/editor-conflict.test.ts`
 
 **Interfaces:**
 
@@ -101,7 +101,7 @@
 - Create: `app/(site)/admin/revisions/[postId]/page.tsx`
 - Create: `app/(site)/admin/revisions/[postId]/actions.ts`
 - Modify: `app/globals.css`
-- Modify: `tests/rendered-html.test.mjs`
+- Modify: `tests/build/rendered-html.test.mjs`
 
 **Interfaces:**
 
@@ -117,7 +117,7 @@
 
 - Create: `components/account-menu.tsx`
 - Modify: `components/site-header.tsx`
-- Create: `tests/account-menu.test.ts`
+- Create: `tests/access/account-menu.test.ts`
 
 **Interfaces:**
 

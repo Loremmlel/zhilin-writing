@@ -26,14 +26,14 @@
 **Files:**
 
 - Create: `lib/activity/policy.ts`
-- Test: `tests/activity-policy.test.ts`
+- Test: `tests/posts/activity-policy.test.ts`
 
 **Interfaces:**
 
 - Produces: `activityEventId`, `notificationId`, `resolveReplyRecipient`, `truncateActivityPreview`, and `replyTargetHref`.
 
 - [ ] Write failing tests proving deterministic IDs, direct-target recipient selection, self-notification suppression, Unicode-safe preview truncation, and stable `#reply-<id>` URLs.
-- [ ] Run `npm run test:unit -- tests/activity-policy.test.ts` and confirm the missing module/API failure.
+- [ ] Run `npm run test:unit -- tests/posts/activity-policy.test.ts` and confirm the missing module/API failure.
 - [ ] Implement the minimal pure helpers with literal event/notification types and no database dependency.
 - [ ] Rerun the focused unit test and then `npm run test:unit`.
 
@@ -47,7 +47,7 @@
 - Modify: `components/reply-form.tsx`
 - Modify: `app/(site)/posts/[id]/actions.ts`
 - Create: generated `drizzle/0001_*.sql` and matching metadata
-- Test: `tests/activity-policy.test.ts`
+- Test: `tests/posts/activity-policy.test.ts`
 
 **Interfaces:**
 
@@ -74,7 +74,7 @@
 - Modify: `components/site-header.tsx`
 - Modify: `app/(site)/posts/[id]/page.tsx`
 - Modify: `app/globals.css`
-- Test: `tests/rendered-html.test.mjs`
+- Test: `tests/build/rendered-html.test.mjs`
 
 **Interfaces:**
 

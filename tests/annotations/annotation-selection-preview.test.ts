@@ -1,0 +1,202 @@
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import test from "node:test";
+import { Window } from "happy-dom";
+
+import {
+  captureSavedAnnotationSelection,
+  nextSelectionPreviewPhase,
+  validateSavedAnnotationSelection,
+} from "../../lib/annotations/selection-preview.ts";
+
+function selectedRange(window: Window, text: Text, from: number, to: number) {
+  const range = window.document.createRange();
+  range.setStart(text as never, from);
+  range.setEnd(text as never, to);
+  return range as unknown as Range;
+}
+
+test("selection preview survives composer pending failure and retry until success is visible", () => {
+  let phase = nextSelectionPreviewPhase("hidden", "capture");
+  assert.equal(phase, "bubble");
+  phase = nextSelectionPreviewPhase(phase, "open-composer");
+  assert.equal(phase, "composer");
+  phase = nextSelectionPreviewPhase(phase, "submit");
+  assert.equal(phase, "pending");
+  phase = nextSelectionPreviewPhase(phase, "failure");
+  assert.equal(phase, "failed");
+  phase = nextSelectionPreviewPhase(phase, "retry");
+  assert.equal(phase, "pending");
+  phase = nextSelectionPreviewPhase(phase, "submit-succeeded");
+  assert.equal(phase, "awaiting-annotation");
+  phase = nextSelectionPreviewPhase(phase, "annotation-present");
+  assert.equal(phase, "hidden");
+});
+
+test("cancel body click invalidation revision change and unmount clear preview", () => {
+  for (const event of [
+    "cancel",
+    "body-click",
+    "invalidate",
+    "revision-change",
+    "unmount",
+  ] as const) {
+    assert.equal(nextSelectionPreviewPhase("composer", event), "hidden");
+  }
+});
+
+test("saved selection remains authoritative after native DOM selection moves", () => {
+  const window = new Window();
+  const root = window.document.createElement("div");
+  root.innerHTML = "<p>我非常喜欢你</p><p>另一段</p>";
+  window.document.body.append(root);
+  const first = root.querySelectorAll("p")[0]!.firstChild as unknown as Text;
+  const second = root.querySelectorAll("p")[1]!.firstChild as unknown as Text;
+  const range = selectedRange(window, first, 1, 5);
+  const descriptor = {
+    blockOrdinal: 0,
+    endBlockOrdinal: 0,
+    blockTextFrom: 1,
+    blockTextTo: 5,
+    selectedText: "非常喜欢",
+  };
+  const saved = captureSavedAnnotationSelection({
+    postId: "post",
+    baseRevisionId: "revision",
+    descriptor,
+    root: root as unknown as Element,
+    range,
+    epoch: 3,
+  });
+
+  const moved = selectedRange(window, second, 0, 2);
+  const nativeSelection = window.getSelection();
+  nativeSelection?.removeAllRanges();
+  nativeSelection?.addRange(moved as never);
+
+  assert.equal(saved.selectedText, "非常喜欢");
+  assert.deepEqual(saved.descriptor, descriptor);
+  const restored = validateSavedAnnotationSelection(saved, {
+    postId: "post",
+    baseRevisionId: "revision",
+    root: root as unknown as Element,
+    epoch: 3,
+  });
+  assert.equal(restored?.toString(), "非常喜欢");
+  assert.equal(
+    validateSavedAnnotationSelection(saved, {
+      postId: "post",
+      baseRevisionId: "new",
+      root: root as unknown as Element,
+      epoch: 3,
+    }),
+    null,
+  );
+  assert.equal(
+    validateSavedAnnotationSelection(saved, {
+      postId: "post",
+      baseRevisionId: "revision",
+      root: root as unknown as Element,
+      epoch: 4,
+    }),
+    null,
+  );
+});
+
+test("reading layout inspects a pointer selection only after it finishes", async () => {
+  const source = await readFile(
+    new URL("../../components/annotations/annotation-reading-layout.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(source, /addEventListener\("pointerdown", startPointerSelection\)/);
+  assert.match(source, /addEventListener\("pointercancel", finishPointerSelection\)/);
+  assert.match(
+    source,
+    /if \(shouldInspect\) window\.setTimeout\(\(\) => inspectSelection\(\), 0\)/,
+  );
+  assert.doesNotMatch(source, /addEventListener\("selectionchange"/);
+});
+
+test("reading layout preserves article nodes while selection UI rerenders", async () => {
+  const browser = new Window({ url: "https://example.test" });
+  for (const [name, value] of Object.entries({
+    window: browser,
+    document: browser.document,
+    Node: browser.Node,
+    Element: browser.Element,
+    HTMLElement: browser.HTMLElement,
+    Text: browser.Text,
+    Event: browser.Event,
+    MutationObserver: browser.MutationObserver,
+  })) {
+    Object.defineProperty(globalThis, name, { configurable: true, value, writable: true });
+  }
+  Object.defineProperty(globalThis, "navigator", {
+    configurable: true,
+    value: browser.navigator,
+    writable: true,
+  });
+
+  const React = await import("react");
+  const { createRoot } = await import("react-dom/client");
+  const host = browser.document.createElement("div");
+  browser.document.body.append(host);
+  let showSelectionMenu: (() => void) | undefined;
+
+  function SelectionRerenderProbe() {
+    const [menuVisible, setMenuVisible] = React.useState(false);
+    const renderedBody = React.useMemo(() => ({ __html: "<p>正文</p>" }), []);
+    showSelectionMenu = () => setMenuVisible(true);
+    return React.createElement(
+      "section",
+      null,
+      React.createElement("div", {
+        className: "annotation-document-body",
+        dangerouslySetInnerHTML: renderedBody,
+      }),
+      menuVisible ? React.createElement("button", null, "添加批注") : null,
+    );
+  }
+
+  const root = createRoot(host as unknown as HTMLElement);
+  root.render(React.createElement(SelectionRerenderProbe));
+  await new Promise((resolve) => setTimeout(resolve, 25));
+  const body = host.querySelector(".annotation-document-body")!;
+  const paragraph = body.firstElementChild;
+  const text = paragraph?.firstChild;
+  assert.ok(text instanceof browser.Text);
+  const range = browser.document.createRange();
+  range.setStart(text, 0);
+  range.setEnd(text, 2);
+  const selection = browser.getSelection();
+  selection?.removeAllRanges();
+  selection?.addRange(range);
+  let mutationCount = 0;
+  const observer = new browser.MutationObserver((records) => {
+    mutationCount += records.length;
+  });
+  observer.observe(body, { childList: true, characterData: true, subtree: true });
+
+  assert.ok(showSelectionMenu);
+  showSelectionMenu();
+  await new Promise((resolve) => setTimeout(resolve, 25));
+  mutationCount += observer.takeRecords().length;
+
+  assert.equal(host.querySelector("button")?.textContent, "添加批注");
+  assert.equal(body.firstElementChild, paragraph);
+  assert.equal(selection?.toString(), "正文");
+  assert.equal(selection?.getRangeAt(0).startContainer, text);
+  assert.equal(mutationCount, 0);
+
+  const source = await readFile(
+    new URL("../../components/annotations/annotation-reading-layout.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(source, /const renderedBody = useMemo\(\(\) => \(\{ __html: html \}\), \[html\]\)/);
+  assert.match(source, /dangerouslySetInnerHTML=\{renderedBody\}/);
+  assert.doesNotMatch(source, /dangerouslySetInnerHTML=\{\{ __html: html \}\}/);
+
+  observer.disconnect();
+  root.unmount();
+  browser.close();
+});

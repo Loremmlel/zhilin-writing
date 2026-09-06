@@ -43,6 +43,7 @@
 
 ## 验证
 
+- `tests/`：按 `access`、`annotations`、`docx`、`posts`、`lifecycle`、`admin`、`platform` 和 `build` 功能域组织。
 - `npm run test:unit`：领域、编辑器、DOCX 与交互状态测试。
 - `npm run lint`：源代码检查。
 - `npx tsc --noEmit`：类型检查。

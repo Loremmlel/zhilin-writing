@@ -35,7 +35,7 @@
 ## 2026-08-29 — Task 2：Import IR 与 DOCX package/XML 安全边界
 
 - 状态：实现完成；Task 3 尚未开始。
-- RED：新增 `tests/docx-package-security.test.ts` 后，测试按预期因缺少 `lib/docx-import/limits.ts`、`package.ts`、`types.ts` 和 `xml.ts` 失败（`ERR_MODULE_NOT_FOUND`）；原有 99 项单测仍通过。
+- RED：新增 `tests/docx/docx-package-security.test.ts` 后，测试按预期因缺少 `lib/docx-import/limits.ts`、`package.ts`、`types.ts` 和 `xml.ts` 失败（`ERR_MODULE_NOT_FOUND`）；原有 99 项单测仍通过。
 - 类型边界：新增不可变 `DOCX_IMPORT_LIMITS`、typed `DocxImportError`/error code、20 个首版 warning code，以及 blocks、inline segments、assets、threads、skipped threads、`ParsedDocx`、`DocxImportIR`、`DocxPreviewRecord` 的 discriminated TypeScript interfaces。
 - Package gate：验证 `.docx` 扩展名、20 MB compressed size、OLE magic、ZIP local-file signature、必需 parts、1000 entries、200 MB uncompressed total、100:1 per-entry ratio、20 MB XML part，以及 encrypted、symlink、unsafe path、Unicode/case-fold duplicate entry；显式安全目录条目允许存在但不暴露为可读 part。
 - Zip.js API：`ZipReader` 与 `getEntries()` 均使用 `strictness: "strict"`、`checkAmbiguity: true`、`maxAppendedDataSize: 0`；解压读取使用 strict local-header check、CRC-32 与 overlapping-entry check，并在解压后重新核对实际 byte length。
@@ -48,7 +48,7 @@
 ## 2026-08-29 — Task 3：DOCX 正文语义与 canonical Markdown
 
 - 状态：实现完成；Task 4 尚未开始。
-- RED：新增 `tests/docx-import-body.test.ts` 后，测试按预期因缺少 `lib/docx-import/markdown.ts` 失败（`ERR_MODULE_NOT_FOUND`）；审阅阶段另补相邻列表合并与正文行首 Markdown 转义用例，分别观察到 3 个列表块而非 2 个、以及 `#`/`-`/`>` 未转义的预期失败。
+- RED：新增 `tests/docx/docx-import-body.test.ts` 后，测试按预期因缺少 `lib/docx-import/markdown.ts` 失败（`ERR_MODULE_NOT_FOUND`）；审阅阶段另补相邻列表合并与正文行首 Markdown 转义用例，分别观察到 3 个列表块而非 2 个、以及 `#`/`-`/`>` 未转义的预期失败。
 - Styles：`styles.xml` 的 paragraph/character style 使用 cycle-safe `basedOn` 解析；只接受显式 Heading1–Heading9、Quote/IntenseQuote 与集中 code style whitelist，不根据字体、字号、颜色或缩进猜测语义。H5–H9 flatten 为 H4，并聚合 `HEADING_LEVEL_CLAMPED`。
 - Lists：通过 `numPr → numId → abstractNum → ilvl/numFmt` 解析 bullet、numeric、alphabetic 与 roman 类型；最多保留三层，后续层级 flatten 并聚合 `LIST_DEPTH_CLAMPED`。相邻项目仅在 numId、format 与原始 level 均相同时合并。
 - Inline/links：支持 bold、italic、strike 与显式 code character style；视觉格式不进入正文语义并聚合 `VISUAL_FORMATTING_DROPPED`。external hyperlink 仅允许 `http:`、`https:`、`mailto:`；不安全目标保留 display text、丢弃 URL，并聚合新增 typed warning `HYPERLINK_UNSAFE_DROPPED`。
@@ -61,7 +61,7 @@
 ## 2026-08-29 — Task 4：Word 批注范围、回复图与 deterministic overlap
 
 - 状态：实现与代码审阅修复完成；Task 5 尚未开始。
-- RED：新增 `tests/docx-import-comments.test.ts` 后，测试按预期因缺少 `lib/docx-import/annotations.ts` 失败（`ERR_MODULE_NOT_FOUND`）。
+- RED：新增 `tests/docx/docx-import-comments.test.ts` 后，测试按预期因缺少 `lib/docx-import/annotations.ts` 失败（`ERR_MODULE_NOT_FOUND`）。
 - Single pass：正文 walker 在遇到 `commentRangeStart`/`commentRangeEnd` 时更新 active comment IDs，在 block/list-item 关闭时从完成的 segments 推导原始 UTF-16 spans；不搜索文本、不经过 Markdown offset，也不做 Unicode normalization。测试覆盖 CJK、`😀` surrogate pair、`e\u0301` combining sequence 与 RTL 文本。
 - Locations：同段普通正文、标题、引用与 list item 使用稳定 block/item ID；跨段范围、空范围、table cell、image/non-text 与缺失 definition 分别产生逐 thread typed warning。Task 5 尚未解析 table/image 内容，本 Task 只记录其 location 并原子跳过对应批注。
 - Thread graph：从 `comments.xml` 读取 source order、author、initials、date、body 与最后 paragraph 的 `w14:paraId`；仅用 `commentsExtended.xml` 的 `w15:paraIdParent` 建 immediate parent、`w15:done` 建 resolved state。缺失 commentsExtended 时所有 definitions 保守退化为 flat roots，不猜 reply。
@@ -76,7 +76,7 @@
 ## 2026-08-29 — Task 5：表格、图片、脚注与特殊内容的确定性降级
 
 - 状态：实现与三轮代码审阅修复完成；Task 6 尚未开始。
-- RED：新增 `tests/docx-import-rich-content.test.ts`，先后观察到 rich-content 模块缺失、URL 中竖线未转义、percent-encoded media target 未解析，以及审阅补充的图片缓存/源顺序/MIME、未引用 note 批注、表格 grid offset、列表图片、纯图片空批注范围、无效图片残留段落拆分等预期失败，再逐项实现至 GREEN。
+- RED：新增 `tests/docx/docx-import-rich-content.test.ts`，先后观察到 rich-content 模块缺失、URL 中竖线未转义、percent-encoded media target 未解析，以及审阅补充的图片缓存/源顺序/MIME、未引用 note 批注、表格 grid offset、列表图片、纯图片空批注范围、无效图片残留段落拆分等预期失败，再逐项实现至 GREEN。
 - Tables：矩形表格输出 GFM table；无显式 header 时合成空 header 并聚合 `TABLE_HEADER_SYNTHESIZED`；单元格多段落以 `/` 展平。`gridSpan`、`vMerge`、`rowSpan`、`colSpan` 等合并标记统一按 source order 降级为普通段落，不输出 raw HTML；`tblGrid`、`gridBefore`、`gridAfter` 用于稳定矩形化。table cell 批注仍按 `ANNOTATION_TABLE_UNSUPPORTED` 原子跳过。
 - Images：仅接受 relationship 指向 `word/media/` 的内嵌 PNG/JPEG/GIF/WebP；同时校验 `[Content_Types].xml` 的 Default/Override（含 percent-decoding）、扩展名、MIME 与 magic signature。alt 依次取 descr、title、filename、`image`；floating image 保留并聚合 warning。正文按图片所在 source offset 拆分，列表内图片保持单一 list item 后附图片；纯图片段落保留零长度文字 segment，确保空范围仍归类为空批注。
 - Asset safety：单图 10 MB、总图片数 200 的 hard limit；相同 package media bytes 复用缓存，避免重复引用造成内存放大。缺失、不安全、格式/MIME/signature 不一致的图片确定性跳过；material validation 拒绝候选后进行轻量二次 walk，避免无效图片在 Markdown 中留下错误段落拆分。
@@ -128,7 +128,7 @@
 
 - 状态：实现与完整验证完成；Task 10 尚未开始。
 - 同步：从 Sites `origin` 拉取 `feature/v5.5-docx-import` 并确认已是最新；Task 9 基线完整单测为 191/191 通过。
-- RED：新增 `tests/docx-import-commit.test.ts` 后，测试按预期因缺少 `commit-schema.ts` 失败；实现初版后又分别暴露 envelope fixture 未同步及递归 Zod block 推断为 `unknown`，修正测试数据与显式 schema 类型后转绿。
+- RED：新增 `tests/docx/docx-import-commit.test.ts` 后，测试按预期因缺少 `commit-schema.ts` 失败；实现初版后又分别暴露 envelope fixture 未同步及递归 Zod block 推断为 `unknown`，修正测试数据与显式 schema 类型后转绿。
 - Trust boundary：`DocxImportCommitSchema` 使用 strict Zod object 拒绝未知字段；服务端重新校验标题、1.5 MB UTF-8 Markdown、`.docx` source/SHA、final batch/root/reply UUID、source range、500 条 root+reply 上限、reply graph、author mapping 与 imported `author_id=NULL`。服务端重新解析 canonical Markdown，要求 annotation ID 集合、次数与 selected text 精确一致，并拒绝 nested/cross-block/overlap、unsafe URL、error warning 与被篡改 asset manifest。
 - Asset/auth：endpoint 使用不会触发页面跳转的 `getApiMemberAccess()`，未登录、非成员及待 onboarding 状态分别返回 typed JSON 401/403；raw JSON 交给 service 后再验证 allowlist、attributed users，以及每张 temporary image 的 owner、status、MIME、filename、size 与未删除状态。asset claim 位于同一 D1 batch 中，并用 owner/status/MIME guard 触发硬失败；不移动或删除 R2 object。
 - Atomic planner：post/revision ID 由服务端生成；FK 顺序包含 post、完整 initial revision、import batch、asset binding/ref、roots/replies、root/reply snapshots、唯一 `POST_CREATED` event 与每位 attribution recipient 至多一条汇总通知。planner 依据列数动态分块，member/asset lookup 也按 100 个 ID 分块，保证每条 D1 statement 不超过 100 个 bind parameter；全部 statements 仍只调用一次 `db.batch()`。imported roots/replies 不生成个人 annotation activity。
@@ -142,7 +142,7 @@
 ## 2026-08-30 — Task 10：来源身份展示与 imported thread 权限
 
 - 状态：实现与完整验证完成；Task 11 尚未开始。
-- RED：新增 `tests/docx-import-identity.test.ts`，并扩展 annotation replies/lifecycle 测试；先确认缺少统一 author view、Word 元数据格式、canonical anchor 排序、source-aware permission 与 imported thread removal planner 时按预期失败。
+- RED：新增 `tests/docx/docx-import-identity.test.ts`，并扩展 annotation replies/lifecycle 测试；先确认缺少统一 author view、Word 元数据格式、canonical anchor 排序、source-aware permission 与 imported thread removal planner 时按预期失败。
 - Identity/query：root、reply 与管理员查询分别对 native author、attributed user 使用 left join，`author_id=NULL` 的 imported rows 不再被丢弃；统一 author view 始终保留 Word 原作者，显示 `Word 导入`、可选 initials、`Word 中已解决` 与 `关联 {用户}`，关联用户不替换原身份或头像。
 - Ordering：root sidebar 顺序由当前 canonical Markdown AST 中的 annotation ID 顺序决定；同一 imported thread 的 Word replies 依次按 source time、document order、source comment ID 稳定排序，native replies 继续按站内创建时间与 ID 排序。
 - Permission：页面只消费服务端生成的 `canDelete` / `canRemoveImportedThread`；attributed user 不获得编辑、删除或所有权，native root/reply 仍仅作者可删除。普通 delete service 显式拒绝 `DOCX_IMPORT`，回复 imported root 或 imported reply 不生成普通收件人，只有明确回复 native reply 才通知其站内作者。
@@ -155,7 +155,7 @@
 ## 2026-08-30 — Task 11：Imported reply 完整快照与归属汇总通知
 
 - 状态：实现与完整验证完成；Task 12 尚未开始。
-- RED：新增 `tests/docx-import-revision.test.ts` 与 `tests/docx-attribution-notification.test.ts`，并扩展 commit 测试；先确认 imported reply restore 结果缺失、重复 reply snapshot 未拒绝、归属通知策略模块缺失及 commit metadata 不完整等预期失败，再逐项实现至 GREEN。
+- RED：新增 `tests/docx/docx-import-revision.test.ts` 与 `tests/docx/docx-attribution-notification.test.ts`，并扩展 commit 测试；先确认 imported reply restore 结果缺失、重复 reply snapshot 未拒绝、归属通知策略模块缺失及 commit metadata 不完整等预期失败，再逐项实现至 GREEN。
 - Snapshot：所有会写入当前 V5 annotation-state revision 的入口，同一事务保存 imported root 与 imported reply 的 deleted/hidden 状态。恢复时读取目标 revision 的 reply snapshots，只更新属于该帖且 `source_type='DOCX_IMPORT'` 的回复；native replies 不被改写或合成。新 restore revision 同步记录恢复后的 imported reply 状态，重复或跨帖 snapshot 被显式拒绝。
 - Notification：commit planner 以 recipient + import batch 聚合映射到该用户的 Word 批注数量，排除 importer 自己与空映射；每位收件人最多一条 `DOCX_ATTRIBUTION_NOTICE`，不生成个人 annotation activity。稳定 metadata 只保存 post ID/title、导入者显示名与 mapped comment count，不暴露 root/reply ID，也不赋予编辑、删除或所有权。
 - UI/privacy：通知列表与详情页使用专属 DOCX 汇总模板，明确说明仅用于显示来源身份并提供帖子入口，不复用 native annotation 文案。帖子不可访问时不显示已存标题，改为“一篇帖子”，避免软删除或隐藏后的标题泄露；畸形旧 metadata 使用明确的资料不完整提示。

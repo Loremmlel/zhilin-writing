@@ -28,7 +28,7 @@
 
 - Modify: `package.json`
 - Create: `lib/domain/rules.ts`
-- Create: `tests/domain-rules.test.ts`
+- Create: `tests/posts/domain-rules.test.ts`
 
 **Interfaces:**
 
@@ -65,7 +65,7 @@
 
 - Create: `lib/markdown/render.ts`
 - Create: `lib/markdown/plain-text.ts`
-- Create: `tests/markdown.test.ts`
+- Create: `tests/posts/markdown.test.ts`
 
 **Interfaces:**
 
@@ -163,7 +163,7 @@
 
 **Files:**
 
-- Modify: `tests/rendered-html.test.mjs`
+- Modify: `tests/build/rendered-html.test.mjs`
 - Verify: all application and migration files.
 
 **Interfaces:**

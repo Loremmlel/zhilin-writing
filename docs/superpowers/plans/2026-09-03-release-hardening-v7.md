@@ -28,7 +28,7 @@
 - Modify: `README.md`
 - Create: `docs/v7-release-hardening-report.md`
 - Create: `docs/testing/v7-regression-matrix.md`
-- Test: `tests/v7-contract.test.ts`
+- Test: `tests/platform/v7-contract.test.ts`
 
 **Steps:**
 
@@ -47,8 +47,8 @@
 - Modify: `components/annotations/annotation-reading-layout.tsx`
 - Modify: `components/editor/annotated-editor-layout.tsx`
 - Modify: `app/globals.css`
-- Test: `tests/annotation-layout.test.ts`
-- Test: `tests/annotation-guard-integration.test.ts`
+- Test: `tests/annotations/annotation-layout.test.ts`
+- Test: `tests/annotations/annotation-guard-integration.test.ts`
 
 **Steps:**
 
@@ -75,7 +75,7 @@
 - Modify: `components/reply-list.tsx`
 - Modify: `app/globals.css`
 - Test: `tests/activity-notifications.test.ts`
-- Test: `tests/annotation-replies.test.ts`
+- Test: `tests/annotations/annotation-replies.test.ts`
 - Test: `tests/lifecycle-integration.test.ts`
 
 **Steps:**
@@ -104,8 +104,8 @@
 - Modify: `app/api/assets/[id]/route.ts`
 - Modify: `app/api/docx-import/commit/route.ts`
 - Modify: affected editor/reply/annotation/profile/admin forms
-- Test: `tests/auth-access.test.ts`
-- Test: `tests/mutation-pending.test.ts`
+- Test: `tests/access/auth-access.test.ts`
+- Test: `tests/platform/mutation-pending.test.ts`
 - Test: `tests/drafts.test.ts`
 
 **Steps:**

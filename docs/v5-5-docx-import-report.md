@@ -16,7 +16,7 @@ V5.5 已实现浏览器 Worker 内的 `.docx` 导入链路：安全读取 OOXML 
 
 ### 1. officeparser 版本与 feature probe
 
-锁定的 devDependency 是 `officeparser@7.8.0`（[`package.json`](../package.json)）。独立 probe 使用相邻、交叠/嵌套、threaded/resolved 三组固定 fixture，验证 inline range、相邻区分、交叠区分、稳定 comment ID、immediate parent、resolved state、无需 selected-text 搜索七个 gate（[`scripts/probe-officeparser.mjs`](../scripts/probe-officeparser.mjs)、[`tests/docx-officeparser-probe.test.ts`](../tests/docx-officeparser-probe.test.ts)）。结果仅 `adjacentDistinct` 与 `stableCommentId` 满足要求，`productionEligible=false`；完整证据见 [`docs/adr/2026-08-28-officeparser-docx-import.md`](adr/2026-08-28-officeparser-docx-import.md)。
+锁定的 devDependency 是 `officeparser@7.8.0`（[`package.json`](../package.json)）。独立 probe 使用相邻、交叠/嵌套、threaded/resolved 三组固定 fixture，验证 inline range、相邻区分、交叠区分、稳定 comment ID、immediate parent、resolved state、无需 selected-text 搜索七个 gate（[`scripts/probe-officeparser.mjs`](../scripts/probe-officeparser.mjs)、[`tests/docx/docx-officeparser-probe.test.ts`](../tests/docx/docx-officeparser-probe.test.ts)）。结果仅 `adjacentDistinct` 与 `stableCommentId` 满足要求，`productionEligible=false`；完整证据见 [`docs/adr/2026-08-28-officeparser-docx-import.md`](adr/2026-08-28-officeparser-docx-import.md)。
 
 ### 2. Production path 决策
 
@@ -32,7 +32,7 @@ IR `version=1` 由 discriminated block union、inline segments、assets、accept
 
 ### 5. 单遍 comment range 形成
 
-正文 walker 按 source order 处理 `commentRangeStart` / text run / `commentRangeEnd`，在每个 `InlineSegment` 创建时复制 active comment IDs，并在 block 结束后以 JavaScript UTF-16 code unit 计算 block-local range（[`lib/docx-import/walker.ts`](../lib/docx-import/walker.ts)、[`lib/docx-import/annotations.ts`](../lib/docx-import/annotations.ts)）。测试覆盖 CJK、emoji surrogate pair、combining character、RTL、相邻、重叠、嵌套、空范围与跨 block（[`tests/docx-import-comments.test.ts`](../tests/docx-import-comments.test.ts)）。
+正文 walker 按 source order 处理 `commentRangeStart` / text run / `commentRangeEnd`，在每个 `InlineSegment` 创建时复制 active comment IDs，并在 block 结束后以 JavaScript UTF-16 code unit 计算 block-local range（[`lib/docx-import/walker.ts`](../lib/docx-import/walker.ts)、[`lib/docx-import/annotations.ts`](../lib/docx-import/annotations.ts)）。测试覆盖 CJK、emoji surrogate pair、combining character、RTL、相邻、重叠、嵌套、空范围与跨 block（[`tests/docx/docx-import-comments.test.ts`](../tests/docx/docx-import-comments.test.ts)）。
 
 ### 6. 不存在 source mapping 或 selected-text 反向搜索
 
@@ -40,7 +40,7 @@ IR `version=1` 由 discriminated block union、inline segments、assets、accept
 
 ### 7. Heading、list、table 规则
 
-Heading 只依据明确 style / `basedOn` / outline semantics，H5–H9 clamp 为 H4；Quote/IntenseQuote 转为 blockquote。List 通过 `numId → abstractNum → ilvl/numFmt` 解析，保留三层并确定性 flatten 更深层级。基础矩形表格转为 GFM table，无 header 时合成空 header；merged cell 与 cell 内多段落按 source order 展平，不输出 raw HTML（[`lib/docx-import/walker.ts`](../lib/docx-import/walker.ts)、[`lib/docx-import/markdown.ts`](../lib/docx-import/markdown.ts)、[`tests/docx-import-body.test.ts`](../tests/docx-import-body.test.ts)、[`tests/docx-import-rich-content.test.ts`](../tests/docx-import-rich-content.test.ts)）。
+Heading 只依据明确 style / `basedOn` / outline semantics，H5–H9 clamp 为 H4；Quote/IntenseQuote 转为 blockquote。List 通过 `numId → abstractNum → ilvl/numFmt` 解析，保留三层并确定性 flatten 更深层级。基础矩形表格转为 GFM table，无 header 时合成空 header；merged cell 与 cell 内多段落按 source order 展平，不输出 raw HTML（[`lib/docx-import/walker.ts`](../lib/docx-import/walker.ts)、[`lib/docx-import/markdown.ts`](../lib/docx-import/markdown.ts)、[`tests/docx/docx-import-body.test.ts`](../tests/docx/docx-import-body.test.ts)、[`tests/docx/docx-import-rich-content.test.ts`](../tests/docx/docx-import-rich-content.test.ts)）。
 
 ### 8. Reply graph 与 resolved state
 
@@ -48,11 +48,11 @@ Root/reply definition 来自 `comments.xml`；最后一个 comment paragraph 的
 
 ### 9. Deterministic overlap
 
-同一 block 的 root candidates 按 `start ASC → length DESC → sourceCommentId UTF-16 ASC` 排序，greedy 接受；touching endpoints 保留，任何严格相交、包含、嵌套或重复范围确定性跳过，并在 warning payload 中记录冲突来源（[`lib/docx-import/annotations.ts`](../lib/docx-import/annotations.ts)、[`tests/docx-import-comments.test.ts`](../tests/docx-import-comments.test.ts)）。
+同一 block 的 root candidates 按 `start ASC → length DESC → sourceCommentId UTF-16 ASC` 排序，greedy 接受；touching endpoints 保留，任何严格相交、包含、嵌套或重复范围确定性跳过，并在 warning payload 中记录冲突来源（[`lib/docx-import/annotations.ts`](../lib/docx-import/annotations.ts)、[`tests/docx/docx-import-comments.test.ts`](../tests/docx/docx-import-comments.test.ts)）。
 
 ### 10. Imported identity、attribution 与权限
 
-Imported root/reply 持久化为 `source_type='DOCX_IMPORT'` 且 `author_id=NULL`，保留 Word author/initials/time/order/resolved/import batch；schema、planner 与数据库 CHECK 三层拒绝 native author 冒充。`attributed_user_id` 仅显示“关联站内用户”，不授予编辑、删除或所有权。只有帖子作者/导入者可移除 imported root，管理员仍可 hide/unhide；imported reply 无独立删除入口（[`db/schema.ts`](../db/schema.ts)、[`lib/annotations/identity.ts`](../lib/annotations/identity.ts)、[`lib/annotations/policy.ts`](../lib/annotations/policy.ts)、[`tests/docx-import-identity.test.ts`](../tests/docx-import-identity.test.ts)）。
+Imported root/reply 持久化为 `source_type='DOCX_IMPORT'` 且 `author_id=NULL`，保留 Word author/initials/time/order/resolved/import batch；schema、planner 与数据库 CHECK 三层拒绝 native author 冒充。`attributed_user_id` 仅显示“关联站内用户”，不授予编辑、删除或所有权。只有帖子作者/导入者可移除 imported root，管理员仍可 hide/unhide；imported reply 无独立删除入口（[`db/schema.ts`](../db/schema.ts)、[`lib/annotations/identity.ts`](../lib/annotations/identity.ts)、[`lib/annotations/policy.ts`](../lib/annotations/policy.ts)、[`tests/docx/docx-import-identity.test.ts`](../tests/docx/docx-import-identity.test.ts)）。
 
 ### 11. Typed warnings
 
@@ -64,11 +64,11 @@ Imported root/reply 持久化为 `source_type='DOCX_IMPORT'` 且 `author_id=NULL
 
 ### 13. Preview 与 IndexedDB 生命周期
 
-IndexedDB `zhilin-writing` schema v2 新增 `docx-import-previews`，以 `importBatchId` 为 key，24 小时 TTL；load/list 先 purge 过期或畸形记录。Preview 保存 finalized IR、Markdown、temporary asset refs、author mappings 与图片 `Uint8Array`，不保存原始 DOCX `File`、`Blob`、`ArrayBuffer`；commit、取消或放弃会清理记录（[`lib/indexed-db.ts`](../lib/indexed-db.ts)、[`lib/docx-import/preview-store.ts`](../lib/docx-import/preview-store.ts)、[`tests/docx-preview-store.test.ts`](../tests/docx-preview-store.test.ts)）。
+IndexedDB `zhilin-writing` schema v2 新增 `docx-import-previews`，以 `importBatchId` 为 key，24 小时 TTL；load/list 先 purge 过期或畸形记录。Preview 保存 finalized IR、Markdown、temporary asset refs、author mappings 与图片 `Uint8Array`，不保存原始 DOCX `File`、`Blob`、`ArrayBuffer`；commit、取消或放弃会清理记录（[`lib/indexed-db.ts`](../lib/indexed-db.ts)、[`lib/docx-import/preview-store.ts`](../lib/docx-import/preview-store.ts)、[`tests/docx/docx-preview-store.test.ts`](../tests/docx/docx-preview-store.test.ts)）。
 
 ### 14. D1 / R2 一致性
 
-浏览器先按 source order 上传图片为现有 temporary R2 asset；服务端重新验证 owner、temporary 状态、kind、MIME、filename 与大小。D1 单次 `batch()` 同时写 post、initial revision、import batch、asset claims/refs、root/reply、anchors、root/reply revision snapshots、一个 `POST_CREATED` activity 与聚合 attribution notices；中途失败整批回滚，未 claim 的 R2 对象继续保持 temporary，由既有 GC 回收（[`lib/docx-import/commit-plan.ts`](../lib/docx-import/commit-plan.ts)、[`lib/docx-import/commit-service.ts`](../lib/docx-import/commit-service.ts)、[`tests/docx-import-commit.test.ts`](../tests/docx-import-commit.test.ts)）。
+浏览器先按 source order 上传图片为现有 temporary R2 asset；服务端重新验证 owner、temporary 状态、kind、MIME、filename 与大小。D1 单次 `batch()` 同时写 post、initial revision、import batch、asset claims/refs、root/reply、anchors、root/reply revision snapshots、一个 `POST_CREATED` activity 与聚合 attribution notices；中途失败整批回滚，未 claim 的 R2 对象继续保持 temporary，由既有 GC 回收（[`lib/docx-import/commit-plan.ts`](../lib/docx-import/commit-plan.ts)、[`lib/docx-import/commit-service.ts`](../lib/docx-import/commit-service.ts)、[`tests/docx/docx-import-commit.test.ts`](../tests/docx/docx-import-commit.test.ts)）。
 
 ### 15. Commit 幂等性
 
@@ -76,7 +76,7 @@ IndexedDB `zhilin-writing` schema v2 新增 `docx-import-previews`，以 `import
 
 ### 16. Producer 与完整链路结果
 
-公开 fixture manifest、许可/provenance 与固定 SHA-256 位于 [`tests/fixtures/docx/public/manifest.json`](../tests/fixtures/docx/public/manifest.json) 和 [`tests/fixtures/docx/public/PROVENANCE.md`](../tests/fixtures/docx/public/PROVENANCE.md)。获取脚本 fail closed；generated semantic matrix 现在同时固定 extended timestamp 与 raw MS-DOS timestamp，UTC/Asia-Tokyo 双时区回归证明字节不随主机时区变化（[`scripts/fixtures/generate-docx-fixtures.mjs`](../scripts/fixtures/generate-docx-fixtures.mjs)、[`tests/docx-import-e2e.test.ts`](../tests/docx-import-e2e.test.ts)）。
+公开 fixture manifest、许可/provenance 与固定 SHA-256 位于 [`tests/fixtures/docx/public/manifest.json`](../tests/fixtures/docx/public/manifest.json) 和 [`tests/fixtures/docx/public/PROVENANCE.md`](../tests/fixtures/docx/public/PROVENANCE.md)。获取脚本 fail closed；generated semantic matrix 现在同时固定 extended timestamp 与 raw MS-DOS timestamp，UTC/Asia-Tokyo 双时区回归证明字节不随主机时区变化（[`scripts/fixtures/generate-docx-fixtures.mjs`](../scripts/fixtures/generate-docx-fixtures.mjs)、[`tests/docx/docx-import-e2e.test.ts`](../tests/docx/docx-import-e2e.test.ts)）。
 
 | Producer                      | 证据/能力                        | 结果                                                      |
 | ----------------------------- | -------------------------------- | --------------------------------------------------------- |

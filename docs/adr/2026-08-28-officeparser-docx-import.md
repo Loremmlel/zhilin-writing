@@ -47,5 +47,5 @@ Fixtures 由 `scripts/fixtures/generate-docx-fixtures.mjs` 以固定 XML、固�
 ```powershell
 node scripts/fixtures/generate-docx-fixtures.mjs
 node scripts/probe-officeparser.mjs
-node --experimental-strip-types --test tests/docx-officeparser-probe.test.ts
+node --experimental-strip-types --test tests/docx/docx-officeparser-probe.test.ts
 ```

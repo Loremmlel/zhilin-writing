@@ -64,7 +64,7 @@
 - Create: `lib/annotations/invariants.ts`
 - Modify: `lib/annotations/markdown.ts`
 - Modify: `lib/annotations/policy.ts`
-- Create: `tests/annotation-invariants.test.ts`
+- Create: `tests/annotations/annotation-invariants.test.ts`
 
 **Interfaces:**
 
@@ -102,7 +102,7 @@ test("rejects one annotation ID at two anchors", () => {
 
 - [x] **Step 2: Run RED**
 
-Run: `npm run test:unit -- tests/annotation-invariants.test.ts`
+Run: `npm run test:unit -- tests/annotations/annotation-invariants.test.ts`
 
 Expected: FAIL because `lib/annotations/invariants.ts` does not exist.
 
@@ -115,7 +115,7 @@ Reuse the existing remark extension to walk block children in source order. Retu
 Run:
 
 ```bash
-npm run test:unit -- tests/annotation-invariants.test.ts tests/annotation-roundtrip.test.ts tests/annotation-selection.test.ts tests/markdown.test.ts tests/docx-import-comments.test.ts
+npm run test:unit -- tests/annotations/annotation-invariants.test.ts tests/annotations/annotation-roundtrip.test.ts tests/annotations/annotation-selection.test.ts tests/posts/markdown.test.ts tests/docx/docx-import-comments.test.ts
 ```
 
 Expected: all pass; DOCX-generated adjacent annotations remain valid.
@@ -138,9 +138,9 @@ Run `git diff --check`, commit as `feat: validate annotation document invariants
 - Modify: `lib/annotations/queries.ts`
 - Modify: `lib/revisions/save-plan.ts`
 - Modify: `lib/revisions/service.ts`
-- Create: `tests/annotation-guard-migration.test.ts`
-- Create: `tests/annotation-save-plan.test.ts`
-- Modify: `tests/annotation-revision.test.ts`
+- Create: `tests/annotations/annotation-guard-migration.test.ts`
+- Create: `tests/annotations/annotation-save-plan.test.ts`
+- Modify: `tests/annotations/annotation-revision.test.ts`
 
 **Interfaces:**
 
@@ -167,7 +167,7 @@ Test that post-edit retirement does not populate `deletedAt`, and revision resto
 
 - [x] **Step 2: Run RED**
 
-Run: `npm run test:unit -- tests/annotation-guard-migration.test.ts tests/annotation-save-plan.test.ts tests/annotation-revision.test.ts`
+Run: `npm run test:unit -- tests/annotations/annotation-guard-migration.test.ts tests/annotations/annotation-save-plan.test.ts tests/annotations/annotation-revision.test.ts`
 
 Expected: FAIL on missing retirement fields and save-plan exports.
 
@@ -184,7 +184,7 @@ Update restore batching so source anchors clear retirement fields, exiting ancho
 Run:
 
 ```bash
-npm run test:unit -- tests/annotation-guard-migration.test.ts tests/annotation-save-plan.test.ts tests/annotation-revision.test.ts tests/revision-policy.test.ts tests/revision-save-plan.test.ts tests/revision-migration.test.ts tests/annotation-lifecycle.test.ts
+npm run test:unit -- tests/annotations/annotation-guard-migration.test.ts tests/annotations/annotation-save-plan.test.ts tests/annotations/annotation-revision.test.ts tests/posts/revision-policy.test.ts tests/posts/revision-save-plan.test.ts tests/posts/revision-migration.test.ts tests/annotations/annotation-lifecycle.test.ts
 ```
 
 Expected: all pass; annotation-author deletion semantics and imported-thread lifecycle remain unchanged.
@@ -205,10 +205,10 @@ Run `git diff --check`, commit as `feat: model annotation anchor retirement`, an
 - Modify: `lib/annotations/queries.ts`
 - Modify: `app/(site)/posts/[id]/actions.ts`
 - Modify: `lib/editor/conflict.ts`
-- Create: `tests/annotation-save-transaction.test.ts`
-- Modify: `tests/post-save-transaction.test.ts`
-- Modify: `tests/editor-conflict.test.ts`
-- Modify: `tests/annotation-edit-lock.test.ts`
+- Create: `tests/annotations/annotation-save-transaction.test.ts`
+- Modify: `tests/posts/post-save-transaction.test.ts`
+- Modify: `tests/posts/editor-conflict.test.ts`
+- Modify: `tests/annotations/annotation-edit-lock.test.ts`
 
 **Interfaces:**
 
@@ -233,7 +233,7 @@ test("rejects an anchor loss the client did not confirm", () => {
 
 - [x] **Step 2: Run RED**
 
-Run: `npm run test:unit -- tests/annotation-save-transaction.test.ts tests/post-save-transaction.test.ts tests/editor-conflict.test.ts`
+Run: `npm run test:unit -- tests/annotations/annotation-save-transaction.test.ts tests/posts/post-save-transaction.test.ts tests/posts/editor-conflict.test.ts`
 
 Expected: FAIL on missing annotated-save API and conflict fields.
 
@@ -262,7 +262,7 @@ Parse `confirmedAnnotationDeletionIds` as a JSON string array, normalize/dedupe 
 Run:
 
 ```bash
-npm run test:unit -- tests/annotation-save-transaction.test.ts tests/post-save-transaction.test.ts tests/editor-conflict.test.ts tests/annotation-edit-lock.test.ts tests/revision-save-plan.test.ts tests/asset-lifecycle.test.ts tests/domain-rules.test.ts
+npm run test:unit -- tests/annotations/annotation-save-transaction.test.ts tests/posts/post-save-transaction.test.ts tests/posts/editor-conflict.test.ts tests/annotations/annotation-edit-lock.test.ts tests/posts/revision-save-plan.test.ts tests/lifecycle/asset-lifecycle.test.ts tests/posts/domain-rules.test.ts
 ```
 
 Expected: all pass while the public edit page remains locked for annotated posts.
@@ -279,7 +279,7 @@ Run `git diff --check`, commit as `feat: save annotated posts atomically`, and p
 
 - Create: `lib/editor/annotation-ranges.ts`
 - Create: `lib/editor/annotation-guard.ts`
-- Create: `tests/annotation-guard-inspector.test.ts`
+- Create: `tests/annotations/annotation-guard-inspector.test.ts`
 
 **Interfaces:**
 
@@ -328,7 +328,7 @@ test("aggregates two destroyed annotations into one impact", () => {
 
 - [x] **Step 3: Run RED**
 
-Run: `npm run test:unit -- tests/annotation-guard-inspector.test.ts`
+Run: `npm run test:unit -- tests/annotations/annotation-guard-inspector.test.ts`
 
 Expected: FAIL because the range scanner and inspector do not exist.
 
@@ -341,7 +341,7 @@ For every `docChanged` transaction, scan before/after descriptors and classify b
 Run:
 
 ```bash
-npm run test:unit -- tests/annotation-guard-inspector.test.ts tests/annotation-roundtrip.test.ts
+npm run test:unit -- tests/annotations/annotation-guard-inspector.test.ts tests/annotations/annotation-roundtrip.test.ts
 ```
 
 Expected: the matrix passes. A 50,000-character synthetic document with 200 legal anchors inspects one local text transaction without an O(N²) pairwise connector/layout loop.
@@ -363,10 +363,10 @@ Run `git diff --check`, commit as `feat: inspect annotation editor transactions`
 - Modify: `components/editor/markdown-editor.tsx`
 - Modify: `components/editor/post-editor-form.tsx`
 - Modify: `lib/drafts/indexed-db.ts`
-- Create: `tests/annotation-guard-session.test.ts`
-- Create: `tests/annotation-clipboard.test.ts`
-- Create: `tests/annotation-ime.test.ts`
-- Modify: `tests/draft-indexed-db.test.ts`
+- Create: `tests/annotations/annotation-guard-session.test.ts`
+- Create: `tests/annotations/annotation-clipboard.test.ts`
+- Create: `tests/annotations/annotation-ime.test.ts`
+- Modify: `tests/posts/draft-indexed-db.test.ts`
 - Modify: `app/globals.css`
 
 **Interfaces:**
@@ -393,7 +393,7 @@ Model `compositionstart`, internal composition, destructive boundary composition
 Run:
 
 ```bash
-npm run test:unit -- tests/annotation-guard-session.test.ts tests/annotation-clipboard.test.ts tests/annotation-ime.test.ts tests/draft-indexed-db.test.ts
+npm run test:unit -- tests/annotations/annotation-guard-session.test.ts tests/annotations/annotation-clipboard.test.ts tests/annotations/annotation-ime.test.ts tests/posts/draft-indexed-db.test.ts
 ```
 
 Expected: FAIL on missing plugin/session/clipboard interfaces and draft field.
@@ -417,7 +417,7 @@ Extend `LocalDraft` with optional normalized `confirmedAnnotationDeletionIds`. P
 Run:
 
 ```bash
-npm run test:unit -- tests/annotation-guard-session.test.ts tests/annotation-clipboard.test.ts tests/annotation-ime.test.ts tests/draft-indexed-db.test.ts tests/modal-stack.test.ts tests/editor-lifecycle.test.ts
+npm run test:unit -- tests/annotations/annotation-guard-session.test.ts tests/annotations/annotation-clipboard.test.ts tests/annotations/annotation-ime.test.ts tests/posts/draft-indexed-db.test.ts tests/platform/modal-stack.test.ts tests/posts/editor-lifecycle.test.ts
 ```
 
 Expected: all deterministic tests pass. Record browser automation coverage separately from true Windows/macOS IME hardware acceptance.
@@ -441,9 +441,9 @@ Run `git diff --check`, commit as `feat: protect annotation editing interactions
 - Modify: `components/editor/markdown-editor.tsx`
 - Modify: `app/(site)/posts/[id]/edit/page.tsx`
 - Modify: `lib/annotations/layout.ts`
-- Create: `tests/annotation-editor-sidebar.test.ts`
-- Modify: `tests/annotation-layout.test.ts`
-- Modify: `tests/annotation-sheet.test.ts`
+- Create: `tests/annotations/annotation-editor-sidebar.test.ts`
+- Modify: `tests/annotations/annotation-layout.test.ts`
+- Modify: `tests/annotations/annotation-sheet.test.ts`
 - Modify: `app/globals.css`
 
 **Interfaces:**
@@ -459,7 +459,7 @@ Assert edit mode contains no Reply/Delete/Remove/Admin controls, still supports 
 
 - [x] **Step 2: Run RED**
 
-Run: `npm run test:unit -- tests/annotation-editor-sidebar.test.ts tests/annotation-layout.test.ts tests/annotation-sheet.test.ts`
+Run: `npm run test:unit -- tests/annotations/annotation-editor-sidebar.test.ts tests/annotations/annotation-layout.test.ts tests/annotations/annotation-sheet.test.ts`
 
 Expected: FAIL because no annotated editor layout exists.
 
@@ -476,7 +476,7 @@ Desktop keeps the editor as the main column and a read-only Annotation rail as t
 Run:
 
 ```bash
-npm run test:unit -- tests/annotation-editor-sidebar.test.ts tests/annotation-layout.test.ts tests/annotation-sheet.test.ts tests/annotation-replies.test.ts tests/annotation-roundtrip.test.ts
+npm run test:unit -- tests/annotations/annotation-editor-sidebar.test.ts tests/annotations/annotation-layout.test.ts tests/annotations/annotation-sheet.test.ts tests/annotations/annotation-replies.test.ts tests/annotations/annotation-roundtrip.test.ts
 ```
 
 Expected: all pass; no editor test observes a network request or Markdown reparse for every local keystroke.
@@ -496,9 +496,9 @@ Run `git diff --check`, commit as `feat: show read-only annotations while editin
 - Modify: `components/annotations/annotation-thread.tsx`
 - Modify: `components/annotations/annotation-reply-form.tsx`
 - Modify: `lib/annotations/dom-selection.ts`
-- Create: `tests/annotation-selection-preview.test.ts`
-- Modify: `tests/annotation-dom-selection.test.ts`
-- Modify: `tests/annotation-replies.test.ts`
+- Create: `tests/annotations/annotation-selection-preview.test.ts`
+- Modify: `tests/annotations/annotation-dom-selection.test.ts`
+- Modify: `tests/annotations/annotation-replies.test.ts`
 - Modify: `app/globals.css`
 
 **Interfaces:**
@@ -520,7 +520,7 @@ Assert rendered order is root metadata → root body → Reply CTA/shared compos
 Run:
 
 ```bash
-npm run test:unit -- tests/annotation-selection-preview.test.ts tests/annotation-dom-selection.test.ts tests/annotation-replies.test.ts
+npm run test:unit -- tests/annotations/annotation-selection-preview.test.ts tests/annotations/annotation-dom-selection.test.ts tests/annotations/annotation-replies.test.ts
 ```
 
 Expected: FAIL on missing selection preview and current nested/bottom composers.
@@ -538,7 +538,7 @@ Move root Reply CTA and composer above the list. Store one reply target in threa
 Run:
 
 ```bash
-npm run test:unit -- tests/annotation-selection-preview.test.ts tests/annotation-dom-selection.test.ts tests/annotation-replies.test.ts tests/annotation-create.test.ts tests/modal-stack.test.ts
+npm run test:unit -- tests/annotations/annotation-selection-preview.test.ts tests/annotations/annotation-dom-selection.test.ts tests/annotations/annotation-replies.test.ts tests/annotations/annotation-create.test.ts tests/platform/modal-stack.test.ts
 ```
 
 Expected: all pass; failed Annotation create preserves both composer text and visible selection preview.
@@ -575,8 +575,8 @@ Run `git diff --check`, commit as `fix: preserve annotation context while compos
 - Modify: `app/(site)/users/[id]/page.tsx`
 - Modify: `app/(site)/admin/page.tsx`
 - Modify: `app/globals.css`
-- Create: `tests/loading-ui.test.ts`
-- Modify: `tests/rendered-html.test.mjs`
+- Create: `tests/platform/loading-ui.test.ts`
+- Modify: `tests/build/rendered-html.test.mjs`
 
 **Interfaces:**
 
@@ -591,7 +591,7 @@ Assert every approved route segment exports a skeleton layout, all error boundar
 
 - [x] **Step 2: Run RED**
 
-Run: `npm run test:unit -- tests/loading-ui.test.ts`
+Run: `npm run test:unit -- tests/platform/loading-ui.test.ts`
 
 Expected: FAIL because loading/error files and shared components do not exist.
 
@@ -616,9 +616,9 @@ Provide Retry, Home, and dedicated access/session copy. `global-error.tsx` rende
 Run:
 
 ```bash
-npm run test:unit -- tests/loading-ui.test.ts
+npm run test:unit -- tests/platform/loading-ui.test.ts
 npm run build
-node --test tests/rendered-html.test.mjs
+node --test tests/build/rendered-html.test.mjs
 ```
 
 Expected: all pass; page navigation and hash navigation finish without a persistent progress bar.
@@ -653,7 +653,7 @@ Run `git diff --check`, commit as `feat: add route loading and error feedback`, 
 - Modify: `components/editor/markdown-editor.tsx`
 - Modify: `components/docx-import/docx-import-workspace.tsx`
 - Modify: `app/globals.css`
-- Create: `tests/mutation-pending.test.ts`
+- Create: `tests/platform/mutation-pending.test.ts`
 
 **Interfaces:**
 
@@ -666,7 +666,7 @@ Cover Publish, Save, Annotation create, Post Reply, Annotation Reply, delete, ad
 
 - [x] **Step 2: Run RED**
 
-Run: `npm run test:unit -- tests/mutation-pending.test.ts`
+Run: `npm run test:unit -- tests/platform/mutation-pending.test.ts`
 
 Expected: FAIL for Profile, mark-all-read, and upload feedback gaps.
 
@@ -679,7 +679,7 @@ Reuse existing `useActionState` pending implementations where already correct. A
 Run:
 
 ```bash
-npm run test:unit -- tests/mutation-pending.test.ts tests/annotation-create.test.ts tests/annotation-replies.test.ts tests/editor-lifecycle.test.ts tests/docx-import-e2e.test.ts tests/docx-worker.test.ts
+npm run test:unit -- tests/platform/mutation-pending.test.ts tests/annotations/annotation-create.test.ts tests/annotations/annotation-replies.test.ts tests/posts/editor-lifecycle.test.ts tests/docx/docx-import-e2e.test.ts tests/docx/docx-worker.test.ts
 ```
 
 Expected: all pass; failure retains typed post/annotation reply and Annotation composer content.
@@ -697,8 +697,8 @@ Run `git diff --check`, commit as `feat: finish immediate mutation feedback`, an
 - Modify: `app/(site)/posts/[id]/edit/page.tsx`
 - Modify: `lib/posts/service.ts`
 - Modify: `lib/annotations/policy.ts`
-- Modify: `tests/annotation-edit-lock.test.ts`
-- Create: `tests/annotation-guard-integration.test.ts`
+- Modify: `tests/annotations/annotation-edit-lock.test.ts`
+- Create: `tests/annotations/annotation-guard-integration.test.ts`
 - Create: `docs/v6-annotation-guard-report.md`
 - Modify: `README.md`
 
@@ -728,7 +728,7 @@ Require the route/service to accept an annotated author's valid internal edit, r
 Run:
 
 ```bash
-npm run test:unit -- tests/annotation-edit-lock.test.ts tests/annotation-guard-integration.test.ts
+npm run test:unit -- tests/annotations/annotation-edit-lock.test.ts tests/annotations/annotation-guard-integration.test.ts
 ```
 
 Expected: FAIL because the V5 UI/service guard still blocks annotated editing.
@@ -743,18 +743,18 @@ Run:
 
 ```bash
 npm run test:unit -- \
-  tests/annotation-invariants.test.ts \
-  tests/annotation-save-plan.test.ts \
-  tests/annotation-save-transaction.test.ts \
-  tests/annotation-guard-inspector.test.ts \
-  tests/annotation-guard-session.test.ts \
-  tests/annotation-clipboard.test.ts \
-  tests/annotation-ime.test.ts \
-  tests/annotation-editor-sidebar.test.ts \
-  tests/annotation-selection-preview.test.ts \
-  tests/annotation-guard-integration.test.ts \
-  tests/loading-ui.test.ts \
-  tests/mutation-pending.test.ts
+  tests/annotations/annotation-invariants.test.ts \
+  tests/annotations/annotation-save-plan.test.ts \
+  tests/annotations/annotation-save-transaction.test.ts \
+  tests/annotations/annotation-guard-inspector.test.ts \
+  tests/annotations/annotation-guard-session.test.ts \
+  tests/annotations/annotation-clipboard.test.ts \
+  tests/annotations/annotation-ime.test.ts \
+  tests/annotations/annotation-editor-sidebar.test.ts \
+  tests/annotations/annotation-selection-preview.test.ts \
+  tests/annotations/annotation-guard-integration.test.ts \
+  tests/platform/loading-ui.test.ts \
+  tests/platform/mutation-pending.test.ts
 npm test
 npm run lint
 ```
