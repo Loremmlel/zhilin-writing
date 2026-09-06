@@ -2,7 +2,7 @@
 
 日期：2026-09-06  
 分支：`feat/playwright-behavior-tests`  
-状态：待批准，尚未实施
+状态：已实施，等待可用 Chromium 环境完成运行验收
 
 ## 1. 决策
 
@@ -10,7 +10,7 @@
 
 测试按产品能力组织，不按历史 Bug、页面组件或实现文件组织。一个功能由少量长期稳定的用户旅程保护；修复 Bug 时优先补强已有旅程，不默认增加永久回归测试。
 
-首版只使用 Chromium、一次性本地 Miniflare D1/R2 和三个测试身份，计划保留 8 个 spec 文件、18 条行为测试。Playwright 不连接 Cloudflare 远端，不访问或修改正式站数据。
+首版只使用 Chromium、一次性本地 Miniflare D1/R2、三个成员身份和一个未受邀身份，保留 8 个 spec 文件、18 条行为测试。Playwright 不连接 Cloudflare 远端，不访问或修改正式站数据。
 
 ## 2. 当前基线
 
@@ -321,7 +321,7 @@ e2e/
   lifecycle-admin.spec.ts
   responsive.spec.ts
 scripts/
-  test-e2e.mjs
+  test-e2e.ts
 ```
 
 不建立 `pages/`、`models/`、`drivers/` 等通用抽象目录。只有满足以下条件的操作才能进入共享 helper：
@@ -448,3 +448,15 @@ Playwright 引入后不允许只叠加、不清理。
 - 身份请求头只验证 dispatch 之后的站内授权行为，不自动化第三方 Sign in with ChatGPT 页面本身。
 
 这些限制不削弱首版目标：用最少、稳定、可维护的浏览器旅程验证知临中学真正向用户承诺的功能行为。
+
+## 17. 实施记录
+
+2026-09-06 已完成：
+
+- 安装并配置 `@playwright/test` 与 Miniflare；Chromium、单 worker、零 retry、失败时 trace/screenshot。
+- `scripts/test-e2e.ts` 每轮创建一次性状态目录，先运行正式 migration 和场景 seed，再启动本地 Cloudflare Vite 运行时；停止后只删除自己创建的精确目录。
+- Base URL、`E2E_MODE` 与临时目录均有启动前硬阻断；正式域名、HTTPS 和未知主机被拒绝。
+- 建立 8 个功能 spec、18 条行为测试；身份通过本地请求头隔离，没有测试 API、生产后门、Page Object 层或视觉 snapshot。
+- `npx tsc --noEmit`、`npm run lint`、`npm test` 通过；Playwright test discovery 确认 8 个文件共 18 条。
+
+当前执行环境无法下载 Playwright Chromium，且其进程策略阻止本地 workerd 启动，因此本次没有把“完整浏览器套件通过”记为已验收，也没有据此删除现有源码/产物合同测试。应在能够安装 Chromium 并启动本地 Miniflare 的开发环境运行 `npm run test:e2e`；首次稳定通过后，再按第 13 节逐项收敛重复断言。

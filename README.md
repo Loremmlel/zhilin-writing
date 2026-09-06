@@ -47,6 +47,12 @@
 - `npm run lint`：源代码检查。
 - `npx tsc --noEmit`：类型检查。
 - `npm test`：全量单测、生产构建和最终产物检查。
+- `npx playwright install chromium`：首次运行时安装 E2E 使用的 Chromium。
+- `npm run test:e2e`：用一次性本地 Miniflare D1/R2 运行 8 个功能 spec、18 条浏览器行为测试。
+- `npm run test:e2e -- annotations`：只运行一个相关功能域；Bug 修复优先补强已有功能旅程。
+- `npm run test:release`：现有 `npm test` 加完整浏览器行为套件。
 - `npm run db:generate`：schema 变化后生成 D1 迁移。
+
+写入型 E2E 只接受明确的本地 HTTP 地址，每轮先应用正式 D1 migration、写入固定场景，再让应用和浏览器共享同一个临时状态目录；结束后整目录丢弃。它不使用远端 Cloudflare 资源，也不接受正式站 URL。详细范围与维护准则见 `docs/plans/playwright-behavior-testing-plan.md`。
 
 V6 的实现与验收证据见 `docs/v6-annotation-guard-report.md`。V7 的可行性裁决、设计与实施顺序见 `docs/superpowers/specs/2026-09-03-release-hardening-v7-design.md` 和 `docs/superpowers/plans/2026-09-03-release-hardening-v7.md`。

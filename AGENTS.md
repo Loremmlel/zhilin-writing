@@ -66,3 +66,11 @@
 
 - 分支操作：确认目标提交和远端引用一致，确认没有意外未跟踪或未提交文件。
 - 源码变更：运行与变更直接相关的检查；不要为了文档/Git 操作触发完整依赖安装或生产构建。
+
+## 浏览器行为测试
+
+- Playwright 按产品能力维护在 `e2e/*.spec.ts`；验证用户能观察到的操作、状态、导航、持久化与恢复，不断言 React 组件、CSS 类、Server Action 实现或 SQL 细节。
+- 新 Bug 不自动获得独立回归文件。先找到所属功能 spec 并补强已有旅程；只有新增稳定产品行为、持久状态、权限边界或恢复路径时才增加永久用例。
+- 写入型套件只通过 `npm run test:e2e` 在一次性本地 Miniflare D1/R2 上运行。不得放宽 `E2E_MODE`、本地主机允许列表或临时状态目录校验，不得改为远端 D1/R2。
+- 功能开发运行相关 unit test 和相关 spec；公开发布产品代码前运行 `npm run test:release`。纯文档与不改变运行结果的变更不机械运行 Playwright。
+- Chromium 首次安装使用 `npx playwright install chromium`。失败 trace 和截图位于忽略提交的 `outputs/`，成功运行不录制视频或视觉快照。
