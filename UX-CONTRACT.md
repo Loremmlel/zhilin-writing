@@ -230,8 +230,6 @@
 ## Verification
 
 - Verification is scoped to the change: documentation-only work checks contracts, source mappings, links and formatting; product-source work runs relevant typecheck/lint/tests, with build and actual-browser checks when runtime/visual behavior changes. Typical commands: `npx tsc --noEmit`, `npm run lint`, `npm test`, strict premium audit, Sites checkpoint build. Static audit never proves the runtime flow.
-- Browser behavior is owned by the eight capability-oriented specs in `e2e/`. They assert roles, labels, visible state, URL restoration, focus, refresh persistence and downloads against one disposable local Miniflare D1/R2 state. They do not assert component structure, CSS classes, SQL statements or production data. A Bug strengthens its existing capability journey before a new permanent test is considered.
-- `npm run test:e2e` is the write-capable local browser gate; `npm run test:release` combines it with the existing domain/build gate. Both retain failure-only trace/screenshots, use Chromium with one worker and zero retries, and reject non-local base URLs before browser startup.
 - Accessibility: native semantics, keyboard dismissal, focus trap/restoration, forced-colors fallback.
 - Canonical sibling flow: existing post edit flow and administrator allowlist sections.
 - CRUD evidence: admin purge policy tests, annotation round-trip/selection/lifecycle/revision tests, static cascade review, production artifact test, and Sites checkpoint build.
