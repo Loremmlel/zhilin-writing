@@ -163,6 +163,12 @@ test("home cards, admin tabs, and the compact header keep their interaction cont
   assert.match(styles, /\.post-card :is\(\.author-link, \.reply-count, \.tag\)[^}]*z-index: 1/);
   assert.match(styles, /\.admin-page \.list-tabs[^}]*overflow-x: auto[^}]*overflow-y: hidden/);
   assert.doesNotMatch(styles, /\.admin-page \.list-tabs[^}]*scrollbar-gutter: stable/);
+  assert.match(styles, /@media \(max-width: 1400px\)[\s\S]*\.admin-aside\s*\{[^}]*display:\s*none/);
+  assert.match(
+    styles,
+    /@media \(max-width: 640px\)[\s\S]*\.admin-shell-main\s*\{[^}]*overflow-y:\s*auto[\s\S]*\.admin-bulk-scope > \.admin-table-scroll\s*\{[^}]*clamp\(320px, 52dvh, 440px\)/,
+  );
+  assert.match(styles, /\.admin-bulk-bar > div\s*\{[^}]*grid-template-columns:\s*repeat\(2/);
   assert.match(styles, /\.button--write[^}]*white-space: nowrap/);
   assert.match(
     styles,
