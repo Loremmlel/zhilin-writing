@@ -1,14 +1,16 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { EditorView } from "@milkdown/kit/prose/view";
 import {
   applyTextFormatting,
   captureFormattingSelection,
+  formattingSelectionKey,
   formattingStatus,
   releaseFormattingSelection,
 } from "@/lib/editor/text-formatting-commands";
-import { ModalDialog } from "../modal-dialog";
+import { connectFormattingToolbar, type FormattingPanel } from "@/lib/editor/formatting-toolbar";
 import { fontSize, textColor } from "@/lib/markdown/formatting";
 
 const sizes = [10.5, 12, 14, 16, 18, 24, 36];
@@ -20,197 +22,283 @@ const colors = [
   ["#7030a0", "紫色"],
   ["#75591f", "棕色"],
 ];
-export function TextFormattingToolbar({ view, disabled }: { view: EditorView; disabled: boolean }) {
-  const [custom, setCustom] = useState<"size" | "color" | null>(null);
-  const [draft, setDraft] = useState("");
-  const restoreEditor = useRef(false);
-  useEffect(() => {
-    if (custom === null && restoreEditor.current) {
-      restoreEditor.current = false;
-      view.focus();
-    }
-  }, [custom, view]);
-  const status = formattingStatus(view.state);
-  const blocked = disabled || !status.supported;
-  useEffect(() => {
-    if (!custom || status.supported) return;
-    let active = true;
-    queueMicrotask(() => {
-      if (!active) return;
-      setCustom(null);
-      releaseFormattingSelection(view);
-    });
+
+export function TextFormattingToolbar({
+  view,
+  panel,
+  disabled,
+  onClose,
+}: {
+  view: EditorView;
+  panel: FormattingPanel | null;
+  disabled: boolean;
+  onClose: () => void;
+}) {
+  const disabledRef = useRef(disabled);
+  const connection = useRef<ReturnType<typeof connectFormattingToolbar> | null>(null);
+  useLayoutEffect(() => {
+    disabledRef.current = disabled;
+  }, [disabled]);
+  useLayoutEffect(() => {
+    connection.current = connectFormattingToolbar(view, () => disabledRef.current);
     return () => {
-      active = false;
+      connection.current?.destroy();
+      connection.current = null;
     };
-  }, [custom, status.supported, view]);
-  const close = () => {
-    setCustom(null);
-    if (!custom) view.focus();
-    releaseFormattingSelection(view);
-  };
-  const apply = (key: "size" | "color" | "center", value: number | string | boolean | null) => {
-    if (!blocked) applyTextFormatting(view, key, value);
-    setCustom(null);
-    if (custom) restoreEditor.current = true;
-  };
-  const select = (key: "size" | "color", element: HTMLSelectElement) => {
-    if (element.value === "custom") {
-      setCustom(key);
-      setDraft(
-        key === "size"
-          ? status.size === "default" || status.size === "mixed"
-            ? "12"
-            : status.size
-          : (textColor(status.color) ?? "#242d27"),
-      );
-    } else
-      apply(
-        key,
-        element.value === "default" ? null : key === "size" ? Number(element.value) : element.value,
-      );
-  };
+  }, [view]);
+  useLayoutEffect(() => {
+    connection.current?.update(panel);
+  });
+  if (!panel) return null;
   return (
+    <FormattingPopover
+      key={`${panel.container.className}-${panel.key}`}
+      view={view}
+      panel={panel}
+      disabled={disabled}
+      onClose={onClose}
+    />
+  );
+}
+
+function FormattingPopover({
+  view,
+  panel,
+  disabled,
+  onClose,
+}: {
+  view: EditorView;
+  panel: FormattingPanel;
+  disabled: boolean;
+  onClose: () => void;
+}) {
+  const status = formattingStatus(view.state);
+  const current = status[panel.key];
+  const [draft, setDraft] = useState(() =>
+    panel.key === "size"
+      ? fontSize(current) === undefined
+        ? "12"
+        : current
+      : (textColor(current) ?? "#242d27"),
+  );
+  const rootRef = useRef<HTMLDivElement>(null);
+  const closeRef = useRef(onClose);
+  const closing = useRef(false);
+  const id = useId();
+  const blocked = disabled || !view.editable || !status.supported;
+  const value = panel.key === "size" ? fontSize(draft) : textColor(draft);
+  useLayoutEffect(() => {
+    closeRef.current = onClose;
+  }, [onClose]);
+
+  useLayoutEffect(() => {
+    const root = rootRef.current!;
+    const { anchor, container } = panel;
+    closing.current = false;
+    captureFormattingSelection(view);
+    const close = (restoreFocus: boolean) => {
+      if (closing.current) return;
+      closing.current = true;
+      if (restoreFocus && anchor.isConnected && !anchor.disabled) anchor.focus();
+      closeRef.current();
+    };
+    root.showPopover?.();
+    const position = () => {
+      if (!anchor.isConnected || container.dataset.show === "false") {
+        close(false);
+        return;
+      }
+      const viewport = window.visualViewport;
+      const left = viewport?.offsetLeft ?? 0,
+        top = viewport?.offsetTop ?? 0;
+      const width = viewport?.width ?? window.innerWidth,
+        height = viewport?.height ?? window.innerHeight;
+      root.style.maxHeight = `${Math.max(80, height - 16)}px`;
+      root.style.maxWidth = `${Math.max(80, width - 16)}px`;
+      const rect = anchor.getBoundingClientRect();
+      const bounds = root.getBoundingClientRect();
+      const y =
+        rect.bottom + 6 + bounds.height <= top + height - 8
+          ? rect.bottom + 6
+          : rect.top - bounds.height - 6;
+      root.style.left = `${Math.max(left + 8, Math.min(rect.left, left + width - bounds.width - 8))}px`;
+      root.style.top = `${Math.max(top + 8, Math.min(y, top + height - bounds.height - 8))}px`;
+    };
+    position();
+    (
+      root.querySelector<HTMLElement>('button[aria-pressed="true"]') ?? root.querySelector("button")
+    )?.focus();
+    anchor.setAttribute("aria-controls", id);
+    const outside = (event: Event) => {
+      if (
+        event.target instanceof Node &&
+        !root.contains(event.target) &&
+        !anchor.contains(event.target)
+      )
+        close(false);
+    };
+    const escape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || event.isComposing) return;
+      event.preventDefault();
+      event.stopPropagation();
+      close(true);
+    };
+    root.addEventListener("keydown", escape);
+    document.addEventListener("pointerdown", outside, true);
+    document.addEventListener("focusin", outside);
+    window.addEventListener("scroll", position, true);
+    window.addEventListener("resize", position);
+    window.visualViewport?.addEventListener("resize", position);
+    window.visualViewport?.addEventListener("scroll", position);
+    const resize = new ResizeObserver(position);
+    resize.observe(root);
+    resize.observe(anchor);
+    const visibility = new MutationObserver(position);
+    visibility.observe(container, { attributes: true, attributeFilter: ["data-show"] });
+    return () => {
+      root.removeEventListener("keydown", escape);
+      document.removeEventListener("pointerdown", outside, true);
+      document.removeEventListener("focusin", outside);
+      window.removeEventListener("scroll", position, true);
+      window.removeEventListener("resize", position);
+      window.visualViewport?.removeEventListener("resize", position);
+      window.visualViewport?.removeEventListener("scroll", position);
+      resize.disconnect();
+      visibility.disconnect();
+      anchor.removeAttribute("aria-controls");
+      if (!view.isDestroyed && formattingSelectionKey.getState(view.state))
+        releaseFormattingSelection(view);
+    };
+  }, [view, panel, id]);
+  useEffect(() => {
+    if (blocked) closeRef.current();
+  }, [blocked]);
+
+  const cancel = () => {
+    closing.current = true;
+    if (!panel.anchor.disabled) panel.anchor.focus();
+    onClose();
+  };
+  const apply = (next: number | string | null) => {
+    if (blocked) return;
+    closing.current = true;
+    applyTextFormatting(view, panel.key, next);
+    onClose();
+  };
+  return createPortal(
     <div
-      className="text-formatting-toolbar"
-      role="group"
-      aria-label="正文格式"
-      onPointerDownCapture={() => captureFormattingSelection(view)}
-      onFocusCapture={() => captureFormattingSelection(view)}
-      onBlurCapture={(event) => {
-        if (!custom && !event.currentTarget.contains(event.relatedTarget as Node | null)) {
-          setCustom(null);
-          releaseFormattingSelection(view);
-        }
-      }}
+      ref={rootRef}
+      id={id}
+      popover="manual"
+      className="document-format-popover"
+      role="dialog"
+      aria-label={panel.key === "size" ? "字号" : "文字颜色"}
       onKeyDown={(event) => {
-        if (event.key === "Escape" && !event.nativeEvent.isComposing) {
+        if (event.key !== "Enter") return;
+        event.stopPropagation();
+        if (event.target instanceof HTMLInputElement && event.target.type !== "color") {
           event.preventDefault();
-          event.stopPropagation();
-          close();
-        }
-        if (event.key === "Enter") {
-          event.stopPropagation();
-          if (custom && event.target instanceof HTMLInputElement) {
-            event.preventDefault();
-            if (event.nativeEvent.isComposing) return;
-            const value = custom === "size" ? fontSize(draft) : textColor(draft);
-            if (value !== undefined) apply(custom, value);
-          }
+          if (!event.nativeEvent.isComposing && value !== undefined) apply(value);
         }
       }}
     >
-      <label>
-        字号{" "}
-        <select
-          aria-label="字号"
+      <div className="document-format-heading">
+        <strong>{panel.key === "size" ? "字号" : "文字颜色"}</strong>
+        <span>
+          当前：
+          {current === "default"
+            ? "默认"
+            : current === "mixed"
+              ? "混合"
+              : `${current}${panel.key === "size" ? " 磅" : ""}`}
+        </span>
+      </div>
+      <div className={panel.key === "size" ? "document-size-presets" : "document-color-presets"}>
+        {panel.key === "size"
+          ? sizes.map((size) => (
+              <button
+                key={size}
+                type="button"
+                disabled={blocked}
+                aria-pressed={current === String(size)}
+                onClick={() => apply(size)}
+              >
+                {size}
+              </button>
+            ))
+          : colors.map(([color, label]) => (
+              <button
+                key={color}
+                type="button"
+                disabled={blocked}
+                aria-label={`${label} ${color}`}
+                title={`${label} ${color}`}
+                aria-pressed={current === color}
+                onClick={() => apply(color!)}
+              >
+                <span style={{ backgroundColor: color }} />
+                {label}
+              </button>
+            ))}
+        <button
+          type="button"
           disabled={blocked}
-          value={status.size}
-          onChange={(event) => select("size", event.currentTarget)}
+          aria-pressed={current === "default"}
+          onClick={() => apply(null)}
         >
-          <option value="default">默认</option>
-          <option value="mixed" disabled>
-            混合
-          </option>
-          {!["default", "mixed"].includes(status.size) && !sizes.includes(Number(status.size)) && (
-            <option value={status.size}>{status.size} 磅</option>
+          默认
+        </button>
+      </div>
+      <div className="document-format-custom">
+        <label htmlFor={`${id}-value`}>
+          {panel.key === "size" ? "自定义字号（磅）" : "自定义颜色（HEX）"}
+        </label>
+        <div className="document-format-input-row">
+          {panel.key === "color" && (
+            <input
+              type="color"
+              aria-label="选择颜色"
+              disabled={blocked}
+              value={textColor(draft) ?? "#242d27"}
+              onChange={(event) => setDraft(event.target.value)}
+            />
           )}
-          {sizes.map((size) => (
-            <option key={size} value={size}>
-              {size} 磅
-            </option>
-          ))}
-          <option value="custom">自定义…</option>
-        </select>
-      </label>
-      <label>
-        颜色{" "}
-        <select
-          aria-label="文字颜色"
-          disabled={blocked}
-          value={status.color}
-          onChange={(event) => select("color", event.currentTarget)}
+          <input
+            id={`${id}-value`}
+            type={panel.key === "size" ? "number" : "text"}
+            min={6}
+            max={72}
+            step={0.5}
+            aria-invalid={value === undefined}
+            aria-describedby={`${id}-help`}
+            disabled={blocked}
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+          />
+        </div>
+        <p
+          id={`${id}-help`}
+          className={value === undefined ? "form-error" : "document-format-help"}
         >
-          <option value="default">默认</option>
-          <option value="mixed" disabled>
-            混合
-          </option>
-          {!["default", "mixed"].includes(status.color) &&
-            !colors.some(([color]) => color === status.color) && (
-              <option value={status.color}>{status.color}</option>
-            )}
-          {colors.map(([color, label]) => (
-            <option key={color} value={color}>
-              {label}
-            </option>
-          ))}
-          <option value="custom">自定义…</option>
-        </select>
-      </label>
-      <button
-        className="button button--ghost button--small"
-        type="button"
-        disabled={blocked}
-        aria-pressed={status.center}
-        onClick={() => apply("center", status.center !== true)}
-      >
-        {status.center === "mixed" ? "居中（混合）" : "居中"}
-      </button>
-      {!status.supported && <span className="text-formatting-hint">请选择正文段落或表格文字</span>}
-      {custom && (
-        <ModalDialog open title={custom === "size" ? "自定义字号" : "自定义颜色"} onClose={close}>
-          <div
-            className="text-formatting-custom"
-            role="group"
-            aria-label={custom === "size" ? "自定义字号" : "自定义颜色"}
-          >
-            <label>
-              {custom === "size" ? "字号（6–72 磅，步长 0.5）" : "颜色（HEX）"}
-              <input
-                disabled={blocked}
-                aria-label={custom === "size" ? "自定义字号" : "颜色 HEX"}
-                type={custom === "size" ? "number" : "text"}
-                min={6}
-                max={72}
-                step={0.5}
-                value={draft}
-                onChange={(event) => setDraft(event.target.value)}
-              />
-            </label>
-            {custom === "color" && (
-              <input
-                disabled={blocked}
-                type="color"
-                aria-label="选择颜色"
-                value={textColor(draft) ?? "#242d27"}
-                onChange={(event) => setDraft(event.target.value)}
-              />
-            )}
-            {(custom === "size" ? fontSize(draft) === undefined : !textColor(draft)) && (
-              <p className="form-error" role="status">
-                {custom === "size"
-                  ? "请输入 6–72 磅的字号，步长为 0.5。"
-                  : "请输入六位 HEX 颜色，例如 #c00000。"}
-              </p>
-            )}
-            <button
-              type="button"
-              className="button button--ghost button--small"
-              disabled={
-                blocked || (custom === "size" ? fontSize(draft) === undefined : !textColor(draft))
-              }
-              onClick={() =>
-                apply(custom, custom === "size" ? fontSize(draft)! : textColor(draft)!)
-              }
-            >
-              应用
-            </button>
-            <button type="button" className="button button--ghost button--small" onClick={close}>
-              取消
-            </button>
-          </div>
-        </ModalDialog>
-      )}
-    </div>
+          {panel.key === "size"
+            ? "6–72 磅，每次可调整 0.5 磅。"
+            : "输入六位 HEX 颜色，例如 #c00000。"}
+        </p>
+      </div>
+      <div className="document-format-actions">
+        <button type="button" className="button button--ghost button--small" onClick={cancel}>
+          取消
+        </button>
+        <button
+          type="button"
+          className="button button--small"
+          disabled={blocked || value === undefined}
+          onClick={() => value !== undefined && apply(value)}
+        >
+          应用
+        </button>
+      </div>
+    </div>,
+    panel.container,
   );
 }

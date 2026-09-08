@@ -21,7 +21,12 @@ async function withEditor(run: (editor: Editor) => Promise<void> | void) {
     document: window.document,
     Node: window.Node,
     HTMLElement: window.HTMLElement,
+    SVGElement: window.SVGElement,
     Element: window.Element,
+    PointerEvent: window.PointerEvent,
+    MouseEvent: window.MouseEvent,
+    ResizeObserver: window.ResizeObserver,
+    getComputedStyle: window.getComputedStyle.bind(window),
     MutationObserver: window.MutationObserver,
     DOMParser: window.DOMParser,
     getSelection: window.getSelection.bind(window),
@@ -34,7 +39,7 @@ async function withEditor(run: (editor: Editor) => Promise<void> | void) {
   });
   Object.defineProperty(globalThis, "navigator", { configurable: true, value: window.navigator });
   const root = window.document.createElement("div");
-  window.document.body.append(root);
+  window.document.body.appendChild(root);
   const editor = await Editor.make()
     .config((ctx) => {
       ctx.set(rootCtx, root as unknown as HTMLElement);
@@ -372,5 +377,278 @@ test("rectangular cell selections format only selected cells and keep mapped col
     applyTextFormatting(view, "size", 18);
     assert.equal(view.state.selection.empty, true);
     assert.equal(view.state.doc.firstChild?.firstChild?.marks.length, 0);
+  });
+});
+
+import {
+  createFormattingToolbarConfig,
+  connectFormattingToolbar,
+  type FormattingPanel,
+} from "../../lib/editor/formatting-toolbar.ts";
+
+test("native Crepe top and selection toolbars share formatting, keyboard activation and disabled state", async () => {
+  await withEditor(async () => {
+    // Happy DOM 18's base nodeName getter omits element/text names. DOMPurify
+    // reads that getter directly; supply the browser contract for Crepe's icons.
+    const nodeName = Object.getOwnPropertyDescriptor(Node.prototype, "nodeName")!;
+    Object.defineProperty(Node.prototype, "nodeName", {
+      configurable: true,
+      get() {
+        return this.nodeType === 1
+          ? this.tagName
+          : this.nodeType === 3
+            ? "#text"
+            : nodeName.get!.call(this);
+      },
+    });
+    // Load Vue after the test DOM exists. This exercises real Crepe features, not mock builders.
+    const { Crepe, CrepeFeature } = await import("@milkdown/crepe");
+    const { nextTick } = await import("vue");
+    const root = document.createElement("div");
+    document.body.appendChild(root);
+    const opened: FormattingPanel[] = [];
+    let disabled = false;
+    const config = createFormattingToolbarConfig(
+      (panel) => opened.push(panel),
+      () => disabled,
+    );
+    const crepe = new Crepe({
+      root,
+      defaultValue: ':text[甲乙]{size="18" color="#c00000"} 丙丁',
+      features: {
+        ...Object.fromEntries(Object.values(CrepeFeature).map((key) => [key, false])),
+        [CrepeFeature.TopBar]: true,
+        [CrepeFeature.Toolbar]: true,
+      },
+      featureConfigs: {
+        [CrepeFeature.TopBar]: config.top,
+        [CrepeFeature.Toolbar]: config.selection,
+      },
+    });
+    crepe.editor
+      .config(configureTextFormatting)
+      .use(annotationPlugin)
+      .use(textFormattingPlugin)
+      .use(createFormattingSelectionPlugin(() => {}));
+    await crepe.create();
+    const view = crepe.editor.ctx.get(editorViewCtx);
+    const connection = connectFormattingToolbar(view, () => disabled);
+    try {
+      view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, 1, 3)));
+      view.focus();
+      await nextTick();
+      // TooltipProvider mounts its native container on its next throttled update.
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      connection.update();
+      const buttons = (surface: string) => {
+        const container = root.querySelector<HTMLElement>(surface)!;
+        assert.ok(container, surface);
+        const get = (key: string) =>
+          container.querySelector<HTMLButtonElement>(
+            `button[data-document-format-button="${key}"]`,
+          )!;
+        for (const key of ["size", "color", "center"]) assert.ok(get(key), `${surface} ${key}`);
+        return { container, size: get("size"), color: get("color"), center: get("center") };
+      };
+      const top = buttons(".milkdown-top-bar"),
+        floating = buttons(".milkdown-toolbar");
+      for (const toolbar of [top, floating]) {
+        assert.equal(toolbar.size.getAttribute("aria-label"), "字号：18");
+        assert.equal(toolbar.color.getAttribute("aria-label"), "文字颜色：#c00000");
+        const before = view.state.doc.toJSON();
+        toolbar.size.dispatchEvent(
+          new PointerEvent("pointerdown", { bubbles: true, cancelable: true }),
+        );
+        assert.equal(opened.at(-1)?.anchor, toolbar.size);
+        assert.equal(opened.at(-1)?.container, toolbar.container);
+        assert.deepEqual(view.state.doc.toJSON(), before);
+        assert.ok(formattingSelectionKey.getState(view.state));
+        connection.update(opened.at(-1));
+        assert.equal(toolbar.size.getAttribute("aria-expanded"), "true");
+        const count = opened.length;
+        toolbar.size.dispatchEvent(new MouseEvent("click", { bubbles: true, detail: 1 }));
+        assert.equal(
+          opened.length,
+          count,
+          "the click following a pointerdown must not execute twice",
+        );
+        toolbar.color.click();
+        assert.equal(opened.length, count + 1, "keyboard/assistive native click executes once");
+        assert.equal(opened.at(-1)?.key, "color");
+        toolbar.center.click();
+        assert.equal(view.state.doc.firstChild?.attrs.textAlign, "center");
+        assert.equal(
+          view.state.doc.firstChild?.firstChild?.marks.find(
+            (mark) => mark.type.name === "textStyle",
+          )?.attrs.color,
+          "#c00000",
+        );
+        assert.equal(undo(view.state, view.dispatch), true);
+        assert.deepEqual(view.state.doc.toJSON(), before, "one undo restores the paragraph");
+      }
+      view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, 1, 6)));
+      await nextTick();
+      connection.update();
+      assert.equal(top.size.getAttribute("aria-label"), "字号：混合");
+      assert.equal(floating.color.getAttribute("aria-label"), "文字颜色：混合");
+      disabled = true;
+      connection.update();
+      const before = view.state.doc.toJSON(),
+        count = opened.length;
+      for (const toolbar of [top, floating]) {
+        assert.equal(toolbar.size.disabled, true);
+        toolbar.size.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+        toolbar.center.click();
+      }
+      assert.equal(opened.length, count);
+      assert.deepEqual(view.state.doc.toJSON(), before);
+      disabled = false;
+      connection.update();
+      connection.destroy();
+      top.color.click();
+      assert.equal(opened.length, count, "unmount removes keyboard handlers");
+    } finally {
+      connection.destroy();
+      await crepe.destroy();
+      Object.defineProperty(Node.prototype, "nodeName", nodeName);
+      root.remove();
+    }
+  });
+});
+
+test("format popovers preserve selection through focus, cancel without edits and apply once", async () => {
+  await withEditor(async (editor) => {
+    Object.assign(globalThis, {
+      HTMLInputElement: window.HTMLInputElement,
+      KeyboardEvent: window.KeyboardEvent,
+      IS_REACT_ACT_ENVIRONMENT: true,
+    });
+    const React = await import("react");
+    const { createRoot } = await import("react-dom/client");
+    // Node's strip-types runner does not parse TSX. Compile the real component
+    // in memory, resolving imports as URLs, without a second test framework.
+    const { readFile } = await import("node:fs/promises");
+    const ts = await import("typescript");
+    const source = await readFile(
+      new URL("../../components/editor/text-formatting-toolbar.tsx", import.meta.url),
+      "utf8",
+    );
+    const compiled = ts.transpileModule(source, {
+      compilerOptions: {
+        jsx: ts.JsxEmit.ReactJSX,
+        target: ts.ScriptTarget.ES2022,
+        module: ts.ModuleKind.ESNext,
+      },
+    }).outputText;
+    const resolved = compiled.replace(
+      /from (["'])([^"']+)\1/g,
+      (_match, _quote, specifier: string) => {
+        const url = specifier.startsWith("@/")
+          ? new URL(`../../${specifier.slice(2)}.ts`, import.meta.url).href
+          : import.meta.resolve(specifier);
+        return `from ${JSON.stringify(url)}`;
+      },
+    );
+    const { TextFormattingToolbar } = await import(
+      `data:text/javascript;base64,${Buffer.from(resolved).toString("base64")}`
+    );
+    const view = editor.ctx.get(editorViewCtx);
+    view.dispatch(
+      view.state.tr.replaceWith(
+        0,
+        view.state.doc.content.size,
+        editor.ctx.get(parserCtx)("甲乙丙丁").content,
+      ),
+    );
+    view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, 1, 3)));
+    const container = document.createElement("div"),
+      anchor = document.createElement("button"),
+      host = document.createElement("div");
+    container.className = "milkdown-top-bar";
+    container.appendChild(anchor);
+    view.dom.parentElement!.appendChild(container);
+    view.dom.parentElement!.appendChild(host);
+    const root = createRoot(host);
+    let closes = 0;
+    const render = (key: "size" | "color" | null, disabled = false) =>
+      root.render(
+        React.createElement(TextFormattingToolbar, {
+          view,
+          panel: key ? { key, anchor, container } : null,
+          disabled,
+          onClose: () => {
+            closes++;
+            render(null);
+          },
+        }),
+      );
+    const popover = () => container.querySelector<HTMLElement>('[role="dialog"]')!;
+    const before = view.state.doc.toJSON();
+    try {
+      await React.act(async () => render("size"));
+      assert.ok(
+        popover().contains(document.activeElement),
+        "focus stays inside the owning toolbar",
+      );
+      assert.equal(anchor.getAttribute("aria-controls"), popover().id);
+      assert.ok(formattingSelectionKey.getState(view.state));
+      const input = popover().querySelector("input")!;
+      await React.act(async () => {
+        input.focus();
+        input.dispatchEvent(
+          new KeyboardEvent("keydown", {
+            key: "Enter",
+            isComposing: true,
+            bubbles: true,
+            cancelable: true,
+          }),
+        );
+      });
+      assert.equal(closes, 0, "IME Enter leaves the panel open");
+      assert.deepEqual(view.state.doc.toJSON(), before);
+      await React.act(async () =>
+        input.dispatchEvent(
+          new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }),
+        ),
+      );
+      assert.equal(closes, 1);
+      assert.equal(document.activeElement, anchor);
+      assert.equal(popover(), null);
+      assert.equal(formattingSelectionKey.getState(view.state), null);
+      assert.deepEqual(view.state.doc.toJSON(), before);
+      await React.act(async () => render("color"));
+      await React.act(async () =>
+        document.body.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true })),
+      );
+      assert.equal(closes, 2, "outside pointer cancels");
+      assert.deepEqual(view.state.doc.toJSON(), before);
+      await React.act(async () => render("size"));
+      await React.act(async () => {
+        const preset = Array.from(popover().querySelectorAll("button")).find(
+          (button) => button.textContent === "24",
+        )!;
+        preset.click();
+      });
+      assert.equal(closes, 3);
+      assert.equal(popover(), null);
+      assert.equal(view.state.selection.from, 1);
+      assert.equal(view.state.selection.to, 3);
+      assert.equal(view.state.doc.firstChild?.firstChild?.marks[0]?.attrs.size, 24);
+      assert.equal(
+        view.state.doc.firstChild?.lastChild?.marks.length,
+        0,
+        "text outside the selection stays unchanged",
+      );
+      assert.equal(view.hasFocus(), true);
+      await React.act(async () => render("color"));
+      await React.act(async () => render("color", true));
+      assert.equal(closes, 4, "locking the editor closes a top-layer panel");
+      assert.equal(popover(), null);
+    } finally {
+      await React.act(async () => root.unmount());
+      container.remove();
+      host.remove();
+      Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: false });
+    }
   });
 });

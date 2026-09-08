@@ -16,6 +16,10 @@ import type { PendingAnnotationImpact } from "@/lib/editor/annotation-session";
 import type { EditorView } from "@milkdown/kit/prose/view";
 import { configureTextFormatting, textFormattingPlugin } from "@/lib/editor/text-formatting";
 import { createFormattingSelectionPlugin } from "@/lib/editor/text-formatting-commands";
+import {
+  createFormattingToolbarConfig,
+  type FormattingPanel,
+} from "@/lib/editor/formatting-toolbar";
 import { TextFormattingToolbar } from "./text-formatting-toolbar";
 import { AnnotationGuardDialog, type AnnotationGuardMetadata } from "./annotation-guard-dialog";
 
@@ -79,6 +83,8 @@ function MarkdownEditorSession({
   disabled = false,
 }: MarkdownEditorProps) {
   const [formattingView, setFormattingView] = useState<EditorView | null>(null);
+  const [formattingPanel, setFormattingPanel] = useState<FormattingPanel | null>(null);
+  const formattingDisabledRef = useRef(false);
   const [, refreshFormatting] = useState(0);
   const rootRef = useRef<HTMLDivElement>(null);
   const initialMarkdownRef = useRef(initialMarkdown);
@@ -103,6 +109,13 @@ function MarkdownEditorSession({
   const [pendingImpact, setPendingImpact] = useState<PendingAnnotationImpact | null>(null);
   const [guardMessage, setGuardMessage] = useState<string | null>(null);
   const [imageUploadTasks, setImageUploadTasks] = useState<ImageUploadTask[]>([]);
+
+  useEffect(() => {
+    formattingDisabledRef.current =
+      disabled ||
+      pendingImpact !== null ||
+      imageUploadTasks.some((task) => task.status === "uploading");
+  }, [disabled, pendingImpact, imageUploadTasks]);
 
   useEffect(() => {
     onChangeRef.current = onMarkdownChange;
@@ -203,6 +216,13 @@ function MarkdownEditorSession({
         throw error;
       }
     };
+    const formattingToolbar = createFormattingToolbarConfig(
+      (panel) => {
+        if (!disposed)
+          setFormattingPanel((current) => (current?.anchor === panel.anchor ? null : panel));
+      },
+      () => formattingDisabledRef.current || disabledRef.current || uploadAbortRef.current !== null,
+    );
     const crepe = new Crepe({
       root: rootRef.current,
       defaultValue: initialMarkdownRef.current,
@@ -216,6 +236,12 @@ function MarkdownEditorSession({
         [CrepeFeature.TopBar]: !compact,
       },
       featureConfigs: {
+        ...(!compact
+          ? {
+              [CrepeFeature.TopBar]: formattingToolbar.top,
+              [CrepeFeature.Toolbar]: formattingToolbar.selection,
+            }
+          : {}),
         [CrepeFeature.Placeholder]: {
           text: compact ? "写下回复……" : "从这里开始写作……",
           mode: "block",
@@ -340,6 +366,8 @@ function MarkdownEditorSession({
         {!compact && formattingView && (
           <TextFormattingToolbar
             view={formattingView}
+            panel={formattingPanel}
+            onClose={() => setFormattingPanel(null)}
             disabled={
               disabled ||
               pendingImpact !== null ||
