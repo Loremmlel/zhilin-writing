@@ -4432,14 +4432,14 @@ input[type="file"] {
   max-width: calc(100vw - 24px);
   flex-wrap: wrap;
 }
-.document-format-popover {
+.milkdown .document-format-popover {
   position: fixed;
   inset: auto;
   margin: 0;
   z-index: var(--z-popover);
   box-sizing: border-box;
-  width: 272px;
-  padding: 12px;
+  width: 288px;
+  padding: 16px;
   overflow: auto;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -4453,96 +4453,133 @@ input[type="file"] {
     "Microsoft YaHei",
     sans-serif;
 }
-.document-format-popover::backdrop {
+.milkdown .document-format-popover::backdrop {
   background: transparent;
   pointer-events: none;
 }
-.document-format-heading {
+.milkdown .document-format-heading {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 8px;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
-.document-format-heading > span,
-.document-format-help {
+.milkdown .document-format-heading > span,
+.milkdown .document-format-help {
   color: var(--muted);
 }
-.document-size-presets,
-.document-color-presets {
+.milkdown .document-size-presets,
+.milkdown .document-color-presets {
   display: grid;
-  gap: 4px;
+  gap: 6px;
 }
-.document-size-presets {
+.milkdown .document-size-presets {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
-.document-color-presets {
+.milkdown .document-color-presets {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
-.document-size-presets > button,
-.document-color-presets > button {
+.milkdown .document-size-presets > button,
+.milkdown .document-color-presets > button {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 5px;
   min-height: 36px;
-  padding: 5px;
+  padding: 6px;
   color: var(--ink);
   border: 1px solid var(--line);
-  border-radius: 4px;
+  border-radius: 8px;
+  background: var(--paper);
+  font: inherit;
   cursor: pointer;
 }
-.document-color-presets > button > span {
+.milkdown .document-color-presets > button > span {
   width: 14px;
   height: 14px;
   border-radius: 3px;
   border: 1px solid currentColor;
 }
-.document-format-popover button:hover {
+.milkdown .document-format-popover button:enabled:hover {
   background: var(--green-soft);
 }
-.document-format-popover button[aria-pressed="true"] {
+.milkdown .document-format-popover button[aria-pressed="true"] {
   border-color: var(--green);
   background: var(--green-soft);
 }
-.document-format-popover :is(button, input):focus-visible {
+.milkdown .document-format-popover :is(button, input):focus-visible {
   outline: 2px solid var(--green);
   outline-offset: 2px;
 }
-.document-format-custom {
+.milkdown .document-format-custom {
   border-top: 1px solid var(--line);
   margin-top: 12px;
-  padding-top: 10px;
+  padding-top: 12px;
 }
-.document-format-input-row {
+.milkdown .document-format-input-row {
   display: flex;
   gap: 8px;
   margin-top: 6px;
 }
-.document-format-popover input {
+.milkdown .document-format-popover input {
   min-width: 0;
   width: 100%;
   height: 36px;
   padding: 4px 8px;
   border: 1px solid var(--line);
-  border-radius: 4px;
+  border-radius: 8px;
   background: var(--paper);
   color: var(--ink);
 }
-.document-format-popover input[type="color"] {
+.milkdown .document-format-popover input[type="color"] {
   width: 44px;
   flex-shrink: 0;
   padding: 3px;
 }
-.document-format-custom p {
+.milkdown .document-format-custom p {
   font: inherit;
   margin: 6px 0 0;
 }
-.document-format-actions {
+.milkdown .document-format-actions {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
   margin-top: 12px;
+}
+/* Keep shared action variants intact inside Crepe's reset boundary. */
+.milkdown .document-format-actions .button {
+  min-height: 36px;
+  padding: 6px 12px;
+  border: 1px solid var(--green);
+  border-radius: 8px;
+  background: var(--green);
+  color: var(--paper-strong);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.milkdown .document-format-actions .button:enabled:hover {
+  background: var(--green-dark);
+}
+.milkdown .document-format-actions .button--ghost {
+  border-color: var(--line);
+  background: var(--paper-strong);
+  color: var(--ink);
+}
+.milkdown .document-format-actions .button--ghost:enabled:hover {
+  background: var(--green-soft);
+}
+.milkdown .document-format-popover button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.milkdown .document-format-heading > span,
+.milkdown .document-format-custom p {
+  font-size: 12px;
+  line-height: 1.5;
+}
+.milkdown .document-format-popover input {
+  font: inherit;
 }
 .formatting-saved-selection {
   background: var(--green-soft);
