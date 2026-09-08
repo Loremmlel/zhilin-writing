@@ -15,11 +15,12 @@ import {
   removeImportedAnnotationThread,
 } from "@/lib/annotations/service";
 import { AnnotationIntegrityError } from "@/lib/annotations/save-plan";
+import { AnnotationSelectionError } from "@/lib/annotations/selection";
 import type { AnnotationSelectionDescriptor } from "@/lib/annotations/types";
 import { deletePostByAuthor, deleteReplyByAuthor } from "@/lib/lifecycle/service";
 import { createReply, updatePost } from "@/lib/posts/service";
 import { EditConflictError } from "@/lib/revisions/service";
-import { logServerError } from "@/lib/logging";
+import { logServerError, logServerRejection } from "@/lib/logging";
 
 export type AnnotationActionState = {
   annotationId?: string;
@@ -39,9 +40,10 @@ function parseAnnotationSelection(value: FormDataEntryValue | null): AnnotationS
   try {
     parsed = JSON.parse(String(value ?? ""));
   } catch {
-    throw new Error("批注选区无效，请重新选择文字");
+    throw new AnnotationSelectionError("INVALID_RANGE", "批注选区无效，请重新选择文字");
   }
-  if (!parsed || typeof parsed !== "object") throw new Error("批注选区无效，请重新选择文字");
+  if (!parsed || typeof parsed !== "object")
+    throw new AnnotationSelectionError("INVALID_RANGE", "批注选区无效，请重新选择文字");
   const object = parsed as Record<string, unknown>;
   if (
     ["blockOrdinal", "endBlockOrdinal", "blockTextFrom", "blockTextTo"].some(
@@ -49,7 +51,7 @@ function parseAnnotationSelection(value: FormDataEntryValue | null): AnnotationS
     ) ||
     typeof object.selectedText !== "string"
   )
-    throw new Error("批注选区无效，请重新选择文字");
+    throw new AnnotationSelectionError("INVALID_RANGE", "批注选区无效，请重新选择文字");
   return object as AnnotationSelectionDescriptor;
 }
 
@@ -181,6 +183,16 @@ export async function createAnnotationAction(
     revalidatePath(`/users/${member.id}`);
     return { annotationId };
   } catch (error) {
+    if (error instanceof AnnotationSelectionError) {
+      logServerRejection({
+        operation: "annotation.create",
+        stage: "selection",
+        entityId: postId,
+        userId: actorUserId,
+        code: error.code,
+      });
+      return { error: error.message };
+    }
     const incidentId = logServerError({
       operation: "annotation.create",
       entityId: postId,

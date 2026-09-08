@@ -25,7 +25,10 @@ export type AnnotationSelectionErrorCode =
   | "CROSS_BLOCK"
   | "INVALID_BLOCK"
   | "INVALID_RANGE"
+  | "NESTED_ANNOTATION"
+  | "REVISION_MISMATCH"
   | "TEXT_MISMATCH"
+  | "UNSUPPORTED_DIRECTIVE"
   | "UNSUPPORTED_INLINE"
   | "OVERLAP";
 
@@ -73,8 +76,16 @@ function assertSupportedBlock(block: AnnotationBlock) {
       );
     }
     if (node.type === "textDirective" && !isTextStyleDirective(node)) {
-      if (node.name !== "annotation" || annotationDepth > 0)
-        throw new AnnotationSelectionError("OVERLAP", "批注范围不能嵌套");
+      if (node.name !== "annotation")
+        throw new AnnotationSelectionError(
+          "UNSUPPORTED_DIRECTIVE",
+          "所选文字所在段落包含暂不支持的格式",
+        );
+      if (annotationDepth > 0)
+        throw new AnnotationSelectionError(
+          "NESTED_ANNOTATION",
+          "正文中的批注结构异常，暂时无法在此处添加批注",
+        );
       annotationDepth += 1;
     } else if (node.type !== "text" && node.children && !supportedContainers.has(node.type)) {
       throw new AnnotationSelectionError("UNSUPPORTED_INLINE", "所选文本包含暂不支持的内联格式");
@@ -94,7 +105,11 @@ function annotationRanges(nodes: InlineNode[]) {
       return;
     }
     if (node.type === "textDirective" && node.name === "annotation") {
-      if (annotationDepth > 0) throw new AnnotationSelectionError("OVERLAP", "批注范围不能嵌套");
+      if (annotationDepth > 0)
+        throw new AnnotationSelectionError(
+          "NESTED_ANNOTATION",
+          "正文中的批注结构异常，暂时无法在此处添加批注",
+        );
       node.children?.forEach((child) => scan(child, annotationDepth + 1));
       ranges.push({ from: start, to: cursor });
       return;
@@ -153,9 +168,6 @@ export function validateAnnotationSelection(
       const selectedText = text.slice(from, to);
       if (!selectedText.trim())
         throw new AnnotationSelectionError("BLANK_SELECTION", "请选择至少一个非空白字符");
-      if (annotationRanges(block.children).some((range) => from < range.to && to > range.from)) {
-        throw new AnnotationSelectionError("OVERLAP", "所选内容与已有批注重叠");
-      }
       return { block, blockText: text, from, to, selectedText };
     });
   const block = blocks[0]!.block;
@@ -163,6 +175,11 @@ export function validateAnnotationSelection(
   const selectedText = blocks.map((item) => item.selectedText).join("\n\n");
   if (selectedText !== descriptor.selectedText)
     throw new AnnotationSelectionError("TEXT_MISMATCH", "正文已经变化，请重新选择文字");
+  for (const { block, from, to } of blocks) {
+    if (annotationRanges(block.children).some((range) => from < range.to && to > range.from)) {
+      throw new AnnotationSelectionError("OVERLAP", "所选内容与已有批注重叠，无法再次添加批注");
+    }
+  }
   return { block, blockText, blocks };
 }
 

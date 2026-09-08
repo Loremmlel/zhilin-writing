@@ -9,7 +9,7 @@ import {
   visiblePostText,
 } from "./markdown.ts";
 import { resolveAnnotationReplyRecipient, validateAnnotationId } from "./policy.ts";
-import { wrapAnnotationRange } from "./selection.ts";
+import { AnnotationSelectionError, wrapAnnotationRange } from "./selection.ts";
 import type { AnnotationSelectionDescriptor } from "./types.ts";
 
 type CurrentAnnotationPostState = {
@@ -36,7 +36,7 @@ export function planAnnotationCreation(
   now: Date,
 ) {
   if (current.currentRevisionId !== request.baseRevisionId)
-    throw new Error("帖子已更新，请重新选择文字后再批注");
+    throw new AnnotationSelectionError("REVISION_MISMATCH", "帖子已更新，请重新选择文字后再批注");
   const currentTree = parseAnnotationMarkdown(current.markdown);
   if (!validateCanonicalAnnotationDocument(current.markdown, current.currentAnchorIds).ok) {
     throw new Error("正文批注锚点状态不一致");

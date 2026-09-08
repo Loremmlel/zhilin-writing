@@ -9,6 +9,7 @@ import {
 } from "../../lib/annotations/markdown.ts";
 import { validateCanonicalAnnotationDocument } from "../../lib/annotations/invariants.ts";
 import {
+  AnnotationSelectionError,
   unwrapAnnotation,
   validateAnnotationSelection,
   wrapAnnotationRange,
@@ -47,6 +48,38 @@ test("allows adjacent and separated annotations but rejects every overlap", () =
   assert.deepEqual(collectAnnotationIds(adjacent), [A, B]);
   assert.throws(() => wrapAnnotationRange(first, descriptor(0, 1, 5, "AAAB"), B), /重叠/);
   assert.throws(() => wrapAnnotationRange(first, descriptor(0, 0, 8, "AAAABBBB"), B), /重叠/);
+});
+
+test("reports stale text before overlap and keeps rejection reasons distinct", () => {
+  const annotated = wrapAnnotationRange(
+    parseAnnotationMarkdown("AAAABBBB"),
+    descriptor(0, 0, 4, "AAAA"),
+    A,
+  );
+  assert.throws(
+    () => validateAnnotationSelection(annotated, descriptor(0, 0, 2, "错文")),
+    (error) => error instanceof AnnotationSelectionError && error.code === "TEXT_MISMATCH",
+  );
+  assert.throws(
+    () => validateAnnotationSelection(annotated, descriptor(0, 0, 2, "AA")),
+    (error) => error instanceof AnnotationSelectionError && error.code === "OVERLAP",
+  );
+  assert.throws(
+    () =>
+      validateAnnotationSelection(
+        parseAnnotationMarkdown(":unknown[文字]"),
+        descriptor(0, 0, 2, "文字"),
+      ),
+    (error) => error instanceof AnnotationSelectionError && error.code === "UNSUPPORTED_DIRECTIVE",
+  );
+  assert.throws(
+    () =>
+      validateAnnotationSelection(
+        parseAnnotationMarkdown(`:annotation[:annotation[文字]{#${B}}]{#${A}}`),
+        descriptor(0, 0, 2, "文字"),
+      ),
+    (error) => error instanceof AnnotationSelectionError && error.code === "NESTED_ANNOTATION",
+  );
 });
 
 test("wraps one logical annotation across consecutive text blocks", () => {

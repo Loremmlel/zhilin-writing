@@ -7,6 +7,14 @@ type ServerErrorContext = {
   userId?: string | null;
 };
 
+type ServerRejectionContext = {
+  operation: string;
+  code: string;
+  entityId?: string | null;
+  stage?: string | null;
+  userId?: string | null;
+};
+
 const ERROR_CODE_PATTERN = /^[A-Z][A-Z0-9_]{1,63}$/;
 const MAX_CAUSE_DEPTH = 2;
 
@@ -96,4 +104,18 @@ export function logServerError(context: ServerErrorContext): string {
   };
   console.error(JSON.stringify(record));
   return incidentId;
+}
+
+export function logServerRejection(context: ServerRejectionContext): void {
+  console.warn(
+    JSON.stringify({
+      level: "warn",
+      event: "server_operation_rejected",
+      operation: safeToken(context.operation) ?? "REDACTED",
+      stage: safeToken(context.stage),
+      entityId: safeToken(context.entityId),
+      userId: safeToken(context.userId),
+      code: ERROR_CODE_PATTERN.test(context.code) ? context.code : "INVALID_REJECTION_CODE",
+    }),
+  );
 }

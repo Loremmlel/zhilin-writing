@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { logServerError, markServerErrorStage, serverErrorCode } from "../../lib/logging.ts";
+import {
+  logServerError,
+  logServerRejection,
+  markServerErrorStage,
+  serverErrorCode,
+} from "../../lib/logging.ts";
 
 test("production error logging keeps operational IDs and redacts payload details", () => {
   const lines: string[] = [];
@@ -108,4 +113,32 @@ test("the first service stage survives outer error boundaries", () => {
   assert.equal(markServerErrorStage(error, "action"), error);
   assert.equal((error as Error & { stage: string }).stage, "commit");
   assert.equal(Object.keys(error).includes("stage"), false);
+});
+
+test("expected rejections are diagnostic warnings without payloads or incident IDs", () => {
+  const lines: string[] = [];
+  const original = console.warn;
+  console.warn = (value?: unknown) => lines.push(String(value));
+  try {
+    logServerRejection({
+      operation: "annotation.create",
+      stage: "selection",
+      entityId: "post_123",
+      userId: "user_456",
+      code: "TEXT_MISMATCH",
+    });
+  } finally {
+    console.warn = original;
+  }
+
+  assert.deepEqual(JSON.parse(lines[0]), {
+    level: "warn",
+    event: "server_operation_rejected",
+    operation: "annotation.create",
+    stage: "selection",
+    entityId: "post_123",
+    userId: "user_456",
+    code: "TEXT_MISMATCH",
+  });
+  assert.doesNotMatch(lines[0], /incident|message|stack|markdown|selectionText/i);
 });
