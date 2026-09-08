@@ -30,6 +30,7 @@ import {
 } from "@/lib/docx-import/preview-validation";
 import type { DocxPreviewAsset, DocxPreviewRecord } from "@/lib/docx-import/types";
 import type { DocxWorkerProgressStage } from "@/lib/docx-import/worker-protocol";
+import { formatDateTime } from "@/lib/format";
 
 type Phase = "selecting" | "parsing" | "uploading" | "previewing" | "committing" | "complete";
 type SiteUser = { id: string; displayName: string };
@@ -62,7 +63,11 @@ const errorLabels: Record<string, string> = {
   IMPORT_COMMIT_FAILED: "未能完成导入。预览和临时图片仍保留，可以重试。",
   COMMIT_REQUEST_FAILED: "未能完成导入。预览仍保存在本地，可以重试。",
   ANNOTATION_RESTORE_FAILED: "无法恢复这段批注原文。预览仍保留，请重新选择 DOCX。",
+  PREVIEW_SAVE_FAILED: "预览未能保存到当前浏览器，请重试。",
+  PREVIEW_EXPIRED: "这份预览已经超过 24 小时，请重新选择原文件。",
 };
+const unknownErrorLabel =
+  "暂时无法处理这份 DOCX。请重试；若仍失败，请确认文件可在 Word 中正常打开后重新选择。";
 
 export function DocxImportWorkspace({ users }: { users: SiteUser[] }) {
   const router = useRouter();
@@ -139,6 +144,11 @@ export function DocxImportWorkspace({ users }: { users: SiteUser[] }) {
     () => (preview ? validateEditedImportPreview(preview, validationNow, validUserIds) : null),
     [preview, validationNow, validUserIds],
   );
+  const discardTarget = discardBatchId
+    ? preview?.importBatchId === discardBatchId
+      ? preview
+      : recoverable.find((record) => record.importBatchId === discardBatchId)
+    : null;
 
   async function beginImport(file: File) {
     const clientError = validateSourceFile(file);
@@ -201,6 +211,11 @@ export function DocxImportWorkspace({ users }: { users: SiteUser[] }) {
           : typeof caught === "object" && caught && "code" in caught
             ? String(caught.code)
             : "PARSE_FAILED";
+      if (code === "PARSE_ABORTED") {
+        setError(null);
+        setPhase("selecting");
+        return;
+      }
       setError({ code, message: caught instanceof Error ? caught.message : "DOCX 解析失败" });
       setPhase("selecting");
     } finally {
@@ -336,7 +351,12 @@ export function DocxImportWorkspace({ users }: { users: SiteUser[] }) {
                   <article key={record.importBatchId}>
                     <div>
                       <strong>{record.title ?? record.ir.suggestedTitle}</strong>
-                      <span>{record.ir.source.filename}</span>
+                      <span>
+                        {record.ir.source.filename} · 创建于{" "}
+                        <time dateTime={record.createdAt}>
+                          {formatDateTime(new Date(record.createdAt))}
+                        </time>
+                      </span>
                     </div>
                     <div>
                       <button
@@ -395,7 +415,7 @@ export function DocxImportWorkspace({ users }: { users: SiteUser[] }) {
             <div className="docx-import-error" role="alert">
               <div>
                 <strong>未能准备预览</strong>
-                <p>{errorLabels[error.code] ?? error.message}</p>
+                <p>{errorLabels[error.code] ?? unknownErrorLabel}</p>
                 {error.incidentId && (
                   <span className="incident-reference">
                     错误编号：<code>{error.incidentId}</code>
@@ -490,7 +510,7 @@ export function DocxImportWorkspace({ users }: { users: SiteUser[] }) {
             <div className="docx-import-error" role="alert">
               <div>
                 <strong>本地预览状态</strong>
-                <p>{errorLabels[error.code] ?? error.message}</p>
+                <p>{errorLabels[error.code] ?? unknownErrorLabel}</p>
                 {error.incidentId && (
                   <span className="incident-reference">
                     错误编号：<code>{error.incidentId}</code>
@@ -565,7 +585,11 @@ export function DocxImportWorkspace({ users }: { users: SiteUser[] }) {
       <ModalDialog
         open={Boolean(discardBatchId)}
         title="放弃这份 DOCX 预览？"
-        description="这会删除当前浏览器里保存的预览；已经上传的临时图片会由站点自动回收。"
+        description={
+          discardTarget
+            ? `将放弃“${discardTarget.title ?? discardTarget.ir.suggestedTitle}”（${discardTarget.ir.source.filename}，创建于 ${formatDateTime(new Date(discardTarget.createdAt))}）。当前浏览器中的预览会被删除；已上传的临时图片会由站点自动回收。`
+            : "当前浏览器中的预览会被删除；已上传的临时图片会由站点自动回收。"
+        }
         onClose={() => setDiscardBatchId(null)}
         alert
       >

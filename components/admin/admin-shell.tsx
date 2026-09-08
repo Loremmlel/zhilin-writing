@@ -11,6 +11,15 @@ const contentLinks: Array<{ key: AdminContentType; label: string }> = [
   { key: "annotations", label: "批注" },
   { key: "annotation-replies", label: "批注回复" },
 ];
+const navLabels: Record<AdminNavKey, string> = {
+  overview: "总览",
+  posts: "帖子",
+  replies: "回复",
+  annotations: "批注",
+  "annotation-replies": "批注回复",
+  members: "成员与白名单",
+  audit: "操作日志",
+};
 
 function Navigation({ active }: { active: AdminNavKey }) {
   return (
@@ -60,7 +69,7 @@ export function AdminShell({ active, children }: { active: AdminNavKey; children
         <Navigation active={active} />
       </aside>
       <details className="admin-mobile-navigation">
-        <summary>管理导航</summary>
+        <summary>管理导航 · {navLabels[active]}</summary>
         <Navigation active={active} />
       </details>
       <div className="admin-shell-main">{children}</div>

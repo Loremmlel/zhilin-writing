@@ -29,10 +29,18 @@ export default async function NotificationsPage({
       />
       <div className="notification-inner">
         <nav className="list-tabs" aria-label="通知筛选">
-          <Link href="/notifications" className={!unreadOnly ? "is-active" : ""}>
+          <Link
+            href="/notifications"
+            className={!unreadOnly ? "is-active" : ""}
+            aria-current={!unreadOnly ? "page" : undefined}
+          >
             全部
           </Link>
-          <Link href="/notifications?tab=unread" className={unreadOnly ? "is-active" : ""}>
+          <Link
+            href="/notifications?tab=unread"
+            className={unreadOnly ? "is-active" : ""}
+            aria-current={unreadOnly ? "page" : undefined}
+          >
             未读
           </Link>
         </nav>

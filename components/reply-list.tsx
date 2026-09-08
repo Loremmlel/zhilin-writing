@@ -74,24 +74,24 @@ function ReplyItem({
           <p className="deleted-placeholder">{item.lifecycle.placeholder}</p>
         )}
         {item.lifecycle.contentVisible && (
-          <LazyReplyForm
-            action={replyActionFor(item.reply.id)}
-            initialSubmissionKey={crypto.randomUUID()}
-            label={`回复 ${item.author.displayName}`}
-            openLabel="回复"
-            compact
-          />
-        )}
-        {item.lifecycle.contentVisible && item.reply.authorId === currentUserId && (
-          <div className="delete-reply-form">
-            <DeleteContentControl
-              action={deleteActionFor(item.reply.id)}
-              label="删除这条回复"
-              title="删除这条回复？"
-              description={deleteReplyConfirmation(
-                item.lifecycle.visibleOtherAuthorDependentCount > 0,
-              )}
+          <div className="reply-action-row">
+            <LazyReplyForm
+              action={replyActionFor(item.reply.id)}
+              initialSubmissionKey={crypto.randomUUID()}
+              label={`回复 ${item.author.displayName}`}
+              openLabel="回复"
+              compact
             />
+            {item.reply.authorId === currentUserId && (
+              <DeleteContentControl
+                action={deleteActionFor(item.reply.id)}
+                label="删除"
+                title="删除这条回复？"
+                description={deleteReplyConfirmation(
+                  item.lifecycle.visibleOtherAuthorDependentCount > 0,
+                )}
+              />
+            )}
           </div>
         )}
       </div>

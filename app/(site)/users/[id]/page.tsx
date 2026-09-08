@@ -39,10 +39,18 @@ export default async function UserPage({
         </div>
       </header>
       <nav className="list-tabs profile-tabs" aria-label="个人主页内容">
-        <Link href={`/users/${id}`} className={tab === "posts" ? "is-active" : ""}>
+        <Link
+          href={`/users/${id}`}
+          className={tab === "posts" ? "is-active" : ""}
+          aria-current={tab === "posts" ? "page" : undefined}
+        >
           帖子
         </Link>
-        <Link href={`/users/${id}?tab=activity`} className={tab === "activity" ? "is-active" : ""}>
+        <Link
+          href={`/users/${id}?tab=activity`}
+          className={tab === "activity" ? "is-active" : ""}
+          aria-current={tab === "activity" ? "page" : undefined}
+        >
           动态
         </Link>
       </nav>

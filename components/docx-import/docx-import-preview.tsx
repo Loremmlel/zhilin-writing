@@ -121,6 +121,14 @@ export function DocxImportPreview({
     : validation.errors.find(
         (item) => item.code === "TITLE_REQUIRED" || item.code === "TITLE_TOO_LONG",
       );
+  const panelErrors = validation.ok
+    ? []
+    : validation.errors.filter(
+        (item) =>
+          item.code !== "TITLE_REQUIRED" &&
+          item.code !== "TITLE_TOO_LONG" &&
+          item.code !== "AUTHOR_MAPPING_INVALID",
+      );
   const threadsById = new Map(preview.ir.threads.map((thread) => [thread.annotationId, thread]));
 
   function locateAnnotation(annotationId: string) {
@@ -222,52 +230,60 @@ export function DocxImportPreview({
             aria-labelledby="docx-validation-heading"
           >
             <h2 id="docx-validation-heading">需要先修正</h2>
-            <p className="docx-import-validation-help">
-              批注必须继续对应 Word 中圈选的原文。你可以先定位检查，或只恢复受影响的原文范围。
-            </p>
-            <ul>
-              {validation.errors.map((error, index) => {
-                const thread = error.annotationId ? threadsById.get(error.annotationId) : undefined;
-                const originalText = thread
-                  ? getImportedThreadSelectedText(
-                      preview.ir.blocks,
-                      thread.blockId,
-                      thread.blockLocalStart,
-                      thread.blockLocalEnd,
-                      thread.endBlockId,
-                    )
-                  : "";
-                const canRestore = error.code === "ANNOTATION_TEXT_CHANGED" && thread;
-                return (
-                  <li key={`${error.code}:${error.annotationId ?? ""}:${index}`}>
-                    <span>{validationLabels[error.code] ?? "预览内容不符合导入要求。"}</span>
-                    {canRestore && (
-                      <div className="docx-import-validation-detail">
-                        <span>
-                          {thread.sourceAuthorName} 的批注原文：<q>{excerpt(originalText, 80)}</q>
-                        </span>
-                        <div>
-                          <button
-                            type="button"
-                            className="text-button"
-                            onClick={() => locateAnnotation(thread.annotationId)}
-                          >
-                            定位到正文
-                          </button>
-                          <button
-                            type="button"
-                            className="button button--ghost button--small"
-                            onClick={() => onRestoreAnnotationText(thread.annotationId)}
-                          >
-                            恢复这段原文
-                          </button>
+            {panelErrors.length > 0 ? (
+              <p className="docx-import-validation-help">
+                批注必须继续对应 Word 中圈选的原文。你可以先定位检查，或只恢复受影响的原文范围。
+              </p>
+            ) : (
+              <p className="docx-import-validation-help">请检查页面中标出的标题或作者关联。</p>
+            )}
+            {panelErrors.length > 0 && (
+              <ul>
+                {panelErrors.map((error, index) => {
+                  const thread = error.annotationId
+                    ? threadsById.get(error.annotationId)
+                    : undefined;
+                  const originalText = thread
+                    ? getImportedThreadSelectedText(
+                        preview.ir.blocks,
+                        thread.blockId,
+                        thread.blockLocalStart,
+                        thread.blockLocalEnd,
+                        thread.endBlockId,
+                      )
+                    : "";
+                  const canRestore = error.code === "ANNOTATION_TEXT_CHANGED" && thread;
+                  return (
+                    <li key={`${error.code}:${error.annotationId ?? ""}:${index}`}>
+                      <span>{validationLabels[error.code] ?? "预览内容不符合导入要求。"}</span>
+                      {canRestore && (
+                        <div className="docx-import-validation-detail">
+                          <span>
+                            {thread.sourceAuthorName} 的批注原文：<q>{excerpt(originalText, 80)}</q>
+                          </span>
+                          <div>
+                            <button
+                              type="button"
+                              className="text-button"
+                              onClick={() => locateAnnotation(thread.annotationId)}
+                            >
+                              定位到正文
+                            </button>
+                            <button
+                              type="button"
+                              className="button button--ghost button--small"
+                              onClick={() => onRestoreAnnotationText(thread.annotationId)}
+                            >
+                              恢复这段原文
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
           </section>
         )}
 
@@ -291,6 +307,7 @@ export function DocxImportPreview({
                     thread.blockLocalEnd,
                     thread.endBlockId,
                   )}
+                  onLocate={() => locateAnnotation(thread.annotationId)}
                 />
               ))}
             </div>
@@ -353,25 +370,44 @@ export function DocxImportPreview({
 function ImportedThreadPreview({
   thread,
   selectedText,
+  onLocate,
 }: {
   thread: ImportedThread;
   selectedText: string;
+  onLocate: () => void;
 }) {
-  return (
-    <article className="docx-import-thread">
+  const bodyText = markdownToPlainText(thread.bodyMarkdown);
+  const content = (
+    <>
       <header>
-        <strong>{thread.sourceAuthorName}</strong>
-        <span>Word 导入{thread.sourceResolved ? " · Word 中已解决" : ""}</span>
+        <div>
+          <strong>{thread.sourceAuthorName}</strong>
+          <span>Word 导入{thread.sourceResolved ? " · Word 中已解决" : ""}</span>
+        </div>
+        <button type="button" className="text-button" onClick={onLocate}>
+          定位正文
+        </button>
       </header>
       <blockquote>{selectedText}</blockquote>
-      <p>{markdownToPlainText(thread.bodyMarkdown)}</p>
+      <p>{bodyText}</p>
       {thread.replies.map((reply) => (
         <div className="docx-import-thread-reply" key={reply.replyId}>
           <strong>{reply.sourceAuthorName}</strong>
           <span>{markdownToPlainText(reply.bodyMarkdown)}</span>
         </div>
       ))}
-    </article>
+    </>
+  );
+  return (
+    <details className="docx-import-thread">
+      <summary>
+        <strong>{thread.sourceAuthorName}</strong>
+        <span>
+          {excerpt(bodyText, 40)} · {thread.replies.length} 条回复
+        </span>
+      </summary>
+      <div className="docx-import-thread-content">{content}</div>
+    </details>
   );
 }
 

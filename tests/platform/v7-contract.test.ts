@@ -101,8 +101,7 @@ test("V7 polish keeps lifecycle states out of 404 and provides local recovery an
   assert.match(styles, /:focus-visible[^}]*outline/);
   assert.match(styles, /skeleton-reveal 0s 0\.16s both/);
   assert.match(annotationThread, /还没有回复。/);
-  assert.match(admin, /没有被作者删除的/);
-  assert.match(admin, /没有被管理员隐藏的/);
+  assert.match(admin, /当前筛选下没有符合条件的/);
   assert.match(profile, />\s*帖子\s*<[\s\S]*>\s*动态\s*</);
   for (const region of [notifications, profile, post, admin, revision]) {
     assert.match(region, /RegionErrorBoundary/);

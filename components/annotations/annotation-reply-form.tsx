@@ -14,6 +14,7 @@ export function AnnotationReplyForm({
   initialSubmissionKey,
   label = "回复批注",
   focusRequest = 0,
+  onCancel,
   onSuccess,
 }: {
   action: (
@@ -23,6 +24,7 @@ export function AnnotationReplyForm({
   initialSubmissionKey: string;
   label?: string;
   focusRequest?: number;
+  onCancel?: () => void;
   onSuccess?: () => void;
 }) {
   const router = useRouter();
@@ -75,7 +77,14 @@ export function AnnotationReplyForm({
       />
       <ActionErrorMessage error={state.error} incidentId={state.incidentId} />
       <div className="annotation-reply-form-actions">
-        <span className="muted">发布后不可编辑</span>
+        <div className="annotation-reply-form-secondary">
+          {onCancel && (
+            <button type="button" className="text-button" onClick={onCancel} disabled={pending}>
+              取消回复
+            </button>
+          )}
+          <span className="muted">发布后不可编辑</span>
+        </div>
         <button
           className="button button--primary button--small"
           disabled={pending || accessBlocked || !markdown.trim()}

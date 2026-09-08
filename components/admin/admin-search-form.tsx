@@ -42,20 +42,18 @@ export function AdminSearchForm({
             maxLength={100}
             placeholder="内容、帖子或作者"
           />
-          {query && (
-            <button
-              className="admin-search-clear"
-              type="button"
-              aria-label="清除搜索"
-              onClick={() => {
-                if (inputRef.current) inputRef.current.value = "";
-                inputRef.current?.focus();
-                router.push(searchClearHref);
-              }}
-            >
-              ×
-            </button>
-          )}
+          <button
+            className="admin-search-clear"
+            type="button"
+            aria-label="清除搜索"
+            onClick={() => {
+              if (inputRef.current) inputRef.current.value = "";
+              inputRef.current?.focus();
+              router.push(searchClearHref);
+            }}
+          >
+            ×
+          </button>
         </span>
       </label>
       <label className="admin-filter-field admin-date-field">

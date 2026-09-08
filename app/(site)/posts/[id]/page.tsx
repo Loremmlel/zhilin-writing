@@ -230,7 +230,7 @@ async function PostBodyRegion({
           <h2>附件</h2>
           {item.attachments.map((asset) => (
             <a href={`/api/assets/${asset.id}`} key={asset.id} className="attachment-link">
-              <span>{asset.filename}</span>
+              <span className="attachment-name">{asset.filename}</span>
               <small>{Math.ceil(asset.byteSize / 1024)} KB</small>
             </a>
           ))}

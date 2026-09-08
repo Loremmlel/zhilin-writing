@@ -10,12 +10,17 @@ test("approved route segments render shared geometry-matched loading states", as
   const routes = [
     ["../../app/(site)/loading.tsx", "PostListSkeleton"],
     ["../../app/(site)/posts/[id]/loading.tsx", "PostDetailSkeleton"],
+    ["../../app/(site)/posts/new/loading.tsx", "EditorPageSkeleton"],
+    ["../../app/(site)/posts/[id]/edit/loading.tsx", "EditorPageSkeleton"],
+    ["../../app/(site)/posts/import/loading.tsx", "FormPageSkeleton"],
+    ["../../app/(site)/settings/profile/loading.tsx", "FormPageSkeleton"],
     ["../../app/(site)/users/[id]/loading.tsx", "ProfileSkeleton"],
     ["../../app/(site)/notifications/loading.tsx", "NotificationsSkeleton"],
     ["../../app/(site)/search/loading.tsx", "SearchSkeleton"],
     ["../../app/(site)/admin/loading.tsx", "AdminSkeleton"],
     ["../../app/(site)/admin/revisions/[postId]/loading.tsx", "RevisionSkeleton"],
     ["../../app/(site)/tags/[name]/loading.tsx", "TagSkeleton"],
+    ["../../app/(site)/tags/loading.tsx", "TagsIndexSkeleton"],
   ] as const;
 
   for (const [path, component] of routes) {
