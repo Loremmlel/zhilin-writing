@@ -1457,6 +1457,7 @@ input[type="file"] {
   border-radius: 10px;
 }
 .annotation-range {
+  color: inherit;
   padding: 0.05em 0.08em;
   margin-inline: -0.03em;
   border-bottom: 1px dotted rgba(125, 57, 52, 0.5);
@@ -4377,4 +4378,78 @@ input[type="file"] {
   #route-progress .route-progress__bar {
     transition: none !important;
   }
+}
+
+/* Shared by post writing, post editing and DOCX Preview. */
+.text-formatting-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--line);
+  font-family: Inter, system-ui, "Noto Sans SC", "Microsoft YaHei", sans-serif;
+  font-size: 14px;
+  background: var(--paper-strong);
+}
+:is(.text-formatting-toolbar, .text-formatting-custom) label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+:is(.text-formatting-toolbar, .text-formatting-custom) select,
+:is(.text-formatting-toolbar, .text-formatting-custom) input {
+  max-width: 100%;
+  min-height: 36px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+  color: var(--ink);
+  padding: 4px 8px;
+}
+:is(.text-formatting-toolbar, .text-formatting-custom) select:focus-visible,
+:is(.text-formatting-toolbar, .text-formatting-custom) input:focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: 2px;
+}
+.text-formatting-toolbar button[aria-pressed="true"] {
+  background: var(--green-soft);
+}
+.text-formatting-custom {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  flex-basis: 100%;
+}
+.text-formatting-custom label {
+  flex-wrap: wrap;
+}
+.text-formatting-custom input {
+  width: 110px;
+}
+.text-formatting-custom input[type="color"] {
+  width: 48px;
+}
+.text-formatting-hint {
+  color: var(--muted);
+}
+.formatting-saved-selection {
+  background: var(--green-soft);
+  outline: 1px dotted var(--green);
+}
+.document-text-style {
+  overflow-wrap: anywhere;
+}
+@media (forced-colors: active) {
+  .document-text-style {
+    color: CanvasText !important;
+  }
+  .formatting-saved-selection {
+    outline-color: Highlight;
+  }
+}
+
+.document-text-style a {
+  color: inherit;
 }

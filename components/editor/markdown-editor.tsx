@@ -13,6 +13,10 @@ import { editorSessionKey } from "@/lib/editor/lifecycle";
 import { createAnnotationGuardPlugin } from "@/lib/editor/annotation-guard-plugin";
 import { annotationPlugin } from "@/lib/editor/annotation-mark";
 import type { PendingAnnotationImpact } from "@/lib/editor/annotation-session";
+import type { EditorView } from "@milkdown/kit/prose/view";
+import { configureTextFormatting, textFormattingPlugin } from "@/lib/editor/text-formatting";
+import { createFormattingSelectionPlugin } from "@/lib/editor/text-formatting-commands";
+import { TextFormattingToolbar } from "./text-formatting-toolbar";
 import { AnnotationGuardDialog, type AnnotationGuardMetadata } from "./annotation-guard-dialog";
 
 export type UploadedAsset = {
@@ -74,6 +78,8 @@ function MarkdownEditorSession({
   onUploadStateChange,
   disabled = false,
 }: MarkdownEditorProps) {
+  const [formattingView, setFormattingView] = useState<EditorView | null>(null);
+  const [, refreshFormatting] = useState(0);
   const rootRef = useRef<HTMLDivElement>(null);
   const initialMarkdownRef = useRef(initialMarkdown);
   const onChangeRef = useRef(onMarkdownChange);
@@ -222,6 +228,7 @@ function MarkdownEditorSession({
       },
     });
     crepe.editor.config((ctx) => {
+      if (!compact) configureTextFormatting(ctx);
       ctx.update(uploadConfig.key, (previous) => ({
         ...previous,
         uploader: async (files, schema, uploadContext) => {
@@ -257,6 +264,14 @@ function MarkdownEditorSession({
       }
     };
     crepe.editor.use(annotationPlugin);
+    if (!compact)
+      crepe.editor.use(textFormattingPlugin).use(
+        createFormattingSelectionPlugin(() => {
+          queueMicrotask(() => {
+            if (!disposed) refreshFormatting((value) => value + 1);
+          });
+        }),
+      );
     const guardOptions = annotationEditingRef.current;
     if (guardOptions) {
       const guard = createAnnotationGuardPlugin({
@@ -299,6 +314,7 @@ function MarkdownEditorSession({
           return;
         }
         onEditorRootChangeRef.current?.(rootRef.current);
+        if (!compact) setFormattingView(crepe.editor.ctx.get(editorViewCtx));
         setInitializationState("ready");
       })
       .catch(() => {
@@ -321,6 +337,16 @@ function MarkdownEditorSession({
   return (
     <>
       <div className={`markdown-editor-host${compact ? " markdown-editor-host--compact" : ""}`}>
+        {!compact && formattingView && (
+          <TextFormattingToolbar
+            view={formattingView}
+            disabled={
+              disabled ||
+              pendingImpact !== null ||
+              imageUploadTasks.some((task) => task.status === "uploading")
+            }
+          />
+        )}
         <div
           ref={rootRef}
           className={compact ? "markdown-editor markdown-editor--compact" : "markdown-editor"}
