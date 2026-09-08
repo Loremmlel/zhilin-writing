@@ -86,6 +86,12 @@ const auditLabels: Record<string, string> = {
   ANNOTATION_REPLY_PURGED: "永久删除批注回复",
 };
 
+function adminAuditDotClass(actionType: string) {
+  const tone =
+    actionType.endsWith("_HIDDEN") || actionType.endsWith("_PURGED") ? "danger" : "normal";
+  return `admin-audit-dot admin-audit-dot--${tone}`;
+}
+
 function pageCopy(view: AdminView) {
   if (view.section === "members") {
     return { title: "成员与白名单", description: "管理社区访问资格，并核对成员的注册状态。" };
@@ -190,29 +196,48 @@ async function AdminOverview({ view }: { view: AdminView }) {
       </div>
       <div className="admin-metric-grid">
         {cards.map((card) => (
-          <Link
-            className="admin-metric-card"
-            href={adminUrl(view, {
-              section: "content",
-              type: card.type,
-              status: "normal",
-              page: 1,
-            })}
-            key={card.type}
-          >
-            <span className="admin-metric-mark" aria-hidden="true">
-              {card.mark}
-            </span>
-            <span className="admin-metric-copy">
-              <span>{card.label}</span>
-              <strong>{card.counts.normal}</strong>
-              <small>正常内容</small>
-            </span>
+          <article className="admin-metric-card" key={card.type}>
+            <Link
+              className="admin-metric-primary"
+              href={adminUrl(view, {
+                section: "content",
+                type: card.type,
+                status: "normal",
+                page: 1,
+              })}
+            >
+              <span className="admin-metric-mark" aria-hidden="true">
+                {card.mark}
+              </span>
+              <span className="admin-metric-copy">
+                <span>{card.label}</span>
+                <strong>{card.counts.normal}</strong>
+                <small>正常内容</small>
+              </span>
+            </Link>
             <span className="admin-metric-states">
-              <small>用户已删除 {card.counts.deleted}</small>
-              <small>管理员已隐藏 {card.counts.hidden}</small>
+              <Link
+                href={adminUrl(view, {
+                  section: "content",
+                  type: card.type,
+                  status: "deleted",
+                  page: 1,
+                })}
+              >
+                用户已删除 {card.counts.deleted}
+              </Link>
+              <Link
+                href={adminUrl(view, {
+                  section: "content",
+                  type: card.type,
+                  status: "hidden",
+                  page: 1,
+                })}
+              >
+                管理员已隐藏 {card.counts.hidden}
+              </Link>
             </span>
-          </Link>
+          </article>
         ))}
       </div>
       <div className="admin-overview-guidance">
@@ -309,19 +334,15 @@ function ContentFrame<T>({
           {children}
         </>
       ) : (
-        <p className="empty-copy">{adminEmptyCopy(view.type, view.status, view.q)}</p>
+        <p className="empty-copy">{adminEmptyCopy(view.type)}</p>
       )}
       <Pagination view={view} total={result.total} page={result.page} pageSize={result.pageSize} />
     </section>
   );
 }
 
-function adminEmptyCopy(type: AdminContentType, status: AdminContentStatus, query: string) {
-  if (query) return `没有找到包含“${query}”的${contentTypeLabels[type]}。`;
-  if (status === "all") return `当前日期范围内没有${contentTypeLabels[type]}。`;
-  if (status === "deleted") return `没有被作者删除的${contentTypeLabels[type]}。`;
-  if (status === "hidden") return `没有被管理员隐藏的${contentTypeLabels[type]}。`;
-  return `没有处于正常状态的${contentTypeLabels[type]}。`;
+function adminEmptyCopy(type: AdminContentType) {
+  return `当前筛选下没有符合条件的${contentTypeLabels[type]}。`;
 }
 
 function Pagination({
@@ -858,10 +879,7 @@ async function AdminAudit({ view }: { view: AdminView }) {
         <div className="admin-audit-list">
           {result.rows.map(({ audit, administrator }) => (
             <article key={audit.id}>
-              <span
-                className={`admin-audit-dot admin-audit-dot--${audit.actionType.endsWith("_HIDDEN") || audit.actionType.endsWith("_PURGED") ? "danger" : "normal"}`}
-                aria-hidden="true"
-              />
+              <span className={adminAuditDotClass(audit.actionType)} aria-hidden="true" />
               <div>
                 <strong>{auditLabels[audit.actionType] ?? audit.actionType}</strong>
                 <p>
@@ -954,7 +972,7 @@ async function RecentAuditPanel() {
         {audit.length ? (
           audit.map(({ audit: entry, administrator }) => (
             <article key={entry.id}>
-              <span className="admin-audit-dot" aria-hidden="true" />
+              <span className={adminAuditDotClass(entry.actionType)} aria-hidden="true" />
               <p>
                 <strong>{auditLabels[entry.actionType] ?? entry.actionType}</strong>
                 <small>

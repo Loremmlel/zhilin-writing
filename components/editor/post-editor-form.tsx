@@ -113,7 +113,8 @@ export function PostEditorForm({
   const [confirmChoice, setConfirmChoice] = useState<"online" | "overwrite" | null>(null);
   const [saveBlocked, setSaveBlocked] = useState(false);
   const [attachmentUploadTasks, setAttachmentUploadTasks] = useState<AttachmentUploadTask[]>([]);
-  const [imageUploadPending, setImageUploadPending] = useState(false);
+  const [imageUploadState, setImageUploadState] = useState<"idle" | "uploading" | "failed">("idle");
+  const [exitPending, setExitPending] = useState(false);
   const [confirmedAnnotationDeletionIds, setConfirmedAnnotationDeletionIds] = useState<string[]>(
     [],
   );
@@ -133,7 +134,11 @@ export function PostEditorForm({
     {},
   );
   const uploadPending =
-    attachmentUploadTasks.some((task) => task.status === "uploading") || imageUploadPending;
+    attachmentUploadTasks.some((task) => task.status === "uploading") ||
+    imageUploadState === "uploading";
+  const uploadFailed =
+    attachmentUploadTasks.some((task) => task.status === "failed") || imageUploadState === "failed";
+  const uploadBlocked = uploadPending || uploadFailed;
   const accessBlocked = isBlockingAccessError(state.code);
 
   useEffect(() => {
@@ -236,6 +241,34 @@ export function PostEditorForm({
     return { title, markdown, tags, attachmentIds, baseRevisionId };
   }
 
+  async function exitEditor() {
+    if (exitPending || pending || !hydrated) return;
+    if (!dirty) {
+      router.push(cancelHref);
+      return;
+    }
+    setExitPending(true);
+    setDraftStatus("saving");
+    try {
+      await saveDraft(userId, draftId, {
+        title,
+        markdown,
+        tags,
+        attachmentIds,
+        attachments,
+        baseRevisionId,
+        confirmedAnnotationDeletionIds,
+        creationSubmissionKey,
+        updatedAt: Date.now(),
+      });
+      setDraftStatus("saved");
+      router.push(cancelHref);
+    } catch {
+      setDraftStatus("failed");
+      setExitPending(false);
+    }
+  }
+
   async function uploadAttachment(file: File, taskId = crypto.randomUUID()) {
     const task: AttachmentUploadTask = { id: taskId, file, status: "uploading", percent: 0 };
     setAttachmentUploadTasks((current) => [...current.filter((item) => item.id !== taskId), task]);
@@ -326,7 +359,7 @@ export function PostEditorForm({
           : undefined
       }
       onEditorRootChange={annotationThreads.length > 0 ? setEditorRoot : undefined}
-      onUploadStateChange={setImageUploadPending}
+      onUploadStateChange={setImageUploadState}
       disabled={pending || accessBlocked}
       onMarkdownChange={(value) => {
         setMarkdown(value);
@@ -347,6 +380,9 @@ export function PostEditorForm({
         className="editor-form"
         noValidate
         aria-busy={pending || uploadPending}
+        onSubmit={(event) => {
+          if (uploadBlocked) event.preventDefault();
+        }}
       >
         <input type="hidden" name="markdown" value={markdown} />
         <input type="hidden" name="attachmentIds" value={JSON.stringify(attachmentIds)} />
@@ -361,12 +397,14 @@ export function PostEditorForm({
         <div className="editor-action-bar">
           <div>
             <h1>{draftId === "new" ? "写帖子" : "编辑帖子"}</h1>
-            <span className={`draft-status draft-status--${draftStatus}`} role="status">
-              {draftStatus === "loading" && "检查本地修改…"}
-              {draftStatus === "saving" && "保存中…"}
-              {draftStatus === "saved" && "本地修改已保存"}
-              {draftStatus === "failed" && "本地保存失败"}
-            </span>
+            {(draftStatus === "loading" || dirty || draftStatus === "failed") && (
+              <span className={`draft-status draft-status--${draftStatus}`} role="status">
+                {draftStatus === "loading" && "检查本地修改…"}
+                {draftStatus === "saving" && "正在保存到本地…"}
+                {draftStatus === "saved" && "本地修改已保存"}
+                {draftStatus === "failed" && "本地保存失败"}
+              </span>
+            )}
           </div>
           <div className="form-actions">
             {draftId === "new" && (
@@ -374,18 +412,37 @@ export function PostEditorForm({
                 导入 DOCX
               </Link>
             )}
-            <Link href={cancelHref} className="button button--ghost">
-              取消
-            </Link>
+            <button
+              type="button"
+              className="button button--ghost"
+              onClick={() => void exitEditor()}
+              disabled={pending || exitPending || !hydrated}
+              aria-busy={exitPending}
+            >
+              {exitPending ? "正在保存到本地…" : "退出编辑"}
+            </button>
             <PendingSubmitButton
               className="button button--primary"
-              pendingLabel="保存中…"
-              reserveLabels={["等待上传完成", "请先处理冲突"]}
-              disabled={pending || accessBlocked || saveBlocked || !hydrated || uploadPending}
+              pendingLabel={draftId === "new" ? "发布中…" : "保存中…"}
+              reserveLabels={["等待上传完成", "请处理上传失败", "请先处理冲突"]}
+              disabled={pending || accessBlocked || saveBlocked || !hydrated || uploadBlocked}
             >
-              {uploadPending ? "等待上传完成" : saveBlocked ? "请先处理冲突" : submitLabel}
+              {uploadPending
+                ? "等待上传完成"
+                : uploadFailed
+                  ? "请处理上传失败"
+                  : saveBlocked
+                    ? "请先处理冲突"
+                    : submitLabel}
             </PendingSubmitButton>
           </div>
+          {state.error && !state.conflict && (
+            <ActionErrorMessage
+              error={state.error}
+              incidentId={state.incidentId}
+              className="form-error editor-action-error"
+            />
+          )}
         </div>
         {recoverableDraft && (
           <section className="draft-recovery" aria-labelledby="draft-recovery-title">
@@ -449,7 +506,6 @@ export function PostEditorForm({
               }}
               maxLength={120}
               placeholder="给这篇文字起一个标题"
-              aria-invalid={Boolean(state.error && !conflict)}
               disabled={pending || accessBlocked}
             />
             <label className="editor-tags">
@@ -489,7 +545,9 @@ export function PostEditorForm({
                     event.currentTarget.value = "";
                   }}
                 />
-                <span className="muted">可选择多个文件；成功项会立即保留。</span>
+                <span className="muted">
+                  可多选。单个文件不超过 20 MB；图片限 PNG、JPEG、GIF 或 WebP，且不超过 10 MB。
+                </span>
               </label>
             </div>
             {attachmentUploadTasks.length > 0 && (
@@ -557,7 +615,7 @@ export function PostEditorForm({
                             setEditorResetRevision((current) => current + 1);
                             setDirty(true);
                           }}
-                          disabled={pending}
+                          disabled={pending || uploadBlocked}
                         >
                           插入正文
                         </button>
@@ -576,9 +634,6 @@ export function PostEditorForm({
                     </div>
                   ))}
               </div>
-            )}
-            {state.error && !state.conflict && (
-              <ActionErrorMessage error={state.error} incidentId={state.incidentId} />
             )}
           </div>
         </AnnotatedEditorLayout>

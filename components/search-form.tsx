@@ -21,6 +21,7 @@ export function SearchForm({
   const input = useRef<HTMLInputElement>(null);
   const composing = useRef(false);
   const router = useRouter();
+  const pathname = usePathname();
   return (
     <form
       action="/search"
@@ -34,39 +35,41 @@ export function SearchForm({
       <label className="sr-only" htmlFor={id}>
         搜索帖子标题或正文
       </label>
-      <input
-        ref={input}
-        id={id}
-        className={compact ? undefined : "text-input"}
-        name="q"
-        value={value}
-        onChange={(event) => setValue(event.target.value)}
-        placeholder="搜索帖子标题或正文"
-        onCompositionStart={() => {
-          composing.current = true;
-        }}
-        onCompositionEnd={() => {
-          composing.current = false;
-        }}
-        onKeyDown={(event) => {
-          if (event.key === "Enter" && (event.nativeEvent.isComposing || event.keyCode === 229))
-            event.preventDefault();
-        }}
-      />
-      {value && (
-        <button
-          type="button"
-          className="search-clear"
-          aria-label="清除搜索"
-          onClick={() => {
-            setValue("");
-            input.current?.focus();
-            router.push("/search");
+      <span className="search-input-control">
+        <input
+          ref={input}
+          id={id}
+          className={compact ? undefined : "text-input"}
+          name="q"
+          value={value}
+          onChange={(event) => setValue(event.target.value)}
+          placeholder="搜索帖子标题或正文"
+          onCompositionStart={() => {
+            composing.current = true;
           }}
-        >
-          ×
-        </button>
-      )}
+          onCompositionEnd={() => {
+            composing.current = false;
+          }}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" && (event.nativeEvent.isComposing || event.keyCode === 229))
+              event.preventDefault();
+          }}
+        />
+        {value && (
+          <button
+            type="button"
+            className="search-clear"
+            aria-label="清除搜索"
+            onClick={() => {
+              setValue("");
+              input.current?.focus();
+              if (pathname === "/search") router.replace("/search");
+            }}
+          >
+            ×
+          </button>
+        )}
+      </span>
       <button
         className={compact ? "search-submit" : "button button--primary"}
         type="submit"

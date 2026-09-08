@@ -68,6 +68,9 @@ export default async function OpenNotificationPage({
           <span className="eyebrow">历史通知</span>
           <h1>无法打开通知目标</h1>
           <p>{copy}</p>
+          <Link className="button button--ghost" href="/notifications">
+            返回通知
+          </Link>
         </div>
       </div>
     );

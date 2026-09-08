@@ -22,7 +22,7 @@ test("post, annotation, reply, delete, and moderation mutations expose their exi
   const contracts = [
     [
       "../../components/editor/post-editor-form.tsx",
-      /pendingLabel="保存中…"/,
+      /pendingLabel=\{draftId === "new" \? "发布中…" : "保存中…"\}/,
       /PendingSubmitButton/,
     ],
     [
@@ -161,10 +161,12 @@ test("image and attachment uploads report real request-body byte progress", asyn
   assert.match(postForm, /attachmentUploadTasks/);
   assert.match(postForm, /附件上传状态/);
   assert.match(postForm, /type="file"\s+multiple/);
-  assert.match(postForm, /imageUploadPending/);
+  assert.match(postForm, /imageUploadState/);
+  assert.match(postForm, /uploadFailed/);
+  assert.match(postForm, /setEditorResetRevision\([\s\S]*?disabled=\{pending \|\| uploadBlocked\}/);
   assert.match(
     postForm,
-    /disabled=\{\s*pending\s*\|\|\s*accessBlocked\s*\|\|\s*saveBlocked\s*\|\|\s*!hydrated\s*\|\|\s*uploadPending\s*\}/,
+    /disabled=\{\s*pending\s*\|\|\s*accessBlocked\s*\|\|\s*saveBlocked\s*\|\|\s*!hydrated\s*\|\|\s*uploadBlocked\s*\}/,
   );
 });
 

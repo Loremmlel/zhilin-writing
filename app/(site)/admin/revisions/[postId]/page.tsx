@@ -190,7 +190,7 @@ async function RevisionPreview({
         ) : (
           selectedAttachments.map((asset) => (
             <a className="attachment-link" href={`/api/assets/${asset.id}`} key={asset.id}>
-              <span>{asset.filename}</span>
+              <span className="attachment-name">{asset.filename}</span>
               <small>{Math.ceil(asset.byteSize / 1024)} KB</small>
             </a>
           ))

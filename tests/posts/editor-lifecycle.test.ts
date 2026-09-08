@@ -58,3 +58,25 @@ test("editor initialization keeps a visible loading and retry state", async () =
   assert.match(source, /\.create\(\)[\s\S]*?\.catch\(/);
   assert.match(source, /正文编辑器加载失败，帖子内容没有丢失。/);
 });
+
+test("exiting an edited post saves the current local draft before navigation", async () => {
+  const source = await readFile(
+    new URL("../../components/editor/post-editor-form.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(source, /async function exitEditor\(\)/);
+  assert.match(source, /await saveDraft\([\s\S]*?router\.push\(cancelHref\)/);
+  assert.match(source, /catch \{[\s\S]*?setDraftStatus\("failed"\)/);
+  assert.match(source, /exitPending \? "正在保存到本地…" : "退出编辑"/);
+});
+
+test("the actual Milkdown textbox receives the visible editor label", async () => {
+  const source = await readFile(
+    new URL("../../components/editor/markdown-editor.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(source, /view\.dom\.setAttribute\("aria-label", compact \? "回复正文" : "正文"\)/);
+  assert.match(source, /view\.dom\.setAttribute\("aria-multiline", "true"\)/);
+});

@@ -23,11 +23,13 @@ export function ReplyForm({
   initialSubmissionKey,
   label = "写回复",
   compact = false,
+  onCancel,
 }: {
   action: ReplyFormAction;
   initialSubmissionKey: string;
   label?: string;
   compact?: boolean;
+  onCancel?: () => void;
 }) {
   const router = useRouter();
   const [state, formAction, pending] = useActionState(action, {});
@@ -70,7 +72,14 @@ export function ReplyForm({
       />
       <ActionErrorMessage error={state.error} incidentId={state.incidentId} />
       <div className="reply-form-actions">
-        <span className="muted">回复发布后不能编辑</span>
+        <div className="reply-form-secondary">
+          {onCancel && (
+            <button type="button" className="text-button" onClick={onCancel} disabled={pending}>
+              取消回复
+            </button>
+          )}
+          <span className="muted">回复发布后不能编辑</span>
+        </div>
         <button
           className="button button--small button--primary"
           disabled={pending || accessBlocked || !markdown.trim() || !submissionKey}

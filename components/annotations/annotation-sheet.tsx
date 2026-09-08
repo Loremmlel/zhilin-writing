@@ -42,7 +42,7 @@ export function AnnotationSheet(props: AnnotationSheetProps) {
     <ModalDialog
       open={open}
       title="正文批注"
-      description="查看和回复这条正文批注。"
+      description={props.readOnly === true ? "查看这条正文批注。" : "查看和回复这条正文批注。"}
       onClose={onClose}
       surfaceClassName="annotation-sheet-surface"
       backdropClassName="annotation-sheet-backdrop"

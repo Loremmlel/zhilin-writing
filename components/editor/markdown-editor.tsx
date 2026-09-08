@@ -38,6 +38,8 @@ export type AnnotationEditingOptions = {
   onConfirmedAnnotationDeletionIdsChange: (ids: string[]) => void;
 };
 
+export type ImageUploadState = "idle" | "uploading" | "failed";
+
 export type MarkdownEditorProps = {
   initialMarkdown: string;
   onMarkdownChange: (markdown: string) => void;
@@ -47,7 +49,7 @@ export type MarkdownEditorProps = {
   resetRevision?: number;
   annotationEditing?: AnnotationEditingOptions;
   onEditorRootChange?: (root: HTMLElement | null) => void;
-  onUploadStateChange?: (uploading: boolean) => void;
+  onUploadStateChange?: (state: ImageUploadState) => void;
   disabled?: boolean;
 };
 
@@ -109,6 +111,13 @@ function MarkdownEditorSession({
   const [pendingImpact, setPendingImpact] = useState<PendingAnnotationImpact | null>(null);
   const [guardMessage, setGuardMessage] = useState<string | null>(null);
   const [imageUploadTasks, setImageUploadTasks] = useState<ImageUploadTask[]>([]);
+  const imageUploadState: ImageUploadState = imageUploadTasks.some(
+    (task) => task.status === "uploading",
+  )
+    ? "uploading"
+    : imageUploadTasks.some((task) => task.status === "failed")
+      ? "failed"
+      : "idle";
 
   useEffect(() => {
     formattingDisabledRef.current =
@@ -133,6 +142,9 @@ function MarkdownEditorSession({
     onUploadStateChangeRef.current = onUploadStateChange;
   }, [onUploadStateChange]);
   useEffect(() => {
+    onUploadStateChangeRef.current?.(imageUploadState);
+  }, [imageUploadState]);
+  useEffect(() => {
     disabledRef.current = disabled;
     if (rootRef.current) rootRef.current.inert = disabled || uploadAbortRef.current !== null;
   }, [disabled]);
@@ -148,7 +160,6 @@ function MarkdownEditorSession({
         controller = new AbortController();
         uploadAbortRef.current = controller;
         rootRef.current!.inert = true;
-        onUploadStateChangeRef.current?.(true);
       }
       if (!disposed)
         setImageUploadTasks((current) => [
@@ -200,7 +211,6 @@ function MarkdownEditorSession({
           if (uploadAbortRef.current === controller) uploadAbortRef.current = null;
           if (!disposed) {
             if (rootRef.current) rootRef.current.inert = disabledRef.current;
-            onUploadStateChangeRef.current?.(false);
           }
         }
       }
@@ -340,7 +350,10 @@ function MarkdownEditorSession({
           return;
         }
         onEditorRootChangeRef.current?.(rootRef.current);
-        if (!compact) setFormattingView(crepe.editor.ctx.get(editorViewCtx));
+        const view = crepe.editor.ctx.get(editorViewCtx);
+        view.dom.setAttribute("aria-label", compact ? "回复正文" : "正文");
+        view.dom.setAttribute("aria-multiline", "true");
+        if (!compact) setFormattingView(view);
         setInitializationState("ready");
       })
       .catch(() => {
@@ -352,7 +365,7 @@ function MarkdownEditorSession({
       uploadAbortRef.current = null;
       retryImageUploadRef.current = null;
       failedImageFiles.clear();
-      onUploadStateChangeRef.current?.(false);
+      onUploadStateChangeRef.current?.("idle");
       onEditorRootChangeRef.current?.(null);
       guardRef.current?.discard();
       guardRef.current = null;

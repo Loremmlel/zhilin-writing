@@ -36,15 +36,22 @@ export function LazyReplyForm({
     }
   };
 
-  if (module)
+  if (module) {
     return (
-      <module.ReplyForm
-        action={action}
-        initialSubmissionKey={initialSubmissionKey}
-        label={label}
-        compact={compact}
-      />
+      <div className={compact ? "inline-reply is-open" : "reply-form-launcher is-open"}>
+        <module.ReplyForm
+          action={action}
+          initialSubmissionKey={initialSubmissionKey}
+          label={label}
+          compact={compact}
+          onCancel={() => {
+            setModule(null);
+            setFailed(false);
+          }}
+        />
+      </div>
     );
+  }
   return (
     <div className={compact ? "inline-reply" : "reply-form-launcher"}>
       <button

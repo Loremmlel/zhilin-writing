@@ -268,30 +268,43 @@ function InteractiveAnnotationDiscussion({
     <>
       {composerItem && (
         <div className="annotation-shared-reply">
-          {canReply && (
-            <button
-              type="button"
-              className="annotation-reply-cta"
-              onClick={() => openComposer({ type: "root" })}
-            >
-              回复批注
-            </button>
-          )}
+          <div className="annotation-action-row">
+            {canReply && (
+              <button
+                type="button"
+                className="text-button annotation-reply-cta"
+                onClick={() => openComposer({ type: "root" })}
+              >
+                回复
+              </button>
+            )}
+            {capabilities.delete &&
+              annotation.lifecycle.contentVisible &&
+              annotation.permissions.canDelete && (
+                <DeleteContentControl
+                  action={deleteAction.bind(null, annotation.id)}
+                  label="删除"
+                  title="删除这条批注？"
+                  description={annotation.deleteDescription}
+                />
+              )}
+            {capabilities.remove &&
+              annotation.lifecycle.contentVisible &&
+              annotation.permissions.canRemoveImportedThread && (
+                <DeleteContentControl
+                  action={removeImportedAction.bind(null, annotation.id)}
+                  label="移除导入批注"
+                  title="移除这条 Word 导入批注？"
+                  description={annotation.deleteDescription}
+                  confirmLabel="确认移除"
+                  pendingLabel="正在移除…"
+                />
+              )}
+          </div>
           {canReply && composer.open && (
             <div className="annotation-shared-reply-panel">
               <div className="annotation-shared-reply-header">
                 <strong>{annotationReplyComposerLabel(composer)}</strong>
-                <button
-                  type="button"
-                  className="text-button"
-                  onClick={() =>
-                    setComposer((current) =>
-                      nextAnnotationReplyComposerState(current, { type: "close" }),
-                    )
-                  }
-                >
-                  收起
-                </button>
               </div>
               {composer.target && (
                 <button
@@ -307,6 +320,11 @@ function InteractiveAnnotationDiscussion({
                 initialSubmissionKey={annotation.replySubmissionKey}
                 label="发送回复"
                 focusRequest={focusRequest}
+                onCancel={() =>
+                  setComposer((current) =>
+                    nextAnnotationReplyComposerState(current, { type: "close" }),
+                  )
+                }
                 onSuccess={() =>
                   setComposer((current) =>
                     nextAnnotationReplyComposerState(current, { type: "success" }),
@@ -315,28 +333,6 @@ function InteractiveAnnotationDiscussion({
               />
             </div>
           )}
-          {capabilities.delete &&
-            annotation.lifecycle.contentVisible &&
-            annotation.permissions.canDelete && (
-              <DeleteContentControl
-                action={deleteAction.bind(null, annotation.id)}
-                label="删除批注"
-                title="删除这条批注？"
-                description={annotation.deleteDescription}
-              />
-            )}
-          {capabilities.remove &&
-            annotation.lifecycle.contentVisible &&
-            annotation.permissions.canRemoveImportedThread && (
-              <DeleteContentControl
-                action={removeImportedAction.bind(null, annotation.id)}
-                label="移除导入批注"
-                title="移除这条 Word 导入批注？"
-                description={annotation.deleteDescription}
-                confirmLabel="确认移除"
-                pendingLabel="正在移除…"
-              />
-            )}
         </div>
       )}
       {replyCountItem?.kind === "reply-count" && replyCountItem.count > 0 && (
@@ -359,31 +355,33 @@ function InteractiveAnnotationDiscussion({
                 highlighted={highlightReplyId === reply.id}
                 key={reply.id}
               >
-                {capabilities.delete &&
-                  reply.lifecycle.contentVisible &&
-                  reply.permissions.canDelete && (
-                    <DeleteContentControl
-                      action={deleteReplyAction.bind(null, reply.id)}
-                      label="删除回复"
-                      title="删除这条批注回复？"
-                      description={reply.deleteDescription}
-                    />
+                <div className="annotation-action-row">
+                  {canReply && reply.lifecycle.contentVisible && (
+                    <button
+                      type="button"
+                      className="text-button annotation-reply-action"
+                      onClick={() =>
+                        openComposer({
+                          type: "reply",
+                          replyId: reply.id,
+                          displayName: reply.author.displayName,
+                        })
+                      }
+                    >
+                      回复
+                    </button>
                   )}
-                {canReply && reply.lifecycle.contentVisible && (
-                  <button
-                    type="button"
-                    className="annotation-reply-action"
-                    onClick={() =>
-                      openComposer({
-                        type: "reply",
-                        replyId: reply.id,
-                        displayName: reply.author.displayName,
-                      })
-                    }
-                  >
-                    回复
-                  </button>
-                )}
+                  {capabilities.delete &&
+                    reply.lifecycle.contentVisible &&
+                    reply.permissions.canDelete && (
+                      <DeleteContentControl
+                        action={deleteReplyAction.bind(null, reply.id)}
+                        label="删除"
+                        title="删除这条批注回复？"
+                        description={reply.deleteDescription}
+                      />
+                    )}
+                </div>
               </AnnotationReplyContent>
             );
           })}

@@ -163,6 +163,43 @@ export function SearchSkeleton() {
   );
 }
 
+export function EditorPageSkeleton() {
+  return (
+    <LoadingShell className="page-column editor-page loading-shell" label="正在加载帖子编辑器">
+      <div className="skeleton-editor-actions">
+        <span className="skeleton-block" />
+        <span className="skeleton-block" />
+      </div>
+      <div className="editor-paper skeleton-editor-paper">
+        <span className="skeleton-block skeleton-block--hero-title" />
+        <Lines count={8} />
+      </div>
+    </LoadingShell>
+  );
+}
+
+export function FormPageSkeleton({ label }: { label: string }) {
+  return (
+    <LoadingShell className="page-column loading-shell" label={label}>
+      <PageHeading />
+      <div className="skeleton-form-paper">
+        <Lines count={5} />
+      </div>
+    </LoadingShell>
+  );
+}
+
+export function TagsIndexSkeleton() {
+  return (
+    <LoadingShell className="page-column loading-shell" label="正在加载标签">
+      <PageHeading />
+      <div className="skeleton-tag-grid">
+        <Cards />
+      </div>
+    </LoadingShell>
+  );
+}
+
 export function TagSkeleton() {
   return (
     <LoadingShell className="page-column loading-shell" label="正在加载标签页面">
