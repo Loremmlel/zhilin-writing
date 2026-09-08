@@ -11,6 +11,13 @@ type ServerRejectionContext = {
   operation: string;
   code: string;
   entityId?: string | null;
+  selection?: {
+    blockOrdinal: number;
+    endBlockOrdinal: number;
+    blockTextFrom: number;
+    blockTextTo: number;
+    selectedTextLength: number;
+  };
   stage?: string | null;
   userId?: string | null;
 };
@@ -21,6 +28,10 @@ const MAX_CAUSE_DEPTH = 2;
 function safeToken(value: string | null | undefined): string | undefined {
   if (!value) return undefined;
   return /^[a-z0-9._:-]{1,128}$/i.test(value) ? value : "REDACTED";
+}
+
+function safeOffset(value: number): number | undefined {
+  return Number.isSafeInteger(value) && value >= 0 && value <= 10_000_000 ? value : undefined;
 }
 
 export function serverErrorCode(error: unknown, fallback = "INTERNAL_ERROR"): string {
@@ -106,7 +117,17 @@ export function logServerError(context: ServerErrorContext): string {
   return incidentId;
 }
 
-export function logServerRejection(context: ServerRejectionContext): void {
+export function logServerRejection(context: ServerRejectionContext): string {
+  const incidentId = crypto.randomUUID();
+  const selection = context.selection
+    ? {
+        blockOrdinal: safeOffset(context.selection.blockOrdinal),
+        endBlockOrdinal: safeOffset(context.selection.endBlockOrdinal),
+        blockTextFrom: safeOffset(context.selection.blockTextFrom),
+        blockTextTo: safeOffset(context.selection.blockTextTo),
+        selectedTextLength: safeOffset(context.selection.selectedTextLength),
+      }
+    : undefined;
   console.warn(
     JSON.stringify({
       level: "warn",
@@ -116,6 +137,9 @@ export function logServerRejection(context: ServerRejectionContext): void {
       entityId: safeToken(context.entityId),
       userId: safeToken(context.userId),
       code: ERROR_CODE_PATTERN.test(context.code) ? context.code : "INVALID_REJECTION_CODE",
+      selection,
+      incidentId,
     }),
   );
+  return incidentId;
 }

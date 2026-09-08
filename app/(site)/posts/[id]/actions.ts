@@ -164,16 +164,18 @@ export async function createAnnotationAction(
   formData: FormData,
 ): Promise<AnnotationActionState> {
   let actorUserId: string | undefined;
+  let selection: AnnotationSelectionDescriptor | undefined;
   try {
     const access = await getApiMemberAccess();
     if (!access.ok) return actionAccessFailure(access.code);
     const { member } = access;
     actorUserId = member.id;
+    selection = parseAnnotationSelection(formData.get("selection"));
     const annotationId = await createAnnotation({
       postId,
       authorId: member.id,
       baseRevisionId: String(formData.get("baseRevisionId") ?? ""),
-      selection: parseAnnotationSelection(formData.get("selection")),
+      selection,
       contentMarkdown: String(formData.get("contentMarkdown") ?? ""),
       submissionKey: String(formData.get("submissionKey") ?? ""),
     });
@@ -184,14 +186,21 @@ export async function createAnnotationAction(
     return { annotationId };
   } catch (error) {
     if (error instanceof AnnotationSelectionError) {
-      logServerRejection({
+      const incidentId = logServerRejection({
         operation: "annotation.create",
         stage: "selection",
         entityId: postId,
         userId: actorUserId,
         code: error.code,
+        selection: selection && {
+          blockOrdinal: selection.blockOrdinal,
+          endBlockOrdinal: selection.endBlockOrdinal,
+          blockTextFrom: selection.blockTextFrom,
+          blockTextTo: selection.blockTextTo,
+          selectedTextLength: selection.selectedText.length,
+        },
       });
-      return { error: error.message };
+      return { error: error.message, incidentId };
     }
     const incidentId = logServerError({
       operation: "annotation.create",

@@ -76,11 +76,7 @@ function assertSupportedBlock(block: AnnotationBlock) {
       );
     }
     if (node.type === "textDirective" && !isTextStyleDirective(node)) {
-      if (node.name !== "annotation")
-        throw new AnnotationSelectionError(
-          "UNSUPPORTED_DIRECTIVE",
-          "所选文字所在段落包含暂不支持的格式",
-        );
+      if (node.name !== "annotation") return;
       if (annotationDepth > 0)
         throw new AnnotationSelectionError(
           "NESTED_ANNOTATION",
@@ -93,6 +89,20 @@ function assertSupportedBlock(block: AnnotationBlock) {
     node.children?.forEach((child) => visit(child, annotationDepth));
   };
   block.children.forEach((node) => visit(node, 0));
+}
+
+function unsupportedDirectiveRanges(nodes: InlineNode[]) {
+  const ranges: Array<{ from: number; to: number }> = [];
+  let cursor = 0;
+  const scan = (node: InlineNode) => {
+    const start = cursor;
+    if (node.type === "text" || node.type === "inlineCode") cursor += (node.value ?? "").length;
+    else node.children?.forEach(scan);
+    if (node.type === "textDirective" && node.name !== "annotation" && !isTextStyleDirective(node))
+      ranges.push({ from: start, to: cursor });
+  };
+  nodes.forEach(scan);
+  return ranges;
 }
 
 function annotationRanges(nodes: InlineNode[]) {
@@ -152,7 +162,6 @@ export function validateAnnotationSelection(
     .slice(descriptor.blockOrdinal, descriptor.endBlockOrdinal + 1)
     .map((entry, index, selected) => {
       const block = entry.node as AnnotationBlock;
-      assertSupportedBlock(block);
       const text = block.children.map(inlineText).join("");
       const from = index === 0 ? descriptor.blockTextFrom : 0;
       const to = index === selected.length - 1 ? descriptor.blockTextTo : text.length;
@@ -163,6 +172,7 @@ export function validateAnnotationSelection(
         to <= from ||
         to > text.length
       ) {
+        assertSupportedBlock(block);
         throw new AnnotationSelectionError("INVALID_RANGE", "批注选区已经失效");
       }
       const selectedText = text.slice(from, to);
@@ -176,6 +186,12 @@ export function validateAnnotationSelection(
   if (selectedText !== descriptor.selectedText)
     throw new AnnotationSelectionError("TEXT_MISMATCH", "正文已经变化，请重新选择文字");
   for (const { block, from, to } of blocks) {
+    assertSupportedBlock(block);
+    if (
+      unsupportedDirectiveRanges(block.children).some((range) => from < range.to && to > range.from)
+    ) {
+      throw new AnnotationSelectionError("UNSUPPORTED_DIRECTIVE", "所选文字包含暂不支持的格式");
+    }
     if (annotationRanges(block.children).some((range) => from < range.to && to > range.from)) {
       throw new AnnotationSelectionError("OVERLAP", "所选内容与已有批注重叠，无法再次添加批注");
     }

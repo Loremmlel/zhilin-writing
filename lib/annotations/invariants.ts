@@ -84,12 +84,15 @@ function inlineShape(node: MarkdownNode): unknown {
   return [node.type, attributes, node.children?.map(inlineShape) ?? []];
 }
 
-function hasUnsupportedInline(node: MarkdownNode): boolean {
+function isUnsupportedInlineNode(node: MarkdownNode): boolean {
   if (node.type === "text") return false;
-  if (isAnnotationDirective(node) || isTextStyleDirective(node))
-    return node.children?.some(hasUnsupportedInline) ?? false;
+  if (isAnnotationDirective(node) || isTextStyleDirective(node)) return false;
   if (node.type === "link" && isAttachmentAssetHref(node.url)) return true;
-  if (!allowedInlineContainers.has(node.type)) return true;
+  return !allowedInlineContainers.has(node.type);
+}
+
+function hasUnsupportedInline(node: MarkdownNode): boolean {
+  if (isUnsupportedInlineNode(node)) return true;
   return node.children?.some(hasUnsupportedInline) ?? false;
 }
 
@@ -128,13 +131,13 @@ function scan(markdown: string) {
   for (const entry of entries.filter((candidate) => candidate.supported)) {
     const block = entry.node as MarkdownNode;
     const bounds = visibleBounds(inlineText(block));
-    const validInlineBlock = !(block.children?.some(hasUnsupportedInline) ?? false);
     let cursor = 0;
 
     const visitInline = (
       node: MarkdownNode,
       annotationDepth: number,
       outerStyle: Record<string, unknown> = {},
+      unsupportedAncestor = false,
     ) => {
       const effectiveStyle = isTextStyleDirective(node)
         ? { ...outerStyle, ...readTextStyle(node.attributes) }
@@ -150,7 +153,9 @@ function scan(markdown: string) {
         else addIssue("UNKNOWN_ID", null);
         const start = cursor;
         const hasNested = containsAnnotationDirective(node);
-        node.children?.forEach((child) => visitInline(child, annotationDepth + 1, effectiveStyle));
+        node.children?.forEach((child) =>
+          visitInline(child, annotationDepth + 1, effectiveStyle, unsupportedAncestor),
+        );
         const end = cursor;
         if (annotationDepth > 0 || hasNested) {
           if (!nestedReported) addIssue("NESTED", id);
@@ -158,7 +163,7 @@ function scan(markdown: string) {
           return;
         }
         const text = inlineText(node);
-        if (node.type !== "textDirective" || !validInlineBlock || hasUnsupportedInline(node))
+        if (node.type !== "textDirective" || unsupportedAncestor || hasUnsupportedInline(node))
           addIssue("INVALID_BLOCK", id);
         else if (!text.trim()) addIssue("EMPTY", id);
         else if (id) {
@@ -179,7 +184,10 @@ function scan(markdown: string) {
         }
         return;
       }
-      node.children?.forEach((child) => visitInline(child, annotationDepth, effectiveStyle));
+      const nextUnsupportedAncestor = unsupportedAncestor || isUnsupportedInlineNode(node);
+      node.children?.forEach((child) =>
+        visitInline(child, annotationDepth, effectiveStyle, nextUnsupportedAncestor),
+      );
     };
 
     block.children?.forEach((child) => visitInline(child, 0));

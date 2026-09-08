@@ -115,23 +115,35 @@ test("the first service stage survives outer error boundaries", () => {
   assert.equal(Object.keys(error).includes("stage"), false);
 });
 
-test("expected rejections are diagnostic warnings without payloads or incident IDs", () => {
+test("expected rejections keep incident IDs without logging payloads", () => {
   const lines: string[] = [];
   const original = console.warn;
   console.warn = (value?: unknown) => lines.push(String(value));
+  let incidentId = "";
   try {
-    logServerRejection({
+    incidentId = logServerRejection({
       operation: "annotation.create",
       stage: "selection",
       entityId: "post_123",
       userId: "user_456",
       code: "TEXT_MISMATCH",
+      selection: {
+        blockOrdinal: 12,
+        endBlockOrdinal: 12,
+        blockTextFrom: 18,
+        blockTextTo: 44,
+        selectedTextLength: 26,
+      },
     });
   } finally {
     console.warn = original;
   }
 
-  assert.deepEqual(JSON.parse(lines[0]), {
+  assert.match(incidentId, /^[0-9a-f-]{36}$/);
+  const record = JSON.parse(lines[0]);
+  assert.equal(record.incidentId, incidentId);
+  delete record.incidentId;
+  assert.deepEqual(record, {
     level: "warn",
     event: "server_operation_rejected",
     operation: "annotation.create",
@@ -139,6 +151,13 @@ test("expected rejections are diagnostic warnings without payloads or incident I
     entityId: "post_123",
     userId: "user_456",
     code: "TEXT_MISMATCH",
+    selection: {
+      blockOrdinal: 12,
+      endBlockOrdinal: 12,
+      blockTextFrom: 18,
+      blockTextTo: 44,
+      selectedTextLength: 26,
+    },
   });
-  assert.doesNotMatch(lines[0], /incident|message|stack|markdown|selectionText/i);
+  assert.doesNotMatch(lines[0], /message|stack|markdown|selectionText/i);
 });

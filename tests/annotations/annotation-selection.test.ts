@@ -68,6 +68,14 @@ test("reports stale text before overlap and keeps rejection reasons distinct", (
     () =>
       validateAnnotationSelection(
         parseAnnotationMarkdown(":unknown[文字]"),
+        descriptor(0, 0, 2, "错文"),
+      ),
+    (error) => error instanceof AnnotationSelectionError && error.code === "TEXT_MISMATCH",
+  );
+  assert.throws(
+    () =>
+      validateAnnotationSelection(
+        parseAnnotationMarkdown(":unknown[文字]"),
         descriptor(0, 0, 2, "文字"),
       ),
     (error) => error instanceof AnnotationSelectionError && error.code === "UNSUPPORTED_DIRECTIVE",
@@ -80,6 +88,15 @@ test("reports stale text before overlap and keeps rejection reasons distinct", (
       ),
     (error) => error instanceof AnnotationSelectionError && error.code === "NESTED_ANNOTATION",
   );
+});
+
+test("ignores an unsupported directive outside the selected range", () => {
+  const source = parseAnnotationMarkdown(":unknown[前文] 后文");
+  const next = wrapAnnotationRange(source, descriptor(0, 3, 5, "后文"), A);
+  const markdown = stringifyAnnotationMarkdown(next);
+  assert.equal(visiblePostText(next), visiblePostText(source));
+  assert.deepEqual(collectAnnotationIds(next), [A]);
+  assert.equal(validateCanonicalAnnotationDocument(markdown, [A]).ok, true);
 });
 
 test("wraps one logical annotation across consecutive text blocks", () => {

@@ -93,6 +93,8 @@ test("rejects annotations in unsupported blocks or around non-text inline conten
   assert.deepEqual(issueCodes(`:annotation[\`code\`]{#${A}}`, [A]), ["INVALID_BLOCK"]);
   assert.deepEqual(issueCodes(`:annotation[![图](/api/assets/a)]{#${A}}`, [A]), ["INVALID_BLOCK"]);
   assert.deepEqual(issueCodes(`:annotation[[附件](/api/assets/a)]{#${A}}`, [A]), ["INVALID_BLOCK"]);
+  assert.deepEqual(issueCodes(`:unknown[:annotation[正文]{#${A}}]`, [A]), ["INVALID_BLOCK"]);
+  assert.deepEqual(issueCodes(`:unknown[前文] :annotation[正文]{#${A}}`, [A]), []);
 });
 
 test("rejects Markdown IDs absent from annotation data and active IDs absent from Markdown", () => {
