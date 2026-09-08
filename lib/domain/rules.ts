@@ -1,3 +1,5 @@
+import { parseAnnotationMarkdown } from "../annotations/markdown.ts";
+import { formattingIsValid } from "../markdown/formatting.ts";
 import { validateAssetUpload } from "../assets/upload-policy.ts";
 
 export type PostInput = {
@@ -31,6 +33,8 @@ export function validatePostInput(input: PostInput): PostInput {
   if (!title) throw new Error("标题不能为空");
   if (Array.from(title).length > 120) throw new Error("标题不能超过 120 个字符");
   if (!markdown) throw new Error("正文不能为空");
+  if (!formattingIsValid(parseAnnotationMarkdown(markdown)))
+    throw new Error("正文格式无效，请恢复默认格式后重试");
   if (tags.length > 5) throw new Error("最多选择 5 个标签");
 
   const normalized = tags.map((tag) => tag.toLocaleLowerCase("zh-CN"));

@@ -12,6 +12,7 @@ import { Window } from "happy-dom";
 
 import { buildAnnotationAuthorView } from "../../lib/annotations/identity.ts";
 import { collectAnnotationIds, parseAnnotationMarkdown } from "../../lib/annotations/markdown.ts";
+import { configureTextFormatting, textFormattingPlugin } from "../../lib/editor/text-formatting.ts";
 import { annotationPlugin } from "../../lib/editor/annotation-mark.ts";
 import { finalizeDocxPreview } from "../../lib/docx-import/browser.ts";
 import {
@@ -62,7 +63,7 @@ test("the generated semantic matrix is deterministic across the complete import 
     },
   );
   assert.equal(check.status, 0, `${check.stdout}\n${check.stderr}`);
-  assert.match(check.stdout, /verified 4 generated DOCX fixtures/);
+  assert.match(check.stdout, /verified 5 generated DOCX fixtures/);
   const bytes = await readFile(fixturePath);
   const firstWorker = await runWorker(bytes);
   const secondWorker = await runWorker(bytes);
@@ -465,10 +466,14 @@ async function parseWithMilkdown(markdown: string): Promise<Record<string, unkno
   const root = window.document.createElement("div");
   window.document.body.append(root);
   const editor = await Editor.make()
-    .config((ctx) => ctx.set(rootCtx, root as unknown as Node))
+    .config((ctx) => {
+      ctx.set(rootCtx, root as unknown as Node);
+      configureTextFormatting(ctx);
+    })
     .use(commonmark)
     .use(gfm)
     .use(annotationPlugin)
+    .use(textFormattingPlugin)
     .create();
   try {
     return editor.ctx.get(parserCtx)(markdown).toJSON() as Record<string, unknown>;
@@ -477,3 +482,43 @@ async function parseWithMilkdown(markdown: string): Promise<Record<string, unkno
     window.close();
   }
 }
+
+test("formatting survives Worker cloning, preview finalization and strict commit validation", async () => {
+  const bytes = await readFile(resolve("tests/fixtures/docx/generated/text-formatting.docx"));
+  const worker = await runWorker(bytes, "text-formatting.docx", "text-formatting");
+  const ir = finalizeDocxPreview(structuredClone(worker.result), {
+    importBatchId: batchId,
+    sourceSha256: createHash("sha256").update(bytes).digest("hex"),
+    idFactory: sequentialIdsWithClosure(),
+  });
+  const markdown = ir.canonicalMarkdown;
+  const checked = validateEditedImportPreview(
+    {
+      version: 1,
+      importBatchId: batchId,
+      title: ir.suggestedTitle,
+      createdAt: "2026-08-30T00:00:00.000Z",
+      expiresAt: "2026-09-01T00:00:00.000Z",
+      ir,
+      canonicalMarkdown: markdown,
+      markdown,
+      temporaryAssets: [],
+      authorMappings: {},
+    },
+    Date.parse("2026-08-30T01:00:00.000Z"),
+  );
+  assert.equal(checked.ok, true, checked.ok ? undefined : JSON.stringify(checked.errors));
+  if (!checked.ok) return;
+  const payload = toDocxImportCommitPayload(checked.payload);
+  const committed = validateDocxImportCommitPayload(payload);
+  assert.equal(committed.markdown, markdown);
+  assert.deepEqual(committed.ir.blocks, ir.blocks);
+  assert.equal(committed.ir.threads.length, 1);
+  const json = await parseWithMilkdown(committed.markdown);
+  assert.match(JSON.stringify(json), /textStyle/);
+  assert.match(JSON.stringify(json), /"textAlign":"center"/);
+  const invalid = structuredClone(payload);
+  const first = invalid.ir.blocks[0]!;
+  if ("segments" in first) first.segments[0]!.fontSizeHalfPoints = 999;
+  assert.throws(() => validateDocxImportCommitPayload(invalid));
+});

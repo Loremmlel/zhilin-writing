@@ -98,6 +98,8 @@ interface InlineContext {
   link?: string;
   marks: InlineMark[];
   paragraphStyleId?: string;
+  fontSizeHalfPoints?: number;
+  color?: string;
 }
 
 const MARK_ORDER: InlineMark[] = ["strong", "em", "strike", "code"];
@@ -153,6 +155,8 @@ export function walkMainDocument(
     }
     const paragraphProperties = parseParagraphProperties(xmlChild(node, "pPr"));
     const semantics = lookups.paragraph(paragraphProperties.styleId, paragraphProperties);
+    if (semantics.alignmentDropped) warnings.add("TEXT_ALIGNMENT_DROPPED");
+    const alignment = semantics.textAlign ? { textAlign: semantics.textAlign } : {};
     const segments: InlineSegment[] = [];
     const state: InlineState = {
       field: null,
@@ -196,8 +200,14 @@ export function walkMainDocument(
       const blockId = `block_${String(++blockSequence).padStart(6, "0")}`;
       const markers = markersForChunk(state.commentMarkers, item.start, item.end);
       if (numbering) {
+        if (numbering.formattingDropped) warnings.add("VISUAL_FORMATTING_DROPPED");
         const depth = Math.min(numbering.level, 2) as 0 | 1 | 2;
-        const listItem = { id: `${blockId}_item_1`, segments: item.segments, children: [] };
+        const listItem = {
+          ...alignment,
+          id: `${blockId}_item_1`,
+          segments: item.segments,
+          children: [],
+        };
         const key = [semantics.numbering?.numId, numbering.format, numbering.level].join("\u0000");
         if (adjacentList?.key === key) adjacentList.block.items.push(listItem);
         else {
@@ -222,15 +232,15 @@ export function walkMainDocument(
         adjacentList = undefined;
         const level = Math.min(Math.max(semantics.headingLevel, 1), 4) as 1 | 2 | 3 | 4;
         if (semantics.headingLevel > 4) warnings.add("HEADING_LEVEL_CLAMPED");
-        blocks.push({ type: "heading", id: blockId, level, segments: item.segments });
+        blocks.push({ type: "heading", ...alignment, id: blockId, level, segments: item.segments });
         commentRanges.recordBlock(blockId, "body", item.segments, markers, state.specialTouches);
       } else if (semantics.quote) {
         adjacentList = undefined;
-        blocks.push({ type: "quote", id: blockId, segments: item.segments });
+        blocks.push({ type: "quote", ...alignment, id: blockId, segments: item.segments });
         commentRanges.recordBlock(blockId, "body", item.segments, markers, state.specialTouches);
       } else {
         adjacentList = undefined;
-        blocks.push({ type: "paragraph", id: blockId, segments: item.segments });
+        blocks.push({ type: "paragraph", ...alignment, id: blockId, segments: item.segments });
         commentRanges.recordBlock(blockId, "body", item.segments, markers, state.specialTouches);
       }
       textChunkIndex += 1;
@@ -329,6 +339,9 @@ function walkInline(
       characterStyleId(runPropertiesNode),
       parseRunProperties(runPropertiesNode),
     );
+    effective.formatWarnings?.forEach((code) => warnings.add(code));
+    if (effective.codeStyle && (effective.fontSizeHalfPoints || effective.color))
+      warnings.add("VISUAL_FORMATTING_DROPPED");
     if (effective.visualFormatting) warnings.add("VISUAL_FORMATTING_DROPPED");
     const marks = MARK_ORDER.filter((mark) =>
       mark === "code" ? effective.codeStyle : effective.marks[mark],
@@ -337,7 +350,14 @@ function walkInline(
       if (localName(xmlName(child)) === "rPr") continue;
       walkInline(
         child,
-        { ...context, marks },
+        {
+          ...context,
+          marks,
+          fontSizeHalfPoints: effective.codeStyle
+            ? undefined
+            : (effective.fontSizeHalfPoints ?? undefined),
+          color: effective.codeStyle ? undefined : effective.color,
+        },
         state,
         segments,
         activeCommentIds,
@@ -584,6 +604,8 @@ function appendSegmentWithIds(
   segments.push({
     text,
     marks: [...context.marks],
+    ...(context.fontSizeHalfPoints ? { fontSizeHalfPoints: context.fontSizeHalfPoints } : {}),
+    ...(context.color ? { color: context.color } : {}),
     ...(context.link ? { link: context.link } : {}),
     commentIds: [...commentIds],
   });
@@ -736,6 +758,12 @@ function walkTable(
   noteSequence: NoteSequence,
   nextBlockId: () => string,
 ): ImportBlock[] {
+  if (
+    lookups.tableStyleFormattingDropped(
+      xmlAttr(xmlChild(xmlChild(node, "tblPr") ?? {}, "tblStyle") ?? {}, "val"),
+    )
+  )
+    warnings.add("VISUAL_FORMATTING_DROPPED");
   const gridWidth = xmlChildren(xmlChild(node, "tblGrid") ?? {}, "gridCol").length;
   const rowNodes = xmlChildren(node, "tr");
   const rows = rowNodes.map((row) => {
@@ -765,6 +793,8 @@ function walkTable(
   });
   if (merged) {
     warnings.add("TABLE_MERGED_CELLS_FLATTENED");
+    if (rows.some((row) => row.sourceCells.some((cell) => cell.textAlign)))
+      warnings.add("TEXT_ALIGNMENT_DROPPED");
     return rows.map((row) => ({
       type: "paragraph",
       id: nextBlockId(),
@@ -804,10 +834,21 @@ function tableCell(
   lookups: DocxLookups,
   warnings: WarningCollector,
   noteSequence: NoteSequence,
-): { segments: InlineSegment[] } {
+): { segments: InlineSegment[]; textAlign?: "center" } {
   const paragraphs = xmlChildren(node, "p");
   if (paragraphs.length > 1) warnings.add("TABLE_CELL_FLATTENED");
+  const alignments = paragraphs.map((paragraph) => {
+    const props = parseParagraphProperties(xmlChild(paragraph, "pPr"));
+    return lookups.paragraph(props.styleId, props);
+  });
+  const centered = alignments.length > 0 && alignments.every((item) => item.textAlign === "center");
+  if (
+    alignments.some((item) => item.alignmentDropped) ||
+    (!centered && alignments.some((item) => item.textAlign === "center"))
+  )
+    warnings.add("TEXT_ALIGNMENT_DROPPED");
   return {
+    ...(centered ? { textAlign: "center" as const } : {}),
     segments: joinSegmentGroups(
       paragraphs.map((paragraph) => paragraphSegments(paragraph, lookups, warnings, noteSequence)),
       " / ",

@@ -1,3 +1,4 @@
+import { isTextStyleDirective, centered, readTextStyle } from "../markdown/formatting.ts";
 import type { Nodes, Root } from "mdast";
 
 import { isAttachmentAssetHref } from "./inline-policy.ts";
@@ -74,13 +75,19 @@ function inlineText(node: MarkdownNode): string {
 
 function inlineShape(node: MarkdownNode): unknown {
   if (node.type === "text") return [node.type, node.value ?? ""];
-  const attributes = node.type === "link" ? [node.url ?? "", node.title ?? null] : null;
+  const attributes =
+    node.type === "link"
+      ? [node.url ?? "", node.title ?? null]
+      : isTextStyleDirective(node)
+        ? readTextStyle(node.attributes)
+        : null;
   return [node.type, attributes, node.children?.map(inlineShape) ?? []];
 }
 
 function hasUnsupportedInline(node: MarkdownNode): boolean {
   if (node.type === "text") return false;
-  if (isAnnotationDirective(node)) return node.children?.some(hasUnsupportedInline) ?? false;
+  if (isAnnotationDirective(node) || isTextStyleDirective(node))
+    return node.children?.some(hasUnsupportedInline) ?? false;
   if (node.type === "link" && isAttachmentAssetHref(node.url)) return true;
   if (!allowedInlineContainers.has(node.type)) return true;
   return node.children?.some(hasUnsupportedInline) ?? false;
@@ -124,7 +131,14 @@ function scan(markdown: string) {
     const validInlineBlock = !(block.children?.some(hasUnsupportedInline) ?? false);
     let cursor = 0;
 
-    const visitInline = (node: MarkdownNode, annotationDepth: number) => {
+    const visitInline = (
+      node: MarkdownNode,
+      annotationDepth: number,
+      outerStyle: Record<string, unknown> = {},
+    ) => {
+      const effectiveStyle = isTextStyleDirective(node)
+        ? { ...outerStyle, ...readTextStyle(node.attributes) }
+        : outerStyle;
       if (node.type === "text" || node.type === "inlineCode") {
         cursor += (node.value ?? "").length;
         return;
@@ -136,7 +150,7 @@ function scan(markdown: string) {
         else addIssue("UNKNOWN_ID", null);
         const start = cursor;
         const hasNested = containsAnnotationDirective(node);
-        node.children?.forEach((child) => visitInline(child, annotationDepth + 1));
+        node.children?.forEach((child) => visitInline(child, annotationDepth + 1, effectiveStyle));
         const end = cursor;
         if (annotationDepth > 0 || hasNested) {
           if (!nestedReported) addIssue("NESTED", id);
@@ -153,8 +167,11 @@ function scan(markdown: string) {
             text,
             blockIndex: entry.eligibleOrdinal!,
             documentIndex: entry.documentIndex,
-            blockType: block.type,
-            inlineStructure: JSON.stringify(node.children?.map(inlineShape) ?? []),
+            blockType: `${block.type}${centered(block) ? ":center" : ""}`,
+            inlineStructure: JSON.stringify([
+              effectiveStyle,
+              node.children?.map(inlineShape) ?? [],
+            ]),
             from: start,
             to: end,
             ...bounds,
@@ -162,7 +179,7 @@ function scan(markdown: string) {
         }
         return;
       }
-      node.children?.forEach((child) => visitInline(child, annotationDepth));
+      node.children?.forEach((child) => visitInline(child, annotationDepth, effectiveStyle));
     };
 
     block.children?.forEach((child) => visitInline(child, 0));

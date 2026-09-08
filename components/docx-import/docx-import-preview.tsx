@@ -18,7 +18,10 @@ type SiteUser = { id: string; displayName: string };
 const warningLabels: Record<ImportWarning["code"], string> = {
   HEADING_LEVEL_CLAMPED: "标题层级已收敛到四级",
   LIST_DEPTH_CLAMPED: "列表层级已收敛到三级",
-  VISUAL_FORMATTING_DROPPED: "仅视觉格式未导入",
+  VISUAL_FORMATTING_DROPPED: "部分字体或其他排版未导入",
+  FONT_SIZE_DROPPED: "部分字号不受支持，已使用默认字号",
+  TEXT_COLOR_FALLBACK: "部分文字颜色无法还原或过浅，请检查",
+  TEXT_ALIGNMENT_DROPPED: "部分段落或单元格对齐无法保留，已使用默认对齐",
   HYPERLINK_UNSAFE_DROPPED: "不安全链接已移除",
   TOC_SKIPPED: "目录字段已跳过",
   TRACK_CHANGES_FLATTENED: "修订痕迹已合并到正文",

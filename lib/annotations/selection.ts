@@ -1,3 +1,4 @@
+import { isTextStyleDirective } from "../markdown/formatting.ts";
 import type {
   AnnotationId,
   AnnotationMarkdownRoot,
@@ -71,7 +72,7 @@ function assertSupportedBlock(block: AnnotationBlock) {
         "所选文本所在段落包含暂不支持的内联内容",
       );
     }
-    if (node.type === "textDirective") {
+    if (node.type === "textDirective" && !isTextStyleDirective(node)) {
       if (node.name !== "annotation" || annotationDepth > 0)
         throw new AnnotationSelectionError("OVERLAP", "批注范围不能嵌套");
       annotationDepth += 1;

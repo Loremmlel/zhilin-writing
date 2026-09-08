@@ -1,6 +1,15 @@
+import { fontSize } from "../markdown/formatting.ts";
+import { themeColors, resolveWordColor, type WordColor } from "./theme-color.ts";
 import type { DocxPackageReader } from "./package.ts";
-import type { InlineMark } from "./types.ts";
-import { parseOrderedXml, type OrderedXmlNode, xmlAttr, xmlChild, xmlChildren } from "./xml.ts";
+import type { InlineMark, ImportWarningCode } from "./types.ts";
+import {
+  parseOrderedXml,
+  type OrderedXmlNode,
+  xmlAttr,
+  xmlChild,
+  xmlChildren,
+  xmlName,
+} from "./xml.ts";
 
 export interface NumberingReference {
   numId?: string;
@@ -8,11 +17,17 @@ export interface NumberingReference {
 }
 
 export interface RunProperties {
+  fontSizeHalfPoints?: number | null;
+  complexSize?: number | null;
+  wordColor?: WordColor;
+  color?: string;
+  formatWarnings?: ImportWarningCode[];
   marks: Partial<Record<InlineMark, boolean>>;
   visualFormatting: boolean;
 }
 
 export interface ParagraphProperties {
+  alignment?: string;
   styleId?: string;
   outlineLevel?: number;
   numbering?: NumberingReference;
@@ -20,12 +35,15 @@ export interface ParagraphProperties {
 }
 
 export interface ParagraphSemantics {
+  textAlign?: "center";
+  alignmentDropped?: boolean;
   headingLevel?: number;
   quote: boolean;
   numbering?: NumberingReference;
 }
 
 export interface NumberingLevel {
+  formattingDropped?: boolean;
   format: string;
   ordered: boolean;
   level: number;
@@ -39,6 +57,7 @@ export interface DocumentRelationship {
 }
 
 export interface DocxLookups {
+  tableStyleFormattingDropped(styleId: string | undefined): boolean;
   paragraph(styleId: string | undefined, direct: ParagraphProperties): ParagraphSemantics;
   run(
     paragraphStyleId: string | undefined,
@@ -51,15 +70,18 @@ export interface DocxLookups {
 }
 
 interface StyleDefinition {
+  hasTargetFormatting: boolean;
   id: string;
   type: string;
   name?: string;
+  default?: boolean;
   basedOn?: string;
   paragraph: ParagraphProperties;
   run: RunProperties;
 }
 
 interface ResolvedStyle {
+  hasTargetFormatting: boolean;
   labels: string[];
   paragraph: ParagraphProperties;
   run: RunProperties;
@@ -75,9 +97,22 @@ export async function loadDocxLookups(pkg: DocxPackageReader): Promise<DocxLooku
   const contentTypes = parseContentTypes(
     parseOrderedXml(await pkg.readText("[Content_Types].xml"), "[Content_Types].xml"),
   );
-  const styles = pkg.has("word/styles.xml")
-    ? parseStyles(parseOrderedXml(await pkg.readText("word/styles.xml"), "word/styles.xml"))
-    : new Map<string, StyleDefinition>();
+  const styleNodes = pkg.has("word/styles.xml")
+    ? parseOrderedXml(await pkg.readText("word/styles.xml"), "word/styles.xml")
+    : [];
+  const styles = parseStyles(styleNodes);
+  const styleRoot = xmlChild(styleNodes, "styles");
+  const defaults = xmlChild(styleRoot ?? {}, "docDefaults");
+  const defaultRun = parseRunProperties(
+    xmlChild(xmlChild(defaults ?? {}, "rPrDefault") ?? {}, "rPr"),
+  );
+  const defaultParagraph = parseParagraphProperties(
+    xmlChild(xmlChild(defaults ?? {}, "pPrDefault") ?? {}, "pPr"),
+  );
+  const defaultStyles = new Map(
+    [...styles.values()].filter((style) => style.default).map((style) => [style.type, style.id]),
+  );
+  const defaultStyle = (type: string) => defaultStyles.get(type);
   const { abstractNumbering, numberingInstances } = pkg.has("word/numbering.xml")
     ? parseNumbering(
         parseOrderedXml(await pkg.readText("word/numbering.xml"), "word/numbering.xml"),
@@ -94,6 +129,16 @@ export async function loadDocxLookups(pkg: DocxPackageReader): Promise<DocxLooku
         ),
       )
     : new Map<string, DocumentRelationship>();
+  const themeRelation = [...relationships.values()].find(
+    (relation) => relation.type.endsWith("/theme") && !relation.external,
+  );
+  const themePath = themeRelation
+    ? new URL(themeRelation.target, "https://docx.invalid/word/document.xml").pathname.slice(1)
+    : undefined;
+  const theme =
+    themePath && pkg.has(themePath)
+      ? themeColors(parseOrderedXml(await pkg.readText(themePath), themePath))
+      : new Map<string, string>();
   const resolvedStyles = new Map<string, ResolvedStyle>();
 
   const resolveStyle = (
@@ -104,10 +149,11 @@ export async function loadDocxLookups(pkg: DocxPackageReader): Promise<DocxLooku
     const cached = resolvedStyles.get(styleId);
     if (cached) return cached;
     const style = styles.get(styleId);
-    if (!style || visiting.has(styleId)) return undefined;
+    if (!style || visiting.has(styleId) || visiting.size >= 64) return undefined;
     const nextVisiting = new Set(visiting).add(styleId);
     const base = resolveStyle(style.basedOn, nextVisiting);
     const resolved: ResolvedStyle = {
+      hasTargetFormatting: !!base?.hasTargetFormatting || style.hasTargetFormatting,
       labels: [
         ...(base?.labels ?? []),
         normalizeStyleName(style.id),
@@ -121,9 +167,14 @@ export async function loadDocxLookups(pkg: DocxPackageReader): Promise<DocxLooku
   };
 
   return {
+    tableStyleFormattingDropped: (styleId) =>
+      !!resolveStyle(styleId ?? defaultStyle("table"))?.hasTargetFormatting,
     paragraph(styleId, direct) {
-      const style = resolveStyle(styleId);
-      const effective = mergeParagraphProperties(style?.paragraph, direct);
+      const style = resolveStyle(styleId ?? defaultStyle("paragraph"));
+      const effective = mergeParagraphProperties(
+        mergeParagraphProperties(defaultParagraph, style?.paragraph),
+        direct,
+      );
       const explicitHeading = [...(style?.labels ?? [])]
         .reverse()
         .map((label) => /^heading([1-9])$/.exec(label))
@@ -135,15 +186,39 @@ export async function loadDocxLookups(pkg: DocxPackageReader): Promise<DocxLooku
           : undefined;
       return {
         headingLevel,
+        ...(effective.alignment === "center" ? { textAlign: "center" as const } : {}),
+        alignmentDropped:
+          !!effective.alignment && !["left", "start", "center"].includes(effective.alignment),
         quote: (style?.labels ?? []).some((label) => label === "quote" || label === "intensequote"),
         numbering: effective.numbering,
       };
     },
     run(paragraphStyleId, characterStyleId, direct) {
-      const paragraphStyle = resolveStyle(paragraphStyleId);
-      const characterStyle = resolveStyle(characterStyleId);
+      const paragraphStyle = resolveStyle(paragraphStyleId ?? defaultStyle("paragraph"));
+      const characterStyle = resolveStyle(characterStyleId ?? defaultStyle("character"));
+      const effective = mergeRunProperties(
+        mergeRunProperties(
+          mergeRunProperties(defaultRun, paragraphStyle?.run),
+          characterStyle?.run,
+        ),
+        direct,
+      );
+      const formatWarnings: ImportWarningCode[] = [];
+      if (
+        effective.fontSizeHalfPoints === null ||
+        (effective.complexSize !== undefined &&
+          effective.complexSize !== effective.fontSizeHalfPoints)
+      )
+        formatWarnings.push("FONT_SIZE_DROPPED");
+      const resolvedColor = effective.wordColor
+        ? resolveWordColor(effective.wordColor, theme)
+        : undefined;
+      if (resolvedColor?.fallback || (resolvedColor?.color && lowContrast(resolvedColor.color)))
+        formatWarnings.push("TEXT_COLOR_FALLBACK");
       return {
-        ...mergeRunProperties(mergeRunProperties(paragraphStyle?.run, characterStyle?.run), direct),
+        ...effective,
+        color: resolvedColor?.color,
+        formatWarnings,
         codeStyle: (characterStyle?.labels ?? []).some((label) => CODE_STYLE_NAMES.has(label)),
       };
     },
@@ -200,6 +275,7 @@ export function parseParagraphProperties(node: OrderedXmlNode | undefined): Para
   const numberingNode = xmlChild(node, "numPr");
   return {
     styleId: xmlAttr(xmlChild(node, "pStyle") ?? {}, "val"),
+    alignment: xmlAttr(xmlChild(node, "jc") ?? {}, "val"),
     outlineLevel: integerAttribute(xmlChild(node, "outlineLvl"), "val"),
     numbering: numberingNode
       ? {
@@ -213,8 +289,27 @@ export function parseParagraphProperties(node: OrderedXmlNode | undefined): Para
 
 export function parseRunProperties(node: OrderedXmlNode | undefined): RunProperties {
   if (!node) return emptyRunProperties();
-  const visualNames = ["u", "color", "highlight", "sz", "szCs", "rFonts"];
+  const visualNames = ["u", "highlight", "rFonts"];
+  const size = (name: string) => {
+    const child = xmlChild(node, name);
+    if (!child) return undefined;
+    const value = xmlAttr(child, "val");
+    return value && /^\d+$/.test(value) && fontSize(Number(value) / 2) !== undefined
+      ? Number(value)
+      : null;
+  };
+  const color = xmlChild(node, "color");
   return {
+    fontSizeHalfPoints: size("sz"),
+    complexSize: size("szCs"),
+    wordColor: color
+      ? {
+          value: xmlAttr(color, "val"),
+          theme: xmlAttr(color, "themeColor"),
+          tint: xmlAttr(color, "themeTint"),
+          shade: xmlAttr(color, "themeShade"),
+        }
+      : undefined,
     marks: {
       strong: onOffValue(xmlChild(node, "b")),
       em: onOffValue(xmlChild(node, "i")),
@@ -243,9 +338,11 @@ function parseStyles(nodes: OrderedXmlNode[]): Map<string, StyleDefinition> {
     const id = xmlAttr(node, "styleId");
     if (!id) continue;
     result.set(id, {
+      hasTargetFormatting: hasTargetFormatting(node),
       id,
       type: xmlAttr(node, "type") ?? "paragraph",
       name: xmlAttr(xmlChild(node, "name") ?? {}, "val"),
+      default: ["1", "true", "on"].includes(xmlAttr(node, "default") ?? ""),
       basedOn: xmlAttr(xmlChild(node, "basedOn") ?? {}, "val"),
       paragraph: parseParagraphProperties(xmlChild(node, "pPr")),
       run: parseRunProperties(xmlChild(node, "rPr")),
@@ -270,7 +367,12 @@ function parseNumbering(nodes: OrderedXmlNode[]): {
       const level = integerAttribute(levelNode, "ilvl");
       const format = xmlAttr(xmlChild(levelNode, "numFmt") ?? {}, "val");
       if (level === undefined || !format) continue;
-      levels.set(level, { format, ordered: format !== "bullet", level });
+      levels.set(level, {
+        format,
+        ordered: format !== "bullet",
+        level,
+        formattingDropped: hasTargetFormatting(xmlChild(levelNode, "rPr") ?? {}),
+      });
     }
     abstractNumbering.set(id, { levels });
   }
@@ -307,6 +409,7 @@ function mergeParagraphProperties(
 ): ParagraphProperties {
   return {
     styleId: own?.styleId ?? base?.styleId,
+    alignment: own?.alignment ?? base?.alignment,
     outlineLevel: own?.outlineLevel ?? base?.outlineLevel,
     numbering: own?.numbering
       ? {
@@ -323,6 +426,10 @@ function mergeRunProperties(
   own: RunProperties | undefined,
 ): RunProperties {
   return {
+    fontSizeHalfPoints:
+      own?.fontSizeHalfPoints !== undefined ? own.fontSizeHalfPoints : base?.fontSizeHalfPoints,
+    complexSize: own?.complexSize !== undefined ? own.complexSize : base?.complexSize,
+    wordColor: own?.wordColor ?? base?.wordColor,
     marks: { ...(base?.marks ?? {}), ...(definedMarkValues(own?.marks) ?? {}) },
     visualFormatting: Boolean(base?.visualFormatting || own?.visualFormatting),
   };
@@ -355,4 +462,22 @@ function integerAttribute(node: OrderedXmlNode | undefined, name: string): numbe
 
 function normalizeStyleName(value: string): string {
   return value.toLocaleLowerCase("en-US").replace(/[\s_-]+/g, "");
+}
+
+function lowContrast(color: string): boolean {
+  const luminance = (hex: string) =>
+    [1, 3, 5]
+      .map((offset) => parseInt(hex.slice(offset, offset + 2), 16) / 255)
+      .map((value) => (value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4))
+      .reduce((sum, value, index) => sum + value * [0.2126, 0.7152, 0.0722][index]!, 0);
+  const text = luminance(color),
+    paper = luminance("#fbfaf7");
+  return (Math.max(text, paper) + 0.05) / (Math.min(text, paper) + 0.05) < 4.5;
+}
+
+function hasTargetFormatting(node: OrderedXmlNode): boolean {
+  return (
+    ["sz", "szCs", "color", "jc"].includes((xmlName(node) ?? "").split(":").at(-1)!) ||
+    xmlChildren(node).some(hasTargetFormatting)
+  );
 }

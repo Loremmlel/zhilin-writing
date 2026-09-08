@@ -236,3 +236,23 @@ function deleteLocalDatabase(): Promise<void> {
     request.onblocked = () => reject(new Error("test database deletion was blocked"));
   });
 }
+
+test("v1 cache retains optional formatting on restoration", async () => {
+  const preview = previewFixture("formatting", "2026-08-30T00:00:00.000Z");
+  preview.ir.blocks = [
+    {
+      type: "paragraph",
+      id: "block_1",
+      textAlign: "center",
+      segments: [
+        { text: "正文", fontSizeHalfPoints: 21, color: "#c00000", marks: [], commentIds: [] },
+      ],
+    },
+  ];
+  preview.canonicalMarkdown =
+    ':::align{value="center"}\n\n:text[正文]{size="10.5" color="#c00000"}\n\n:::';
+  await saveImportPreview(preview, Date.parse("2026-08-29T12:00:00.000Z"));
+  const loaded = await loadImportPreview("formatting", Date.parse("2026-08-29T12:00:00.000Z"));
+  assert.deepEqual(loaded?.ir.blocks, preview.ir.blocks);
+  assert.equal(loaded?.canonicalMarkdown, preview.canonicalMarkdown);
+});

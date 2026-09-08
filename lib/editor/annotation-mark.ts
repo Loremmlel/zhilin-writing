@@ -1,6 +1,8 @@
+import { Plugin } from "@milkdown/kit/prose/state";
+import { stripAnnotationMarksFromSlice } from "./annotation-clipboard.ts";
 import remarkDirective from "remark-directive";
 
-import { $markSchema, $remark } from "@milkdown/kit/utils";
+import { $markSchema, $remark, $prose } from "@milkdown/kit/utils";
 
 export const annotationRemarkPlugin = $remark("annotationDirective", () => remarkDirective);
 
@@ -46,4 +48,20 @@ export const annotationSchema = $markSchema("annotation", () => ({
   },
 }));
 
-export const annotationPlugin = [annotationRemarkPlugin, annotationSchema].flat();
+const annotationClipboard = $prose(
+  () =>
+    new Plugin({
+      props: {
+        transformCopied: (slice, view) =>
+          stripAnnotationMarksFromSlice(slice, view.state.schema.marks.annotation!),
+        transformPasted: (slice, view) =>
+          stripAnnotationMarksFromSlice(slice, view.state.schema.marks.annotation!),
+      },
+    }),
+);
+
+export const annotationPlugin = [
+  annotationRemarkPlugin,
+  annotationSchema,
+  annotationClipboard,
+].flat();

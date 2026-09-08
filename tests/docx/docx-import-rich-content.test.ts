@@ -479,3 +479,80 @@ function warningCount(parsed: Awaited<ReturnType<typeof parseDocx>>, code: strin
 function bytes(...values: number[]): Uint8Array {
   return new Uint8Array(values);
 }
+
+test("imports resolved text formatting, auto reset, centered cells and cross-paragraph annotations", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const { validateCanonicalAnnotationDocument } =
+    await import("../../lib/annotations/invariants.ts");
+  const { renderMarkdown } = await import("../../lib/markdown/render.ts");
+  const source = await readFile(
+    new URL("../fixtures/docx/generated/text-formatting.docx", import.meta.url),
+  );
+  const parsed = await parseDocx(
+    new File([source], "text-formatting.docx"),
+    undefined,
+    parseOptions,
+  );
+  const first = parsed.blocks[0];
+  assert.equal(first.type, "paragraph");
+  if (first.type !== "paragraph") return;
+  assert.equal(first.textAlign, "center");
+  assert.deepEqual(
+    first.segments.map(({ text, fontSizeHalfPoints, color }) => ({
+      text,
+      fontSizeHalfPoints,
+      color,
+    })),
+    [
+      { text: "继承", fontSizeHalfPoints: 36, color: "#c00000" },
+      { text: "覆盖", fontSizeHalfPoints: 21, color: "#008000" },
+      { text: "默认颜色", fontSizeHalfPoints: 36, color: undefined },
+    ],
+  );
+  assert.match(parsed.canonicalMarkdown, /size="10.5"/);
+  assert.match(parsed.canonicalMarkdown, /:align\[/);
+  assert.equal(parsed.threads.length, 1);
+  assert.equal(
+    validateCanonicalAnnotationDocument(
+      parsed.canonicalMarkdown,
+      parsed.threads.map((annotation) => annotation.annotationId),
+    ).ok,
+    true,
+  );
+  assert.equal(warningCount(parsed, "FONT_SIZE_DROPPED"), 1);
+  assert.equal(warningCount(parsed, "TEXT_ALIGNMENT_DROPPED"), 1);
+  assert.ok(warningCount(parsed, "TEXT_COLOR_FALLBACK") >= 1);
+  const html = await renderMarkdown(parsed.canonicalMarkdown);
+  assert.match(html, /<td style="text-align:center">/);
+  assert.match(html, /<td><span/);
+});
+
+test("theme transformations match the Microsoft run-color examples and use explicit fallback", async () => {
+  const { resolveWordColor } = await import("../../lib/docx-import/theme-color.ts");
+  // MS-OE376 §2.1.74: C0504D / BF -> 943634; 4F81BD / 99 -> 95B3D7.
+  const theme = new Map([
+    ["accent1", "#4f81bd"],
+    ["accent2", "#c0504d"],
+  ]);
+  const shaded = resolveWordColor({ theme: "accent2", shade: "BF" }, theme).color!;
+  // The published example rounds intermediate HSL; allow one RGB unit.
+  for (const offset of [1, 3, 5])
+    assert.ok(
+      Math.abs(
+        parseInt(shaded.slice(offset, offset + 2), 16) -
+          parseInt("#943634".slice(offset, offset + 2), 16),
+      ) <= 1,
+    );
+  assert.equal(
+    resolveWordColor({ theme: "accent1", tint: "99", shade: "BF" }, theme).color,
+    "#95b3d7",
+  );
+  assert.deepEqual(resolveWordColor({ theme: "missing", value: "C00000" }, theme), {
+    color: "#c00000",
+    fallback: true,
+  });
+  assert.deepEqual(resolveWordColor({ value: "auto" }, theme), {
+    color: undefined,
+    fallback: false,
+  });
+});

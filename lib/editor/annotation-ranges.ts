@@ -61,6 +61,7 @@ type Fragment = {
 
 const allowedFormattingMarks = new Set([
   "annotation",
+  "textStyle",
   "strong",
   "emphasis",
   "strike_through",

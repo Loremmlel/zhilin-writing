@@ -1,3 +1,9 @@
+import {
+  normalizeFormatting,
+  remarkFormatting,
+  readTextStyle,
+  textStyleCss,
+} from "./formatting.ts";
 import rehypeSanitize, { defaultSchema, type Options as SanitizeSchema } from "rehype-sanitize";
 import rehypeStringify from "rehype-stringify";
 import type { Handler } from "mdast-util-to-hast";
@@ -16,6 +22,14 @@ const sanitizeSchema: SanitizeSchema = {
     input: ["type", "checked", "disabled"],
     code: [...(defaultSchema.attributes?.code ?? []), "className"],
     img: ["src", "alt", "title", "width", "height", "loading"],
+    span: ["dataTextSize", "dataTextColor"],
+    p: ["dataTextAlign"],
+    ...Object.fromEntries(
+      ["h1", "h2", "h3", "h4", "h5", "h6", "td", "th"].map((tag) => [
+        tag,
+        [...(defaultSchema.attributes?.[tag] ?? []), "dataTextAlign"],
+      ]),
+    ),
     mark: ["className", "dataAnnotationId", "tabIndex", "ariaLabel"],
   },
   protocols: {
@@ -58,7 +72,13 @@ function directiveHandler(allowedAnnotationIds?: Set<string>, interactive = true
       : {
           type: "element" as const,
           tagName: "span",
-          properties: {},
+          properties:
+            node.name === "text"
+              ? (() => {
+                  const style = readTextStyle(node.attributes);
+                  return { dataTextSize: style.size, dataTextColor: style.color };
+                })()
+              : {},
           children: state.all(node),
         };
     state.patch(node, result);
@@ -78,6 +98,7 @@ export async function renderMarkdown(
     .use(remarkParse)
     .use(remarkGfm)
     .use(remarkDirective)
+    .use(remarkFormatting)
     .use(remarkRehype, {
       handlers: {
         textDirective: directiveHandler(
@@ -87,6 +108,28 @@ export async function renderMarkdown(
       },
     })
     .use(rehypeSanitize, sanitizeSchema)
+    .use(() => (tree: unknown) => {
+      const walk = (raw: unknown) => {
+        const node = raw as { properties?: Record<string, unknown>; children?: unknown[] };
+        const props = node.properties;
+        if (props) {
+          const style = textStyleCss({
+            size: props.dataTextSize as number,
+            color: props.dataTextColor as string,
+          });
+          if (style) {
+            props.style = style;
+            props.className = ["document-text-style"];
+          }
+          if (props.dataTextAlign === "center") props.style = "text-align:center";
+          delete props.dataTextSize;
+          delete props.dataTextColor;
+          delete props.dataTextAlign;
+        }
+        node.children?.forEach(walk);
+      };
+      walk(tree);
+    })
     .use(rehypeStringify)
     .process(safeSource);
 
@@ -94,7 +137,9 @@ export async function renderMarkdown(
 }
 
 export function markdownToPlainText(markdown: string): string {
-  const tree = unified().use(remarkParse).use(remarkGfm).use(remarkDirective).parse(markdown);
+  const tree = normalizeFormatting(
+    unified().use(remarkParse).use(remarkGfm).use(remarkDirective).parse(markdown),
+  );
   const chunks: string[] = [];
 
   function collect(node: unknown): void {

@@ -1,3 +1,4 @@
+import { textStyleAttributes } from "../markdown/formatting.ts";
 import { DOCX_IMPORT_LIMITS } from "./limits.ts";
 import {
   DocxImportError,
@@ -70,12 +71,16 @@ function renderBlock(
   >,
   assetIds: ReadonlySet<string>,
 ): string {
-  if (block.type === "paragraph") return renderInline(block.segments, threadsByBlock.get(block.id));
+  if (block.type === "paragraph")
+    return alignBlock(renderInline(block.segments, threadsByBlock.get(block.id)), block.textAlign);
   if (block.type === "heading") {
-    return `${"#".repeat(block.level)} ${renderInline(block.segments, threadsByBlock.get(block.id))}`;
+    return alignBlock(
+      `${"#".repeat(block.level)} ${renderInline(block.segments, threadsByBlock.get(block.id))}`,
+      block.textAlign,
+    );
   }
   if (block.type === "quote") {
-    return renderInline(block.segments, threadsByBlock.get(block.id))
+    return alignBlock(renderInline(block.segments, threadsByBlock.get(block.id)), block.textAlign)
       .split("\n")
       .map((line) => `> ${line}`)
       .join("\n");
@@ -83,7 +88,7 @@ function renderBlock(
   if (block.type === "list") return renderList(block, threadsByBlock);
   if (block.type === "table") {
     const row = (cells: typeof block.header.cells) =>
-      `| ${cells.map((cell) => renderTableCell(cell.segments)).join(" | ")} |`;
+      `| ${cells.map((cell) => (cell.textAlign === "center" ? `:align[${renderTableCell(cell.segments)}]{value="center"}` : renderTableCell(cell.segments))).join(" | ")} |`;
     const separator = `| ${block.header.cells.map(() => "---").join(" | ")} |`;
     return [row(block.header.cells), separator, ...block.rows.map((item) => row(item.cells))].join(
       "\n",
@@ -118,7 +123,13 @@ function renderList(
   const prefix = `${"  ".repeat(block.depth)}${block.ordered ? "1." : "-"} `;
   return block.items
     .map((item) => {
-      const own = `${prefix}${renderInline(item.segments, threadsByBlock.get(item.id))}`;
+      const lines = alignBlock(
+        renderInline(item.segments, threadsByBlock.get(item.id)),
+        item.textAlign,
+      ).split("\n");
+      const own = lines
+        .map((line, index) => `${index === 0 ? prefix : " ".repeat(prefix.length)}${line}`)
+        .join("\n");
       const children = item.children
         .map((child) => renderList(child, threadsByBlock))
         .filter(Boolean);
@@ -166,6 +177,8 @@ function renderSegmentSlice(segments: InlineSegment[], start: number, end: numbe
       previous &&
       previous.synthetic === segment.synthetic &&
       previous.link === segment.link &&
+      previous.fontSizeHalfPoints === segment.fontSizeHalfPoints &&
+      previous.color === segment.color &&
       previous.marks.length === segment.marks.length &&
       previous.marks.every((mark, index) => mark === segment.marks[index])
     ) {
@@ -188,13 +201,21 @@ function renderSegmentSlice(segments: InlineSegment[], start: number, end: numbe
       if (segment.marks.includes("em")) value = `*${value}*`;
       if (segment.marks.includes("strong")) value = `**${value}**`;
       if (segment.link) value = `[${value}](${escapeLinkDestination(segment.link)})`;
+      const attributes = textStyleAttributes({
+        size: segment.fontSizeHalfPoints ? segment.fontSizeHalfPoints / 2 : undefined,
+        color: segment.color,
+      });
+      if (Object.keys(attributes).length && !segment.marks.includes("code"))
+        value = `:text[${value}]{${Object.entries(attributes)
+          .map(([key, value]) => `${key}="${value}"`)
+          .join(" ")}}`;
       return value;
     })
     .join("");
 }
 
 export function escapeMarkdownLiteral(value: string): string {
-  return value.replace(/\\/g, "\\\\").replace(/([`*_[\]~#>+\-.!|:&])/g, "\\$1");
+  return value.replace(/\\/g, "\\\\").replace(/([`*_[\]~#<>+\-.!|:&])/g, "\\$1");
 }
 
 function renderCode(value: string): string {
@@ -211,4 +232,9 @@ function escapeLinkDestination(value: string): string {
     .replace(/\(/g, "\\(")
     .replace(/\)/g, "\\)")
     .replace(/ /g, "%20");
+}
+
+function alignBlock(markdown: string, alignment?: "center"): string {
+  if (alignment !== "center") return markdown;
+  return markdown ? `:::align{value="center"}\n\n${markdown}\n\n:::` : '::align{value="center"}';
 }

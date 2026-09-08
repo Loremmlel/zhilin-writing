@@ -300,3 +300,15 @@ function previewFixture(): DocxPreviewRecord {
     authorMappings: {},
   };
 }
+
+test("format-only preview edits preserve imported IDs and reject unsupported values", () => {
+  const markdown = `:::align{value="center"}\n\n:annotation[:text[正文]{size="18" color="#c00000"}]{#${ROOT_ID}}\n\n:::`;
+  const accepted = validateEditedImportPreview({ ...editableFixture(), markdown });
+  assert.equal(accepted.ok, true);
+  if (accepted.ok) assert.equal(accepted.payload.ir.threads[0]?.annotationId, ROOT_ID);
+  const invalid = validateEditedImportPreview({
+    ...editableFixture(),
+    markdown: markdown.replace('size="18"', 'size="999"'),
+  });
+  assert.equal(invalid.ok, false);
+});

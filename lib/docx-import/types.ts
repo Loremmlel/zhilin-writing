@@ -53,6 +53,9 @@ export type ImportWarningCode =
   | "HEADING_LEVEL_CLAMPED"
   | "LIST_DEPTH_CLAMPED"
   | "VISUAL_FORMATTING_DROPPED"
+  | "FONT_SIZE_DROPPED"
+  | "TEXT_COLOR_FALLBACK"
+  | "TEXT_ALIGNMENT_DROPPED"
   | "HYPERLINK_UNSAFE_DROPPED"
   | "TOC_SKIPPED"
   | "TRACK_CHANGES_FLATTENED"
@@ -84,6 +87,8 @@ export interface ImportWarning {
 export type InlineMark = "strong" | "em" | "strike" | "code";
 
 export interface InlineSegment {
+  fontSizeHalfPoints?: number;
+  color?: string;
   text: string;
   marks: InlineMark[];
   link?: string;
@@ -96,22 +101,26 @@ interface ImportBlockBase {
 }
 
 export interface ParagraphBlock extends ImportBlockBase {
+  textAlign?: "center";
   type: "paragraph";
   segments: InlineSegment[];
 }
 
 export interface HeadingBlock extends ImportBlockBase {
+  textAlign?: "center";
   type: "heading";
   level: 1 | 2 | 3 | 4;
   segments: InlineSegment[];
 }
 
 export interface QuoteBlock extends ImportBlockBase {
+  textAlign?: "center";
   type: "quote";
   segments: InlineSegment[];
 }
 
 export interface ImportListItem {
+  textAlign?: "center";
   id: string;
   segments: InlineSegment[];
   children: ListBlock[];
@@ -126,6 +135,7 @@ export interface ListBlock extends ImportBlockBase {
 }
 
 export interface ImportTableCell {
+  textAlign?: "center";
   segments: InlineSegment[];
 }
 

@@ -1,4 +1,5 @@
 import type { Nodes, Root } from "mdast";
+import { normalizeFormatting, encodeFormatting } from "../markdown/formatting.ts";
 import remarkDirective from "remark-directive";
 import remarkGfm from "remark-gfm";
 import remarkParse from "remark-parse";
@@ -29,11 +30,11 @@ function visit(node: TraversableNode, callback: (node: TraversableNode) => void)
 }
 
 export function parseAnnotationMarkdown(markdown: string): AnnotationMarkdownRoot {
-  return processor.parse(markdown) as Root;
+  return normalizeFormatting(processor.parse(markdown)) as Root;
 }
 
 export function stringifyAnnotationMarkdown(tree: AnnotationMarkdownRoot): string {
-  return processor.stringify(tree);
+  return processor.stringify(encodeFormatting(tree));
 }
 
 export function collectAnnotationIds(tree: AnnotationMarkdownRoot): string[] {

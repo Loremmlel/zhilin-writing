@@ -1,3 +1,4 @@
+import { formattingIsValid } from "../markdown/formatting.ts";
 import { parseAnnotationMarkdown } from "../annotations/markdown.ts";
 import {
   validateCanonicalAnnotationDocument,
@@ -100,7 +101,10 @@ export function validateEditedImportPreview(
   } catch {
     errors.push({ code: "PREVIEW_MARKDOWN_INVALID" });
   }
-  if (tree) validateMarkdownTree(tree, preview, errors);
+  if (tree) {
+    if (!formattingIsValid(tree)) errors.push({ code: "PREVIEW_MARKDOWN_INVALID" });
+    validateMarkdownTree(tree, preview, errors);
+  }
   if (errors.length > 0) return { ok: false, errors: uniqueErrors(errors) };
 
   return {

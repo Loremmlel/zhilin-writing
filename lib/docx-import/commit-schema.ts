@@ -93,6 +93,9 @@ const warningCode = z.enum([
   "HEADING_LEVEL_CLAMPED",
   "LIST_DEPTH_CLAMPED",
   "VISUAL_FORMATTING_DROPPED",
+  "FONT_SIZE_DROPPED",
+  "TEXT_COLOR_FALLBACK",
+  "TEXT_ALIGNMENT_DROPPED",
   "HYPERLINK_UNSAFE_DROPPED",
   "TOC_SKIPPED",
   "TRACK_CHANGES_FLATTENED",
@@ -115,6 +118,11 @@ const warningCode = z.enum([
 ]);
 
 const inlineSegment = z.strictObject({
+  fontSizeHalfPoints: z.number().int().min(12).max(144).optional(),
+  color: z
+    .string()
+    .regex(/^#[0-9a-f]{6}$/)
+    .optional(),
   text: z.string().max(1_500_000),
   marks: z.array(z.enum(["strong", "em", "strike", "code"])).max(4),
   link: z.string().max(4_096).optional(),
@@ -132,6 +140,7 @@ const listBlock: z.ZodType<ListBlock> = z.strictObject({
     .array(
       z.strictObject({
         id: sourceId,
+        textAlign: z.literal("center").optional(),
         segments: z.array(inlineSegment).max(10_000),
         children: z.array(z.never()).max(0),
       }),
@@ -143,17 +152,20 @@ const block: z.ZodType<ImportBlock> = z.union([
   z.strictObject({
     id: sourceId,
     type: z.literal("paragraph"),
+    textAlign: z.literal("center").optional(),
     segments: z.array(inlineSegment).max(10_000),
   }),
   z.strictObject({
     id: sourceId,
     type: z.literal("heading"),
     level: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]),
+    textAlign: z.literal("center").optional(),
     segments: z.array(inlineSegment).max(10_000),
   }),
   z.strictObject({
     id: sourceId,
     type: z.literal("quote"),
+    textAlign: z.literal("center").optional(),
     segments: z.array(inlineSegment).max(10_000),
   }),
   listBlock,
@@ -161,13 +173,25 @@ const block: z.ZodType<ImportBlock> = z.union([
     id: sourceId,
     type: z.literal("table"),
     header: z.strictObject({
-      cells: z.array(z.strictObject({ segments: z.array(inlineSegment).max(10_000) })).max(1_000),
+      cells: z
+        .array(
+          z.strictObject({
+            textAlign: z.literal("center").optional(),
+            segments: z.array(inlineSegment).max(10_000),
+          }),
+        )
+        .max(1_000),
     }),
     rows: z
       .array(
         z.strictObject({
           cells: z
-            .array(z.strictObject({ segments: z.array(inlineSegment).max(10_000) }))
+            .array(
+              z.strictObject({
+                textAlign: z.literal("center").optional(),
+                segments: z.array(inlineSegment).max(10_000),
+              }),
+            )
             .max(1_000),
         }),
       )

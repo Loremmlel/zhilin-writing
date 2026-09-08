@@ -44,6 +44,7 @@ test("uses semantic styles and accepted revision text without visual guessing", 
 
   assert.deepEqual(warningCodes(parsed.warnings), [
     "HEADING_LEVEL_CLAMPED",
+    "TEXT_COLOR_FALLBACK",
     "VISUAL_FORMATTING_DROPPED",
     "HYPERLINK_UNSAFE_DROPPED",
     "TRACK_CHANGES_FLATTENED",

@@ -154,6 +154,7 @@ async function generatedFixtureBytes() {
       commonParts(threadedDocument, threadedComments, threadedExtended),
     ],
     ["semantic-matrix.docx", semanticMatrixParts()],
+    ["text-formatting.docx", textFormattingParts()],
   ]);
   return new Map(
     await Promise.all(
@@ -163,6 +164,39 @@ async function generatedFixtureBytes() {
       ]),
     ),
   );
+}
+
+function textFormattingParts() {
+  const parts = commonParts(
+    documentXml(`
+    <w:p><w:pPr><w:pStyle w:val="Display"/></w:pPr><w:commentRangeStart w:id="0"/>
+      <w:r><w:t>继承</w:t></w:r><w:r><w:rPr><w:rStyle w:val="Accent"/><w:sz w:val="21"/></w:rPr><w:t>覆盖</w:t></w:r>
+      <w:r><w:rPr><w:color w:val="auto"/></w:rPr><w:t>默认颜色</w:t></w:r></w:p>
+    <w:p><w:r><w:rPr><w:color w:themeColor="accent1" w:themeTint="80"/></w:rPr><w:t>跨段批注</w:t></w:r><w:commentRangeEnd w:id="0"/></w:p>
+    <w:p><w:pPr><w:jc w:val="right"/></w:pPr><w:r><w:rPr><w:sz w:val="999"/><w:color w:val="FFFFFF"/></w:rPr><w:t>降级提示</w:t></w:r></w:p>
+    <w:tbl><w:tblGrid><w:gridCol/><w:gridCol/></w:tblGrid><w:tr>
+      <w:tc><w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:t>单格居中</w:t></w:r></w:p></w:tc>
+      <w:tc><w:p><w:r><w:t>默认对齐</w:t></w:r></w:p></w:tc>
+    </w:tr></w:tbl>`),
+    commentsXml(comment(0, "00000001", "格式作者", "格", "保留正文格式")),
+  );
+  parts["word/commentsExtended.xml"] =
+    `<w15:commentsEx xmlns:w15="http://schemas.microsoft.com/office/word/2012/wordml"><w15:commentEx w15:paraId="00000001" w15:done="0"/></w15:commentsEx>`;
+  parts["word/styles.xml"] =
+    `<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+    <w:docDefaults><w:rPrDefault><w:rPr><w:sz w:val="24"/></w:rPr></w:rPrDefault></w:docDefaults>
+    <w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:rPr><w:color w:val="242D27"/></w:rPr></w:style>
+    <w:style w:type="paragraph" w:styleId="Base"><w:basedOn w:val="Normal"/><w:rPr><w:sz w:val="36"/></w:rPr><w:pPr><w:jc w:val="center"/></w:pPr></w:style>
+    <w:style w:type="paragraph" w:styleId="Display"><w:basedOn w:val="Base"/><w:rPr><w:color w:val="C00000"/></w:rPr></w:style>
+    <w:style w:type="character" w:styleId="Accent"><w:rPr><w:color w:themeColor="accent1"/></w:rPr></w:style>
+  </w:styles>`;
+  parts["word/theme/theme1.xml"] =
+    `<a:theme xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:themeElements><a:clrScheme name="test"><a:accent1><a:srgbClr val="008000"/></a:accent1></a:clrScheme></a:themeElements></a:theme>`;
+  parts["word/_rels/document.xml.rels"] = DOCUMENT_RELS.replace(
+    "</Relationships>",
+    '<Relationship Id="rTheme" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme" Target="theme/theme1.xml"/></Relationships>',
+  );
+  return parts;
 }
 
 function semanticMatrixParts() {

@@ -139,3 +139,25 @@ test("unwrap preserves block boundaries around other annotations", () => {
   assert.match(nextMarkdown, /删除\n\n:annotation\[保留\]/);
   assert.match(nextMarkdown, /\n\n`code`/);
 });
+
+test("creates annotations across colored text and centered blocks without changing the block map", () => {
+  const tree = parseAnnotationMarkdown(
+    ':::align{value="center"}\n\n甲:text[乙😀]{size="18" color="#c00000"}\n\n:::\n\n丙丁',
+  );
+  const next = wrapAnnotationRange(
+    tree,
+    {
+      blockOrdinal: 0,
+      endBlockOrdinal: 1,
+      blockTextFrom: 1,
+      blockTextTo: 1,
+      selectedText: "乙😀\n\n丙",
+    },
+    A,
+  );
+  const markdown = stringifyAnnotationMarkdown(next);
+  assert.equal(visiblePostText(next), visiblePostText(tree));
+  assert.match(markdown, /center/);
+  assert.match(markdown, /size="18"/);
+  assert.equal(validateCanonicalAnnotationDocument(markdown, [A]).ok, true);
+});
