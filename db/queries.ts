@@ -352,7 +352,7 @@ export async function listPostsPage(
     .offset(bounds.offset);
   const ids = rows.map((row) => row.post.id);
   if (ids.length === 0) return { ...bounds, items: [] };
-  const [tagRows, countRows] = await Promise.all([
+  const [tagRows, replyCountRows, annotationCountRows] = await Promise.all([
     getDb()
       .select({
         postId: postTags.postId,
@@ -369,6 +369,11 @@ export async function listPostsPage(
       .from(replies)
       .where(and(inArray(replies.postId, ids), isNull(replies.deletedAt), isNull(replies.hiddenAt)))
       .groupBy(replies.postId),
+    getDb()
+      .select({ postId: postAnnotationAnchors.postId, value: count() })
+      .from(postAnnotationAnchors)
+      .where(inArray(postAnnotationAnchors.postId, ids))
+      .groupBy(postAnnotationAnchors.postId),
   ]);
   const tagsByPostId = new Map<
     string,
@@ -379,11 +384,15 @@ export async function listPostsPage(
       ...(tagsByPostId.get(tag.postId) ?? []),
       { id: tag.id, name: tag.name, normalizedName: tag.normalizedName },
     ]);
-  const countByPostId = new Map(countRows.map((row) => [row.postId, row.value]));
+  const replyCountByPostId = new Map(replyCountRows.map((row) => [row.postId, row.value]));
+  const annotationCountByPostId = new Map(
+    annotationCountRows.map((row) => [row.postId, row.value]),
+  );
   const items = rows.map((row) => ({
     ...row,
     tags: tagsByPostId.get(row.post.id) ?? [],
-    replyCount: countByPostId.get(row.post.id) ?? 0,
+    replyCount: replyCountByPostId.get(row.post.id) ?? 0,
+    annotationCount: annotationCountByPostId.get(row.post.id) ?? 0,
   }));
   return { ...bounds, items };
 }

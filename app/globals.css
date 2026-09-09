@@ -739,7 +739,7 @@ input[type="file"] {
   outline: 3px solid rgba(53, 97, 69, 0.34);
   outline-offset: 2px;
 }
-.post-card :is(.author-link, .reply-count, .tag) {
+.post-card :is(.author-link, .post-count, .tag) {
   position: relative;
   z-index: 1;
 }
@@ -782,17 +782,25 @@ input[type="file"] {
   color: var(--ink);
   font-weight: 600;
 }
-.reply-count {
+.post-counts {
   margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+.post-count {
   display: inline-flex;
   align-items: center;
   gap: 5px;
 }
-.reply-count svg {
+.post-count svg {
   width: 17px;
+  height: 17px;
   fill: none;
   stroke: currentColor;
   stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 .post-tags,
 .post-kicker {
@@ -4261,7 +4269,7 @@ input[type="file"] {
   .post-tags {
     justify-content: flex-start;
   }
-  .post-meta .reply-count {
+  .post-meta .post-counts {
     margin-left: 0;
   }
   .settings-form {

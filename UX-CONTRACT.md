@@ -110,7 +110,7 @@
 ## Dataset navigation
 
 - Admin revision list: per-post bounded timeline; community size is intentionally only a few users/posts, so V3 does not add pagination.
-- Community post/search/tag/profile-post/activity/notification lists use real 20-row pages, returning items/total/page/pageSize. COUNT and rows share filters; current-page related records are fetched in batches. D1 projections stay below 100 columns.
+- Community post/search/tag/profile-post/activity/notification lists use real 20-row pages, returning items/total/page/pageSize. COUNT and rows share filters; current-page tags, ordinary reply counts, and current-revision annotation counts are fetched in batches. D1 projections stay below 100 columns.
 - Positive safe integers only for page; malformed input→1, overflow→last page, empty→1. Canonical redirects retain valid query/sort/tab. Sort/query/tab changes reset page. Deletion, visibility and unread changes recompute bounds. Stable timestamp DESC + id DESC ordering; offset pagination does not promise snapshots.
 - URL state: home `sort=active&page=2`, search `q=词&page=2`, tag `page=2`, user `tab=activity&page=2`, notifications `tab=unread&page=2`. First page/default filters may be omitted. Browser back preserves source URL; an all-posts link must not claim to restore the previous search.
 - Search explicitly submits title/body terms, suppresses Enter during IME composition, labels inputs and exposes clear immediately for nonempty text. Clear resets page and returns search to its unqueried prompt; no new author/reply search scope.

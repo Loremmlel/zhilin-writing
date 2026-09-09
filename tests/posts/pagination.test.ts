@@ -111,12 +111,25 @@ test("production lists traverse beyond old caps, keep stable ties, and clamp aft
         "INSERT INTO notifications(id,recipient_user_id,actor_user_id,event_id,notification_type,post_id,created_at) VALUES (?,'reader','author',?,'POST_REPLY_RECEIVED',?,1000)",
       ).run(`n${id}`, `e${id}`, id);
     }
+    db.exec(
+      "INSERT INTO post_revisions(id,post_id,revision_number,kind,title,markdown,created_at,created_by_user_id) VALUES ('r1','p065',1,'CONTENT_EDIT','文章65','正文',1000,'author')",
+    );
+    db.exec(
+      "INSERT INTO annotations(id,post_id,author_id,content_markdown,original_selected_text,created_at,created_on_revision_id,submission_key) VALUES ('a1','p065','author','批注一','正文',1000,'r1','s1'),('a2','p065','author','批注二','正文',1001,'r1','s2')",
+    );
+    db.exec(
+      "INSERT INTO post_annotation_anchors(post_id,annotation_id) VALUES ('p065','a1'),('p065','a2')",
+    );
     const seen: string[] = [];
     for (let page = 1; page <= 4; page++) {
       const result = await queries.listPostsPage({ page, tagName: "校园" });
       assert.equal(result.total, 65);
       assert.equal(result.page, page);
       assert.ok(result.items.every((item) => item.tags.length === 2 && item.replyCount === 0));
+      assert.equal(
+        result.items.reduce((total, item) => total + item.annotationCount, 0),
+        page === 1 ? 2 : 0,
+      );
       seen.push(...result.items.map((item) => item.post.id));
     }
     assert.equal(new Set(seen).size, 65);
@@ -131,7 +144,7 @@ test("production lists traverse beyond old caps, keep stable ties, and clamp aft
     assert.equal((await queries.listPostsPage({ authorId: "reader" })).total, 0);
     calls = 0;
     await queries.listPostsPage();
-    assert.equal(calls, 4, "count, page, batched tags and reply counts only");
+    assert.equal(calls, 5, "count, page, batched tags, reply counts and annotation counts only");
     db.exec("UPDATE posts SET hidden_at=2 WHERE id >= 'p041'");
     const clamped = await queries.listPostsPage({ page: 4 });
     assert.equal(clamped.total, 40);

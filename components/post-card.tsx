@@ -9,10 +9,18 @@ type PostCardProps = {
   author: SiteUser;
   tags: { id: string; name: string; normalizedName: string }[];
   replyCount: number;
+  annotationCount: number;
   active?: boolean;
 };
 
-export function PostCard({ post, author, tags, replyCount, active = false }: PostCardProps) {
+export function PostCard({
+  post,
+  author,
+  tags,
+  replyCount,
+  annotationCount,
+  active = false,
+}: PostCardProps) {
   return (
     <article className="post-card">
       <div className="post-card-content">
@@ -47,16 +55,29 @@ export function PostCard({ post, author, tags, replyCount, active = false }: Pos
               ))}
             </div>
           )}
-          <Link
-            href={`/posts/${post.id}#replies`}
-            className="reply-count"
-            aria-label={`${replyCount} 条回复`}
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M20 15a4 4 0 0 1-4 4H8l-4 3V7a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4Z" />
-            </svg>
-            {replyCount}
-          </Link>
+          <div className="post-counts">
+            <Link
+              href={`/posts/${post.id}`}
+              className="post-count annotation-count"
+              aria-label={`${annotationCount} 条批注`}
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M7 4h10a3 3 0 0 1 3 3v8a3 3 0 0 1-3 3h-6l-5 3v-3a3 3 0 0 1-2-3V7a3 3 0 0 1 3-3Z" />
+                <path d="M8 9h8M8 13h5" />
+              </svg>
+              {annotationCount}
+            </Link>
+            <Link
+              href={`/posts/${post.id}#replies`}
+              className="post-count reply-count"
+              aria-label={`${replyCount} 条回复`}
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M20 15a4 4 0 0 1-4 4H8l-4 3V7a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4Z" />
+              </svg>
+              {replyCount}
+            </Link>
+          </div>
         </div>
       </div>
     </article>
