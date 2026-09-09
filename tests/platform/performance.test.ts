@@ -65,6 +65,11 @@ test("performance ingestion keeps only bounded numeric metrics and safe route sh
   });
   assert.deepEqual(record, { kind: "resource", route: "/posts/:id/edit", durationMs: 12.3 });
   assert.equal(performanceRoute("/secret@example.com"), "/other");
+  assert.equal(performanceRoute("/.rsc"), "/");
+  assert.equal(performanceRoute("/notifications.rsc"), "/notifications");
+  assert.equal(performanceRoute("/posts/new.rsc"), "/posts/new");
+  assert.equal(performanceRoute("/posts/private-id.rsc"), "/posts/:id");
+  assert.equal(performanceRoute("/posts/private-id/edit.rsc"), "/posts/:id/edit");
   assert.equal(sanitizeClientRecord({ kind: "secret" }), null);
 });
 
@@ -87,6 +92,7 @@ test("D1 and R2 probes preserve results, failures and batch bindings, and isolat
     },
     async batch(items: unknown[]) {
       assert.equal(items[0], original);
+      assert.equal(items[1], original);
       return ["batch-result"];
     },
   } as unknown as D1Database;
@@ -94,6 +100,7 @@ test("D1 and R2 probes preserve results, failures and batch bindings, and isolat
     requestId: String(n),
     dbMs: 0,
     dbCount: 0,
+    dbTrips: 0,
     r2Ms: 0,
     r2Count: 0,
   }));
@@ -102,7 +109,10 @@ test("D1 and R2 probes preserve results, failures and batch bindings, and isolat
       requestPerformance.run(context, async () => {
         const measured = measuredDatabase(db);
         assert.equal(await measured.prepare("private SQL").bind("private value").first(), 42);
-        assert.deepEqual(await measured.batch([measured.prepare("SQL").bind(1)]), ["batch-result"]);
+        assert.deepEqual(
+          await measured.batch([measured.prepare("SQL").bind(1), measured.prepare("SQL").bind(2)]),
+          ["batch-result"],
+        );
         await assert.rejects(measured.prepare("SQL").run(), /expected/);
         const bucket = measuredBucket({
           async get() {
@@ -114,7 +124,8 @@ test("D1 and R2 probes preserve results, failures and batch bindings, and isolat
     ),
   );
   for (const context of contexts) {
-    assert.equal(context.dbCount, 3);
+    assert.equal(context.dbCount, 4);
+    assert.equal(context.dbTrips, 3);
     assert.equal(context.r2Count, 1);
     assert.ok(context.dbMs >= 0);
   }

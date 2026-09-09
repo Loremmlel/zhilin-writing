@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useRef, useState } from "react";
 
 import type { AnnotationReplyActionState } from "@/app/(site)/posts/[id]/actions";
@@ -27,7 +26,6 @@ export function AnnotationReplyForm({
   onCancel?: () => void;
   onSuccess?: () => void;
 }) {
-  const router = useRouter();
   const editorRootRef = useRef<HTMLElement | null>(null);
   const onSuccessRef = useRef(onSuccess);
   const [state, formAction, pending] = useActionState(action, {});
@@ -53,10 +51,9 @@ export function AnnotationReplyForm({
       setSubmissionKey(crypto.randomUUID());
       setResetRevision((value) => value + 1);
       onSuccessRef.current?.();
-      router.refresh();
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [annotationReplyId, router]);
+  }, [annotationReplyId]);
   return (
     <form action={formAction} className="annotation-reply-form" noValidate>
       <input type="hidden" name="contentMarkdown" value={markdown} />

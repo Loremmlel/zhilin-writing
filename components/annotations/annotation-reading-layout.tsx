@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import {
   useActionState,
   useCallback,
@@ -80,7 +79,6 @@ function AnnotationComposer({
   validateSelection,
   onPhaseChange,
   onClose,
-  onSuccess,
 }: {
   action: AnnotationAction;
   savedSelection: SavedAnnotationSelection;
@@ -88,7 +86,6 @@ function AnnotationComposer({
   validateSelection: () => boolean;
   onPhaseChange: (event: SelectionPreviewEvent) => void;
   onClose: () => void;
-  onSuccess: () => void;
 }) {
   const [state, formAction, pending] = useActionState(action, {});
   const [markdown, setMarkdown] = useState("");
@@ -96,17 +93,14 @@ function AnnotationComposer({
   const handledSuccessRef = useRef<string | null>(null);
   const accessBlocked = isBlockingAccessError(state.code);
   const onPhaseChangeRef = useRef(onPhaseChange);
-  const onSuccessRef = useRef(onSuccess);
   useEffect(() => {
     onPhaseChangeRef.current = onPhaseChange;
-    onSuccessRef.current = onSuccess;
-  }, [onPhaseChange, onSuccess]);
+  }, [onPhaseChange]);
   useEffect(() => {
     if (pending) return;
     if (state.annotationId && handledSuccessRef.current !== state.annotationId) {
       handledSuccessRef.current = state.annotationId;
       onPhaseChangeRef.current("submit-succeeded");
-      onSuccessRef.current();
     } else if (state.error) {
       onPhaseChangeRef.current("failure");
     }
@@ -209,7 +203,6 @@ export function AnnotationReadingLayout({
   initialAnnotationId?: string;
   initialAnnotationReplyId?: string;
 }) {
-  const router = useRouter();
   const layoutRef = useRef<HTMLDivElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
   const sidebarRef = useRef<HTMLElement>(null);
@@ -704,7 +697,6 @@ export function AnnotationReadingLayout({
             validateSelection={() => validateCurrentSelection(currentSelectionContext.saved)}
             onPhaseChange={transitionSelectionPreview}
             onClose={cancelSelectionContext}
-            onSuccess={() => router.refresh()}
           />
         )}
     </div>

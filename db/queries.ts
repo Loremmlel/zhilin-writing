@@ -175,6 +175,20 @@ export async function addAllowedUser(email: string, isAdmin: boolean, addedByUse
 
 export async function ensureConfiguredAdministrator(email: string) {
   const db = getDb();
+  // Normal access is read-only. Repair bootstrap/owner changes only when needed.
+  const configured = await db
+    .select()
+    .from(allowedUsers)
+    .where(
+      or(
+        eq(allowedUsers.email, email),
+        isNull(allowedUsers.addedByUserId),
+        eq(allowedUsers.isAdmin, true),
+      ),
+    );
+  if (configured.length === 1 && configured[0].email === email && configured[0].isAdmin)
+    return configured[0];
+
   const administrator = {
     id: crypto.randomUUID(),
     email,

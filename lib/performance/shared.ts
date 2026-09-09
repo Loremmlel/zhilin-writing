@@ -3,6 +3,7 @@ export const MAX_BATCH = 30;
 
 // Only route shapes are retained; query strings, names and unknown paths are never logged.
 export function performanceRoute(path: string): string {
+  path = path.replace(/\.rsc$/, "") || "/";
   if (path === "/static/*") return path;
   if (/^\/(?:_next|_vinext|assets)\//.test(path)) return "/static/*";
   if (
@@ -63,6 +64,7 @@ export function sanitizeClientRecord(value: unknown): Record<string, string | nu
     "serverMs",
     "dbMs",
     "dbCount",
+    "dbTrips",
     "r2Ms",
     "r2Count",
     "transferBytes",

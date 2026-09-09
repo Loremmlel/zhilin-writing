@@ -1,5 +1,6 @@
 "use server";
 
+import { markPerformanceOperation } from "@/lib/performance/context";
 import { revalidatePath } from "next/cache";
 
 import type { PostActionState } from "@/components/editor/post-editor-form";
@@ -163,6 +164,7 @@ export async function createAnnotationAction(
   _state: AnnotationActionState,
   formData: FormData,
 ): Promise<AnnotationActionState> {
+  markPerformanceOperation("annotation.create");
   let actorUserId: string | undefined;
   let selection: AnnotationSelectionDescriptor | undefined;
   try {
@@ -220,6 +222,7 @@ export async function createAnnotationReplyAction(
   _state: AnnotationReplyActionState,
   formData: FormData,
 ): Promise<AnnotationReplyActionState> {
+  markPerformanceOperation("annotation-reply.create");
   let actorUserId: string | undefined;
   try {
     const access = await getApiMemberAccess();

@@ -56,6 +56,7 @@ export function measuredDatabase(db: D1Database): D1Database {
         return async (...args: unknown[]) => {
           const started = performance.now();
           context.dbCount++;
+          context.dbTrips = (context.dbTrips ?? 0) + 1;
           try {
             return await value.apply(target, args);
           } finally {
@@ -74,6 +75,7 @@ export function measuredDatabase(db: D1Database): D1Database {
         return async (statements: D1PreparedStatement[]) => {
           const started = performance.now();
           context.dbCount += statements.length;
+          context.dbTrips = (context.dbTrips ?? 0) + 1;
           try {
             return await target.batch(statements.map((item) => originals.get(item) ?? item));
           } finally {

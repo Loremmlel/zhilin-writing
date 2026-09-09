@@ -65,7 +65,15 @@ const observedWorker = {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
     if (url.pathname === PERFORMANCE_ENDPOINT) return worker.fetch(request, env, ctx);
-    const context = { requestId: crypto.randomUUID(), dbMs: 0, dbCount: 0, r2Ms: 0, r2Count: 0 };
+    const context = {
+      requestId: crypto.randomUUID(),
+      dbMs: 0,
+      dbCount: 0,
+      dbTrips: 0,
+      operation: undefined as string | undefined,
+      r2Ms: 0,
+      r2Count: 0,
+    };
     return requestPerformance.run(context, async () => {
       const started = performance.now();
       let status = 500;
@@ -75,7 +83,7 @@ const observedWorker = {
         const headers = new Headers(response.headers);
         headers.append(
           "Server-Timing",
-          `app;dur=${milliseconds(performance.now() - started)}, db;dur=${milliseconds(context.dbMs)}, dbcount;dur=${context.dbCount}, r2;dur=${milliseconds(context.r2Ms)}, r2count;dur=${context.r2Count}, request;desc="${context.requestId}"`,
+          `app;dur=${milliseconds(performance.now() - started)}, db;dur=${milliseconds(context.dbMs)}, dbcount;dur=${context.dbCount}, dbtrips;dur=${context.dbTrips}, r2;dur=${milliseconds(context.r2Ms)}, r2count;dur=${context.r2Count}, request;desc="${context.requestId}"`,
         );
         headers.set("X-Request-Id", context.requestId);
         const body = response.body
@@ -91,6 +99,8 @@ const observedWorker = {
                     streamEndMs: milliseconds(performance.now() - started),
                     dbMs: milliseconds(context.dbMs),
                     dbCount: context.dbCount,
+                    dbTrips: context.dbTrips,
+                    operation: context.operation,
                     r2Ms: milliseconds(context.r2Ms),
                     r2Count: context.r2Count,
                   },
@@ -119,6 +129,8 @@ const observedWorker = {
           responseReadyMs: milliseconds(performance.now() - started),
           dbMs: milliseconds(context.dbMs),
           dbCount: context.dbCount,
+          dbTrips: context.dbTrips,
+          operation: context.operation,
           r2Ms: milliseconds(context.r2Ms),
           r2Count: context.r2Count,
         };

@@ -119,3 +119,8 @@ test("mutations and asset APIs use typed access instead of navigation redirects"
     assert.match(source, /getApiMemberAccess|getActionAdministratorAccess/, paths[index]);
   }
 });
+
+test("runtime auth is read-only after bootstrap and shares reads only within each request", async () => {
+  const { default: checkAuthRuntime } = await import("./auth-runtime-check.mjs");
+  await checkAuthRuntime();
+});

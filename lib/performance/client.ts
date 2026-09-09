@@ -70,6 +70,7 @@ export function installPerformanceProbe() {
       serverMs: timing("app")?.duration,
       dbMs: timing("db")?.duration,
       dbCount: timing("dbcount")?.duration,
+      dbTrips: timing("dbtrips")?.duration,
       r2Ms: timing("r2")?.duration,
       r2Count: timing("r2count")?.duration,
     };
