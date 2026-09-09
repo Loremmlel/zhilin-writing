@@ -16,6 +16,7 @@ import {
 import { alias } from "drizzle-orm/sqlite-core";
 
 import { getDb } from "@/db";
+import { getPostReadRow } from "@/db/queries";
 import { annotationReplies, annotations, postAnnotationAnchors, posts, users } from "@/db/schema";
 import { contentState } from "@/lib/lifecycle/policy";
 import {
@@ -34,6 +35,7 @@ const annotationAuthor = alias(users, "annotation_author");
 const annotationAttributedUser = alias(users, "annotation_attributed_user");
 const replyAuthor = alias(users, "annotation_reply_author");
 const replyAttributedUser = alias(users, "annotation_reply_attributed_user");
+const replyTargetUser = alias(users, "annotation_reply_target_user");
 
 export async function findAnnotation(id: string) {
   return (
@@ -148,15 +150,10 @@ export async function listCurrentAnnotationThreads(
 ) {
   const [rawRoots, post] = await Promise.all([
     listCurrentAnnotations(postId),
-    getDb()
-      .select({ markdown: posts.markdown })
-      .from(posts)
-      .where(eq(posts.id, postId))
-      .limit(1)
-      .then((rows) => rows[0] ?? null),
+    getPostReadRow(postId),
   ]);
   if (!post) return [];
-  const roots = sortAnnotationRowsByAnchorPosition(post.markdown, rawRoots);
+  const roots = sortAnnotationRowsByAnchorPosition(post.post.markdown, rawRoots);
   const ids = roots.map((row) => row.annotation.id);
   if (ids.length === 0) return [];
   const rawReplyRows = await getDb()
@@ -164,10 +161,12 @@ export async function listCurrentAnnotationThreads(
       reply: annotationReplies,
       nativeAuthor: replyAuthor,
       attributedUser: replyAttributedUser,
+      targetUser: replyTargetUser,
     })
     .from(annotationReplies)
     .leftJoin(replyAuthor, eq(annotationReplies.authorId, replyAuthor.id))
     .leftJoin(replyAttributedUser, eq(annotationReplies.attributedUserId, replyAttributedUser.id))
+    .leftJoin(replyTargetUser, eq(annotationReplies.replyToUserId, replyTargetUser.id))
     .where(inArray(annotationReplies.annotationId, ids))
     .orderBy(asc(annotationReplies.createdAt), asc(annotationReplies.id));
   const replyRows = sortAnnotationReplyRows(
@@ -176,15 +175,11 @@ export async function listCurrentAnnotationThreads(
       author: buildAnnotationAuthorView(reply, nativeAuthor, attributedUser),
     })),
   );
-  const targetIds = [
-    ...new Set(
-      replyRows.map((row) => row.reply.replyToUserId).filter((id): id is string => Boolean(id)),
+  const targetById = new Map(
+    rawReplyRows.flatMap(({ targetUser }) =>
+      targetUser ? [[targetUser.id, targetUser] as const] : [],
     ),
-  ];
-  const targetUsers = targetIds.length
-    ? await getDb().select().from(users).where(inArray(users.id, targetIds))
-    : [];
-  const targetById = new Map(targetUsers.map((user) => [user.id, user]));
+  );
   const replyById = new Map(replyRows.map((row) => [row.reply.id, row]));
   return roots.map((root) => {
     const rootState = contentState(root.annotation).state;

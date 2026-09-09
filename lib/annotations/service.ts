@@ -79,10 +79,17 @@ export async function createAnnotation(input: {
   const submissionKey = validateAnnotationSubmissionKey(input.submissionKey);
   const duplicate = await findAnnotationBySubmissionKey(input.authorId, submissionKey);
   if (duplicate) return duplicate.id;
-  const post = await getPost(input.postId);
+  const db = getDb();
+  const row = (
+    await db
+      .select()
+      .from(posts)
+      .where(and(eq(posts.id, input.postId), isNull(posts.deletedAt), isNull(posts.hiddenAt)))
+      .limit(1)
+  )[0];
+  const post = row ? { post: row } : null;
   if (!post) throw new Error("帖子不存在或当前不可访问");
   if (!post.post.currentRevisionId) throw new Error("帖子当前版本不存在");
-  const db = getDb();
   const currentRevision = (
     await db
       .select()

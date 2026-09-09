@@ -65,7 +65,7 @@ const observedWorker = {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
     if (url.pathname === PERFORMANCE_ENDPOINT) return worker.fetch(request, env, ctx);
-    const context = {
+    const context: NonNullable<ReturnType<typeof requestPerformance.getStore>> = {
       requestId: crypto.randomUUID(),
       dbMs: 0,
       dbCount: 0,
@@ -100,6 +100,12 @@ const observedWorker = {
                     dbMs: milliseconds(context.dbMs),
                     dbCount: context.dbCount,
                     dbTrips: context.dbTrips,
+                    dbSqlMs: context.dbSqlMs,
+                    dbMetaCount: context.dbMetaCount,
+                    dbRowsRead: context.dbRowsRead,
+                    dbRowsWritten: context.dbRowsWritten,
+                    dbAttempts: context.dbAttempts,
+                    dbRegion: context.dbRegion,
                     operation: context.operation,
                     r2Ms: milliseconds(context.r2Ms),
                     r2Count: context.r2Count,
@@ -130,6 +136,12 @@ const observedWorker = {
           dbMs: milliseconds(context.dbMs),
           dbCount: context.dbCount,
           dbTrips: context.dbTrips,
+          dbSqlMs: context.dbSqlMs,
+          dbMetaCount: context.dbMetaCount,
+          dbRowsRead: context.dbRowsRead,
+          dbRowsWritten: context.dbRowsWritten,
+          dbAttempts: context.dbAttempts,
+          dbRegion: context.dbRegion,
           operation: context.operation,
           r2Ms: milliseconds(context.r2Ms),
           r2Count: context.r2Count,

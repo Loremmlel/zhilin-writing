@@ -50,3 +50,11 @@
 - `dbCount` 仍是语句数；新增 `dbTrips` 是数据库调用次数，一个 batch 只算一次。服务端 `operation` 区分 `annotation.create` / `annotation-reply.create`，仅使用固定标记。`.rsc` 请求先归一化路由再脱敏。
 - 新旧数据共存；旧记录没有新指标，不能当作零。数据库累计时间包含并发，不与端到端时间相加。下一轮比较同类操作与相近文章规模，单独观察网络波动。
 - 鉴权行为检查纳入 `tests/access/auth-access.test.ts`：使用真实 SQLite 和当前框架请求缓存，验证初始化修复、稳定状态零写入、并发身份隔离及下一请求权限撤销。此检查不等同于浏览器验收。
+
+## 第二轮查询优化
+
+- 新增批注仅读取需要的帖子行，不再读取标签和附件。
+- 阅读页和批注线程共享请求内的帖子读取；讨论状态的三项查询作为一个 D1 batch 执行，保留原有生命周期判断。标签、附件和状态读取并行；批注回复的目标用户随 JOIN 一起读取。
+- 服务端新增 `dbSqlMs`、`dbMetaCount`、`dbRowsRead`、`dbRowsWritten`、`dbAttempts`、`dbRegion`。SQL 耗时优先使用 D1 `meta.timings.sql_duration_ms`，缺失时使用 `meta.duration`；不记录 SQL 和绑定值。
+- 这些元数据只覆盖返回 D1Result 的调用。ORM 的 `raw()` 读取没有 meta，不额外执行查询来获取它，也不改变返回数组语义。必须同时检查 `dbMetaCount` 与 `dbCount`，不能用局部 `dbSqlMs` 从全部 `dbMs` 中相减后声称得到了网络时间。Region 为最后一个有效元数据的区域，缺失不推断。
+- 没有新增索引或更改数据库结构。通过真实迁移后的 SQLite 检查共享读取与删除后讨论可见性；线上耗时仍以新日志为准。

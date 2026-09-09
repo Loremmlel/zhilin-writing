@@ -181,3 +181,40 @@ test("a failed telemetry write never fails or retries a business request", async
     console.error = error;
   }
 });
+
+test("database execution metadata is separate from wall time and missing metadata stays unknown", async () => {
+  const context: NonNullable<ReturnType<typeof requestPerformance.getStore>> = {
+    requestId: "test",
+    dbMs: 0,
+    dbCount: 0,
+    r2Ms: 0,
+    r2Count: 0,
+  };
+  const result = {
+    meta: {
+      timings: { sql_duration_ms: 0.25 },
+      rows_read: 3,
+      rows_written: 1,
+      total_attempts: 2,
+      served_by_region: "WEUR",
+    },
+    results: [],
+  };
+  const db = {
+    batch: async () => [result, { results: [] }],
+    prepare: () => ({ raw: async () => [[1]] }),
+  } as unknown as D1Database;
+  await requestPerformance.run(context, async () => {
+    const measured = measuredDatabase(db);
+    assert.deepEqual(await measured.prepare("unused").raw(), [[1]]);
+    assert.equal(context.dbSqlMs, undefined);
+    const returned = await measured.batch([{} as D1PreparedStatement, {} as D1PreparedStatement]);
+    assert.equal(returned[0], result);
+  });
+  assert.equal(context.dbSqlMs, 0.25);
+  assert.equal(context.dbMetaCount, 1);
+  assert.equal(context.dbCount, 3);
+  assert.equal(context.dbRowsRead, 3);
+  assert.equal(context.dbAttempts, 2);
+  assert.equal(context.dbRegion, "WEUR");
+});

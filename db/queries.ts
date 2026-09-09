@@ -1,3 +1,4 @@
+import { cacheForRequest } from "vinext/cache";
 import {
   and,
   asc,
@@ -454,17 +455,37 @@ async function getPostAttachments(id: string) {
     .then((rows) => rows.map((row) => row.asset));
 }
 
+// Page-only reads: mutations must not prime this cache before changing a post.
+const postReadCache = cacheForRequest(
+  () => new Map<string, Promise<Awaited<ReturnType<typeof readPostRow>>>>(),
+);
+async function readPostRow(id: string) {
+  return (
+    (
+      await getDb()
+        .select({ post: posts, author: users })
+        .from(posts)
+        .innerJoin(users, eq(posts.authorId, users.id))
+        .where(eq(posts.id, id))
+        .limit(1)
+    )[0] ?? null
+  );
+}
+export function getPostReadRow(id: string) {
+  const cache = postReadCache();
+  if (!cache.has(id)) cache.set(id, readPostRow(id));
+  return cache.get(id)!;
+}
+
 export async function getPostDetail(id: string) {
-  const row = (
-    await getDb()
-      .select({ post: posts, author: users })
-      .from(posts)
-      .innerJoin(users, eq(posts.authorId, users.id))
-      .where(eq(posts.id, id))
-      .limit(1)
-  )[0];
+  const row = await getPostReadRow(id);
   if (!row) return null;
-  const replyStates = await getPostDiscussionStates(id);
+  const visible = !row.post.deletedAt && !row.post.hiddenAt;
+  const [replyStates, tags, attachments] = await Promise.all([
+    getPostDiscussionStates(id),
+    visible ? getTagsForPost(id) : Promise.resolve([]),
+    visible ? getPostAttachments(id) : Promise.resolve([]),
+  ]);
   const lifecycle = buildPostLifecycleView(row.post, replyStates);
   const base = {
     id: row.post.id,
@@ -482,13 +503,13 @@ export async function getPostDetail(id: string) {
     lifecycle,
     title: lifecycle.contentVisible ? row.post.title : null,
     markdown: lifecycle.contentVisible ? row.post.markdown : null,
-    tags: lifecycle.contentVisible ? await getTagsForPost(id) : [],
-    attachments: lifecycle.contentVisible ? await getPostAttachments(id) : [],
+    tags,
+    attachments,
   };
 }
 
 async function getPostDiscussionStates(postId: string) {
-  const [postReplies, annotationRoots, annotationThreadReplies] = await Promise.all([
+  const [postReplies, annotationRoots, annotationThreadReplies] = await getDb().batch([
     getDb()
       .select({
         authorId: replies.authorId,

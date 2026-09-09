@@ -4,6 +4,12 @@ export const requestPerformance = new AsyncLocalStorage<{
   dbMs: number;
   dbCount: number;
   dbTrips?: number;
+  dbSqlMs?: number;
+  dbMetaCount?: number;
+  dbRowsRead?: number;
+  dbRowsWritten?: number;
+  dbAttempts?: number;
+  dbRegion?: string;
   operation?: string;
   r2Ms: number;
   r2Count: number;

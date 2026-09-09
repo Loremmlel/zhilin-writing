@@ -21,11 +21,17 @@ function load(file, deps) {
 }
 export default async function checkAuthRuntime() {
   const sqlite = new DatabaseSync(":memory:");
-  sqlite.exec(
-    "CREATE TABLE allowed_users (id TEXT PRIMARY KEY, email TEXT UNIQUE, is_admin INTEGER, added_at INTEGER, added_by_user_id TEXT)",
-  );
+  for (const file of fs
+    .readdirSync(path + "drizzle")
+    .filter((name) => /^\d{4}_.+\.sql$/.test(name))
+    .sort()) {
+    sqlite.exec(fs.readFileSync(path + "drizzle/" + file, "utf8"));
+  }
+  const statements = [];
+
   let writes = 0;
   const execute = (sql, params, method) => {
+    statements.push(sql);
     const stmt = sqlite.prepare(sql);
     if (method === "run") {
       writes++;
@@ -40,7 +46,12 @@ export default async function checkAuthRuntime() {
     async (queries) => queries.map((q) => execute(q.sql, q.params, q.method)),
   );
   const schema = load("db/schema.ts", {});
-  const queries = load("db/queries.ts", { "./index": { getDb: () => db }, "./schema": schema });
+  const queries = load("db/queries.ts", {
+    "./index": { getDb: () => db },
+    "./schema": schema,
+    "vinext/cache": await import(path + "node_modules/vinext/dist/cache.js"),
+    "@/lib/lifecycle/views": await import(path + "lib/lifecycle/views.ts"),
+  });
   await queries.ensureConfiguredAdministrator("owner@example.com");
   assert.equal(writes, 3);
   writes = 0;
@@ -113,5 +124,34 @@ export default async function checkAuthRuntime() {
     }),
   );
   assert.equal(reads, 3);
+
+  sqlite.exec(
+    "INSERT INTO users(id,email_key,display_name,joined_at,updated_at) VALUES('author','author@example.test','Author',0,0),('reader','reader@example.test','Reader',0,0)",
+  );
+  sqlite.exec(
+    "INSERT INTO posts(id,author_id,title,markdown,published_at,last_activity_at) VALUES('post','author','Title','Body',0,0)",
+  );
+  await runWithRequestContext(createRequestContext(), async () => {
+    const start = statements.length;
+    const [detail, row] = await Promise.all([
+      queries.getPostDetail("post"),
+      queries.getPostReadRow("post"),
+    ]);
+    assert.equal(detail.markdown, "Body");
+    assert.equal(row.post.id, "post");
+    assert.equal(statements.slice(start).filter((sql) => sql.includes('from "posts"')).length, 1);
+  });
+  sqlite.exec("UPDATE posts SET deleted_at=1 WHERE id='post'");
+  sqlite.exec(
+    "INSERT INTO replies(id,post_id,author_id,markdown,published_at,submission_key) VALUES('reply','post','reader','Discussion',0,'reply')",
+  );
+  await runWithRequestContext(createRequestContext(), async () => {
+    const detail = await queries.getPostDetail("post");
+    assert.equal(detail.markdown, null);
+    assert.equal(detail.lifecycle.hasOtherMemberDiscussion, true);
+    assert.equal(detail.lifecycle.discussionReachable, true);
+    assert.deepEqual(detail.tags, []);
+    assert.deepEqual(detail.attachments, []);
+  });
   sqlite.close();
 }

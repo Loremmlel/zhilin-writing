@@ -45,6 +45,26 @@ import { logServerError } from "../logging.ts";
 export function measuredDatabase(db: D1Database): D1Database {
   const context = requestPerformance.getStore();
   if (!context) return db;
+  const recordMeta = (result: unknown) => {
+    const meta = (result as { meta?: Record<string, unknown> } | null)?.meta;
+    if (!meta) return;
+    const timings = meta.timings as { sql_duration_ms?: number } | undefined;
+    const duration = timings?.sql_duration_ms ?? meta.duration;
+    if (typeof duration !== "number" || !Number.isFinite(duration) || duration < 0) return;
+    context.dbSqlMs = (context.dbSqlMs ?? 0) + duration;
+    context.dbMetaCount = (context.dbMetaCount ?? 0) + 1;
+    for (const [source, key] of [
+      ["rows_read", "dbRowsRead"],
+      ["rows_written", "dbRowsWritten"],
+      ["total_attempts", "dbAttempts"],
+    ] as const) {
+      const value = meta[source];
+      if (typeof value === "number" && Number.isFinite(value) && value >= 0)
+        context[key] = (context[key] ?? 0) + value;
+    }
+    if (typeof meta.served_by_region === "string" && /^[A-Z]{2,8}$/.test(meta.served_by_region))
+      context.dbRegion = meta.served_by_region;
+  };
   const originals = new WeakMap<D1PreparedStatement, D1PreparedStatement>();
   const statement = (target: D1PreparedStatement): D1PreparedStatement => {
     const proxy = new Proxy(target, {
@@ -58,7 +78,9 @@ export function measuredDatabase(db: D1Database): D1Database {
           context.dbCount++;
           context.dbTrips = (context.dbTrips ?? 0) + 1;
           try {
-            return await value.apply(target, args);
+            const result = await value.apply(target, args);
+            recordMeta(result);
+            return result;
           } finally {
             context.dbMs += performance.now() - started;
           }
@@ -77,7 +99,11 @@ export function measuredDatabase(db: D1Database): D1Database {
           context.dbCount += statements.length;
           context.dbTrips = (context.dbTrips ?? 0) + 1;
           try {
-            return await target.batch(statements.map((item) => originals.get(item) ?? item));
+            const results = await target.batch(
+              statements.map((item) => originals.get(item) ?? item),
+            );
+            results.forEach(recordMeta);
+            return results;
           } finally {
             context.dbMs += performance.now() - started;
           }
