@@ -12,8 +12,7 @@ import { ContentLifecycleControl } from "@/components/admin/content-lifecycle-co
 import { AdminListSkeleton } from "@/components/loading/skeletons";
 import { RegionErrorBoundary } from "@/components/region-error-boundary";
 import {
-  countAdminPostsByStatus,
-  countAdminRepliesByStatus,
+  countAdminOverviewByStatus,
   listAdminAuditLog,
   listAdminAuditLogPage,
   listAdminPosts,
@@ -22,12 +21,7 @@ import {
   listRecentUsers,
   listUsers,
 } from "@/db/queries";
-import {
-  countAdminAnnotationRepliesByStatus,
-  countAdminAnnotationsByStatus,
-  listAdminAnnotationReplies,
-  listAdminAnnotations,
-} from "@/lib/annotations/queries";
+import { listAdminAnnotationReplies, listAdminAnnotations } from "@/lib/annotations/queries";
 import { annotationSourceMetadata, type AnnotationAuthorView } from "@/lib/annotations/identity";
 import {
   adminUrl,
@@ -168,12 +162,7 @@ async function AdminMain({ view }: { view: AdminView }) {
 }
 
 async function AdminOverview({ view }: { view: AdminView }) {
-  const counts = await Promise.all([
-    countAdminPostsByStatus(),
-    countAdminRepliesByStatus(),
-    countAdminAnnotationsByStatus(),
-    countAdminAnnotationRepliesByStatus(),
-  ]);
+  const counts = await countAdminOverviewByStatus();
   const cards: Array<{
     type: AdminContentType;
     label: string;

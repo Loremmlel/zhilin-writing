@@ -77,18 +77,21 @@ test("production lists traverse beyond old caps, keep stable ties, and clamp aft
   }
   let maxColumns = 0;
   let calls = 0;
+  const execute = async (sql: string, params: unknown[], method: string) => {
+    calls++;
+    const statement = db.prepare(sql);
+    maxColumns = Math.max(maxColumns, statement.columns().length);
+    if (method === "run") {
+      statement.run(...(params as []));
+      return { rows: [] };
+    }
+    statement.setReturnArrays(true);
+    return { rows: statement.all(...(params as [])) as unknown as unknown[][] };
+  };
   useQueryDatabase(
-    drizzle(async (sql, params, method) => {
-      calls++;
-      const statement = db.prepare(sql);
-      maxColumns = Math.max(maxColumns, statement.columns().length);
-      if (method === "run") {
-        statement.run(...(params as []));
-        return { rows: [] };
-      }
-      statement.setReturnArrays(true);
-      return { rows: statement.all(...(params as [])) as unknown as unknown[][] };
-    }),
+    drizzle(execute, async (queries) =>
+      Promise.all(queries.map((q) => execute(q.sql, q.params, q.method))),
+    ),
   );
   try {
     db.exec(

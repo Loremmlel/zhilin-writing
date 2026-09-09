@@ -1,3 +1,4 @@
+import { alias } from "drizzle-orm/sqlite-core";
 import { cacheForRequest } from "vinext/cache";
 import {
   and,
@@ -73,7 +74,7 @@ async function loadLifecycleQueryContext(postIdValues: string[]): Promise<Lifecy
   if (postIds.length === 0)
     return { currentAnnotationKeys: new Set(), discussionByPostId: new Map() };
   const db = getDb();
-  const [anchorRows, postReplyRows, annotationRows, annotationReplyRows] = await Promise.all([
+  const [anchorRows, postReplyRows, annotationRows, annotationReplyRows] = await db.batch([
     db
       .select({
         postId: postAnnotationAnchors.postId,
@@ -82,7 +83,7 @@ async function loadLifecycleQueryContext(postIdValues: string[]): Promise<Lifecy
       .from(postAnnotationAnchors)
       .where(inArray(postAnnotationAnchors.postId, postIds)),
     db
-      .select({
+      .selectDistinct({
         postId: replies.postId,
         authorId: replies.authorId,
         deletedAt: replies.deletedAt,
@@ -91,7 +92,7 @@ async function loadLifecycleQueryContext(postIdValues: string[]): Promise<Lifecy
       .from(replies)
       .where(inArray(replies.postId, postIds)),
     db
-      .select({
+      .selectDistinct({
         postId: postAnnotationAnchors.postId,
         authorId: annotations.authorId,
         deletedAt: annotations.deletedAt,
@@ -101,7 +102,7 @@ async function loadLifecycleQueryContext(postIdValues: string[]): Promise<Lifecy
       .innerJoin(annotations, eq(postAnnotationAnchors.annotationId, annotations.id))
       .where(inArray(postAnnotationAnchors.postId, postIds)),
     db
-      .select({
+      .selectDistinct({
         postId: postAnnotationAnchors.postId,
         authorId: annotationReplies.authorId,
         deletedAt: annotationReplies.deletedAt,
@@ -328,24 +329,16 @@ export async function listPostsPage(
   }
 
   if (options.tagName) {
-    const tag = (
-      await getDb()
-        .select({ id: tags.id })
-        .from(tags)
-        .where(eq(tags.normalizedName, options.tagName.toLocaleLowerCase("zh-CN")))
-        .limit(1)
-    )[0];
-    if (!tag) conditions.push(sql`0 = 1`);
-    if (tag)
-      conditions.push(
-        inArray(
-          posts.id,
-          getDb()
-            .select({ postId: postTags.postId })
-            .from(postTags)
-            .where(eq(postTags.tagId, tag.id)),
-        ),
-      );
+    conditions.push(
+      inArray(
+        posts.id,
+        getDb()
+          .select({ postId: postTags.postId })
+          .from(postTags)
+          .innerJoin(tags, eq(postTags.tagId, tags.id))
+          .where(eq(tags.normalizedName, options.tagName.toLocaleLowerCase("zh-CN"))),
+      ),
+    );
   }
 
   const [countRow] = await getDb()
@@ -355,7 +348,19 @@ export async function listPostsPage(
     .where(and(...conditions));
   const bounds = pageBounds(countRow?.value ?? 0, options.page);
   const rows = await getDb()
-    .select({ post: posts, author: users })
+    .select({
+      post: {
+        id: posts.id,
+        title: posts.title,
+        publishedAt: posts.publishedAt,
+        lastActivityAt: posts.lastActivityAt,
+        editedAt: posts.editedAt,
+        // searchText is whitespace-normalized by markdownToPlainText. Preserve legacy fallback.
+        searchText: sql<string>`case when ${posts.searchText} != '' then substr(${posts.searchText}, 1, 152) else ${posts.markdown} end`,
+        markdown: sql<string>`''`,
+      },
+      author: users,
+    })
     .from(posts)
     .innerJoin(users, eq(posts.authorId, users.id))
     .where(and(...conditions))
@@ -367,7 +372,7 @@ export async function listPostsPage(
     .offset(bounds.offset);
   const ids = rows.map((row) => row.post.id);
   if (ids.length === 0) return { ...bounds, items: [] };
-  const [tagRows, replyCountRows, annotationCountRows] = await Promise.all([
+  const [tagRows, replyCountRows, annotationCountRows] = await getDb().batch([
     getDb()
       .select({
         postId: postTags.postId,
@@ -410,6 +415,18 @@ export async function listPostsPage(
     annotationCount: annotationCountByPostId.get(row.post.id) ?? 0,
   }));
   return { ...bounds, items };
+}
+
+export async function getVisiblePostRecord(id: string) {
+  return (
+    (
+      await getDb()
+        .select()
+        .from(posts)
+        .where(and(eq(posts.id, id), visiblePost))
+        .limit(1)
+    )[0] ?? null
+  );
 }
 
 export async function getPost(id: string) {
@@ -599,10 +616,20 @@ export async function listReplies(
   postId: string,
   options: { includeUnavailableReplyId?: string } = {},
 ) {
+  const targetUser = alias(users, "reply_target_user");
   const rows = await getDb()
-    .select({ reply: replies, author: users })
+    .select({
+      reply: replies,
+      author: users,
+      targetUser: {
+        id: targetUser.id,
+        displayName: targetUser.displayName,
+        avatarAssetId: targetUser.avatarAssetId,
+      },
+    })
     .from(replies)
     .innerJoin(users, eq(replies.authorId, users.id))
+    .leftJoin(targetUser, eq(replies.replyToUserId, targetUser.id))
     .where(eq(replies.postId, postId))
     .orderBy(asc(replies.publishedAt));
   const lifecycleRows = buildReplyLifecycleViews(
@@ -616,13 +643,6 @@ export async function listReplies(
   const included = new Set(lifecycleRows.map((row) => row.id));
   const lifecycleById = new Map(lifecycleRows.map((row) => [row.id, row]));
   const replyById = new Map(rows.map((row) => [row.reply.id, row.reply]));
-  const replyToIds = [
-    ...new Set(
-      rows.map((row) => row.reply.replyToUserId).filter((id): id is string => Boolean(id)),
-    ),
-  ];
-  const replyToUsers = await findUsersByIds(replyToIds);
-  const replyToById = new Map(replyToUsers.map((user) => [user.id, user]));
   return rows
     .filter((row) => included.has(row.reply.id))
     .map((row) => {
@@ -640,9 +660,7 @@ export async function listReplies(
           visibleDependentCount: lifecycle.visibleDependentCount,
           visibleOtherAuthorDependentCount: lifecycle.visibleOtherAuthorDependentCount,
         },
-        replyTo: row.reply.replyToUserId
-          ? (replyToById.get(row.reply.replyToUserId) ?? null)
-          : null,
+        replyTo: row.reply.replyToUserId ? row.targetUser : null,
         replyToUnavailable: Boolean(directTarget && contentState(directTarget).state !== "normal"),
       };
     });
@@ -1125,28 +1143,25 @@ function statusCounts(row?: {
   };
 }
 
-export async function countAdminPostsByStatus(): Promise<AdminStatusCounts> {
-  const [row] = await getDb()
-    .select({
-      all: count(),
-      normal: sql<number>`sum(case when ${posts.deletedAt} is null and ${posts.hiddenAt} is null then 1 else 0 end)`,
-      deleted: sql<number>`sum(case when ${posts.deletedAt} is not null then 1 else 0 end)`,
-      hidden: sql<number>`sum(case when ${posts.hiddenAt} is not null then 1 else 0 end)`,
-    })
-    .from(posts);
-  return statusCounts(row);
-}
-
-export async function countAdminRepliesByStatus(): Promise<AdminStatusCounts> {
-  const [row] = await getDb()
-    .select({
-      all: count(),
-      normal: sql<number>`sum(case when ${replies.deletedAt} is null and ${replies.hiddenAt} is null then 1 else 0 end)`,
-      deleted: sql<number>`sum(case when ${replies.deletedAt} is not null then 1 else 0 end)`,
-      hidden: sql<number>`sum(case when ${replies.hiddenAt} is not null then 1 else 0 end)`,
-    })
-    .from(replies);
-  return statusCounts(row);
+export async function countAdminOverviewByStatus(): Promise<AdminStatusCounts[]> {
+  const tables = [posts, replies, annotations, annotationReplies] as const;
+  const statements = tables.map((table) =>
+    getDb()
+      .select({
+        all: count(),
+        normal: sql<number>`sum(case when ${table.deletedAt} is null and ${table.hiddenAt} is null then 1 else 0 end)`,
+        deleted: sql<number>`sum(case when ${table.deletedAt} is not null then 1 else 0 end)`,
+        hidden: sql<number>`sum(case when ${table.hiddenAt} is not null then 1 else 0 end)`,
+      })
+      .from(table),
+  );
+  const results = await getDb().batch([
+    statements[0]!,
+    statements[1]!,
+    statements[2]!,
+    statements[3]!,
+  ]);
+  return results.map(([row]) => statusCounts(row));
 }
 
 export async function listAdminPosts(

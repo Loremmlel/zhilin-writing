@@ -18,7 +18,7 @@ import {
   findPostByCreationSubmissionKey,
   findReply,
   findReplyBySubmissionKey,
-  getPost,
+  getVisiblePostRecord,
 } from "@/db/queries";
 import {
   activityEventId,
@@ -184,13 +184,13 @@ export async function createPost(
 }
 
 export async function updatePost(postId: string, currentUserId: string, input: SavePostInput) {
-  const existing = await getPost(postId);
+  const existing = await getVisiblePostRecord(postId);
   if (!existing) throw new Error("帖子不存在");
-  if (!canEditPost(existing.post.authorId, currentUserId)) throw new Error("你不能编辑这篇帖子");
-  if (!existing.post.currentRevisionId) throw new Error("帖子当前版本不存在");
+  if (!canEditPost(existing.authorId, currentUserId)) throw new Error("你不能编辑这篇帖子");
+  if (!existing.currentRevisionId) throw new Error("帖子当前版本不存在");
   if (!input.baseRevisionId) throw new Error("缺少编辑基础版本，请刷新后重试");
   const base = resolveSaveBase(
-    existing.post.currentRevisionId,
+    existing.currentRevisionId,
     input.baseRevisionId,
     input.overwriteBaseRevisionId,
   );
@@ -201,7 +201,7 @@ export async function updatePost(postId: string, currentUserId: string, input: S
   if (input.overwriteBaseRevisionId) {
     const conflict = await getConflictSnapshot(
       postId,
-      existing.post.currentRevisionId,
+      existing.currentRevisionId,
       input.baseRevisionId,
     );
     if (!conflict.forceOverwriteAllowed) throw new EditConflictError(conflict);
@@ -212,7 +212,7 @@ export async function updatePost(postId: string, currentUserId: string, input: S
     await db
       .select()
       .from(postRevisions)
-      .where(eq(postRevisions.id, existing.post.currentRevisionId))
+      .where(eq(postRevisions.id, existing.currentRevisionId))
       .limit(1)
   )[0];
   if (!currentRevision) throw new Error("帖子当前版本不存在");
@@ -235,7 +235,7 @@ export async function updatePost(postId: string, currentUserId: string, input: S
     hiddenByUserId: state.hiddenByUserId,
   }));
   const currentAnchorIds = currentStates.map((state) => state.annotationId);
-  if (!validateCanonicalAnnotationDocument(existing.post.markdown, currentAnchorIds).ok)
+  if (!validateCanonicalAnnotationDocument(existing.markdown, currentAnchorIds).ok)
     throw new AnnotationIntegrityError();
   const annotationPlan = planAnnotatedPostSave({
     baseIds: currentAnchorIds,
@@ -250,11 +250,11 @@ export async function updatePost(postId: string, currentUserId: string, input: S
     {
       revisionId: currentRevision.id,
       revisionNumber: currentRevision.revisionNumber,
-      title: existing.post.title,
-      markdown: existing.post.markdown,
+      title: existing.title,
+      markdown: existing.markdown,
       assetRefs: currentAssetRefs,
-      editedAt: existing.post.editedAt,
-      lastActivityAt: existing.post.lastActivityAt,
+      editedAt: existing.editedAt,
+      lastActivityAt: existing.lastActivityAt,
     },
     {
       title: clean.title,
@@ -346,7 +346,13 @@ export async function createReply(input: {
   const duplicate = await findReplyBySubmissionKey(input.authorId, submissionKey);
   if (duplicate) return duplicate.id;
 
-  const post = await getPost(input.postId);
+  const post = (
+    await getDb()
+      .select({ authorId: posts.authorId })
+      .from(posts)
+      .where(and(eq(posts.id, input.postId), isNull(posts.deletedAt), isNull(posts.hiddenAt)))
+      .limit(1)
+  )[0];
   if (!post) throw new Error("帖子不存在");
   let rootReplyId: string | null = null;
   let replyToReplyId: string | null = null;
@@ -369,7 +375,7 @@ export async function createReply(input: {
   const eventId = activityEventId("POST_REPLY_CREATED", input.postId, id);
   const recipientUserId = resolveReplyRecipient({
     actorUserId: input.authorId,
-    postAuthorId: post.post.authorId,
+    postAuthorId: post.authorId,
     replyToUserId,
   });
   const db = getDb();

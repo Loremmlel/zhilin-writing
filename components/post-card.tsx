@@ -5,7 +5,10 @@ import { excerpt, formatDateTime, formatListDateTime } from "@/lib/format";
 import { Avatar } from "./avatar";
 
 type PostCardProps = {
-  post: PostRecord;
+  post: Pick<
+    PostRecord,
+    "id" | "title" | "searchText" | "markdown" | "publishedAt" | "lastActivityAt" | "editedAt"
+  >;
   author: SiteUser;
   tags: { id: string; name: string; normalizedName: string }[];
   replyCount: number;

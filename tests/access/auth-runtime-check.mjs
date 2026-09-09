@@ -51,6 +51,8 @@ export default async function checkAuthRuntime() {
     "./schema": schema,
     "vinext/cache": await import(path + "node_modules/vinext/dist/cache.js"),
     "@/lib/lifecycle/views": await import(path + "lib/lifecycle/views.ts"),
+    "@/lib/lifecycle/policy": await import(path + "lib/lifecycle/policy.ts"),
+    "@/lib/pagination": await import(path + "lib/pagination.ts"),
   });
   await queries.ensureConfiguredAdministrator("owner@example.com");
   assert.equal(writes, 3);
@@ -153,5 +155,67 @@ export default async function checkAuthRuntime() {
     assert.deepEqual(detail.tags, []);
     assert.deepEqual(detail.attachments, []);
   });
+  sqlite.exec("UPDATE posts SET deleted_at=NULL, search_text='摘要' WHERE id='post'");
+  const longText = "😀".repeat(150) + " 下一段".repeat(500);
+  sqlite
+    .prepare("UPDATE posts SET search_text=?,markdown=? WHERE id='post'")
+    .run(longText, "正文".repeat(10000));
+  const { excerpt } = await import(path + "lib/format.ts");
+  const page = await queries.listPostsPage();
+  assert.equal(excerpt(page.items[0].post.searchText), excerpt(longText));
+  assert.equal(page.items[0].post.markdown, "");
+  assert.ok(Array.from(page.items[0].post.searchText).length <= 152);
+  sqlite.exec(
+    "INSERT INTO tags(id,name,normalized_name,created_at) VALUES('tag','Tag','tag',0); INSERT INTO post_tags(post_id,tag_id) VALUES('post','tag')",
+  );
+  assert.equal((await queries.listPostsPage({ tagName: "TAG" })).total, 1);
+  assert.equal((await queries.listPostsPage({ tagName: "missing" })).total, 0);
+  assert.equal((await queries.listPostsPage({ page: 999 })).page, 1);
+  assert.equal((await queries.countAdminOverviewByStatus())[0].normal, 1);
+  sqlite.exec("UPDATE replies SET reply_to_user_id='author' WHERE id='reply'");
+  const replyRows = await queries.listReplies("post");
+  assert.equal(replyRows[0].replyTo.displayName, "Author");
+  assert.equal((await queries.getVisiblePostRecord("post")).id, "post");
+  sqlite.exec("UPDATE posts SET hidden_at=1 WHERE id='post'");
+  assert.equal(await queries.getVisiblePostRecord("post"), null);
+
+  const accessService = load("lib/assets/access-service.ts", {
+    "@/db": { getDb: () => db },
+    "@/db/schema": schema,
+    "./access": await import(path + "lib/assets/access.ts"),
+  });
+  sqlite.exec(
+    "INSERT INTO assets(id,owner_id,r2_key,kind,filename,mime_type,byte_size,status,created_at) VALUES('asset','author','key','image','file','image/png',1,'permanent',0)",
+  );
+  assert.equal(
+    await accessService.canReadAsset("asset", { userId: "author", isAdmin: false }),
+    false,
+  );
+  sqlite.exec(
+    "INSERT INTO post_asset_refs(post_id,asset_id,usage) VALUES('post','asset','attachment')",
+  );
+  assert.equal(
+    await accessService.canReadAsset("asset", { userId: "reader", isAdmin: false }),
+    false,
+  );
+  assert.equal(
+    await accessService.canReadAsset("asset", { userId: "reader", isAdmin: true }),
+    true,
+  );
+  sqlite.exec("UPDATE posts SET hidden_at=NULL WHERE id='post'");
+  assert.equal(
+    await accessService.canReadAsset("asset", { userId: "reader", isAdmin: false }),
+    true,
+  );
+  sqlite.exec("UPDATE assets SET status='temporary' WHERE id='asset'");
+  assert.equal(
+    await accessService.canReadAsset("asset", { userId: "reader", isAdmin: false }),
+    false,
+  );
+  assert.equal(
+    await accessService.canReadAsset("asset", { userId: "author", isAdmin: false }),
+    true,
+  );
+  assert.equal(await accessService.getAssetAccessFacts("missing"), null);
   sqlite.close();
 }

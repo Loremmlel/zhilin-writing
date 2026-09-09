@@ -25,7 +25,6 @@ import {
   type AdminContentStatus,
   type AdminListOptions,
   type AdminPageResult,
-  type AdminStatusCounts,
 } from "@/lib/admin/query";
 import { buildAnnotationAuthorView } from "./identity";
 import { buildAnnotationReplyLifecycleViews } from "./lifecycle";
@@ -250,44 +249,6 @@ function annotationReplyStatusCondition(status: AdminContentStatus) {
     : status === "hidden"
       ? isNotNull(annotationReplies.hiddenAt)
       : and(isNull(annotationReplies.deletedAt), isNull(annotationReplies.hiddenAt));
-}
-
-function statusCounts(row?: {
-  all: number | null;
-  normal: number | null;
-  deleted: number | null;
-  hidden: number | null;
-}): AdminStatusCounts {
-  return {
-    all: Number(row?.all ?? 0),
-    normal: Number(row?.normal ?? 0),
-    deleted: Number(row?.deleted ?? 0),
-    hidden: Number(row?.hidden ?? 0),
-  };
-}
-
-export async function countAdminAnnotationsByStatus(): Promise<AdminStatusCounts> {
-  const [row] = await getDb()
-    .select({
-      all: count(),
-      normal: sql<number>`sum(case when ${annotations.deletedAt} is null and ${annotations.hiddenAt} is null then 1 else 0 end)`,
-      deleted: sql<number>`sum(case when ${annotations.deletedAt} is not null then 1 else 0 end)`,
-      hidden: sql<number>`sum(case when ${annotations.hiddenAt} is not null then 1 else 0 end)`,
-    })
-    .from(annotations);
-  return statusCounts(row);
-}
-
-export async function countAdminAnnotationRepliesByStatus(): Promise<AdminStatusCounts> {
-  const [row] = await getDb()
-    .select({
-      all: count(),
-      normal: sql<number>`sum(case when ${annotationReplies.deletedAt} is null and ${annotationReplies.hiddenAt} is null then 1 else 0 end)`,
-      deleted: sql<number>`sum(case when ${annotationReplies.deletedAt} is not null then 1 else 0 end)`,
-      hidden: sql<number>`sum(case when ${annotationReplies.hiddenAt} is not null then 1 else 0 end)`,
-    })
-    .from(annotationReplies);
-  return statusCounts(row);
 }
 
 export async function listAdminAnnotations(

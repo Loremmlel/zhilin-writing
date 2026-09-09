@@ -1,35 +1,23 @@
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 
 import { getDb } from "@/db";
 import { assets, postAssetRefs, posts, revisionAssetRefs, users } from "@/db/schema";
 import { decideAssetReadAccess, type AssetAccessFacts, type AssetViewer } from "./access";
 
 export async function getAssetAccessFacts(assetId: string): Promise<AssetAccessFacts | null> {
-  const db = getDb();
-  const asset = (await db.select().from(assets).where(andAssetAvailable(assetId)).limit(1))[0];
-  if (!asset) return null;
-
-  const [currentRefs, revisionRefs, avatarRefs] = await Promise.all([
-    db
-      .select({ deletedAt: posts.deletedAt, hiddenAt: posts.hiddenAt })
-      .from(postAssetRefs)
-      .innerJoin(posts, eq(postAssetRefs.postId, posts.id))
-      .where(eq(postAssetRefs.assetId, assetId)),
-    db
-      .select({ assetId: revisionAssetRefs.assetId })
-      .from(revisionAssetRefs)
-      .where(eq(revisionAssetRefs.assetId, assetId)),
-    db.select({ id: users.id }).from(users).where(eq(users.avatarAssetId, assetId)),
-  ]);
-
-  return {
-    status: asset.status,
-    ownerId: asset.ownerId,
-    avatarRefCount: avatarRefs.length,
-    activeCurrentRefCount: currentRefs.filter((ref) => !ref.deletedAt && !ref.hiddenAt).length,
-    unavailableCurrentRefCount: currentRefs.filter((ref) => ref.deletedAt || ref.hiddenAt).length,
-    revisionRefCount: revisionRefs.length,
-  };
+  const [facts] = await getDb()
+    .select({
+      status: assets.status,
+      ownerId: assets.ownerId,
+      avatarRefCount: sql<number>`(select count(*) from ${users} where ${users.avatarAssetId} = ${assetId})`,
+      activeCurrentRefCount: sql<number>`(select count(*) from ${postAssetRefs} inner join ${posts} on ${posts.id} = ${postAssetRefs.postId} where ${postAssetRefs.assetId} = ${assetId} and ${posts.deletedAt} is null and ${posts.hiddenAt} is null)`,
+      unavailableCurrentRefCount: sql<number>`(select count(*) from ${postAssetRefs} inner join ${posts} on ${posts.id} = ${postAssetRefs.postId} where ${postAssetRefs.assetId} = ${assetId} and (${posts.deletedAt} is not null or ${posts.hiddenAt} is not null))`,
+      revisionRefCount: sql<number>`(select count(*) from ${revisionAssetRefs} where ${revisionAssetRefs.assetId} = ${assetId})`,
+    })
+    .from(assets)
+    .where(andAssetAvailable(assetId))
+    .limit(1);
+  return facts ?? null;
 }
 
 function andAssetAvailable(assetId: string) {

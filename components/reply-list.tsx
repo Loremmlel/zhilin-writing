@@ -12,7 +12,7 @@ import type { ReplyFormAction } from "@/components/reply-form";
 export type ReplyView = {
   reply: ReplyRecord;
   author: SiteUser;
-  replyTo: SiteUser | null;
+  replyTo: Pick<SiteUser, "id" | "displayName" | "avatarAssetId"> | null;
   replyToUnavailable: boolean;
   lifecycle: {
     state: "normal" | "deleted" | "hidden";
