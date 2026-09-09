@@ -1,3 +1,4 @@
+import { requestPerformance } from "./performance/context.ts";
 type ServerErrorContext = {
   operation: string;
   error?: unknown;
@@ -112,6 +113,7 @@ export function logServerError(context: ServerErrorContext): string {
     causeErrorCode: cause ? serverErrorCode(cause) : undefined,
     causeErrorName: errorName(cause),
     incidentId,
+    requestId: requestPerformance.getStore()?.requestId,
   };
   console.error(JSON.stringify(record));
   return incidentId;
@@ -139,6 +141,7 @@ export function logServerRejection(context: ServerRejectionContext): string {
       code: ERROR_CODE_PATTERN.test(context.code) ? context.code : "INVALID_REJECTION_CODE",
       selection,
       incidentId,
+      requestId: requestPerformance.getStore()?.requestId,
     }),
   );
   return incidentId;

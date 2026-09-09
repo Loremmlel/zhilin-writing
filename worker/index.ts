@@ -1,3 +1,9 @@
+import {
+  requestPerformance,
+  savePerformance,
+  observeResponseBody,
+} from "../lib/performance/server";
+import { performanceRoute, milliseconds, PERFORMANCE_ENDPOINT } from "../lib/performance/shared";
 /** Cloudflare Worker entry point for the vinext-starter template. */
 import {
   handleImageOptimization,
@@ -55,4 +61,71 @@ const worker = {
   },
 };
 
-export default worker;
+const observedWorker = {
+  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+    const url = new URL(request.url);
+    if (url.pathname === PERFORMANCE_ENDPOINT) return worker.fetch(request, env, ctx);
+    const context = { requestId: crypto.randomUUID(), dbMs: 0, dbCount: 0, r2Ms: 0, r2Count: 0 };
+    return requestPerformance.run(context, async () => {
+      const started = performance.now();
+      let status = 500;
+      try {
+        const response = await worker.fetch(request, env, ctx);
+        status = response.status;
+        const headers = new Headers(response.headers);
+        headers.append(
+          "Server-Timing",
+          `app;dur=${milliseconds(performance.now() - started)}, db;dur=${milliseconds(context.dbMs)}, dbcount;dur=${context.dbCount}, r2;dur=${milliseconds(context.r2Ms)}, r2count;dur=${context.r2Count}, request;desc="${context.requestId}"`,
+        );
+        headers.set("X-Request-Id", context.requestId);
+        const body = response.body
+          ? observeResponseBody(response.body, (outcome) => {
+              ctx.waitUntil(
+                savePerformance(env.DB, "server", [
+                  {
+                    requestId: context.requestId,
+                    route: performanceRoute(url.pathname),
+                    phase: "stream_end",
+                    outcome,
+                    status,
+                    streamEndMs: milliseconds(performance.now() - started),
+                    dbMs: milliseconds(context.dbMs),
+                    dbCount: context.dbCount,
+                    r2Ms: milliseconds(context.r2Ms),
+                    r2Count: context.r2Count,
+                  },
+                ]),
+              );
+            })
+          : null;
+        return new Response(body, { status, statusText: response.statusText, headers });
+      } finally {
+        const record = {
+          requestId: context.requestId,
+          route: performanceRoute(url.pathname),
+          method: ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"].includes(
+            request.method,
+          )
+            ? request.method
+            : "OTHER",
+          kind:
+            request.headers.has("x-rsc-action") || request.headers.has("next-action")
+              ? "action"
+              : request.headers.get("RSC") === "1"
+                ? "rsc"
+                : "http",
+          status,
+          phase: "response_ready",
+          responseReadyMs: milliseconds(performance.now() - started),
+          dbMs: milliseconds(context.dbMs),
+          dbCount: context.dbCount,
+          r2Ms: milliseconds(context.r2Ms),
+          r2Count: context.r2Count,
+        };
+        ctx.waitUntil(savePerformance(env.DB, "server", [record]));
+      }
+    });
+  },
+};
+
+export default observedWorker;

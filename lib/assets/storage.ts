@@ -1,3 +1,4 @@
+import { measuredBucket } from "../performance/server";
 import { env } from "cloudflare:workers";
 
 import { getDb } from "@/db";
@@ -26,7 +27,7 @@ export async function storeTemporaryAsset(ownerId: string, file: File, requested
 
   if (!env.BUCKET) throw new AssetStorageError("SERVER_FAILURE", "文件存储暂时不可用");
   try {
-    await env.BUCKET.put(r2Key, file.stream(), {
+    await measuredBucket(env.BUCKET).put(r2Key, file.stream(), {
       httpMetadata: { contentType: file.type || "application/octet-stream" },
       customMetadata: { originalFilename: file.name, ownerId, kind },
     });
@@ -53,7 +54,7 @@ export async function storeTemporaryAsset(ownerId: string, file: File, requested
     await getDb().insert(assets).values(record);
   } catch (error) {
     try {
-      await env.BUCKET.delete(r2Key);
+      await measuredBucket(env.BUCKET).delete(r2Key);
     } catch (compensationError) {
       // A later orphan scan can recover an object whose metadata insert and compensation both failed.
       logServerError({
@@ -71,5 +72,5 @@ export async function storeTemporaryAsset(ownerId: string, file: File, requested
 
 export async function getStoredObject(r2Key: string) {
   if (!env.BUCKET) throw new Error("R2 文件存储尚未连接");
-  return env.BUCKET.get(r2Key);
+  return measuredBucket(env.BUCKET).get(r2Key);
 }

@@ -71,6 +71,13 @@
       "when": 1788401453384,
       "tag": "0009_puzzling_mockingbird",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1788930000000,
+      "tag": "0010_performance_logs",
+      "breakpoints": true
     }
   ]
 }

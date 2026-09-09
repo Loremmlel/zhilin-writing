@@ -111,22 +111,26 @@ export async function commitDocxImport(
 async function runtimeDatabase(): Promise<DocxImportCommitDatabase> {
   const { env } = await import("cloudflare:workers");
   if (!env.DB) throw new DocxImportCommitError("DATABASE_UNAVAILABLE", 503);
+  const { measuredDatabase } = await import("../performance/server.ts");
+  const database = measuredDatabase(env.DB);
   return {
     async first<T>(sql: string, params: readonly SqlValue[]) {
-      return await env.DB.prepare(sql)
+      return await database
+        .prepare(sql)
         .bind(...params)
         .first<T>();
     },
     async all<T>(sql: string, params: readonly SqlValue[]) {
       return (
-        await env.DB.prepare(sql)
+        await database
+          .prepare(sql)
           .bind(...params)
           .all<T>()
       ).results;
     },
     async batch(statements) {
-      await env.DB.batch(
-        statements.map((statement) => env.DB.prepare(statement.sql).bind(...statement.params)),
+      await database.batch(
+        statements.map((statement) => database.prepare(statement.sql).bind(...statement.params)),
       );
     },
   };

@@ -1,3 +1,7 @@
+import { installPerformanceProbe } from "@/lib/performance/client";
+
+installPerformanceProbe();
+
 import { ROUTE_PROGRESS_START_EVENT } from "@/lib/loading/route-progress-events";
 
 type NavigationType = "push" | "replace" | "traverse";

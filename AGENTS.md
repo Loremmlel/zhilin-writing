@@ -55,6 +55,13 @@
 - 禁止记录帖子或批注正文、选区、邮箱、文件内容、请求体、Cookie、凭据以及任意未经筛选的 `error.message`、`stack` 或完整异常对象。
 - 权限不足、输入校验、编辑冲突等预期内失败直接返回安全提示，不记为服务端 error。
 
+## 请求性能诊断
+
+- 探针口径、覆盖、保留上限与读取方法见 `docs/performance-probes.md`。性能日志在 D1 `performance_logs`，与错误日志分离，全局最多 5,000 条。
+- `response_ready` 只表示响应头就绪；流式请求必须结合 `stream_end` 判断，不要将 TTFB 差值断言为纯代理延迟。
+- 新增直接 D1/R2 调用时复用 `measuredDatabase` / `measuredBucket`；不要记录 SQL、绑定值、文件路径或正文。保持 `/api/performance` 不被自身探针记录。
+- `0010_performance_logs.sql` 中的滚动上限触发器是手写迁移；Drizzle 不管理该触发器，后续生成迁移不要删掉它。
+
 ## 设计与交互合同
 
 - 修改 UI 前先读根目录 `DESIGN.md` 与 `UX-CONTRACT.md`，定位适用的 D1–D8、U1–U10 和共享组件所有者。它们是现行规范；历史方案用于解释取舍，不作为另起设计的入口。

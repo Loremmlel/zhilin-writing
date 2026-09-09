@@ -633,3 +633,15 @@ export type RevisionImportedReplyStateRecord = typeof revisionImportedReplyState
 export type PostAssetRefRecord = typeof postAssetRefs.$inferSelect;
 export type RevisionAssetRefRecord = typeof revisionAssetRefs.$inferSelect;
 export type AdminAuditRecord = typeof adminAuditLog.$inferSelect;
+
+export const performanceLogs = sqliteTable(
+  "performance_logs",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    createdAt: integer("created_at").notNull(),
+    source: text("source").notNull(),
+    requestId: text("request_id"),
+    record: text("record").notNull(),
+  },
+  (table) => [index("performance_logs_request_id").on(table.requestId)],
+);

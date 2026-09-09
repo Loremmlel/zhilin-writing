@@ -1,3 +1,4 @@
+import { measuredBucket } from "../performance/server";
 import { and, asc, eq, inArray, isNotNull, isNull, lte, notExists, or, sql } from "drizzle-orm";
 import { env } from "cloudflare:workers";
 
@@ -124,7 +125,7 @@ export async function collectOrphanedAssets(
       },
       async deleteObject(candidate) {
         if (!env.BUCKET) throw new Error("R2_UNAVAILABLE");
-        await env.BUCKET.delete(candidate.r2Key);
+        await measuredBucket(env.BUCKET).delete(candidate.r2Key);
       },
       async markDeleted(assetId) {
         const [deleted] = await db
@@ -175,7 +176,7 @@ export async function scanUntrackedR2Objects(options: {
   }
   if (!env.BUCKET) throw new Error("R2_UNAVAILABLE");
   const now = options.now ?? new Date();
-  const page = await env.BUCKET.list({
+  const page = await measuredBucket(env.BUCKET).list({
     prefix: options.ownerPrefix.toLocaleLowerCase("en-US"),
     cursor: options.cursor,
     limit: Math.min(Math.max(options.limit ?? 90, 1), 90),
@@ -215,7 +216,7 @@ export async function scanUntrackedR2Objects(options: {
     )[0];
     if (trackedNow) continue;
     try {
-      await env.BUCKET.delete(candidate.key);
+      await measuredBucket(env.BUCKET).delete(candidate.key);
       report.collected.push(candidate.assetId);
     } catch (error) {
       report.failures.push({ assetId: candidate.assetId, code: "R2_DELETE_FAILED" });
