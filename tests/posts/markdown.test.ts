@@ -27,6 +27,12 @@ test("produces searchable plain text without Markdown syntax", () => {
   assert.equal(text, "雨天随笔 这是 安静 的一天。旧书店");
 });
 
+test("keeps ordinary colon text that remark-directive mistakes for an empty directive", async () => {
+  const source = "伏案学罢Python、英语，已是下午5:00，便觉心凝形释";
+  assert.equal(markdownToPlainText(source), source);
+  assert.match(await renderMarkdown(source), /下午5:00，便觉/);
+});
+
 test("renders annotation directives as safe semantic marks without exposing internal syntax", async () => {
   const id = "ann_550e8400-e29b-41d4-a716-446655440000";
   const html = await renderMarkdown(

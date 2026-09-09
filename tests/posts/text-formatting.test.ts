@@ -85,6 +85,7 @@ test("formatting and continuous annotation identity survive two real Milkdown ro
       `:::align{value="center"}\n\n:annotation[第一段]{#${ID}}\n\n:::\n\n> :annotation[:text[第二段]{color="#00aa00"}]{#${ID}}`,
       '| 列 |\n| --- |\n| :align[:text[单元格]{size="10.5" color="#c00000"}]{value="center"} |',
       '::align{value="center"}',
+      "下午5:00，便觉心凝形释",
     ];
     for (const source of fixtures) {
       const first = parse(source);

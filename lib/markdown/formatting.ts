@@ -6,6 +6,7 @@ export type FormatNode = {
   attributes?: Record<string, unknown> | null;
   children?: FormatNode[];
   data?: Record<string, unknown>;
+  position?: { start: { offset?: number }; end: { offset?: number } };
   value?: string;
   [key: string]: unknown;
 };
@@ -80,6 +81,22 @@ function center(node: FormatNode): FormatNode {
   return node;
 }
 
+function literalBareDirective(node: FormatNode): FormatNode {
+  const from = node.position?.start.offset;
+  const to = node.position?.end.offset;
+  if (
+    node.type !== "textDirective" ||
+    !node.name ||
+    node.children?.length ||
+    Object.keys(node.attributes ?? {}).length ||
+    typeof from !== "number" ||
+    typeof to !== "number" ||
+    to - from !== node.name.length + 1
+  )
+    return node;
+  return { type: "text", value: `:${node.name}`, position: node.position };
+}
+
 /** Invalid wrappers remain barriers; never unwrap arbitrary layout as an eligible annotation block. */
 export function normalizeFormatting<T>(tree: T): T {
   const walk = (node: FormatNode) => {
@@ -91,6 +108,7 @@ export function normalizeFormatting<T>(tree: T): T {
       }
     }
     node.children = node.children?.map((child) => {
+      child = literalBareDirective(child);
       if (
         child.type === "containerDirective" &&
         validAlign(child) &&

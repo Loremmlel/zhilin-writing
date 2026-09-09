@@ -99,6 +99,14 @@ test("ignores an unsupported directive outside the selected range", () => {
   assert.equal(validateCanonicalAnnotationDocument(markdown, [A]).ok, true);
 });
 
+test("treats a bare colon directive as ordinary selectable text", () => {
+  const source = "下午5:00，便觉心凝形释";
+  const tree = parseAnnotationMarkdown(source);
+  const next = wrapAnnotationRange(tree, descriptor(0, 2, 9, "5:00，便觉"), A);
+  assert.equal(visiblePostText(next), source);
+  assert.deepEqual(collectAnnotationIds(next), [A]);
+});
+
 test("wraps one logical annotation across consecutive text blocks", () => {
   const tree = parseAnnotationMarkdown("第一段 **后半**\n\n> 第二段\n\n- 第三段 前半");
   const next = wrapAnnotationRange(
