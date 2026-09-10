@@ -54,8 +54,32 @@ export function sanitizeClientRecord(value: unknown): Record<string, string | nu
     result.observedAt = input.observedAt;
   if (typeof input.requestId === "string" && /^[0-9a-f-]{36}$/.test(input.requestId))
     result.requestId = input.requestId;
+  for (const key of ["browserId", "sessionId"]) {
+    if (
+      typeof input[key] === "string" &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(input[key])
+    )
+      result[key] = input[key];
+  }
+  const enums: Record<string, string[]> = {
+    protocol: ["h2", "h3", "http/1.1"],
+    effectiveType: ["slow-2g", "2g", "3g", "4g"],
+    visibility: ["visible", "hidden"],
+    initiator: ["fetch", "xmlhttprequest", "script", "link", "img", "css", "navigation", "other"],
+    errorType: ["aborted", "network", "other"],
+    eventType: ["click", "pointerdown", "pointerup", "keydown", "keyup", "input", "other"],
+  };
+  for (const [key, values] of Object.entries(enums))
+    if (typeof input[key] === "string" && values.includes(input[key])) result[key] = input[key];
   for (const key of [
     "durationMs",
+    "preRequestMs",
+    "encodedBytes",
+    "decodedBytes",
+    "rttMs",
+    "downlinkMbps",
+    "online",
+    "saveData",
     "dnsMs",
     "connectMs",
     "tlsMs",

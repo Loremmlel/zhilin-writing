@@ -94,16 +94,14 @@ export default async function checkAuthRuntime() {
       chatGPTSignInPath: (p) => "/signin?return=" + p,
     },
     "@/db/queries": {
-      findAllowedUser: async (email) => {
+      findAllowedMember: async (email) => {
         reads++;
-        return email === "revoked" ? null : { email, isAdmin: false };
-      },
-      findUserByEmail: async (email) => ({ id: email }),
-      ensureConfiguredAdministrator: () => {
-        throw Error("unexpected bootstrap");
+        return email === "revoked"
+          ? null
+          : { allowed: { email, isAdmin: false }, member: email === "new" ? null : { id: email } };
       },
     },
-    "@/lib/auth/authorize": await import(path + "lib/auth/authorize.ts"),
+    "@/lib/domain/rules": await import(path + "lib/domain/rules.ts"),
   });
   await Promise.all(
     ["a", "b"].map((email) =>
@@ -217,5 +215,80 @@ export default async function checkAuthRuntime() {
     true,
   );
   assert.equal(await accessService.getAssetAccessFacts("missing"), null);
+  assert.equal(await queries.findAllowedMember("absent@example.test", null), null);
+  await queries.addAllowedUser("author@example.test", false, "owner");
+  const joinedStart = statements.length;
+  const accessRow = await queries.findAllowedMember("author@example.test", null);
+  assert.equal(accessRow.member.id, "author");
+  assert.equal(statements.length - joinedStart, 1);
+  await queries.findAllowedMember("author@example.test", "author@example.test");
+  const ownerStart = statements.length;
+  const ownerRow = await queries.findAllowedMember("author@example.test", "author@example.test");
+  assert.equal(ownerRow.allowed.isAdmin, true);
+  assert.equal(statements.length - ownerStart, 1);
+  assert.equal(await queries.findAllowedMember("new@example.com", null), null);
+  assert.deepEqual(await identity.run(null, () => auth.getApiMemberAccess()), {
+    ok: false,
+    code: "AUTH_EXPIRED",
+    status: 401,
+  });
+  assert.deepEqual(await identity.run({ email: "revoked" }, () => auth.getApiMemberAccess()), {
+    ok: false,
+    code: "ACCESS_REVOKED",
+    status: 403,
+  });
+  assert.deepEqual(await identity.run({ email: "new" }, () => auth.getApiMemberAccess()), {
+    ok: false,
+    code: "ONBOARDING_REQUIRED",
+    status: 403,
+  });
+  const annotationQueries = load("lib/annotations/queries.ts", {
+    "@/db": { getDb: () => db },
+    "@/db/schema": schema,
+  });
+  const annotationService = load("lib/annotations/service.ts", {
+    "@/db": { getDb: () => db },
+    "@/db/schema": schema,
+    "./queries": annotationQueries,
+    "./policy": await import(path + "lib/annotations/policy.ts"),
+    "./transaction": await import(path + "lib/annotations/transaction.ts"),
+    "@/lib/activity/policy": await import(path + "lib/activity/policy.ts"),
+  });
+  sqlite.exec(
+    "INSERT INTO post_revisions(id,post_id,revision_number,title,markdown,created_at,created_by_user_id) VALUES('revision','post',1,'Title','Body',0,'author'); UPDATE posts SET current_revision_id='revision' WHERE id='post'",
+  );
+  const annotationId = "ann_" + crypto.randomUUID();
+  sqlite
+    .prepare(
+      "INSERT INTO annotations(id,post_id,author_id,content_markdown,original_selected_text,created_at,created_on_revision_id,submission_key) VALUES(?,'post','author','Comment','Body',0,'revision','seed')",
+    )
+    .run(annotationId);
+  sqlite
+    .prepare("INSERT INTO post_annotation_anchors(post_id,annotation_id) VALUES('post',?)")
+    .run(annotationId);
+  const replyInput = {
+    postId: "post",
+    annotationId,
+    authorId: "reader",
+    contentMarkdown: "Reply",
+    submissionKey: crypto.randomUUID(),
+  };
+  const replyId = await annotationService.createAnnotationReply(replyInput);
+  assert.equal(await annotationService.createAnnotationReply(replyInput), replyId);
+  assert.equal(
+    sqlite.prepare("SELECT count(*) AS n FROM annotation_replies WHERE id=?").get(replyId).n,
+    1,
+  );
+  assert.equal(
+    sqlite
+      .prepare("SELECT recipient_user_id FROM notifications WHERE annotation_reply_id=?")
+      .get(replyId).recipient_user_id,
+    "author",
+  );
+  sqlite.prepare("UPDATE annotations SET hidden_at=1 WHERE id=?").run(annotationId);
+  await assert.rejects(
+    annotationService.createAnnotationReply({ ...replyInput, submissionKey: crypto.randomUUID() }),
+    /不可回复/,
+  );
   sqlite.close();
 }

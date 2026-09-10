@@ -3,29 +3,31 @@ import { cacheForRequest } from "vinext/cache";
 import { env } from "cloudflare:workers";
 
 import { getChatGPTUser, chatGPTSignInPath } from "@/app/chatgpt-auth";
-import { ensureConfiguredAdministrator, findAllowedUser, findUserByEmail } from "@/db/queries";
-import { resolveAllowedIdentity, resolveApiMemberAccess } from "@/lib/auth/authorize";
+import { findAllowedMember } from "@/db/queries";
+import { normalizeEmail } from "@/lib/domain/rules";
 
-// Share page/layout reads only. Actions resolve access afresh before mutations.
-// No permissions or profile data are reused across requests.
-const getRequestAccess = cacheForRequest(async () => {
+async function readAccess() {
   const identity = await getChatGPTUser();
   if (!identity) return null;
-  const { emailKey, allowed } = await resolveAllowedIdentity(
-    identity.email,
-    typeof env.BOOTSTRAP_ADMIN_EMAIL === "string" ? env.BOOTSTRAP_ADMIN_EMAIL : null,
-    { findAllowedUser, ensureConfiguredAdministrator },
-  );
-  const member = allowed ? await findUserByEmail(emailKey) : null;
-  return { identity, emailKey, allowed, member };
-});
+  const emailKey = normalizeEmail(identity.email);
+  const owner =
+    typeof env.BOOTSTRAP_ADMIN_EMAIL === "string"
+      ? normalizeEmail(env.BOOTSTRAP_ADMIN_EMAIL)
+      : null;
+  const result = await findAllowedMember(emailKey, owner);
+  return { identity, emailKey, allowed: result?.allowed ?? null, member: result?.member ?? null };
+}
+// Actions resolve fresh access; never seed page rerenders with pre-mutation profiles.
+const getRequestAccess = cacheForRequest(readAccess);
 
 export async function getApiMemberAccess() {
-  return resolveApiMemberAccess(
-    await getChatGPTUser(),
-    typeof env.BOOTSTRAP_ADMIN_EMAIL === "string" ? env.BOOTSTRAP_ADMIN_EMAIL : null,
-    { findAllowedUser, ensureConfiguredAdministrator, findMemberByEmail: findUserByEmail },
-  );
+  const access = await readAccess();
+  if (!access) return { ok: false as const, code: "AUTH_EXPIRED" as const, status: 401 as const };
+  if (!access.allowed)
+    return { ok: false as const, code: "ACCESS_REVOKED" as const, status: 403 as const };
+  if (!access.member)
+    return { ok: false as const, code: "ONBOARDING_REQUIRED" as const, status: 403 as const };
+  return { ok: true as const, member: access.member, allowed: access.allowed };
 }
 
 export async function getActionAdministratorAccess() {

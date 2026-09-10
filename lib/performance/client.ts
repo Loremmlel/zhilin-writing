@@ -5,16 +5,54 @@ export function installPerformanceProbe() {
   const browser = window as Window & { __zhilinPerformance?: boolean };
   if (browser.__zhilinPerformance) return;
   browser.__zhilinPerformance = true;
+  const id = (kind: "localStorage" | "sessionStorage") => {
+    const fresh = crypto.randomUUID();
+    try {
+      const key = "zhilin.performance." + kind;
+      const saved = window[kind].getItem(key);
+      if (saved && /^[0-9a-f-]{36}$/.test(saved)) return saved;
+      window[kind].setItem(key, fresh);
+    } catch {
+      /* Storage denial only loses cross-navigation grouping. */
+    }
+    return fresh;
+  };
+  const browserId = id("localStorage"),
+    sessionId = id("sessionStorage");
   const send = window.fetch.bind(window);
   const queue: Record<string, unknown>[] = [];
   let sending = false;
   const enqueue = (record: Record<string, unknown>) => {
     if (queue.length >= 120) queue.shift();
-    queue.push({ ...record, observedAt: Date.now() });
+    const connection = (
+      navigator as Navigator & {
+        connection?: {
+          effectiveType?: string;
+          rtt?: number;
+          downlink?: number;
+          saveData?: boolean;
+        };
+      }
+    ).connection;
+    queue.push({
+      ...record,
+      observedAt: Date.now(),
+      browserId,
+      sessionId,
+      visibility: document.visibilityState,
+      online: navigator.onLine ? 1 : 0,
+      effectiveType: connection?.effectiveType,
+      rttMs: connection?.rtt,
+      downlinkMbps: connection?.downlink,
+      saveData: connection ? Number(connection.saveData) : undefined,
+    });
   };
   const flush = () => {
     if (sending || !queue.length) return;
-    const body = JSON.stringify(queue.splice(0, MAX_BATCH));
+    const batch = queue.splice(0, MAX_BATCH);
+    while (batch.length > 1 && new TextEncoder().encode(JSON.stringify(batch)).byteLength > 23_000)
+      queue.unshift(batch.pop()!);
+    const body = JSON.stringify(batch);
     sending = true;
     // Drop failed telemetry; retries would add load precisely when the network is slow.
     void send(PERFORMANCE_ENDPOINT, {
@@ -55,7 +93,12 @@ export function installPerformanceProbe() {
     const record: Record<string, unknown> = {
       kind: entry.entryType,
       route: performanceRoute(url.pathname),
-      durationMs: milliseconds(entry.duration),
+      durationMs: milliseconds(entry.responseEnd - entry.startTime),
+      preRequestMs: milliseconds(entry.requestStart - entry.startTime),
+      protocol: entry.nextHopProtocol,
+      initiator: entry.initiatorType,
+      encodedBytes: entry.encodedBodySize,
+      decodedBytes: entry.decodedBodySize,
       dnsMs: milliseconds(entry.domainLookupEnd - entry.domainLookupStart),
       connectMs: milliseconds(entry.connectEnd - entry.connectStart),
       tlsMs:
@@ -99,6 +142,11 @@ export function installPerformanceProbe() {
         kind: "interaction",
         route: performanceRoute(location.pathname),
         durationMs: milliseconds(entry.duration),
+        eventType: ["click", "pointerdown", "pointerup", "keydown", "keyup", "input"].includes(
+          entry.name,
+        )
+          ? entry.name
+          : "other",
         inputDelayMs: milliseconds(entry.processingStart - entry.startTime),
         processingMs: milliseconds(entry.processingEnd - entry.processingStart),
         presentationMs: milliseconds(entry.startTime + entry.duration - entry.processingEnd),
@@ -117,6 +165,12 @@ export function installPerformanceProbe() {
         if (url.origin === location.origin && url.pathname !== PERFORMANCE_ENDPOINT)
           enqueue({
             kind: "fetch_error",
+            errorType:
+              error instanceof Error && error.name === "AbortError"
+                ? "aborted"
+                : error instanceof TypeError
+                  ? "network"
+                  : "other",
             route: performanceRoute(url.pathname),
             durationMs: milliseconds(performance.now() - started),
           });

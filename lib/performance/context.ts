@@ -11,6 +11,7 @@ export const requestPerformance = new AsyncLocalStorage<{
   dbAttempts?: number;
   dbRegion?: string;
   operation?: string;
+  incidentId?: string;
   r2Ms: number;
   r2Count: number;
 }>();

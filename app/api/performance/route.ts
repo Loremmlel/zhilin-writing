@@ -1,3 +1,4 @@
+import { requestEnvironment } from "@/lib/performance/environment";
 import { env } from "cloudflare:workers";
 import { getApiMemberAccess, getActionAdministratorAccess } from "@/lib/auth/access";
 import { MAX_BATCH, sanitizeClientRecord } from "@/lib/performance/shared";
@@ -40,7 +41,12 @@ export async function POST(request: Request) {
     if (!Array.isArray(data) || data.length > MAX_BATCH) return new Response(null, { status: 400 });
     const records = data.map(sanitizeClientRecord);
     if (records.some((record) => !record)) return new Response(null, { status: 400 });
-    await savePerformance(env.DB, "client", records as Record<string, unknown>[]);
+    const environment = requestEnvironment(request);
+    await savePerformance(
+      env.DB,
+      "client",
+      records.map((record) => ({ ...record, ...environment })),
+    );
     return new Response(null, { status: 204, headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     const incidentId = logServerError({

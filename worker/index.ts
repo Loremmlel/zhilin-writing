@@ -1,3 +1,4 @@
+import { requestEnvironment } from "../lib/performance/environment";
 import {
   requestPerformance,
   savePerformance,
@@ -65,6 +66,7 @@ const observedWorker = {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
     if (url.pathname === PERFORMANCE_ENDPOINT) return worker.fetch(request, env, ctx);
+    const environment = requestEnvironment(request);
     const context: NonNullable<ReturnType<typeof requestPerformance.getStore>> = {
       requestId: crypto.randomUUID(),
       dbMs: 0,
@@ -91,6 +93,7 @@ const observedWorker = {
               ctx.waitUntil(
                 savePerformance(env.DB, "server", [
                   {
+                    ...environment,
                     requestId: context.requestId,
                     route: performanceRoute(url.pathname),
                     phase: "stream_end",
@@ -107,6 +110,7 @@ const observedWorker = {
                     dbAttempts: context.dbAttempts,
                     dbRegion: context.dbRegion,
                     operation: context.operation,
+                    incidentId: context.incidentId,
                     r2Ms: milliseconds(context.r2Ms),
                     r2Count: context.r2Count,
                   },
@@ -117,6 +121,7 @@ const observedWorker = {
         return new Response(body, { status, statusText: response.statusText, headers });
       } finally {
         const record = {
+          ...environment,
           requestId: context.requestId,
           route: performanceRoute(url.pathname),
           method: ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"].includes(
@@ -143,6 +148,7 @@ const observedWorker = {
           dbAttempts: context.dbAttempts,
           dbRegion: context.dbRegion,
           operation: context.operation,
+          incidentId: context.incidentId,
           r2Ms: milliseconds(context.r2Ms),
           r2Count: context.r2Count,
         };

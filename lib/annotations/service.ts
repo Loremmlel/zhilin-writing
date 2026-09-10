@@ -2,7 +2,6 @@ import type { BatchItem } from "drizzle-orm/batch";
 import { and, eq, isNotNull, isNull, sql } from "drizzle-orm";
 
 import { getDb } from "@/db";
-import { getPost } from "@/db/queries";
 import {
   activityEvents,
   adminAuditLog,
@@ -253,18 +252,52 @@ export async function createAnnotationReply(input: {
 }): Promise<string> {
   const contentMarkdown = validateAnnotationReplyContent(input.contentMarkdown);
   const submissionKey = validateAnnotationSubmissionKey(input.submissionKey);
-  const duplicate = await findAnnotationReplyBySubmissionKey(input.authorId, submissionKey);
-  if (duplicate) return duplicate.id;
-  const [annotation, post, currentAnchorIds, targetReply] = await Promise.all([
-    findAnnotation(input.annotationId),
-    getPost(input.postId),
-    getCurrentAnnotationAnchorIds(input.postId),
-    input.targetReplyId ? findAnnotationReply(input.targetReplyId) : Promise.resolve(null),
+  const db = getDb();
+  const [duplicates, roots, postRows, anchors, targets] = await db.batch([
+    db
+      .select({ id: annotationReplies.id })
+      .from(annotationReplies)
+      .where(
+        and(
+          eq(annotationReplies.authorId, input.authorId),
+          eq(annotationReplies.submissionKey, submissionKey),
+        ),
+      )
+      .limit(1),
+    db
+      .select({
+        id: annotations.id,
+        postId: annotations.postId,
+        authorId: annotations.authorId,
+        hiddenAt: annotations.hiddenAt,
+      })
+      .from(annotations)
+      .where(eq(annotations.id, input.annotationId))
+      .limit(1),
+    db
+      .select({ title: posts.title, currentRevisionId: posts.currentRevisionId })
+      .from(posts)
+      .where(and(eq(posts.id, input.postId), isNull(posts.deletedAt), isNull(posts.hiddenAt)))
+      .limit(1),
+    db
+      .select({ annotationId: postAnnotationAnchors.annotationId })
+      .from(postAnnotationAnchors)
+      .where(eq(postAnnotationAnchors.postId, input.postId)),
+    db
+      .select()
+      .from(annotationReplies)
+      .where(eq(annotationReplies.id, input.targetReplyId ?? ""))
+      .limit(1),
   ]);
+  if (duplicates[0]) return duplicates[0].id;
+  const annotation = roots[0],
+    post = postRows[0],
+    targetReply = targets[0] ?? null;
+  const currentAnchorIds = anchors.map((row) => row.annotationId);
   if (!post) throw new Error("帖子不存在或当前不可访问");
   if (!annotation || annotation.postId !== input.postId)
     throw new Error("批注不存在或不属于当前帖子");
-  if (!post.post.currentRevisionId) throw new Error("帖子当前版本不存在");
+  if (!post.currentRevisionId) throw new Error("帖子当前版本不存在");
   const now = new Date();
   const plan = planAnnotationReplyCreation(
     {
@@ -279,12 +312,11 @@ export async function createAnnotationReply(input: {
   );
   const id = crypto.randomUUID();
   const eventId = activityEventId("ANNOTATION_REPLY_CREATED", input.postId, id);
-  const db = getDb();
   const operations: BatchItem<"sqlite">[] = [
     db
       .update(posts)
       .set({
-        title: sql<string>`CASE WHEN ${posts.currentRevisionId} = ${post.post.currentRevisionId} AND ${posts.deletedAt} IS NULL AND ${posts.hiddenAt} IS NULL THEN ${posts.title} ELSE NULL END`,
+        title: sql<string>`CASE WHEN ${posts.currentRevisionId} = ${post.currentRevisionId} AND ${posts.deletedAt} IS NULL AND ${posts.hiddenAt} IS NULL THEN ${posts.title} ELSE NULL END`,
       })
       .where(eq(posts.id, input.postId)),
     ...(targetReply
@@ -323,7 +355,7 @@ export async function createAnnotationReply(input: {
       annotationReplyId: id,
       rootReplyId: null,
       replyToUserId: plan.replyToUserId,
-      metadataJson: JSON.stringify({ title: post.post.title }),
+      metadataJson: JSON.stringify({ title: post.title }),
       createdAt: now,
       invalidatedAt: null,
     }),
@@ -362,7 +394,7 @@ export async function createAnnotationReply(input: {
     )[0];
     if (!latestPost || latestPost.deletedAt || latestPost.hiddenAt)
       throw new Error("帖子不存在或当前不可访问");
-    if (latestPost.currentRevisionId !== post.post.currentRevisionId)
+    if (latestPost.currentRevisionId !== post.currentRevisionId)
       throw new Error("帖子已更新，请重新打开批注讨论后再回复");
     if (targetReply) {
       const latestTarget = await findAnnotationReply(targetReply.id);

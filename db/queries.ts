@@ -163,6 +163,27 @@ export async function findAllowedUser(email: string) {
   );
 }
 
+// Fresh on every action/API call; pages share only their request-local result.
+export async function findAllowedMember(email: string, configuredAdminEmail: string | null) {
+  const read = () =>
+    getDb()
+      .select({
+        allowed: allowedUsers,
+        member: users,
+        needsRepair: sql<number>`exists(select 1 from allowed_users other where other.email != ${email} and (other.added_by_user_id is null or other.is_admin = 1))`,
+      })
+      .from(allowedUsers)
+      .leftJoin(users, eq(users.emailKey, allowedUsers.email))
+      .where(eq(allowedUsers.email, email))
+      .limit(1);
+  let row = (await read())[0];
+  if (email === configuredAdminEmail && (!row?.allowed.isAdmin || row.needsRepair)) {
+    await ensureConfiguredAdministrator(email);
+    row = (await read())[0];
+  }
+  return row ? { allowed: row.allowed, member: row.member } : null;
+}
+
 export async function addAllowedUser(email: string, isAdmin: boolean, addedByUserId?: string) {
   const record = {
     id: crypto.randomUUID(),

@@ -96,6 +96,8 @@ export function markServerErrorStage(error: unknown, stage: string): unknown {
 
 export function logServerError(context: ServerErrorContext): string {
   const incidentId = crypto.randomUUID();
+  const performanceContext = requestPerformance.getStore();
+  if (performanceContext) performanceContext.incidentId = incidentId;
   const cause = errorCause(context.error);
   const record = {
     level: "error",

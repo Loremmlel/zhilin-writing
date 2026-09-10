@@ -218,3 +218,52 @@ test("database execution metadata is separate from wall time and missing metadat
   assert.equal(context.dbAttempts, 2);
   assert.equal(context.dbRegion, "WEUR");
 });
+
+test("diagnostic grouping retains coarse network and random IDs but rejects fingerprint payloads", async () => {
+  const { requestEnvironment } = await import("../../lib/performance/environment.ts");
+  const request = new Request("https://example.test/", {
+    headers: {
+      "cf-connecting-ip": "192.0.2.123",
+      "cf-ipcountry": "JP",
+      "user-agent": "Mozilla/5.0 (Windows NT 10.0) Chrome/152.0.0.0 Safari/537.36 Edg/152.0.0.0",
+      purpose: "prefetch",
+    },
+  });
+  const result = requestEnvironment(request);
+  assert.equal(result.networkPrefix, "192.0.2.0/24");
+  assert.equal(result.browser, "edge");
+  assert.equal(result.os, "windows");
+  assert.equal(result.prefetch, 1);
+  assert.ok(!JSON.stringify(result).includes("192.0.2.123"));
+  assert.equal(
+    requestEnvironment(
+      new Request("https://example.test", { headers: { "cf-connecting-ip": "2001:db8::1234" } }),
+    ).networkPrefix,
+    "2001:db8:0::/48",
+  );
+  assert.equal(
+    requestEnvironment(
+      new Request("https://example.test", { headers: { "cf-connecting-ip": "not-an-ip" } }),
+    ).networkPrefix,
+    undefined,
+  );
+  const id = crypto.randomUUID();
+  const clean = sanitizeClientRecord({
+    kind: "resource",
+    route: "/",
+    browserId: id,
+    sessionId: id,
+    protocol: "h3",
+    preRequestMs: 300,
+    ip: "192.0.2.123",
+    fingerprint: "canvas",
+    browser: "forged",
+    networkPrefix: "forged",
+  });
+  assert.equal(clean?.browserId, id);
+  assert.equal(clean?.preRequestMs, 300);
+  assert.equal(clean?.ip, undefined);
+  assert.equal(clean?.fingerprint, undefined);
+  assert.equal(clean?.browser, undefined);
+  assert.equal(clean?.networkPrefix, undefined);
+});
