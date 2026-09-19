@@ -176,8 +176,7 @@ export function ActivityList({ items }: { items: ActivityItem[] }) {
   if (items.length === 0)
     return (
       <div className="empty-state">
-        <h2>还没有公开动态</h2>
-        <p>发布帖子、回复或批注后，活动会按时间显示在这里。</p>
+        <h2>暂无动态</h2>
       </div>
     );
   return (

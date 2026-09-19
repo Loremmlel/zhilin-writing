@@ -395,7 +395,7 @@ async function DiscussionRegion({
           deleteActionFor={(replyId) => deleteReplyAction.bind(null, id, replyId)}
         />
       ) : (
-        <p className="empty-copy">还没有回复。可以从一句认真读过的话开始。</p>
+        <p className="empty-copy">还没有回复。</p>
       )}
     </section>
   );

@@ -42,7 +42,6 @@ export default async function OnboardingPage({
             placeholder="写一点你愿意让朋友知道的事情……"
           />
         </label>
-        <p className="muted">头像可以进入社区后再设置。</p>
         {error && <p className="form-error">{error}</p>}
         <button className="button button--primary" type="submit">
           进入社区
