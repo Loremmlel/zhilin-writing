@@ -56,7 +56,7 @@ test("production artifact contains the V2 activity and notification surfaces", a
 
 test("production artifact contains administrator revision preview and restore surfaces", async () => {
   const source = await builtServerSource();
-  assert.match(source, /Post revisions/);
+  assert.match(source, /历史版本/);
   assert.match(source, /历史版本预览/);
   assert.match(source, /恢复此版本/);
   assert.match(source, /当前版本/);
@@ -121,10 +121,6 @@ test("production artifact contains the V5.5 DOCX import entry and Preview worksp
   assert.match(source, /选择 DOCX 文件/);
   assert.match(source, /解析进度/);
   assert.match(source, /Word 作者关联/);
-  assert.match(
-    source,
-    /此 DOCX 含正文批注。导入后可继续编辑正文；修改批注端点时系统会先要求确认。/,
-  );
   assert.match(source, /取消导入/);
   assert.match(source, /确认导入/);
   assert.match(styles, /docx-import-workspace/);

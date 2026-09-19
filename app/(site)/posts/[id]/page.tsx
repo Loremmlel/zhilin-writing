@@ -77,10 +77,7 @@ export default async function PostPage({
 
   return (
     <div className="reading-page page-column">
-      <RegionErrorBoundary
-        title="正文暂时无法显示"
-        description="帖子地址与定位目标仍会保留，请稍后重试。"
-      >
+      <RegionErrorBoundary title="正文暂时无法显示" description="请稍后重试。">
         <Suspense fallback={<PostBodySkeleton />}>
           <PostBodyRegion
             id={id}
@@ -92,10 +89,7 @@ export default async function PostPage({
         </Suspense>
       </RegionErrorBoundary>
       {discussionVisible && (
-        <RegionErrorBoundary
-          title="讨论暂时无法显示"
-          description="正文与当前定位状态仍会保留，请稍后重试。"
-        >
+        <RegionErrorBoundary title="讨论暂时无法显示" description="请稍后重试。">
           <Suspense fallback={<DiscussionSkeleton />}>
             <DiscussionRegion
               id={id}

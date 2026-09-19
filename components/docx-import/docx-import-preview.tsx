@@ -16,8 +16,8 @@ import type { ImportWarning, ImportedThread } from "@/lib/docx-import/types";
 type SiteUser = { id: string; displayName: string };
 
 const warningLabels: Record<ImportWarning["code"], string> = {
-  HEADING_LEVEL_CLAMPED: "标题层级已收敛到四级",
-  LIST_DEPTH_CLAMPED: "列表层级已收敛到三级",
+  HEADING_LEVEL_CLAMPED: "超过四级的标题已调整为四级",
+  LIST_DEPTH_CLAMPED: "超过三级的列表已调整为三级",
   VISUAL_FORMATTING_DROPPED: "部分字体或其他排版未导入",
   FONT_SIZE_DROPPED: "部分字号不受支持，已使用默认字号",
   TEXT_COLOR_FALLBACK: "部分文字颜色无法还原或过浅，请检查",
@@ -26,11 +26,11 @@ const warningLabels: Record<ImportWarning["code"], string> = {
   TOC_SKIPPED: "目录字段已跳过",
   TRACK_CHANGES_FLATTENED: "修订痕迹已合并到正文",
   TABLE_HEADER_SYNTHESIZED: "表格已补充表头",
-  TABLE_CELL_FLATTENED: "复杂单元格已展平",
+  TABLE_CELL_FLATTENED: "单元格内的多个段落已合并",
   TABLE_MERGED_CELLS_FLATTENED: "合并单元格已转为普通段落",
   FLOATING_IMAGE_FLATTENED: "浮动图片已转为行内图片",
   IMAGE_FORMAT_UNSUPPORTED: "不支持的图片已跳过",
-  TEXTBOX_FLATTENED: "文本框内容已展平",
+  TEXTBOX_FLATTENED: "文本框内容已转为普通正文",
   EQUATION_SKIPPED: "公式已使用占位说明",
   SHAPE_CONTENT_SKIPPED: "无法读取的图形内容已跳过",
   NOTES_FLATTENED_TO_APPENDIX: "脚注与尾注已移到文末",
@@ -49,18 +49,18 @@ const validationLabels: Record<string, string> = {
   MARKDOWN_REQUIRED: "正文不能为空。",
   MARKDOWN_SIZE_LIMIT: "正文超过 1.5 MB，需删减后再确认。",
   PREVIEW_EXPIRED: "这份预览已经超过 24 小时，请重新选择原文件。",
-  PREVIEW_MARKDOWN_INVALID: "正文 Markdown 无法解析，请撤销最近修改。",
-  ANNOTATION_ANCHOR_MISSING: "正文中有批注锚点被移除，请恢复对应文字。",
-  ANNOTATION_ANCHOR_UNKNOWN: "正文中出现了不属于本次导入的批注锚点。",
-  ANNOTATION_ANCHOR_DUPLICATE: "同一批注锚点在正文中出现了多次。",
+  PREVIEW_MARKDOWN_INVALID: "正文格式有误，请撤销最近修改。",
+  ANNOTATION_ANCHOR_MISSING: "正文中有批注标记被移除，请恢复对应文字。",
+  ANNOTATION_ANCHOR_UNKNOWN: "正文中出现了不属于本次导入的批注标记。",
+  ANNOTATION_ANCHOR_DUPLICATE: "同一批注标记在正文中出现了多次。",
   ANNOTATION_TEXT_CHANGED: "这条批注圈住的原文已被修改。",
-  ANNOTATION_NESTED: "批注锚点不能互相嵌套。",
-  ANNOTATION_NON_TEXT_RANGE: "批注锚点不能包含图片或其他非正文内容。",
+  ANNOTATION_NESTED: "批注范围不能相互包含。",
+  ANNOTATION_NON_TEXT_RANGE: "批注范围不能包含图片或其他非正文内容。",
   ANNOTATION_CROSS_BLOCK: "跨段批注必须覆盖连续的正文段落。",
   ANNOTATION_OVERLAP: "批注范围发生重叠，无法安全导入。",
   UNSAFE_EXTERNAL_URL: "正文包含不安全链接，请移除后再确认。",
   IMPORT_WARNING_ERROR: "源文件包含阻断导入的问题。",
-  ASSET_UPLOAD_MISSING: "有图片尚未完成临时上传，请重新导入原文件。",
+  ASSET_UPLOAD_MISSING: "有图片尚未完成上传，请重新导入原文件。",
   ASSET_REFERENCE_INVALID: "预览中的图片引用已失效，请重新导入原文件。",
   AUTHOR_MAPPING_INVALID: "有 Word 作者关联已失效，请重新选择。",
 };
@@ -169,11 +169,6 @@ export function DocxImportPreview({
             {validationLabels[titleError.code]}
           </p>
         )}
-        {preview.ir.threads.length > 0 && (
-          <div className="docx-import-lock-notice" role="status">
-            此 DOCX 含正文批注。导入后可继续编辑正文；修改批注端点时系统会先要求确认。
-          </div>
-        )}
         <label className="field-label">正文</label>
         <MarkdownEditor
           initialMarkdown={preview.markdown}
@@ -193,7 +188,7 @@ export function DocxImportPreview({
             <span>{warningDetails.reduce((total, item) => total + item.count, 0)} 项</span>
           </div>
           {visibleWarnings.length === 0 ? (
-            <p className="docx-import-clear-state">没有需要处理的降级提醒。</p>
+            <p className="docx-import-clear-state">没有导入提醒。</p>
           ) : (
             <ul>
               {visibleWarnings.map((item) => (

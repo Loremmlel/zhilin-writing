@@ -48,9 +48,8 @@ export default async function PostRevisionsPage({
     <AdminShell active="posts">
       <div className="admin-page revision-admin-page">
         <header className="page-header">
-          <span className="eyebrow">管理员 · Post revisions</span>
+          <span className="eyebrow">历史版本</span>
           <h1>{post.post.title}</h1>
-          <p>历史内容只对唯一管理员开放。预览与恢复不会创建公开动态或通知。</p>
         </header>
         {query.restored === "1" && (
           <p className="content-notice" role="status">
@@ -58,9 +57,9 @@ export default async function PostRevisionsPage({
           </p>
         )}
         <div className="revision-admin-layout">
-          <aside className="revision-timeline" aria-label="Post revisions">
+          <aside className="revision-timeline" aria-label="历史版本">
             <div className="section-heading">
-              <h2>Post revisions</h2>
+              <h2>历史版本</h2>
               <span>{revisions.length} 个</span>
             </div>
             <div className="revision-list">
@@ -90,10 +89,7 @@ export default async function PostRevisionsPage({
               })}
             </div>
           </aside>
-          <RegionErrorBoundary
-            title="版本预览暂时无法载入"
-            description="当前选中的版本仍会保留，请稍后重试。"
-          >
+          <RegionErrorBoundary title="版本预览暂时无法载入" description="请稍后重试。">
             <Suspense fallback={<RevisionPreviewSkeleton />}>
               <RevisionPreview
                 postId={postId}
@@ -168,12 +164,9 @@ async function RevisionPreview({
       />
       <section className="revision-assets">
         <div className="section-heading">
-          <h3>批注快照</h3>
+          <h3>此版本中的批注</h3>
           <span>{selected.annotationStates.length} 条</span>
         </div>
-        <p className="muted">
-          该版本记录了当时属于正文的批注锚点，以及每条批注当时的删除或隐藏状态。
-        </p>
         {!selectedIsCurrent && exitingAnnotationCount > 0 && (
           <p className="content-notice" role="status">
             恢复此版本将使当前版本中的 {exitingAnnotationCount} 条批注不再属于当前正文。
@@ -182,7 +175,7 @@ async function RevisionPreview({
       </section>
       <section className="revision-assets">
         <div className="section-heading">
-          <h3>附件快照</h3>
+          <h3>此版本中的附件</h3>
           <span>{selectedAttachments.length} 个</span>
         </div>
         {selectedAttachments.length === 0 ? (

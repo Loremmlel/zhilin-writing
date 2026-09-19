@@ -54,10 +54,7 @@ export default async function UserPage({
           动态
         </Link>
       </nav>
-      <RegionErrorBoundary
-        title="个人内容暂时无法载入"
-        description="当前标签页仍会保留，请稍后重试。"
-      >
+      <RegionErrorBoundary title="个人内容暂时无法载入" description="请稍后重试。">
         <Suspense fallback={<ProfileContentSkeleton />}>
           <ProfileContent
             viewerId={member.id}

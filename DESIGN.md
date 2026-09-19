@@ -88,7 +88,7 @@ components:
 
 - **Audience and primary job:** 几位彼此认识的受邀中国用户，写作、阅读、回复、正文批注并在管理员帮助下保护内容历史。
 - **Target market and evidence:** 私密中文社区；当前产品规格与现有简体中文界面是直接依据。
-- **Locale and language policy:** `zh-CN`；界面动作使用简洁中文，技术名词只在管理员界面保留必要英文，如 Post revisions。
+- **Locale and language policy:** `zh-CN`；界面动作使用简洁中文，普通页面与管理员页面均使用用户能理解的中文；历史版本等功能不使用内部英文名称。
 - **Usage scene:** 桌面长文写作为主，手机阅读和轻量回复为辅；低频、低压力、内容密度中等。
 - **Register:** 纯产品界面；不使用营销 hero。
 - **Memorable signature:** 简笔柚叶/柚子校徽与校刊纸张式长文表面。

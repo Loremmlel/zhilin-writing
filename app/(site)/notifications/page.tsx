@@ -44,7 +44,7 @@ export default async function NotificationsPage({
             未读
           </Link>
         </nav>
-        <RegionErrorBoundary title="通知暂时无法载入" description="筛选条件仍会保留，请稍后重试。">
+        <RegionErrorBoundary title="通知暂时无法载入" description="请稍后重试。">
           <Suspense fallback={<NotificationsListSkeleton />}>
             <NotificationsRegion
               memberId={member.id}

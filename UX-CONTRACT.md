@@ -36,7 +36,7 @@
 - Primary jobs: 写作、阅读、回复、正文批注、恢复本地未提交修改；管理员检查和恢复历史版本。
 - Target market(s): 私密中文社区。
 - Active locales: `zh-CN`。
-- Language/content register: 直白、安静、非营销式中文；管理员界面可保留少量准确英文术语。
+- Language/content register: 直白、安静、非营销式中文；管理员界面也使用面向用户的中文，避免内部实现术语。
 - Timezone/calendar policy: 时间经项目 `formatDateTime()` / `formatListDateTime()` 按 `Asia/Shanghai` 统一展示；管理员日期筛选使用北京时间（UTC+8）公历自然日，起止日均包含。
 - Accessibility target: WCAG 2.2 AA。
 

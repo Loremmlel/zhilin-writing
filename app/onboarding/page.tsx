@@ -21,9 +21,7 @@ export default async function OnboardingPage({
         <div className="onboarding-brand">知临中学</div>
         <span className="eyebrow">第一次来到这里</span>
         <h1>先留下一个称呼</h1>
-        <p>
-          这里的名字只用于社区内展示。你的登录邮箱只作为私密身份键，不会出现在帖子或个人主页中。
-        </p>
+        <p>登录邮箱不会出现在帖子或个人主页中。</p>
         <label>
           <span className="field-label">显示名称</span>
           <input

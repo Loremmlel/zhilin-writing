@@ -2678,9 +2678,6 @@ input[type="file"] {
   min-height: 36px;
   padding-inline: 11px;
 }
-.admin-table-hint {
-  display: none;
-}
 .admin-table-scroll {
   min-height: 0;
   max-width: 100%;
@@ -3459,15 +3456,6 @@ input[type="file"] {
   box-shadow: var(--shadow);
 }
 
-.docx-import-lock-notice {
-  margin: -5px 0 20px;
-  padding: 12px 14px;
-  border-left: 3px solid var(--annotation-ink);
-  background: var(--annotation);
-  color: #704943;
-  font-size: 13px;
-  line-height: 1.65;
-}
 .docx-import-rail {
   min-width: 0;
   display: grid;
@@ -4468,12 +4456,6 @@ input[type="file"] {
   }
   .admin-bulk-scope > .admin-table-scroll {
     flex: 0 0 clamp(320px, 52dvh, 440px);
-  }
-  .admin-table-hint {
-    margin: 0 0 7px;
-    display: block;
-    color: var(--muted);
-    font-size: 11px;
   }
   .admin-pagination {
     align-items: flex-start;

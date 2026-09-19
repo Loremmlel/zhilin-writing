@@ -19,12 +19,7 @@ export function AdminContentPreview({
       <button className="text-button" type="button" onClick={() => setOpen(true)}>
         原文
       </button>
-      <ModalDialog
-        open={open}
-        title={title}
-        description="只读查看完整内容；关闭后仍停留在当前筛选和选择状态。"
-        onClose={() => setOpen(false)}
-      >
+      <ModalDialog open={open} title={title} onClose={() => setOpen(false)}>
         <div className="admin-raw-preview">
           {quote && (
             <blockquote>

@@ -38,10 +38,10 @@ type SiteUser = { id: string; displayName: string };
 
 const stageLabels: Record<DocxWorkerProgressStage, string> = {
   "package-validation": "检查 DOCX 文件结构",
-  "xml-preload": "读取文档关系与样式",
+  "xml-preload": "读取文档",
   "document-walk": "解析正文、表格与图片",
   "thread-validation": "核对批注与回复",
-  "markdown-generation": "生成 Markdown 预览",
+  "markdown-generation": "生成预览",
   done: "解析完成",
 };
 
@@ -463,11 +463,11 @@ export function DocxImportWorkspace({
             <h2 id="docx-progress-heading">
               {phase === "parsing" ? stageLabels[stage] : "上传预览图片"}
             </h2>
-            <p>
-              {phase === "parsing"
-                ? "正在本地读取正文结构与批注关系。"
-                : `已上传 ${uploadedCount} / ${uploadTotal} 张图片。`}
-            </p>
+            {phase === "uploading" && (
+              <p>
+                已上传 {uploadedCount} / {uploadTotal} 张图片。
+              </p>
+            )}
           </div>
           <progress
             max={phase === "parsing" ? 6 : Math.max(1, uploadTotal)}
@@ -587,7 +587,7 @@ export function DocxImportWorkspace({
           <div>
             <span className="eyebrow">保存进度</span>
             <h2 id="docx-commit-heading">正在保存帖子</h2>
-            <p>正在一次写入正文、批注和图片关系，请勿关闭页面。</p>
+            <p>正在保存，请勿关闭页面。</p>
           </div>
           <progress aria-label="正在保存帖子" />
         </section>
@@ -605,8 +605,8 @@ export function DocxImportWorkspace({
         title="放弃这份 DOCX 预览？"
         description={
           discardTarget
-            ? `将放弃“${discardTarget.title ?? discardTarget.ir.suggestedTitle}”（${discardTarget.ir.source.filename}，创建于 ${formatDateTime(new Date(discardTarget.createdAt))}）。当前浏览器中的预览会被删除；已上传的临时图片会由站点自动回收。`
-            : "当前浏览器中的预览会被删除；已上传的临时图片会由站点自动回收。"
+            ? `将放弃“${discardTarget.title ?? discardTarget.ir.suggestedTitle}”（${discardTarget.ir.source.filename}，创建于 ${formatDateTime(new Date(discardTarget.createdAt))}）。当前浏览器中的预览会被删除。`
+            : "当前浏览器中的预览会被删除。"
         }
         onClose={() => setDiscardBatchId(null)}
         alert

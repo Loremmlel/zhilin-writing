@@ -138,10 +138,7 @@ export default async function AdminPage({
           <main
             className={`admin-workspace-main${view.section === "content" ? " admin-workspace-main--content" : ""}`}
           >
-            <RegionErrorBoundary
-              title="管理列表暂时无法载入"
-              description="当前筛选仍会保留，请稍后重试。"
-            >
+            <RegionErrorBoundary title="管理列表暂时无法载入" description="请稍后重试。">
               <Suspense fallback={<AdminListSkeleton />}>
                 <AdminMain view={view} />
               </Suspense>
@@ -181,7 +178,6 @@ async function AdminOverview({ view }: { view: AdminView }) {
           <span className="eyebrow">内容状态</span>
           <h2 id="admin-overview-title">社区概况</h2>
         </div>
-        <span>数据实时汇总</span>
       </div>
       <div className="admin-metric-grid">
         {cards.map((card) => (
@@ -317,14 +313,7 @@ function ContentFrame<T>({
         searchClearHref={adminUrl(view, { q: "", page: 1 })}
         clearHref={adminUrl(view, { q: "", from: "", to: "", page: 1 })}
       />
-      {result.total > 0 ? (
-        <>
-          <p className="admin-table-hint">可在表格内上下、左右滚动查看内容</p>
-          {children}
-        </>
-      ) : (
-        <p className="empty-copy">{adminEmptyCopy(view.type)}</p>
-      )}
+      {result.total > 0 ? children : <p className="empty-copy">{adminEmptyCopy(view.type)}</p>}
       <Pagination view={view} total={result.total} page={result.page} pageSize={result.pageSize} />
     </section>
   );
