@@ -2,6 +2,7 @@ import type { BatchItem } from "drizzle-orm/batch";
 import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 
 import { getDb } from "@/db";
+import { inIdList } from "@/db/id-list";
 import {
   activityEvents,
   assets,
@@ -89,9 +90,9 @@ async function validateSnapshotAssets(authorId: string, refs: AssetSnapshotRef[]
   const ids = [...new Set(refs.map((ref) => ref.assetId))];
   if (ids.length === 0) return;
   const rows = await getDb()
-    .select()
+    .select({ ownerId: assets.ownerId, gcClaimedAt: assets.gcClaimedAt })
     .from(assets)
-    .where(and(inArray(assets.id, ids), isNull(assets.deletedAt)));
+    .where(and(inIdList(assets.id, ids), isNull(assets.deletedAt)));
   if (
     rows.length !== ids.length ||
     rows.some((asset) => asset.ownerId !== authorId || asset.gcClaimedAt !== null)
@@ -231,13 +232,12 @@ export async function updatePost(postId: string, currentUserId: string, input: S
       .limit(1)
   )[0];
   if (!currentRevision) throw new Error("帖子当前版本不存在");
-  const [currentAssetRefs, nextAssetRefs, currentAnnotationRows, currentImportedReplyStates] =
-    await Promise.all([
-      getCurrentAssetRefs(postId),
-      Promise.resolve(buildAssetSnapshot(clean.markdown, input.attachmentIds ?? [])),
-      getCurrentAnnotationSaveStates(postId),
-      getCurrentImportedReplySaveStates(postId),
-    ]);
+  const nextAssetRefs = buildAssetSnapshot(clean.markdown, input.attachmentIds ?? []);
+  const [currentAssetRefs, currentAnnotationRows, currentImportedReplyStates] = await db.batch([
+    getCurrentAssetRefs(postId),
+    getCurrentAnnotationSaveStates(postId),
+    getCurrentImportedReplySaveStates(postId),
+  ]);
   await validateSnapshotAssets(currentUserId, nextAssetRefs);
   const now = new Date();
   if (currentAnnotationRows.some((state) => state.annotationPostId !== postId))

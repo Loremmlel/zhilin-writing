@@ -111,7 +111,7 @@ export async function createAnnotation(input: {
       .limit(1)
   )[0];
   if (!currentRevision) throw new Error("帖子当前版本不存在");
-  const [currentStates, currentAssetRefs, currentImportedReplyStates] = await Promise.all([
+  const [currentStates, currentAssetRefs, currentImportedReplyStates] = await db.batch([
     getCurrentAnnotationStates(input.postId),
     getCurrentAssetRefs(input.postId),
     getCurrentImportedReplyStates(input.postId),
@@ -467,7 +467,7 @@ export async function deleteAnnotationByAuthor(
     )[0];
     if (!currentRevision) throw new Error("帖子当前版本不存在");
     stage = "load-snapshot";
-    const [currentStates, currentAssetRefs, currentImportedReplyStates] = await Promise.all([
+    const [currentStates, currentAssetRefs, currentImportedReplyStates] = await db.batch([
       getCurrentAnnotationStates(annotation.postId),
       getCurrentAssetRefs(annotation.postId),
       getCurrentImportedReplyStates(annotation.postId),
@@ -610,7 +610,7 @@ export async function removeImportedAnnotationThread(
       .limit(1)
   )[0];
   if (!currentRevision) throw new Error("帖子当前版本不存在");
-  const [currentStates, currentAssetRefs, currentImportedReplyStates] = await Promise.all([
+  const [currentStates, currentAssetRefs, currentImportedReplyStates] = await db.batch([
     getCurrentAnnotationStates(postId),
     getCurrentAssetRefs(postId),
     getCurrentImportedReplyStates(postId),
@@ -768,7 +768,7 @@ export async function moderateAnnotationByAdmin(input: {
   const annotation = await findAnnotation(input.annotationId);
   if (!annotation) throw new Error("批注不存在");
   const db = getDb();
-  const [currentStates, currentAssetRefs, currentImportedReplyStates] = await Promise.all([
+  const [currentStates, currentAssetRefs, currentImportedReplyStates] = await db.batch([
     getCurrentAnnotationStates(annotation.postId),
     getCurrentAssetRefs(annotation.postId),
     getCurrentImportedReplyStates(annotation.postId),

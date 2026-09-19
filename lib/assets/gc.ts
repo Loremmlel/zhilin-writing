@@ -20,22 +20,15 @@ type ReferenceCounts = {
 
 async function referenceCounts(assetId: string): Promise<ReferenceCounts> {
   const db = getDb();
-  const [current, revisions, avatars] = await Promise.all([
-    db
-      .select({ assetId: postAssetRefs.assetId })
-      .from(postAssetRefs)
-      .where(eq(postAssetRefs.assetId, assetId)),
-    db
-      .select({ assetId: revisionAssetRefs.assetId })
-      .from(revisionAssetRefs)
-      .where(eq(revisionAssetRefs.assetId, assetId)),
-    db.select({ id: users.id }).from(users).where(eq(users.avatarAssetId, assetId)),
-  ]);
-  return {
-    currentRefCount: current.length,
-    revisionRefCount: revisions.length,
-    avatarRefCount: avatars.length,
-  };
+  const [counts] = await db
+    .select({
+      currentRefCount: sql<number>`(select count(*) from ${postAssetRefs} where ${postAssetRefs.assetId} = ${assets.id})`,
+      revisionRefCount: sql<number>`(select count(*) from ${revisionAssetRefs} where ${revisionAssetRefs.assetId} = ${assets.id})`,
+      avatarRefCount: sql<number>`(select count(*) from ${users} where ${users.avatarAssetId} = ${assets.id})`,
+    })
+    .from(assets)
+    .where(eq(assets.id, assetId));
+  return counts ?? { currentRefCount: 0, revisionRefCount: 0, avatarRefCount: 0 };
 }
 
 export async function collectOrphanedAssets(

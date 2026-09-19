@@ -65,13 +65,8 @@ async function activityAfterPurge(
   },
 ) {
   const db = getDb();
-  const [post, replyRows, annotationRows, annotationReplyRows] = await Promise.all([
-    db
-      .select({ publishedAt: posts.publishedAt })
-      .from(posts)
-      .where(eq(posts.id, postId))
-      .limit(1)
-      .then((rows) => rows[0]),
+  const [[post], replyRows, annotationRows, annotationReplyRows] = await db.batch([
+    db.select({ publishedAt: posts.publishedAt }).from(posts).where(eq(posts.id, postId)).limit(1),
     db
       .select({
         id: replies.id,
@@ -126,35 +121,23 @@ async function purgePost(postId: string, administratorId: string, operationId: s
     .limit(1)
     .then((rows) => rows[0]);
   if (!post) return false;
-  const [revisionCount, annotationCount, replyCount, annotationReplyCount, eventCount] =
-    await Promise.all([
-      db
-        .select({ value: count() })
-        .from(postRevisions)
-        .where(eq(postRevisions.postId, postId))
-        .then((rows) => rows[0]?.value ?? 0),
-      db
-        .select({ value: count() })
-        .from(annotations)
-        .where(eq(annotations.postId, postId))
-        .then((rows) => rows[0]?.value ?? 0),
-      db
-        .select({ value: count() })
-        .from(replies)
-        .where(eq(replies.postId, postId))
-        .then((rows) => rows[0]?.value ?? 0),
-      db
-        .select({ value: count() })
-        .from(annotationReplies)
-        .innerJoin(annotations, eq(annotationReplies.annotationId, annotations.id))
-        .where(eq(annotations.postId, postId))
-        .then((rows) => rows[0]?.value ?? 0),
-      db
-        .select({ value: count() })
-        .from(activityEvents)
-        .where(eq(activityEvents.postId, postId))
-        .then((rows) => rows[0]?.value ?? 0),
-    ]);
+  const [
+    [{ value: revisionCount }],
+    [{ value: annotationCount }],
+    [{ value: replyCount }],
+    [{ value: annotationReplyCount }],
+    [{ value: eventCount }],
+  ] = await db.batch([
+    db.select({ value: count() }).from(postRevisions).where(eq(postRevisions.postId, postId)),
+    db.select({ value: count() }).from(annotations).where(eq(annotations.postId, postId)),
+    db.select({ value: count() }).from(replies).where(eq(replies.postId, postId)),
+    db
+      .select({ value: count() })
+      .from(annotationReplies)
+      .innerJoin(annotations, eq(annotationReplies.annotationId, annotations.id))
+      .where(eq(annotations.postId, postId)),
+    db.select({ value: count() }).from(activityEvents).where(eq(activityEvents.postId, postId)),
+  ]);
   const revisionIds = db
     .select({ id: postRevisions.id })
     .from(postRevisions)
@@ -268,13 +251,8 @@ async function purgeAnnotation(annotationId: string, administratorId: string, op
     .limit(1)
     .then((rows) => rows[0]);
   if (!target) return false;
-  const [post, revisionRows, currentAnchorRows, replyCount] = await Promise.all([
-    db
-      .select({ markdown: posts.markdown })
-      .from(posts)
-      .where(eq(posts.id, target.postId))
-      .limit(1)
-      .then((rows) => rows[0]),
+  const [[post], revisionRows, currentAnchorRows, [{ value: replyCount }]] = await db.batch([
+    db.select({ markdown: posts.markdown }).from(posts).where(eq(posts.id, target.postId)).limit(1),
     db
       .select({ id: postRevisions.id, markdown: postRevisions.markdown })
       .from(postRevisions)
@@ -286,8 +264,7 @@ async function purgeAnnotation(annotationId: string, administratorId: string, op
     db
       .select({ value: count() })
       .from(annotationReplies)
-      .where(eq(annotationReplies.annotationId, annotationId))
-      .then((rows) => rows[0]?.value ?? 0),
+      .where(eq(annotationReplies.annotationId, annotationId)),
   ]);
   if (!post) throw new Error("所属帖子不存在");
   const replyIds = db
@@ -375,11 +352,10 @@ async function purgeAnnotationReply(replyId: string, administratorId: string, op
     .limit(1)
     .then((rows) => rows[0]);
   if (!target) return false;
-  const eventIds = await db
+  const eventIds = db
     .select({ id: activityEvents.id })
     .from(activityEvents)
-    .where(eq(activityEvents.annotationReplyId, replyId))
-    .then((rows) => rows.map((row) => row.id));
+    .where(eq(activityEvents.annotationReplyId, replyId));
   const lastActivityAt = await activityAfterPurge(target.postId, {
     annotationReplyIds: new Set([replyId]),
   });
@@ -388,12 +364,10 @@ async function purgeAnnotationReply(replyId: string, administratorId: string, op
       db
         .delete(notifications)
         .where(
-          eventIds.length
-            ? or(
-                eq(notifications.annotationReplyId, replyId),
-                inArray(notifications.eventId, eventIds),
-              )
-            : eq(notifications.annotationReplyId, replyId),
+          or(
+            eq(notifications.annotationReplyId, replyId),
+            inArray(notifications.eventId, eventIds),
+          ),
         ),
       db.delete(activityEvents).where(eq(activityEvents.annotationReplyId, replyId)),
       db

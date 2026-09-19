@@ -61,7 +61,7 @@ export class EditConflictError extends Error {
   }
 }
 
-export async function getCurrentAssetRefs(postId: string): Promise<AssetSnapshotRef[]> {
+export function getCurrentAssetRefs(postId: string) {
   return getDb()
     .select({ assetId: postAssetRefs.assetId, usage: postAssetRefs.usage })
     .from(postAssetRefs)
@@ -69,7 +69,7 @@ export async function getCurrentAssetRefs(postId: string): Promise<AssetSnapshot
     .orderBy(asc(postAssetRefs.assetId), asc(postAssetRefs.usage));
 }
 
-export async function getRevisionAssetRefs(revisionId: string): Promise<AssetSnapshotRef[]> {
+export function getRevisionAssetRefs(revisionId: string) {
   return getDb()
     .select({ assetId: revisionAssetRefs.assetId, usage: revisionAssetRefs.usage })
     .from(revisionAssetRefs)
@@ -77,9 +77,7 @@ export async function getRevisionAssetRefs(revisionId: string): Promise<AssetSna
     .orderBy(asc(revisionAssetRefs.assetId), asc(revisionAssetRefs.usage));
 }
 
-export async function getRevisionAnnotationStates(
-  revisionId: string,
-): Promise<AnnotationStateSnapshot[]> {
+export function getRevisionAnnotationStates(revisionId: string) {
   return getDb()
     .select({
       annotationId: revisionAnnotationStates.annotationId,
@@ -93,9 +91,7 @@ export async function getRevisionAnnotationStates(
     .orderBy(asc(revisionAnnotationStates.annotationId));
 }
 
-export async function getRevisionImportedReplyStates(
-  revisionId: string,
-): Promise<ImportedReplyStateSnapshot[]> {
+export function getRevisionImportedReplyStates(revisionId: string) {
   return getDb()
     .select({
       annotationReplyId: revisionImportedReplyStates.annotationReplyId,
@@ -109,9 +105,7 @@ export async function getRevisionImportedReplyStates(
     .orderBy(asc(revisionImportedReplyStates.annotationReplyId));
 }
 
-export async function getCurrentImportedReplyStates(
-  postId: string,
-): Promise<ImportedReplyStateSnapshot[]> {
+export function getCurrentImportedReplyStates(postId: string) {
   return getDb()
     .select({
       annotationReplyId: annotationReplies.id,
@@ -134,7 +128,7 @@ export async function getCurrentImportedReplyStates(
     .orderBy(asc(annotationReplies.id));
 }
 
-export async function getCurrentImportedReplySaveStates(postId: string) {
+export function getCurrentImportedReplySaveStates(postId: string) {
   return getDb()
     .select({
       annotationId: annotationReplies.annotationId,
@@ -170,19 +164,27 @@ export async function getRevisionSnapshot(
       .limit(1)
   )[0];
   if (!revision) return null;
-  const [assetRefs, annotationStates, importedReplyStates] = await Promise.all([
+  const db = getDb();
+  const [assetRefs, annotationStates, importedReplyStates, rows] = await db.batch([
     getRevisionAssetRefs(revision.id),
     getRevisionAnnotationStates(revision.id),
     getRevisionImportedReplyStates(revision.id),
+    db
+      .select()
+      .from(assets)
+      .where(
+        and(
+          inArray(
+            assets.id,
+            db
+              .select({ assetId: revisionAssetRefs.assetId })
+              .from(revisionAssetRefs)
+              .where(eq(revisionAssetRefs.revisionId, revision.id)),
+          ),
+          isNull(assets.deletedAt),
+        ),
+      ),
   ]);
-  const assetIds = [...new Set(assetRefs.map((ref) => ref.assetId))];
-  const rows =
-    assetIds.length === 0
-      ? []
-      : await getDb()
-          .select()
-          .from(assets)
-          .where(and(inArray(assets.id, assetIds), isNull(assets.deletedAt)));
   return { revision, assetRefs, assets: rows, annotationStates, importedReplyStates };
 }
 
@@ -207,7 +209,7 @@ export async function hasAnnotationTransitionBetweenRevisions(
   const base = bounds.find((revision) => revision.id === baseRevisionId);
   const current = bounds.find((revision) => revision.id === currentRevisionId);
   if (!base || !current || base.revisionNumber > current.revisionNumber) return true;
-  const [revisions, states, importedReplyStates] = await Promise.all([
+  const [revisions, states, importedReplyStates] = await db.batch([
     db
       .select({
         id: postRevisions.id,
@@ -404,7 +406,15 @@ export async function restorePostRevision(
     const sourceRows = await db
       .select({ id: annotations.id, postId: annotations.postId })
       .from(annotations)
-      .where(inArray(annotations.id, annotationRestore.sourceAnchorIds));
+      .where(
+        inArray(
+          annotations.id,
+          db
+            .select({ annotationId: revisionAnnotationStates.annotationId })
+            .from(revisionAnnotationStates)
+            .where(eq(revisionAnnotationStates.revisionId, source.revision.id)),
+        ),
+      );
     const sourceById = new Map(sourceRows.map((row) => [row.id, row]));
     if (annotationRestore.sourceAnchorIds.some((id) => sourceById.get(id)?.postId !== postId)) {
       throw new Error("历史版本包含不存在或不属于当前帖子的批注");
@@ -420,7 +430,13 @@ export async function restorePostRevision(
       .innerJoin(annotations, eq(annotationReplies.annotationId, annotations.id))
       .where(
         and(
-          inArray(annotationReplies.id, replyIds),
+          inArray(
+            annotationReplies.id,
+            db
+              .select({ annotationReplyId: revisionImportedReplyStates.annotationReplyId })
+              .from(revisionImportedReplyStates)
+              .where(eq(revisionImportedReplyStates.revisionId, source.revision.id)),
+          ),
           eq(annotationReplies.sourceType, "DOCX_IMPORT"),
         ),
       );

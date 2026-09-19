@@ -44,13 +44,8 @@ export async function derivePostActivityAfterInteractionChange(
     | { kind: "annotationReply"; id: string; deletedAt?: Date | null; hiddenAt?: Date | null },
 ) {
   const db = getDb();
-  const [post, replyRows, annotationRows, annotationReplyRows] = await Promise.all([
-    db
-      .select({ publishedAt: posts.publishedAt })
-      .from(posts)
-      .where(eq(posts.id, postId))
-      .limit(1)
-      .then((rows) => rows[0]),
+  const [[post], replyRows, annotationRows, annotationReplyRows] = await db.batch([
+    db.select({ publishedAt: posts.publishedAt }).from(posts).where(eq(posts.id, postId)).limit(1),
     db
       .select({
         id: replies.id,

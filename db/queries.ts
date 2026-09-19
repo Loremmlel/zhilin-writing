@@ -141,18 +141,6 @@ function contextAnnotationAvailable(
   );
 }
 
-async function findUsersByIds(idValues: string[]) {
-  const ids = [...new Set(idValues)];
-  const chunks = Array.from({ length: Math.ceil(ids.length / 90) }, (_, index) =>
-    ids.slice(index * 90, index * 90 + 90),
-  );
-  return (
-    await Promise.all(
-      chunks.map((chunk) => getDb().select().from(users).where(inArray(users.id, chunk))),
-    )
-  ).flat();
-}
-
 export async function allowlistCount(): Promise<number> {
   const [row] = await getDb().select({ value: count() }).from(allowedUsers);
   return row?.value ?? 0;
@@ -726,6 +714,7 @@ export async function findPostByCreationSubmissionKey(authorId: string, submissi
 }
 
 export async function listUserActivityPage(actorUserId: string, viewerId: string, page?: number) {
+  const replyTarget = alias(users, "activity_reply_target");
   const conditions = and(
     eq(activityEvents.actorUserId, actorUserId),
     isNull(activityEvents.invalidatedAt),
@@ -742,6 +731,11 @@ export async function listUserActivityPage(actorUserId: string, viewerId: string
     .select({
       event: activityEvents,
       actor: { id: users.id, displayName: users.displayName },
+      replyTo: {
+        id: replyTarget.id,
+        displayName: replyTarget.displayName,
+        avatarAssetId: replyTarget.avatarAssetId,
+      },
       post: {
         id: posts.id,
         authorId: posts.authorId,
@@ -771,6 +765,7 @@ export async function listUserActivityPage(actorUserId: string, viewerId: string
     })
     .from(activityEvents)
     .innerJoin(users, eq(activityEvents.actorUserId, users.id))
+    .leftJoin(replyTarget, eq(activityEvents.replyToUserId, replyTarget.id))
     .leftJoin(posts, eq(activityEvents.postId, posts.id))
     .leftJoin(replies, eq(activityEvents.replyId, replies.id))
     .leftJoin(annotations, eq(activityEvents.annotationId, annotations.id))
@@ -779,14 +774,9 @@ export async function listUserActivityPage(actorUserId: string, viewerId: string
     .orderBy(desc(activityEvents.createdAt), desc(activityEvents.id))
     .limit(bounds.pageSize)
     .offset(bounds.offset);
-  const replyToIds = rows
-    .map((row) => row.event.replyToUserId)
-    .filter((id): id is string => Boolean(id));
-  const [context, replyToUsers] = await Promise.all([
-    loadLifecycleQueryContext(rows.flatMap((row) => (row.post ? [row.post.id] : []))),
-    findUsersByIds(replyToIds),
-  ]);
-  const replyToById = new Map(replyToUsers.map((user) => [user.id, user]));
+  const context = await loadLifecycleQueryContext(
+    rows.flatMap((row) => (row.post ? [row.post.id] : [])),
+  );
   const items = rows.map((row) => {
     const postState = row.post ? contentState(row.post).state : "deleted";
     const replyState = row.reply ? contentState(row.reply).state : "deleted";
@@ -845,7 +835,6 @@ export async function listUserActivityPage(actorUserId: string, viewerId: string
                 : "",
           }
         : null,
-      replyTo: row.event.replyToUserId ? (replyToById.get(row.event.replyToUserId) ?? null) : null,
       postAvailable: Boolean(row.post && postState === "normal"),
       postReachable,
       postState,
