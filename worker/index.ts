@@ -12,11 +12,8 @@ import {
   DEFAULT_IMAGE_SIZES,
 } from "vinext/server/image-optimization";
 import handler from "vinext/server/app-router-entry";
-import { transportProbe, TRANSPORT_PROBE_PATH } from "./transport-probe";
-import { logServerError } from "../lib/logging";
 
 interface Env {
-  SITES_TRANSPORT_PROBE_TOKEN?: string;
   ASSETS: Fetcher;
   DB: D1Database;
   BUCKET: R2Bucket;
@@ -68,18 +65,6 @@ const worker = {
 const observedWorker = {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
-    if (url.pathname === TRANSPORT_PROBE_PATH) {
-      try {
-        return await transportProbe(request, env);
-      } catch (error) {
-        const incidentId = logServerError({
-          operation: "transport.probe",
-          error,
-          errorCode: "TRANSPORT_PROBE_FAILED",
-        });
-        return Response.json({ incidentId }, { status: 500 });
-      }
-    }
     if (url.pathname === PERFORMANCE_ENDPOINT) return worker.fetch(request, env, ctx);
     const environment = requestEnvironment(request);
     const context: NonNullable<ReturnType<typeof requestPerformance.getStore>> = {

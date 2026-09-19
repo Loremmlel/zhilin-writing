@@ -1,0 +1,124 @@
+{
+  "initialClientAndServerSelftest": {
+    "date": "2026-09-19T07:09:53.828Z",
+    "endpoint": "https://zhilin-writing.shikieikiymxndu.chatgpt.site/api/admin/transport-probe",
+    "http": [
+      {
+        "authenticated": false,
+        "status": 403,
+        "probeHeader": "v1",
+        "body": ""
+      },
+      {
+        "authenticated": true,
+        "status": 200,
+        "probeHeader": "v1",
+        "body": "{\"probe\":\"v1\",\"webSocketPair\":\"function\",\"instance\":\"13c163c8-d9e2-42f0-b88d-b9b81267772b\"}"
+      }
+    ],
+    "websocket": [
+      {
+        "index": 0,
+        "messages": [],
+        "error": "getaddrinfo EAI_AGAIN zhilin-writing.shikieikiymxndu.chatgpt.site",
+        "close": {
+          "code": 1006,
+          "reason": "",
+          "elapsedMs": 7
+        }
+      },
+      {
+        "index": 1,
+        "messages": [],
+        "error": "getaddrinfo EAI_AGAIN zhilin-writing.shikieikiymxndu.chatgpt.site",
+        "close": {
+          "code": 1006,
+          "reason": "",
+          "elapsedMs": 3
+        }
+      }
+    ],
+    "serverSelftest": {
+      "status": 200,
+      "body": "{\"upstreamStatus\":101,\"upgraded\":true,\"outcome\":\"echo-received\"}"
+    }
+  },
+  "proxyAwareClients": {
+    "date": "2026-09-19T07:10:49.494Z",
+    "clients": [
+      {
+        "index": 0,
+        "messages": [
+          {
+            "type": "ready",
+            "instance": "541e4061-1a2d-4c2c-af09-c779b06f75e9",
+            "clientElapsedMs": 8491
+          },
+          {
+            "type": "echo",
+            "text": "client-0-initial",
+            "count": 1,
+            "elapsedMs": 14,
+            "instance": "541e4061-1a2d-4c2c-af09-c779b06f75e9",
+            "clientElapsedMs": 8494
+          },
+          {
+            "type": "echo",
+            "text": "client-0-after-30s",
+            "count": 2,
+            "elapsedMs": 30043,
+            "instance": "541e4061-1a2d-4c2c-af09-c779b06f75e9",
+            "clientElapsedMs": 38503
+          }
+        ],
+        "opened": true,
+        "openMs": 8486,
+        "close": {
+          "code": 1000,
+          "reason": "probe complete",
+          "elapsedMs": 43497
+        }
+      },
+      {
+        "index": 1,
+        "messages": [
+          {
+            "type": "ready",
+            "instance": "541e4061-1a2d-4c2c-af09-c779b06f75e9",
+            "clientElapsedMs": 8482
+          },
+          {
+            "type": "echo",
+            "text": "client-1-initial",
+            "count": 1,
+            "elapsedMs": 16,
+            "instance": "541e4061-1a2d-4c2c-af09-c779b06f75e9",
+            "clientElapsedMs": 8487
+          },
+          {
+            "type": "echo",
+            "text": "client-1-after-30s",
+            "count": 2,
+            "elapsedMs": 30037,
+            "instance": "541e4061-1a2d-4c2c-af09-c779b06f75e9",
+            "clientElapsedMs": 38491
+          }
+        ],
+        "opened": true,
+        "openMs": 8480,
+        "close": {
+          "code": 1000,
+          "reason": "probe complete",
+          "elapsedMs": 43489
+        }
+      }
+    ]
+  },
+  "localWorkerd": {
+    "compatibilityDate": "2026-05-22",
+    "unauthorizedStatus": 403,
+    "httpStatus": 200,
+    "upgradeStatus": 101,
+    "echo": "local-control"
+  }
+}
