@@ -20,6 +20,7 @@ import { getAnnotationMutationPermissions } from "@/lib/annotations/policy";
 import { requireMember } from "@/lib/auth/access";
 import { formatDateTime } from "@/lib/format";
 import { deletePostConfirmation } from "@/lib/lifecycle/policy";
+import { logServerRenderError } from "@/lib/logging";
 import { renderMarkdown } from "@/lib/markdown/render";
 import {
   notificationTargetNotice,
@@ -71,7 +72,10 @@ export default async function PostPage({
       includeUnavailableReplyId:
         query.target === "annotation-reply" ? query.annotationReply : undefined,
     }),
-  ]);
+  ]).catch((error: unknown) => {
+    logServerRenderError({ operation: "post.page", stage: "read", entityId: id, error });
+    throw error;
+  });
   if (!item) notFound();
   const discussionVisible = item.lifecycle.contentVisible || item.lifecycle.discussionReachable;
 

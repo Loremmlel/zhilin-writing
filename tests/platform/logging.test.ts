@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   logServerError,
+  logServerRenderError,
   logServerRejection,
   markServerErrorStage,
   serverErrorCode,
@@ -160,4 +161,26 @@ test("expected rejections keep incident IDs without logging payloads", () => {
     },
   });
   assert.doesNotMatch(lines[0], /message|stack|markdown|selectionText/i);
+});
+
+test("page error logs match the installed framework digest without exposing error text", async () => {
+  const { sanitizeErrorForClient } = await import(
+    new URL("../../node_modules/vinext/dist/server/app-rsc-errors.js", import.meta.url).href
+  );
+  const error = new Error("secret post user@example.com");
+  const lines: string[] = [];
+  const original = console.error;
+  console.error = (value?: unknown) => {
+    lines.push(String(value));
+  };
+  try {
+    logServerRenderError({ operation: "post.page", stage: "read", entityId: "p", error });
+  } finally {
+    console.error = original;
+  }
+  assert.equal(
+    JSON.parse(lines[0]).renderDigest,
+    sanitizeErrorForClient(error, "production").digest,
+  );
+  assert.doesNotMatch(lines[0], /secret|example\.com|stack|message/);
 });

@@ -4,7 +4,7 @@ import { readFile, readdir } from "node:fs/promises";
 import { registerHooks } from "node:module";
 import { DatabaseSync } from "node:sqlite";
 import test from "node:test";
-import { drizzle } from "drizzle-orm/sqlite-proxy";
+import { drizzle } from "drizzle-orm/d1";
 import { useQueryDatabase } from "../helpers/query-database.ts";
 
 // Execute the production query module against migrated SQLite; only its D1 transport is replaced.
@@ -61,38 +61,53 @@ test("large annotation and asset flows stay within D1 limits and preserve scope"
       db.exec(statement);
   }
   let trips = 0;
-  const execute = (sql: string, params: unknown[], method: string) => {
-    assert.ok(params.length <= 100, `D1 bound parameter cap: ${params.length}`);
-    const statement = db.prepare(sql);
-    assert.ok(statement.columns().length <= 100, "D1 selected column cap");
-    if (method === "run") {
-      statement.run(...(params as []));
-      return { rows: [] };
-    }
-    statement.setReturnArrays(true);
-    return { rows: statement.all(...(params as [])) as unknown as unknown[][] };
+  const prepare = (query: string, params: unknown[] = []) => {
+    const execute = (raw = false, batch = false) => {
+      assert.ok(params.length <= 100, `D1 bound parameter cap: ${params.length}`);
+      const statement = db.prepare(query);
+      assert.ok(statement.columns().length <= 100, "D1 selected column cap");
+      if (batch) {
+        const names = statement.columns().map((column) => column.name);
+        assert.equal(new Set(names).size, names.length, "D1 batch needs unique SQL column names");
+      }
+      statement.setReturnArrays(raw);
+      return statement.all(...(params as []));
+    };
+    return {
+      bind: (...values: unknown[]) => prepare(query, values),
+      raw: async () => {
+        trips++;
+        return execute(true);
+      },
+      all: async () => {
+        trips++;
+        return { results: execute(), success: true };
+      },
+      run: async () => {
+        trips++;
+        return { results: execute(), success: true };
+      },
+      batchResult: () => ({ results: execute(false, true), success: true }),
+    };
   };
-  useQueryDatabase(
-    drizzle(
-      async (...args) => {
-        trips++;
-        return execute(...args);
-      },
-      async (batch) => {
-        trips++;
-        db.exec("BEGIN");
-        try {
-          const result = [];
-          for (const q of batch) result.push(execute(q.sql, q.params, q.method));
-          db.exec("COMMIT");
-          return result;
-        } catch (error) {
-          db.exec("ROLLBACK");
-          throw error;
-        }
-      },
-    ),
-  );
+  const client = {
+    prepare,
+    batch: async (batch: ReturnType<typeof prepare>[]) => {
+      trips++;
+      db.exec("BEGIN");
+      try {
+        const result = batch.map((statement) => statement.batchResult());
+        db.exec("COMMIT");
+        return result;
+      } catch (error) {
+        db.exec("ROLLBACK");
+        throw error;
+      }
+    },
+  };
+  // Use the production D1 driver: batch returns name-keyed objects, raw returns arrays.
+  // Duplicate SQL column names must not be hidden by sqlite-proxy's array transport.
+  useQueryDatabase(drizzle(client as unknown as D1Database));
   try {
     db.exec(
       "INSERT INTO users(id,email_key,display_name,bio,joined_at,updated_at) VALUES ('author','author@test','作者','',1,1),('reader','reader@test','读者','',1,1)",
@@ -139,10 +154,30 @@ test("large annotation and asset flows stay within D1 limits and preserve scope"
         "INSERT INTO revision_imported_reply_states(revision_id,annotation_reply_id) VALUES ('r1',?)",
       ).run(`reply-${i}`);
     }
+    db.exec("UPDATE annotation_replies SET attributed_user_id='reader' WHERE id='reply-0'");
+    db.prepare(
+      "INSERT INTO annotation_replies(id,annotation_id,author_id,content_markdown,submission_key,created_at,reply_to_user_id) VALUES ('native-reply',?,'reader','站内回复','native-key',1002,'author')",
+    ).run(ids[0]);
     trips = 0;
     let threads = await annotations.listCurrentAnnotationThreads("p", "reader");
     assert.equal(threads.length, 100);
-    assert.equal(threads[0].replies.length, 120);
+    assert.equal(threads[0].replies.length, 121);
+    assert.equal(threads[0].annotation.id, ids[0]);
+    assert.equal(threads[0].author.displayName, "作者");
+    assert.ok(threads[0].annotation.createdAt instanceof Date);
+    const imported = threads[0].replies.find((row) => row.reply.id === "reply-0")!;
+    assert.equal(imported.author.displayName, "Word作者");
+    assert.deepEqual(imported.author.attributedUser, { id: "reader", displayName: "读者" });
+    assert.equal(imported.replyTo, null);
+    assert.equal(
+      threads[0].replies.find((row) => row.reply.id === "reply-1")!.author.attributedUser,
+      null,
+    );
+    const native = threads[0].replies.find((row) => row.reply.id === "native-reply")!;
+    assert.equal(native.author.id, "reader");
+    assert.equal(native.author.displayName, "读者");
+    assert.equal(native.replyTo?.id, "author");
+    assert.equal(native.replyTo?.displayName, "作者");
     assert.ok(trips <= 2, `reading uses at most two trips, got ${trips}`);
     const newId = await annotationService.createAnnotation({
       postId: "p",
@@ -250,7 +285,7 @@ test("large annotation and asset flows stay within D1 limits and preserve scope"
       db.prepare("SELECT count(*) AS n FROM activity_events WHERE id LIKE 'e-%'").get()?.n,
       0,
     );
-    assert.equal(db.prepare("SELECT count(*) AS n FROM annotation_replies").get()?.n, 119);
+    assert.equal(db.prepare("SELECT count(*) AS n FROM annotation_replies").get()?.n, 120);
     assert.equal(
       await purge.purgeContentByAdmin("annotations", ids[0], "author", crypto.randomUUID()),
       true,

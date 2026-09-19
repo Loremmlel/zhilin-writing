@@ -1,6 +1,7 @@
 import { requestPerformance } from "./performance/context.ts";
 type ServerErrorContext = {
   operation: string;
+  renderDigest?: string;
   error?: unknown;
   errorCode?: string;
   entityId?: string | null;
@@ -70,6 +71,8 @@ function errorReason(error: unknown): string {
     if (declared) return declared;
     if (current instanceof Error) {
       const message = current.message;
+      if (/too many sql variables/i.test(message)) return "SQL_PARAMETER_LIMIT";
+      if (/too many columns/i.test(message)) return "SQL_COLUMN_LIMIT";
       if (/foreign key/i.test(message)) return "FOREIGN_KEY_CONSTRAINT";
       if (/not null/i.test(message)) return "NOT_NULL_CONSTRAINT";
       if (/unique constraint|constraint unique/i.test(message)) return "UNIQUE_CONSTRAINT";
@@ -115,10 +118,22 @@ export function logServerError(context: ServerErrorContext): string {
     causeErrorCode: cause ? serverErrorCode(cause) : undefined,
     causeErrorName: errorName(cause),
     incidentId,
+    renderDigest: /^\d{1,10}$/.test(context.renderDigest ?? "") ? context.renderDigest : undefined,
     requestId: requestPerformance.getStore()?.requestId,
   };
   console.error(JSON.stringify(record));
   return incidentId;
+}
+
+// Match vinext's production page-boundary digest without logging message or stack.
+export function logServerRenderError(context: Omit<ServerErrorContext, "renderDigest">): string {
+  const input =
+    context.error instanceof Error
+      ? context.error.message + (context.error.stack || "")
+      : String(context.error);
+  let hash = 5381;
+  for (let i = input.length - 1; i >= 0; i--) hash = (hash * 33) ^ input.charCodeAt(i);
+  return logServerError({ ...context, renderDigest: (hash >>> 0).toString() });
 }
 
 export function logServerRejection(context: ServerRejectionContext): string {

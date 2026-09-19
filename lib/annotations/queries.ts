@@ -1,5 +1,5 @@
 import { and, asc, count, desc, eq, gte, isNotNull, isNull, like, lt, or, sql } from "drizzle-orm";
-import { alias } from "drizzle-orm/sqlite-core";
+import { alias, type AnySQLiteColumn } from "drizzle-orm/sqlite-core";
 
 import { getDb } from "@/db";
 import { getPostReadRow } from "@/db/queries";
@@ -21,6 +21,18 @@ const annotationAttributedUser = alias(users, "annotation_attributed_user");
 const replyAuthor = alias(users, "annotation_reply_author");
 const replyAttributedUser = alias(users, "annotation_reply_attributed_user");
 const replyTargetUser = alias(users, "annotation_reply_target_user");
+
+// D1 batch rows are keyed by SQL column name; each joined user needs unique aliases.
+function batchUserView(
+  user: { id: AnySQLiteColumn; displayName: AnySQLiteColumn; avatarAssetId: AnySQLiteColumn },
+  prefix: string,
+) {
+  return {
+    id: sql<string>`${user.id}`.as(`${prefix}_id`),
+    displayName: sql<string>`${user.displayName}`.as(`${prefix}_display_name`),
+    avatarAssetId: sql<string | null>`${user.avatarAssetId}`.as(`${prefix}_avatar_asset_id`),
+  };
+}
 
 export async function findAnnotation(id: string) {
   return (
@@ -111,8 +123,8 @@ function currentAnnotationRows(postId: string) {
   return getDb()
     .select({
       annotation: annotations,
-      nativeAuthor: annotationAuthor,
-      attributedUser: annotationAttributedUser,
+      nativeAuthor: batchUserView(annotationAuthor, "annotationAuthor"),
+      attributedUser: batchUserView(annotationAttributedUser, "annotationAttributedUser"),
     })
     .from(postAnnotationAnchors)
     .innerJoin(annotations, eq(postAnnotationAnchors.annotationId, annotations.id))
@@ -137,9 +149,9 @@ export async function listCurrentAnnotationThreads(
     getDb()
       .select({
         reply: annotationReplies,
-        nativeAuthor: replyAuthor,
-        attributedUser: replyAttributedUser,
-        targetUser: replyTargetUser,
+        nativeAuthor: batchUserView(replyAuthor, "replyAuthor"),
+        attributedUser: batchUserView(replyAttributedUser, "replyAttributedUser"),
+        targetUser: batchUserView(replyTargetUser, "replyTargetUser"),
       })
       .from(annotationReplies)
       .innerJoin(
@@ -156,18 +168,26 @@ export async function listCurrentAnnotationThreads(
     post.post.markdown,
     rootRows.map(({ annotation, nativeAuthor, attributedUser }) => ({
       annotation,
-      author: buildAnnotationAuthorView(annotation, nativeAuthor, attributedUser),
+      author: buildAnnotationAuthorView(
+        annotation,
+        nativeAuthor?.id ? nativeAuthor : null,
+        attributedUser?.id ? attributedUser : null,
+      ),
     })),
   );
   const replyRows = sortAnnotationReplyRows(
     rawReplyRows.map(({ reply, nativeAuthor, attributedUser }) => ({
       reply,
-      author: buildAnnotationAuthorView(reply, nativeAuthor, attributedUser),
+      author: buildAnnotationAuthorView(
+        reply,
+        nativeAuthor?.id ? nativeAuthor : null,
+        attributedUser?.id ? attributedUser : null,
+      ),
     })),
   );
   const targetById = new Map(
     rawReplyRows.flatMap(({ targetUser }) =>
-      targetUser ? [[targetUser.id, targetUser] as const] : [],
+      targetUser?.id ? [[targetUser.id, targetUser] as const] : [],
     ),
   );
   const replyById = new Map(replyRows.map((row) => [row.reply.id, row]));

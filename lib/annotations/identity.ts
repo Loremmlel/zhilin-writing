@@ -28,7 +28,8 @@ export function buildAnnotationAuthorView(
   attributedUser: AnnotationUserView | null,
 ): AnnotationAuthorView {
   if (record.sourceType === "NATIVE") {
-    if (!nativeAuthor || nativeAuthor.id !== record.authorId) throw new Error("站内批注作者不存在");
+    if (!nativeAuthor || nativeAuthor.id !== record.authorId)
+      throw Object.assign(new Error("站内批注作者不存在"), { reason: "ANNOTATION_AUTHOR_MISSING" });
     return {
       sourceType: "NATIVE",
       id: nativeAuthor.id,
