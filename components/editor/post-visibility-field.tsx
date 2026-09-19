@@ -19,11 +19,7 @@ export function PostVisibilityField({
   const unavailableIds =
     value?.filter((id) => id !== authorId && !users.some((user) => user.id === id)) ?? [];
   return (
-    <fieldset
-      className="post-visibility"
-      disabled={disabled}
-      aria-describedby="post-visibility-help"
-    >
+    <fieldset className="post-visibility" disabled={disabled}>
       <legend className="field-label">可见范围</legend>
       <input type="hidden" name="visibilityUserIds" value={JSON.stringify(value)} />
       <div className="post-visibility-modes">
@@ -46,9 +42,6 @@ export function PostVisibilityField({
           指定用户
         </label>
       </div>
-      <p id="post-visibility-help" className="muted">
-        作者始终保留访问权限。管理员可查看所有帖子，无需选择。
-      </p>
       {restricted && (
         <>
           {unavailableIds.length > 0 && (
@@ -86,9 +79,6 @@ export function PostVisibilityField({
             ))}
             {users.length === 0 && <span className="muted">暂无可选择的普通用户。</span>}
           </div>
-          <p className="muted" role="status">
-            未选择其他用户时，仅作者和管理员可见。
-          </p>
         </>
       )}
     </fieldset>
