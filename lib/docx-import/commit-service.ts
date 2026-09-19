@@ -75,6 +75,16 @@ export async function commitDocxImport(
     if (allowed.size !== validated.attributedUserIds.length)
       throw new DocxImportCommitError("ATTRIBUTED_USER_INVALID", 400);
   }
+  if (validated.visibilityUserIds != null) {
+    const ids = [...new Set(validated.visibilityUserIds)].filter((id) => id !== importerUserId);
+    const candidates = await db.all<{ id: string }>(
+      "SELECT u.id FROM users u INNER JOIN allowed_users au ON au.email = u.email_key WHERE au.is_admin = 0",
+      [],
+    );
+    const allowed = new Set(candidates.map((user) => user.id));
+    if (ids.some((id) => !allowed.has(id)))
+      throw new DocxImportCommitError("VISIBILITY_USER_INVALID", 400);
+  }
   const assets = await loadAssets(db, validated.assetIds);
   assertClaimableAssets(validated, importerUserId, assets);
 

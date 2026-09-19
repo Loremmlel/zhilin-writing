@@ -1,3 +1,4 @@
+import { requireMember } from "@/lib/auth/access";
 import Link from "next/link";
 import { listPostsPage } from "@/db/queries";
 import { PostCard } from "@/components/post-card";
@@ -13,10 +14,11 @@ export default async function HomePage({
 }: {
   searchParams: Promise<{ sort?: string; page?: string }>;
 }) {
+  const { member } = await requireMember("/");
   const params = await searchParams;
   const active = params.sort === "active";
   const filters = { sort: active ? "active" : undefined };
-  const result = await listPostsPage({
+  const result = await listPostsPage(member.id, {
     sort: active ? "active" : "latest",
     page: parsePage(params.page),
   });

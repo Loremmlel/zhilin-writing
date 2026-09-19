@@ -78,6 +78,13 @@
       "when": 1788930000000,
       "tag": "0010_performance_logs",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "6",
+      "when": 1789795476442,
+      "tag": "0011_post_visibility",
+      "breakpoints": true
     }
   ]
 }

@@ -38,7 +38,10 @@ export type PostFormAction = (
   formData: FormData,
 ) => Promise<PostActionState>;
 
+import { PostVisibilityField, type VisibilityUser } from "./post-visibility-field";
+
 type InitialEditorState = {
+  visibilityUserIds: string[] | null;
   title: string;
   markdown: string;
   tags: string[];
@@ -55,6 +58,7 @@ type AttachmentUploadTask = {
 };
 
 type PostEditorFormProps = {
+  visibilityUsers: VisibilityUser[];
   userId: string;
   draftId: string;
   action: PostFormAction;
@@ -80,6 +84,7 @@ function normalizedDraft(draft: LocalDraft): LocalDraft {
 }
 
 export function PostEditorForm({
+  visibilityUsers,
   userId,
   draftId,
   action,
@@ -91,6 +96,9 @@ export function PostEditorForm({
 }: PostEditorFormProps) {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
+  const [visibilityUserIds, setVisibilityUserIds] = useState<string[] | null>(
+    initial?.visibilityUserIds ?? null,
+  );
   const [title, setTitle] = useState(initial?.title ?? "");
   const [markdown, setMarkdown] = useState(initial?.markdown ?? "");
   const [tags, setTags] = useState(initial?.tags.join("，") ?? "");
@@ -150,6 +158,7 @@ export function PostEditorForm({
           const draft = normalizedDraft(value);
           if (initial?.baseRevisionId) {
             const serverDraft: LocalDraft = {
+              visibilityUserIds: initial.visibilityUserIds,
               title: initial.title,
               markdown: initial.markdown,
               tags: initial.tags.join("，"),
@@ -183,6 +192,7 @@ export function PostEditorForm({
     const statusTimer = window.setTimeout(() => setDraftStatus("saving"), 0);
     const timer = window.setTimeout(() => {
       const draft: LocalDraft = {
+        visibilityUserIds,
         title,
         markdown,
         tags,
@@ -202,6 +212,7 @@ export function PostEditorForm({
       window.clearTimeout(timer);
     };
   }, [
+    visibilityUserIds,
     attachmentIds,
     attachments,
     baseRevisionId,
@@ -223,6 +234,11 @@ export function PostEditorForm({
   }, [draftId, router, state.postId, userId]);
 
   function applyDraft(draft: LocalDraft) {
+    setVisibilityUserIds(
+      draft.visibilityUserIds === undefined
+        ? (initial?.visibilityUserIds ?? null)
+        : draft.visibilityUserIds,
+    );
     setTitle(draft.title);
     setMarkdown(draft.markdown);
     setTags(draft.tags);
@@ -251,6 +267,7 @@ export function PostEditorForm({
     setDraftStatus("saving");
     try {
       await saveDraft(userId, draftId, {
+        visibilityUserIds,
         title,
         markdown,
         tags,
@@ -302,6 +319,7 @@ export function PostEditorForm({
       tags: conflict.tags.join("，"),
       attachmentIds: conflict.attachments.map((asset) => asset.id),
     });
+    setVisibilityUserIds(conflict.visibilityUserIds);
     setTitle(next.title);
     setMarkdown(next.markdown);
     setTags(next.tags);
@@ -522,6 +540,16 @@ export function PostEditorForm({
                 disabled={pending || accessBlocked}
               />
             </label>
+            <PostVisibilityField
+              value={visibilityUserIds}
+              users={visibilityUsers}
+              authorId={userId}
+              disabled={pending || accessBlocked || !hydrated}
+              onChange={(value) => {
+                setVisibilityUserIds(value);
+                setDirty(true);
+              }}
+            />
             <label className="field-label">正文</label>
             {confirmedAnnotationDeletionIds.length > 0 && (
               <p className="annotation-editor-pending" role="status">
@@ -687,11 +715,13 @@ export function PostEditorForm({
               <section>
                 <span className="version-label">当前线上版本 · v{conflict.revisionNumber}</span>
                 <h3>{conflict.title}</h3>
+                <p>可见范围：{conflict.visibilityUserIds === null ? "全部站内用户" : "指定用户"}</p>
                 <pre>{conflict.markdown}</pre>
               </section>
               <section>
                 <span className="version-label">我的版本</span>
                 <h3>{title || "（无标题）"}</h3>
+                <p>可见范围：{visibilityUserIds === null ? "全部站内用户" : "指定用户"}</p>
                 <pre>{markdown}</pre>
               </section>
             </div>
@@ -739,7 +769,7 @@ export function PostEditorForm({
           <>
             <div className="dialog-confirm-copy">
               <strong>放弃本地修改并载入线上 v{conflict.revisionNumber}？</strong>
-              <p>你的标题、正文、标签和附件选择将替换为当前线上内容。</p>
+              <p>你的标题、正文、标签、附件和可见范围将替换为当前线上内容。</p>
             </div>
             <div className="dialog-actions">
               <button

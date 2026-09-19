@@ -47,7 +47,11 @@ import {
 } from "@/lib/revisions/service";
 import { buildAnnotatedPostSaveOperations, commitPostSave, planPostTags } from "./save-transaction";
 
+import { postVisibilityCondition } from "./visibility";
+import { normalizePostVisibility } from "./visibility-service";
+
 type SavePostInput = {
+  visibilityUserIds?: string[] | null;
   title: string;
   markdown: string;
   tags: string[];
@@ -105,6 +109,10 @@ export async function createPost(
   const submissionKey = validateSubmissionKey(input.submissionKey);
   const duplicate = await findPostByCreationSubmissionKey(authorId, submissionKey);
   if (duplicate) return duplicate.id;
+  const visibilityUserIds = await normalizePostVisibility(
+    input.visibilityUserIds ?? null,
+    authorId,
+  );
   const now = new Date();
   const id = crypto.randomUUID();
   const revisionId = crypto.randomUUID();
@@ -117,6 +125,7 @@ export async function createPost(
       id,
       authorId,
       creationSubmissionKey: submissionKey,
+      visibilityUserIds,
       title: clean.title,
       markdown: clean.markdown,
       searchText: markdownToPlainText(clean.markdown),
@@ -207,6 +216,12 @@ export async function updatePost(postId: string, currentUserId: string, input: S
     if (!conflict.forceOverwriteAllowed) throw new EditConflictError(conflict);
   }
   const clean = validatePostInput(input);
+  const visibilityUserIds =
+    input.visibilityUserIds === undefined
+      ? existing.visibilityUserIds
+      : await normalizePostVisibility(input.visibilityUserIds, currentUserId);
+  const visibilityChanged =
+    JSON.stringify(visibilityUserIds) !== JSON.stringify(existing.visibilityUserIds);
   const db = getDb();
   const currentRevision = (
     await db
@@ -262,7 +277,7 @@ export async function updatePost(postId: string, currentUserId: string, input: S
       assetRefs: nextAssetRefs,
     },
     now,
-    { forceRevision: Boolean(input.overwriteBaseRevisionId) },
+    { forceRevision: Boolean(input.overwriteBaseRevisionId) || visibilityChanged },
   );
   const tagOperations = await buildPostTagOperations(postId, clean.tags, now);
   const revisionGuard = db
@@ -300,6 +315,7 @@ export async function updatePost(postId: string, currentUserId: string, input: S
   }
 
   const revisionId = crypto.randomUUID();
+  tagOperations.push(db.update(posts).set({ visibilityUserIds }).where(eq(posts.id, postId)));
   const operations = buildAnnotatedPostSaveOperations(db, {
     postId,
     currentUserId,
@@ -350,7 +366,14 @@ export async function createReply(input: {
     await getDb()
       .select({ authorId: posts.authorId })
       .from(posts)
-      .where(and(eq(posts.id, input.postId), isNull(posts.deletedAt), isNull(posts.hiddenAt)))
+      .where(
+        and(
+          eq(posts.id, input.postId),
+          isNull(posts.deletedAt),
+          isNull(posts.hiddenAt),
+          postVisibilityCondition(input.authorId),
+        ),
+      )
       .limit(1)
   )[0];
   if (!post) throw new Error("帖子不存在");
@@ -397,7 +420,10 @@ export async function createReply(input: {
   });
   const activityUpdate = db
     .update(posts)
-    .set({ lastActivityAt: now })
+    .set({
+      lastActivityAt: now,
+      title: sql<string>`CASE WHEN ${postVisibilityCondition(input.authorId)} AND ${posts.deletedAt} IS NULL AND ${posts.hiddenAt} IS NULL THEN ${posts.title} ELSE NULL END`,
+    })
     .where(eq(posts.id, input.postId));
   const eventInsert = db.insert(activityEvents).values({
     id: eventId,

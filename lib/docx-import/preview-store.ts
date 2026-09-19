@@ -91,6 +91,9 @@ function normalizePreview(preview: DocxPreviewRecord, now: number): DocxPreviewR
     version: 1,
     importBatchId: preview.importBatchId,
     title: preview.title,
+    ...(preview.visibilityUserIds !== undefined
+      ? { visibilityUserIds: preview.visibilityUserIds }
+      : {}),
     createdAt: new Date(createdAt).toISOString(),
     expiresAt: new Date(createdAt + DOCX_IMPORT_LIMITS.previewTtlMs).toISOString(),
     ir: preview.ir,

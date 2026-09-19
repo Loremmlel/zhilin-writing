@@ -50,6 +50,8 @@ import {
 
 import { pageBounds } from "@/lib/pagination";
 
+import { postVisibilityCondition } from "@/lib/posts/visibility";
+
 export type PostSort = "latest" | "active";
 
 const visiblePost = and(isNull(posts.deletedAt), isNull(posts.hiddenAt));
@@ -334,6 +336,7 @@ export async function updateUserProfileWithAvatar(
 }
 
 export async function listPostsPage(
+  viewerId: string,
   options: {
     sort?: PostSort;
     query?: string;
@@ -342,7 +345,11 @@ export async function listPostsPage(
     page?: number;
   } = {},
 ) {
-  const conditions = [isNull(posts.deletedAt), isNull(posts.hiddenAt)];
+  const conditions = [
+    isNull(posts.deletedAt),
+    isNull(posts.hiddenAt),
+    postVisibilityCondition(viewerId),
+  ];
   if (options.authorId) conditions.push(eq(posts.authorId, options.authorId));
   if (options.query?.trim()) {
     const pattern = `%${options.query.trim()}%`;
@@ -450,13 +457,13 @@ export async function getVisiblePostRecord(id: string) {
   );
 }
 
-export async function getPost(id: string) {
+export async function getPost(id: string, viewerId: string) {
   const row = (
     await getDb()
       .select({ post: posts, author: users })
       .from(posts)
       .innerJoin(users, eq(posts.authorId, users.id))
-      .where(and(eq(posts.id, id), visiblePost))
+      .where(and(eq(posts.id, id), visiblePost, postVisibilityCondition(viewerId)))
       .limit(1)
   )[0];
   if (!row) return null;
@@ -497,26 +504,27 @@ async function getPostAttachments(id: string) {
 const postReadCache = cacheForRequest(
   () => new Map<string, Promise<Awaited<ReturnType<typeof readPostRow>>>>(),
 );
-async function readPostRow(id: string) {
+async function readPostRow(id: string, viewerId: string) {
   return (
     (
       await getDb()
         .select({ post: posts, author: users })
         .from(posts)
         .innerJoin(users, eq(posts.authorId, users.id))
-        .where(eq(posts.id, id))
+        .where(and(eq(posts.id, id), postVisibilityCondition(viewerId)))
         .limit(1)
     )[0] ?? null
   );
 }
-export function getPostReadRow(id: string) {
+export function getPostReadRow(id: string, viewerId: string) {
   const cache = postReadCache();
-  if (!cache.has(id)) cache.set(id, readPostRow(id));
-  return cache.get(id)!;
+  const key = `${viewerId}:${id}`;
+  if (!cache.has(key)) cache.set(key, readPostRow(id, viewerId));
+  return cache.get(key)!;
 }
 
-export async function getPostDetail(id: string) {
-  const row = await getPostReadRow(id);
+export async function getPostDetail(id: string, viewerId: string) {
+  const row = await getPostReadRow(id, viewerId);
   if (!row) return null;
   const visible = !row.post.deletedAt && !row.post.hiddenAt;
   const [replyStates, tags, attachments] = await Promise.all([
@@ -635,6 +643,7 @@ export async function getReplyCount(postId: string): Promise<number> {
 
 export async function listReplies(
   postId: string,
+  viewerId: string,
   options: { includeUnavailableReplyId?: string } = {},
 ) {
   const targetUser = alias(users, "reply_target_user");
@@ -651,7 +660,8 @@ export async function listReplies(
     .from(replies)
     .innerJoin(users, eq(replies.authorId, users.id))
     .leftJoin(targetUser, eq(replies.replyToUserId, targetUser.id))
-    .where(eq(replies.postId, postId))
+    .innerJoin(posts, eq(replies.postId, posts.id))
+    .where(and(eq(replies.postId, postId), postVisibilityCondition(viewerId)))
     .orderBy(asc(replies.publishedAt));
   const lifecycleRows = buildReplyLifecycleViews(
     rows.map((row) => row.reply),
@@ -715,15 +725,17 @@ export async function findPostByCreationSubmissionKey(authorId: string, submissi
   );
 }
 
-export async function listUserActivityPage(actorUserId: string, page?: number) {
+export async function listUserActivityPage(actorUserId: string, viewerId: string, page?: number) {
   const conditions = and(
     eq(activityEvents.actorUserId, actorUserId),
     isNull(activityEvents.invalidatedAt),
+    postVisibilityCondition(viewerId),
   );
   const [countRow] = await getDb()
     .select({ value: count() })
     .from(activityEvents)
     .innerJoin(users, eq(activityEvents.actorUserId, users.id))
+    .innerJoin(posts, eq(activityEvents.postId, posts.id))
     .where(conditions);
   const bounds = pageBounds(countRow?.value ?? 0, page);
   const rows = await getDb()
@@ -857,7 +869,14 @@ export async function countUnreadNotifications(recipientUserId: string): Promise
   const [row] = await getDb()
     .select({ value: count() })
     .from(notifications)
-    .where(and(eq(notifications.recipientUserId, recipientUserId), isNull(notifications.readAt)));
+    .innerJoin(posts, eq(notifications.postId, posts.id))
+    .where(
+      and(
+        eq(notifications.recipientUserId, recipientUserId),
+        isNull(notifications.readAt),
+        postVisibilityCondition(recipientUserId),
+      ),
+    );
   return row?.value ?? 0;
 }
 
@@ -912,13 +931,17 @@ export async function listNotificationsPage(
   recipientUserId: string,
   options: { unreadOnly?: boolean; page?: number } = {},
 ) {
-  const conditions = [eq(notifications.recipientUserId, recipientUserId)];
+  const conditions = [
+    eq(notifications.recipientUserId, recipientUserId),
+    postVisibilityCondition(recipientUserId),
+  ];
   if (options.unreadOnly) conditions.push(isNull(notifications.readAt));
   const [countRow] = await getDb()
     .select({ value: count() })
     .from(notifications)
     .innerJoin(activityEvents, eq(notifications.eventId, activityEvents.id))
     .innerJoin(users, eq(notifications.actorUserId, users.id))
+    .innerJoin(posts, eq(notifications.postId, posts.id))
     .where(and(...conditions));
   const bounds = pageBounds(countRow?.value ?? 0, options.page);
   const rows = await getDb()
@@ -954,7 +977,13 @@ export async function findOwnedNotification(id: string, recipientUserId: string)
       .leftJoin(replies, eq(notifications.replyId, replies.id))
       .leftJoin(annotations, eq(notifications.annotationId, annotations.id))
       .leftJoin(annotationReplies, eq(notifications.annotationReplyId, annotationReplies.id))
-      .where(and(eq(notifications.id, id), eq(notifications.recipientUserId, recipientUserId)))
+      .where(
+        and(
+          eq(notifications.id, id),
+          eq(notifications.recipientUserId, recipientUserId),
+          postVisibilityCondition(recipientUserId),
+        ),
+      )
       .limit(1)
   )[0];
   if (!row) return null;
@@ -1121,7 +1150,7 @@ export async function markAllNotificationsRead(recipientUserId: string) {
     .where(and(eq(notifications.recipientUserId, recipientUserId), isNull(notifications.readAt)));
 }
 
-export async function listTags() {
+export async function listTags(viewerId: string) {
   return getDb()
     .select({
       id: tags.id,
@@ -1133,7 +1162,7 @@ export async function listTags() {
     .from(tags)
     .innerJoin(postTags, eq(postTags.tagId, tags.id))
     .innerJoin(posts, eq(postTags.postId, posts.id))
-    .where(visiblePost)
+    .where(and(visiblePost, postVisibilityCondition(viewerId)))
     .groupBy(tags.id, tags.name, tags.normalizedName, tags.createdAt)
     .orderBy(asc(tags.name));
 }

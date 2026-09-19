@@ -264,6 +264,7 @@ const source = z.strictObject({
 });
 
 export const DocxImportCommitSchema = z.strictObject({
+  visibilityUserIds: z.array(z.string().min(1).max(128)).max(500).nullable().optional(),
   version: z.literal(1),
   importBatchId: uuidV4,
   source,
@@ -345,6 +346,9 @@ export function toDocxImportCommitPayload(preview: CommitSafeImportPreview): Doc
       sha256: preview.ir.source.sha256,
     },
     title: preview.title,
+    ...(preview.visibilityUserIds !== undefined
+      ? { visibilityUserIds: preview.visibilityUserIds }
+      : {}),
     markdown: preview.markdown,
     ir: {
       ...preview.ir,

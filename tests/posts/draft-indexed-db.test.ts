@@ -47,6 +47,7 @@ test("reports a blocked upgrade and succeeds after the old connection closes", a
 
 test("normalizes and persists confirmed annotation removals with the same local draft", async () => {
   const draft: LocalDraft = {
+    visibilityUserIds: [],
     title: "Annotated draft",
     markdown: "正文",
     tags: "tag",
@@ -57,6 +58,7 @@ test("normalizes and persists confirmed annotation removals with the same local 
   };
 
   await saveDraft("user-1", "post-1", draft);
+  assert.deepEqual((await loadDraft("user-1", "post-1"))?.visibilityUserIds, []);
   assert.deepEqual((await loadDraft("user-1", "post-1"))?.confirmedAnnotationDeletionIds, [
     "a",
     "b",

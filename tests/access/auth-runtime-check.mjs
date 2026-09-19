@@ -46,7 +46,9 @@ export default async function checkAuthRuntime() {
     async (queries) => queries.map((q) => execute(q.sql, q.params, q.method)),
   );
   const schema = load("db/schema.ts", {});
+  const visibility = await import(path + "lib/posts/visibility.ts");
   const queries = load("db/queries.ts", {
+    "@/lib/posts/visibility": visibility,
     "./index": { getDb: () => db },
     "./schema": schema,
     "vinext/cache": await import(path + "node_modules/vinext/dist/cache.js"),
@@ -134,8 +136,8 @@ export default async function checkAuthRuntime() {
   await runWithRequestContext(createRequestContext(), async () => {
     const start = statements.length;
     const [detail, row] = await Promise.all([
-      queries.getPostDetail("post"),
-      queries.getPostReadRow("post"),
+      queries.getPostDetail("post", "reader"),
+      queries.getPostReadRow("post", "reader"),
     ]);
     assert.equal(detail.markdown, "Body");
     assert.equal(row.post.id, "post");
@@ -146,7 +148,7 @@ export default async function checkAuthRuntime() {
     "INSERT INTO replies(id,post_id,author_id,markdown,published_at,submission_key) VALUES('reply','post','reader','Discussion',0,'reply')",
   );
   await runWithRequestContext(createRequestContext(), async () => {
-    const detail = await queries.getPostDetail("post");
+    const detail = await queries.getPostDetail("post", "reader");
     assert.equal(detail.markdown, null);
     assert.equal(detail.lifecycle.hasOtherMemberDiscussion, true);
     assert.equal(detail.lifecycle.discussionReachable, true);
@@ -159,25 +161,26 @@ export default async function checkAuthRuntime() {
     .prepare("UPDATE posts SET search_text=?,markdown=? WHERE id='post'")
     .run(longText, "正文".repeat(10000));
   const { excerpt } = await import(path + "lib/format.ts");
-  const page = await queries.listPostsPage();
+  const page = await queries.listPostsPage("reader");
   assert.equal(excerpt(page.items[0].post.searchText), excerpt(longText));
   assert.equal(page.items[0].post.markdown, "");
   assert.ok(Array.from(page.items[0].post.searchText).length <= 152);
   sqlite.exec(
     "INSERT INTO tags(id,name,normalized_name,created_at) VALUES('tag','Tag','tag',0); INSERT INTO post_tags(post_id,tag_id) VALUES('post','tag')",
   );
-  assert.equal((await queries.listPostsPage({ tagName: "TAG" })).total, 1);
-  assert.equal((await queries.listPostsPage({ tagName: "missing" })).total, 0);
-  assert.equal((await queries.listPostsPage({ page: 999 })).page, 1);
+  assert.equal((await queries.listPostsPage("reader", { tagName: "TAG" })).total, 1);
+  assert.equal((await queries.listPostsPage("reader", { tagName: "missing" })).total, 0);
+  assert.equal((await queries.listPostsPage("reader", { page: 999 })).page, 1);
   assert.equal((await queries.countAdminOverviewByStatus())[0].normal, 1);
   sqlite.exec("UPDATE replies SET reply_to_user_id='author' WHERE id='reply'");
-  const replyRows = await queries.listReplies("post");
+  const replyRows = await queries.listReplies("post", "reader");
   assert.equal(replyRows[0].replyTo.displayName, "Author");
   assert.equal((await queries.getVisiblePostRecord("post")).id, "post");
   sqlite.exec("UPDATE posts SET hidden_at=1 WHERE id='post'");
   assert.equal(await queries.getVisiblePostRecord("post"), null);
 
   const accessService = load("lib/assets/access-service.ts", {
+    "@/lib/posts/visibility": visibility,
     "@/db": { getDb: () => db },
     "@/db/schema": schema,
     "./access": await import(path + "lib/assets/access.ts"),
@@ -214,7 +217,7 @@ export default async function checkAuthRuntime() {
     await accessService.canReadAsset("asset", { userId: "author", isAdmin: false }),
     true,
   );
-  assert.equal(await accessService.getAssetAccessFacts("missing"), null);
+  assert.equal(await accessService.getAssetAccessFacts("missing", "reader"), null);
   assert.equal(await queries.findAllowedMember("absent@example.test", null), null);
   await queries.addAllowedUser("author@example.test", false, "owner");
   const joinedStart = statements.length;
@@ -247,6 +250,7 @@ export default async function checkAuthRuntime() {
     "@/db/schema": schema,
   });
   const annotationService = load("lib/annotations/service.ts", {
+    "@/lib/posts/visibility": visibility,
     "@/db": { getDb: () => db },
     "@/db/schema": schema,
     "./queries": annotationQueries,

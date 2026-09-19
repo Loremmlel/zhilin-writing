@@ -152,6 +152,7 @@ export function planDocxImportCommit(
       "markdown",
       "search_text",
       "current_revision_id",
+      "visibility_user_ids",
       "published_at",
       "edited_at",
       "last_activity_at",
@@ -169,6 +170,11 @@ export function planDocxImportCommit(
         validated.markdown,
         markdownToPlainText(validated.markdown),
         context.revisionId,
+        validated.visibilityUserIds == null
+          ? null
+          : JSON.stringify(
+              [...new Set([...validated.visibilityUserIds, context.importerUserId])].sort(),
+            ),
         now,
         null,
         now,

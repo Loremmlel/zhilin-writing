@@ -59,7 +59,13 @@ export default async function UserPage({
         description="当前标签页仍会保留，请稍后重试。"
       >
         <Suspense fallback={<ProfileContentSkeleton />}>
-          <ProfileContent userId={id} tab={tab} rawPage={query.page} own={member.id === id} />
+          <ProfileContent
+            viewerId={member.id}
+            userId={id}
+            tab={tab}
+            rawPage={query.page}
+            own={member.id === id}
+          />
         </Suspense>
       </RegionErrorBoundary>
     </div>
@@ -67,11 +73,13 @@ export default async function UserPage({
 }
 
 async function ProfileContent({
+  viewerId,
   userId,
   tab,
   rawPage,
   own,
 }: {
+  viewerId: string;
   userId: string;
   tab: "posts" | "activity";
   rawPage?: string;
@@ -81,8 +89,8 @@ async function ProfileContent({
   const filters = { tab: tab === "activity" ? "activity" : undefined };
   const result =
     tab === "activity"
-      ? await listUserActivityPage(userId, parsePage(rawPage))
-      : await listPostsPage({ authorId: userId, page: parsePage(rawPage) });
+      ? await listUserActivityPage(userId, viewerId, parsePage(rawPage))
+      : await listPostsPage(viewerId, { authorId: userId, page: parsePage(rawPage) });
   canonicalPage(rawPage, result.page, path, filters);
   return (
     <>

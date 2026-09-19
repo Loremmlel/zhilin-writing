@@ -57,6 +57,8 @@ function asBatch(items: BatchItem<"sqlite">[]) {
   return items as [BatchItem<"sqlite">, ...BatchItem<"sqlite">[]];
 }
 
+import { postVisibilityCondition } from "@/lib/posts/visibility";
+
 function assertCanonicalAnchors(markdown: string, anchorIds: string[], scope: "CURRENT" | "NEXT") {
   const validation = validateCanonicalAnnotationDocument(markdown, anchorIds);
   if (validation.ok) return;
@@ -83,7 +85,14 @@ export async function createAnnotation(input: {
     await db
       .select()
       .from(posts)
-      .where(and(eq(posts.id, input.postId), isNull(posts.deletedAt), isNull(posts.hiddenAt)))
+      .where(
+        and(
+          eq(posts.id, input.postId),
+          isNull(posts.deletedAt),
+          isNull(posts.hiddenAt),
+          postVisibilityCondition(input.authorId),
+        ),
+      )
       .limit(1)
   )[0];
   const post = row ? { post: row } : null;
@@ -131,7 +140,7 @@ export async function createAnnotation(input: {
     db
       .update(posts)
       .set({
-        title: sql<string>`CASE WHEN ${posts.currentRevisionId} = ${input.baseRevisionId} AND ${posts.deletedAt} IS NULL AND ${posts.hiddenAt} IS NULL THEN ${posts.title} ELSE NULL END`,
+        title: sql<string>`CASE WHEN ${posts.currentRevisionId} = ${input.baseRevisionId} AND ${posts.deletedAt} IS NULL AND ${posts.hiddenAt} IS NULL AND ${postVisibilityCondition(input.authorId)} THEN ${posts.title} ELSE NULL END`,
       })
       .where(eq(posts.id, input.postId)),
     db.insert(postRevisions).values({
@@ -277,7 +286,14 @@ export async function createAnnotationReply(input: {
     db
       .select({ title: posts.title, currentRevisionId: posts.currentRevisionId })
       .from(posts)
-      .where(and(eq(posts.id, input.postId), isNull(posts.deletedAt), isNull(posts.hiddenAt)))
+      .where(
+        and(
+          eq(posts.id, input.postId),
+          isNull(posts.deletedAt),
+          isNull(posts.hiddenAt),
+          postVisibilityCondition(input.authorId),
+        ),
+      )
       .limit(1),
     db
       .select({ annotationId: postAnnotationAnchors.annotationId })
@@ -316,7 +332,7 @@ export async function createAnnotationReply(input: {
     db
       .update(posts)
       .set({
-        title: sql<string>`CASE WHEN ${posts.currentRevisionId} = ${post.currentRevisionId} AND ${posts.deletedAt} IS NULL AND ${posts.hiddenAt} IS NULL THEN ${posts.title} ELSE NULL END`,
+        title: sql<string>`CASE WHEN ${posts.currentRevisionId} = ${post.currentRevisionId} AND ${posts.deletedAt} IS NULL AND ${posts.hiddenAt} IS NULL AND ${postVisibilityCondition(input.authorId)} THEN ${posts.title} ELSE NULL END`,
       })
       .where(eq(posts.id, input.postId)),
     ...(targetReply

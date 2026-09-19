@@ -145,11 +145,12 @@ export async function listCurrentAnnotations(postId: string) {
 
 export async function listCurrentAnnotationThreads(
   postId: string,
+  viewerId: string,
   options: { includeUnavailableReplyId?: string } = {},
 ) {
   const [rawRoots, post] = await Promise.all([
     listCurrentAnnotations(postId),
-    getPostReadRow(postId),
+    getPostReadRow(postId, viewerId),
   ]);
   if (!post) return [];
   const roots = sortAnnotationRowsByAnchorPosition(post.post.markdown, rawRoots);

@@ -1,3 +1,4 @@
+import { requireMember } from "@/lib/auth/access";
 import Link from "next/link";
 
 import { listTags } from "@/db/queries";
@@ -5,7 +6,8 @@ import { listTags } from "@/db/queries";
 export const metadata = { title: "标签" };
 
 export default async function TagsPage() {
-  const tags = await listTags();
+  const { member } = await requireMember("/tags");
+  const tags = await listTags(member.id);
   return (
     <div className="page-column">
       <header className="page-header">

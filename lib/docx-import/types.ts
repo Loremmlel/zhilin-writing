@@ -247,6 +247,7 @@ export interface DocxPreviewAsset {
 }
 
 export interface DocxPreviewRecord {
+  visibilityUserIds?: string[] | null;
   version: 1;
   importBatchId: string;
   title?: string;

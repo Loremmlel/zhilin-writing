@@ -2,6 +2,7 @@ import { draftKey } from "../domain/rules.ts";
 import { DRAFT_STORE_NAME, withLocalStore } from "../indexed-db.ts";
 
 export type LocalDraft = {
+  visibilityUserIds?: string[] | null;
   title: string;
   markdown: string;
   tags: string;

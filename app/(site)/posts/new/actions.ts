@@ -1,5 +1,6 @@
 "use server";
 
+import { parsePostVisibilityField, PostVisibilityError } from "@/lib/posts/visibility";
 import { revalidatePath } from "next/cache";
 
 import type { PostActionState } from "@/components/editor/post-editor-form";
@@ -35,6 +36,7 @@ export async function createPostAction(
     const { member } = access;
     actorUserId = member.id;
     const postId = await createPost(member.id, {
+      visibilityUserIds: parsePostVisibilityField(formData.get("visibilityUserIds")),
       title: String(formData.get("title") ?? ""),
       markdown: String(formData.get("markdown") ?? ""),
       tags: parseTags(formData.get("tags")),
@@ -44,6 +46,7 @@ export async function createPostAction(
     revalidatePath("/");
     return { postId };
   } catch (error) {
+    if (error instanceof PostVisibilityError) return { error: error.message };
     const incidentId = logServerError({
       operation: "post.create",
       userId: actorUserId,

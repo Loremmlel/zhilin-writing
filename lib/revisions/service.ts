@@ -37,6 +37,7 @@ export type RevisionSnapshot = {
 };
 
 export type EditConflictSnapshot = {
+  visibilityUserIds: string[] | null;
   revisionId: string;
   revisionNumber: number;
   title: string;
@@ -51,9 +52,12 @@ export type EditConflictSnapshot = {
 export class EditConflictError extends Error {
   readonly code = "EDIT_CONFLICT" as const;
 
-  constructor(readonly current: EditConflictSnapshot) {
+  readonly current: EditConflictSnapshot;
+
+  constructor(current: EditConflictSnapshot) {
     super("帖子已在其他设备或窗口中更新");
     this.name = "EditConflictError";
+    this.current = current;
   }
 }
 
@@ -302,7 +306,12 @@ export async function getConflictSnapshot(
 ): Promise<EditConflictSnapshot> {
   const snapshot = await getRevisionSnapshot(postId, revisionId);
   if (!snapshot) throw new Error("当前帖子版本不存在");
-  const [currentTags, annotationStateChanged] = await Promise.all([
+  const [currentPost, currentTags, annotationStateChanged] = await Promise.all([
+    getDb()
+      .select({ visibilityUserIds: posts.visibilityUserIds })
+      .from(posts)
+      .where(eq(posts.id, postId))
+      .limit(1),
     getDb()
       .select({ name: tags.name })
       .from(postTags)
@@ -315,6 +324,7 @@ export async function getConflictSnapshot(
     snapshot.assetRefs.filter((ref) => ref.usage === "attachment").map((ref) => ref.assetId),
   );
   return {
+    visibilityUserIds: currentPost[0]?.visibilityUserIds ?? null,
     revisionId: snapshot.revision.id,
     revisionNumber: snapshot.revision.revisionNumber,
     title: snapshot.revision.title,

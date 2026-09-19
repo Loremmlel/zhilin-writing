@@ -31,9 +31,6 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
     "content-disposition",
     `${disposition}; filename*=UTF-8''${encodeURIComponent(asset.filename)}`,
   );
-  headers.set(
-    "cache-control",
-    asset.status === "permanent" ? "private, max-age=86400" : "private, no-store",
-  );
+  headers.set("cache-control", "private, no-store");
   return new Response(object.body, { headers });
 }

@@ -1,3 +1,4 @@
+import { requireMember } from "@/lib/auth/access";
 import Link from "next/link";
 import { PostCard } from "@/components/post-card";
 import { PageHeader } from "@/components/page-header";
@@ -13,10 +14,11 @@ export default async function TagPage({
   params: Promise<{ name: string }>;
   searchParams: Promise<{ page?: string }>;
 }) {
+  const { member } = await requireMember("/tags");
   const [{ name }, query] = await Promise.all([params, searchParams]);
   const decoded = decodeURIComponent(name);
   const path = `/tags/${encodeURIComponent(decoded)}`;
-  const result = await listPostsPage({ tagName: decoded, page: parsePage(query.page) });
+  const result = await listPostsPage(member.id, { tagName: decoded, page: parsePage(query.page) });
   canonicalPage(query.page, result.page, path);
   const displayName =
     result.items[0]?.tags.find((tag) => tag.normalizedName === decoded.toLocaleLowerCase("zh-CN"))

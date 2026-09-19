@@ -64,10 +64,10 @@ export default async function PostPage({
   searchParams: Promise<PostQuery>;
 }) {
   const [{ id }, query] = await Promise.all([params, searchParams]);
-  const [{ member }, item, rawAnnotations] = await Promise.all([
-    requireMember(`/posts/${id}`),
-    getPostDetail(id),
-    listCurrentAnnotationThreads(id, {
+  const { member } = await requireMember(`/posts/${id}`);
+  const [item, rawAnnotations] = await Promise.all([
+    getPostDetail(id, member.id),
+    listCurrentAnnotationThreads(id, member.id, {
       includeUnavailableReplyId:
         query.target === "annotation-reply" ? query.annotationReply : undefined,
     }),
@@ -340,7 +340,7 @@ async function DiscussionRegion({
 }) {
   const replyViews = await Promise.all(
     (
-      await listReplies(id, {
+      await listReplies(id, memberId, {
         includeUnavailableReplyId: query.target === "post-reply" ? query.reply : undefined,
       })
     ).map(async (reply) => ({

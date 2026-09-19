@@ -46,6 +46,7 @@ export const posts = sqliteTable(
       .notNull()
       .references(() => users.id),
     creationSubmissionKey: text("creation_submission_key"),
+    visibilityUserIds: text("visibility_user_ids", { mode: "json" }).$type<string[] | null>(),
     title: text("title").notNull(),
     markdown: text("markdown").notNull(),
     searchText: text("search_text").notNull().default(""),

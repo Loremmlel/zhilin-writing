@@ -10,6 +10,7 @@ import {
   parseDocxWithWorker,
   sha256DocxSource,
 } from "@/lib/docx-import/browser";
+import { PostVisibilityField } from "@/components/editor/post-visibility-field";
 import { beginDocxImportCommit } from "@/lib/docx-import/commit-lock";
 import { prepareDocxImportSubmission } from "@/lib/docx-import/commit-schema";
 import { DOCX_IMPORT_LIMITS } from "@/lib/docx-import/limits";
@@ -58,6 +59,7 @@ const errorLabels: Record<string, string> = {
   ACCESS_REVOKED: "你的站点访问权限已被移除。预览仍保存在本地。",
   ONBOARDING_REQUIRED: "请先完成站内资料设置。预览仍保存在本地。",
   IMPORT_BATCH_CONFLICT: "这份预览与已提交的内容不一致，请重新选择 DOCX。",
+  VISIBILITY_USER_INVALID: "部分可见用户已失效，请刷新后重新选择。",
   ATTRIBUTED_USER_INVALID: "批注作者关联已失效，请重新选择。",
   ASSET_NOT_CLAIMABLE: "预览图片已失效，请重新导入 DOCX。",
   IMPORT_COMMIT_FAILED: "未能完成导入。预览和临时图片仍保留，可以重试。",
@@ -69,7 +71,15 @@ const errorLabels: Record<string, string> = {
 const unknownErrorLabel =
   "暂时无法处理这份 DOCX。请重试；若仍失败，请确认文件可在 Word 中正常打开后重新选择。";
 
-export function DocxImportWorkspace({ users }: { users: SiteUser[] }) {
+export function DocxImportWorkspace({
+  users,
+  visibilityUsers,
+  authorId,
+}: {
+  users: SiteUser[];
+  visibilityUsers: SiteUser[];
+  authorId: string;
+}) {
   const router = useRouter();
   const abortRef = useRef<AbortController | null>(null);
   const commitInFlightRef = useRef(false);
@@ -519,6 +529,14 @@ export function DocxImportWorkspace({ users }: { users: SiteUser[] }) {
               </div>
             </div>
           )}
+          <PostVisibilityField
+            value={preview.visibilityUserIds ?? null}
+            users={visibilityUsers}
+            authorId={authorId}
+            onChange={(visibilityUserIds) =>
+              setPreview((current) => (current ? { ...current, visibilityUserIds } : current))
+            }
+          />
           <DocxImportPreview
             preview={preview}
             users={users}

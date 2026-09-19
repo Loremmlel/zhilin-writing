@@ -1,3 +1,4 @@
+import { listPostVisibilityUsers } from "@/lib/posts/visibility-service";
 import { notFound, redirect } from "next/navigation";
 
 import type { AnnotationCardView } from "@/components/annotations/annotation-thread";
@@ -14,10 +15,11 @@ export const metadata = { title: "编辑帖子" };
 
 export default async function EditPostPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [{ member }, item, rawAnnotations] = await Promise.all([
-    requireMember(`/posts/${id}/edit`),
-    getPost(id),
-    listCurrentAnnotationThreads(id),
+  const { member } = await requireMember(`/posts/${id}/edit`);
+  const [item, rawAnnotations, visibilityUsers] = await Promise.all([
+    getPost(id, member.id),
+    listCurrentAnnotationThreads(id, member.id),
+    listPostVisibilityUsers(),
   ]);
   if (!item) notFound();
   if (item.post.authorId !== member.id) redirect(`/posts/${id}`);
@@ -62,10 +64,12 @@ export default async function EditPostPage({ params }: { params: Promise<{ id: s
       className={`page-column editor-page${annotationViews.length > 0 ? " editor-page--annotated" : ""}`}
     >
       <PostEditorForm
+        visibilityUsers={visibilityUsers}
         userId={member.id}
         draftId={id}
         action={updatePostAction.bind(null, id)}
         initial={{
+          visibilityUserIds: item.post.visibilityUserIds,
           title: item.post.title,
           markdown: item.post.markdown,
           tags: item.tags.map((tag) => tag.name),

@@ -18,6 +18,7 @@ afterEach(deleteLocalDatabase);
 
 test("recovers a complete finalized Preview without original DOCX bytes", async () => {
   const preview = previewFixture("batch-1", "2026-08-30T00:00:00.000Z");
+  preview.visibilityUserIds = ["user-1"];
   await saveImportPreview(preview, Date.parse("2026-08-29T12:00:00.000Z"));
 
   const loaded = await loadImportPreview("batch-1", Date.parse("2026-08-29T12:00:00.000Z"));

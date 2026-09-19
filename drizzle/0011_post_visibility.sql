@@ -1,0 +1,1 @@
+ALTER TABLE `posts` ADD `visibility_user_ids` text;

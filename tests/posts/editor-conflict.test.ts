@@ -34,6 +34,17 @@ test("published drafts prompt only when local content differs from the loaded se
     true,
   );
   assert.equal(hasRecoverablePublishedDraft(local, { ...local }), false);
+  assert.equal(
+    hasRecoverablePublishedDraft(
+      { ...local, visibilityUserIds: [] },
+      { ...local, visibilityUserIds: null },
+    ),
+    true,
+  );
+  assert.equal(
+    hasRecoverablePublishedDraft(local, { ...local, visibilityUserIds: ["author"] }),
+    false,
+  );
 });
 
 test("using the online version replaces content and advances the edit base", () => {

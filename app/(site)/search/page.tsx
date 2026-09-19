@@ -1,3 +1,4 @@
+import { requireMember } from "@/lib/auth/access";
 import { PostCard } from "@/components/post-card";
 import { PageHeader } from "@/components/page-header";
 import { Pagination } from "@/components/pagination";
@@ -11,10 +12,11 @@ export default async function SearchPage({
 }: {
   searchParams: Promise<{ q?: string; page?: string }>;
 }) {
+  const { member } = await requireMember("/search");
   const params = await searchParams;
   const query = typeof params.q === "string" ? params.q.trim() : "";
   const result = query
-    ? await listPostsPage({ query, page: parsePage(params.page) })
+    ? await listPostsPage(member.id, { query, page: parsePage(params.page) })
     : { items: [], total: 0, page: 1, pageSize: 20 };
   canonicalPage(params.page, result.page, "/search", { q: query });
   return (

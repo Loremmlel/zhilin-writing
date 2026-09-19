@@ -387,6 +387,12 @@ test("the service rejects non-members, invalid attribution, and unclaimable asse
       /ACCESS_REVOKED/,
     );
 
+    const invalidScope = { ...commitFixture(), visibilityUserIds: [uuid(999)] };
+    await assert.rejects(
+      commitDocxImport(IMPORTER_ID, invalidScope, harness.adapter),
+      /VISIBILITY_USER_INVALID/,
+    );
+
     const invalidAttribution = commitFixture();
     invalidAttribution.authorMappings = { Author: uuid(998) };
     await assert.rejects(
@@ -424,10 +430,19 @@ test("the service rejects non-members, invalid attribution, and unclaimable asse
 test("an atomic commit persists one complete initial state and exact retry returns it", async () => {
   const harness = await createHarness();
   try {
-    const input = commitFixture({ withAsset: true });
+    const input = { ...commitFixture({ withAsset: true }), visibilityUserIds: [MEMBER_ID] };
     const first = await commitDocxImport(IMPORTER_ID, input, harness.adapter);
     const retry = await commitDocxImport(IMPORTER_ID, input, harness.adapter);
 
+    assert.deepEqual(
+      JSON.parse(
+        String(
+          harness.db.prepare("SELECT visibility_user_ids FROM posts WHERE id=?").get(first.postId)
+            ?.visibility_user_ids,
+        ),
+      ),
+      [IMPORTER_ID, MEMBER_ID].sort(),
+    );
     assert.equal(first.alreadyCommitted, false);
     assert.deepEqual(retry, { ...first, alreadyCommitted: true });
     assert.equal(count(harness.db, "posts"), 1);
@@ -747,6 +762,8 @@ async function createHarness(failAfterStatement?: number) {
     "0007_",
     "0008_",
     "0009_",
+    "0010_",
+    "0011_",
   ]) {
     const filename = (await readdir(new URL("../../drizzle/", import.meta.url))).find(
       (item) => item.startsWith(prefix) && item.endsWith(".sql"),

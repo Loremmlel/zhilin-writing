@@ -1,5 +1,8 @@
 "use server";
 
+import { findReply } from "@/db/queries";
+import { canViewPost } from "@/lib/posts/visibility-service";
+import { parsePostVisibilityField, PostVisibilityError } from "@/lib/posts/visibility";
 import { markPerformanceOperation } from "@/lib/performance/context";
 import { revalidatePath } from "next/cache";
 
@@ -95,7 +98,9 @@ export async function updatePostAction(
     if (!access.ok) return actionAccessFailure(access.code);
     const { member } = access;
     actorUserId = member.id;
+    if (!(await canViewPost(postId, member.id))) return { error: "帖子不存在或你已无权访问" };
     const result = await updatePost(postId, member.id, {
+      visibilityUserIds: parsePostVisibilityField(formData.get("visibilityUserIds")),
       title: String(formData.get("title") ?? ""),
       markdown: String(formData.get("markdown") ?? ""),
       tags: parseTags(formData.get("tags")),
@@ -106,9 +111,10 @@ export async function updatePostAction(
         formData.get("confirmedAnnotationDeletionIds"),
       ),
     });
-    revalidatePath(`/posts/${postId}`);
+    revalidatePath("/", "layout");
     return { postId, currentRevisionId: result.currentRevisionId };
   } catch (error) {
+    if (error instanceof PostVisibilityError) return { error: error.message };
     if (error instanceof EditConflictError) {
       return { error: error.message, conflict: error.current };
     }
@@ -137,6 +143,7 @@ export async function createReplyAction(
     if (!access.ok) return actionAccessFailure(access.code);
     const { member } = access;
     actorUserId = member.id;
+    if (!(await canViewPost(postId, member.id))) return { error: "帖子不存在或你已无权访问" };
     const replyId = await createReply({
       postId,
       authorId: member.id,
@@ -148,6 +155,7 @@ export async function createReplyAction(
     revalidatePath("/");
     return { replyId };
   } catch (error) {
+    if (error instanceof PostVisibilityError) return { error: error.message };
     const incidentId = logServerError({
       operation: "post-reply.create",
       entityId: targetReplyId ?? postId,
@@ -172,6 +180,7 @@ export async function createAnnotationAction(
     if (!access.ok) return actionAccessFailure(access.code);
     const { member } = access;
     actorUserId = member.id;
+    if (!(await canViewPost(postId, member.id))) return { error: "帖子不存在或你已无权访问" };
     selection = parseAnnotationSelection(formData.get("selection"));
     const annotationId = await createAnnotation({
       postId,
@@ -187,6 +196,7 @@ export async function createAnnotationAction(
     revalidatePath(`/users/${member.id}`);
     return { annotationId };
   } catch (error) {
+    if (error instanceof PostVisibilityError) return { error: error.message };
     if (error instanceof AnnotationSelectionError) {
       const incidentId = logServerRejection({
         operation: "annotation.create",
@@ -229,6 +239,7 @@ export async function createAnnotationReplyAction(
     if (!access.ok) return actionAccessFailure(access.code);
     const { member } = access;
     actorUserId = member.id;
+    if (!(await canViewPost(postId, member.id))) return { error: "帖子不存在或你已无权访问" };
     const annotationReplyId = await createAnnotationReply({
       postId,
       annotationId,
@@ -243,6 +254,7 @@ export async function createAnnotationReplyAction(
     revalidatePath(`/users/${member.id}`);
     return { annotationReplyId };
   } catch (error) {
+    if (error instanceof PostVisibilityError) return { error: error.message };
     const incidentId = logServerError({
       operation: "annotation-reply.create",
       entityId: targetReplyId ?? annotationId,
@@ -265,10 +277,12 @@ export async function deletePostAction(
     if (!access.ok) return actionAccessFailure(access.code);
     const { member } = access;
     actorUserId = member.id;
+    if (!(await canViewPost(postId, member.id))) return { error: "帖子不存在或你已无权访问" };
     await deletePostByAuthor(postId, member.id);
     revalidatePath("/", "layout");
     return { success: true };
   } catch (error) {
+    if (error instanceof PostVisibilityError) return { error: error.message };
     const incidentId = logServerError({
       operation: "post.delete",
       entityId: postId,
@@ -292,10 +306,14 @@ export async function deleteReplyAction(
     if (!access.ok) return actionAccessFailure(access.code);
     const { member } = access;
     actorUserId = member.id;
+    if (!(await canViewPost(postId, member.id))) return { error: "帖子不存在或你已无权访问" };
+    const reply = await findReply(replyId);
+    if (!reply || reply.postId !== postId) return { error: "回复不存在或你已无权访问" };
     await deleteReplyByAuthor(replyId, member.id);
     revalidatePath("/", "layout");
     return { success: true };
   } catch (error) {
+    if (error instanceof PostVisibilityError) return { error: error.message };
     const incidentId = logServerError({
       operation: "post-reply.delete",
       entityId: replyId,
@@ -319,10 +337,12 @@ export async function deleteAnnotationAction(
     if (!access.ok) return actionAccessFailure(access.code);
     const { member } = access;
     actorUserId = member.id;
+    if (!(await canViewPost(postId, member.id))) return { error: "帖子不存在或你已无权访问" };
     await deleteAnnotationByAuthor(postId, annotationId, member.id);
     revalidatePath("/", "layout");
     return { success: true };
   } catch (error) {
+    if (error instanceof PostVisibilityError) return { error: error.message };
     const incidentId = logServerError({
       operation: "annotation.delete",
       entityId: annotationId,
@@ -346,10 +366,12 @@ export async function deleteAnnotationReplyAction(
     if (!access.ok) return actionAccessFailure(access.code);
     const { member } = access;
     actorUserId = member.id;
+    if (!(await canViewPost(postId, member.id))) return { error: "帖子不存在或你已无权访问" };
     await deleteAnnotationReplyByAuthor(postId, replyId, member.id);
     revalidatePath("/", "layout");
     return { success: true };
   } catch (error) {
+    if (error instanceof PostVisibilityError) return { error: error.message };
     const incidentId = logServerError({
       operation: "annotation-reply.delete",
       entityId: replyId,
@@ -373,10 +395,12 @@ export async function removeImportedAnnotationThreadAction(
     if (!access.ok) return actionAccessFailure(access.code);
     const { member } = access;
     actorUserId = member.id;
+    if (!(await canViewPost(postId, member.id))) return { error: "帖子不存在或你已无权访问" };
     await removeImportedAnnotationThread(postId, annotationId, member.id);
     revalidatePath("/", "layout");
     return { success: true };
   } catch (error) {
+    if (error instanceof PostVisibilityError) return { error: error.message };
     const incidentId = logServerError({
       operation: "annotation-import.remove",
       entityId: annotationId,

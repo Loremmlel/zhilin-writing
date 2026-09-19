@@ -1,4 +1,5 @@
 type EditorDraft = {
+  visibilityUserIds?: string[] | null;
   title: string;
   markdown: string;
   tags: string;
@@ -32,6 +33,13 @@ function stableIds(ids: string[]): string {
 
 export function hasRecoverablePublishedDraft(local: EditorDraft, server: EditorDraft): boolean {
   return (
+    (local.visibilityUserIds !== undefined &&
+      JSON.stringify(
+        local.visibilityUserIds === null ? null : [...local.visibilityUserIds].sort(),
+      ) !==
+        JSON.stringify(
+          server.visibilityUserIds == null ? null : [...server.visibilityUserIds].sort(),
+        )) ||
     local.title !== server.title ||
     local.markdown !== server.markdown ||
     local.tags !== server.tags ||
