@@ -14,6 +14,7 @@ export default function Error({
       title="页面暂时无法显示"
       description="内容加载失败，请重试。"
       incidentId={error.digest}
+      error={error}
       reset={reset}
     />
   );

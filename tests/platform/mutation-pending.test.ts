@@ -73,6 +73,120 @@ test("reply drafts clear only after a successful server result", async () => {
   assert.match(annotationComposer, /else if\s*\(state\.error\)/);
 });
 
+test("recoverable discussion submission keeps the mounted input and permits an explicit retry", async () => {
+  const { Window } = await import("happy-dom");
+  const browser = new Window({ url: "https://example.test/posts/test" });
+  const globals: Record<string, unknown> = {
+    window: browser,
+    document: browser.document,
+    navigator: browser.navigator,
+    HTMLElement: browser.HTMLElement,
+    FormData: browser.FormData,
+    IS_REACT_ACT_ENVIRONMENT: true,
+  };
+  const original = Object.fromEntries(
+    Object.keys(globals).map((key) => [key, Object.getOwnPropertyDescriptor(globalThis, key)]),
+  );
+  for (const [key, value] of Object.entries(globals))
+    Object.defineProperty(globalThis, key, { configurable: true, writable: true, value });
+  const reports: Array<Record<string, unknown>> = [];
+  browser.fetch = async (_url, init) => {
+    reports.push(...JSON.parse(String(init?.body)));
+    return new browser.Response(null, { status: 204 });
+  };
+  const React = await import("react");
+  const { createRoot } = await import("react-dom/client");
+  const { useRecoverableActionState } =
+    await import("../../lib/actions/use-recoverable-action-state.ts");
+  const { runRecoverableAction } = await import("../../lib/actions/recoverable-action.ts");
+  type State = { error?: string; incidentId?: string; replyId?: string };
+  const submissions: FormData[] = [];
+  const submissionKey = crypto.randomUUID();
+  let reject: ((reason: unknown) => void) | undefined;
+  let mounts = 0;
+  const escaped: unknown[] = [];
+  async function action(_state: State, data: FormData): Promise<State> {
+    submissions.push(data);
+    if (submissions.length === 1)
+      return new Promise((_resolve, fail) => {
+        reject = fail;
+      });
+    return { replyId: "confirmed" };
+  }
+  function Composer() {
+    const [state, submit, pending] = useRecoverableActionState(action, {});
+    const [text, setText] = React.useState("这段批注仍在输入框");
+    React.useEffect(() => {
+      mounts++;
+    }, []);
+    return React.createElement(
+      "form",
+      { action: submit },
+      React.createElement("textarea", {
+        name: "markdown",
+        value: text,
+        onChange: (event: React.ChangeEvent<HTMLTextAreaElement>) => setText(event.target.value),
+        disabled: pending,
+      }),
+      React.createElement("input", { type: "hidden", name: "submissionKey", value: submissionKey }),
+      React.createElement("span", { role: "alert" }, state.error ?? state.replyId),
+      React.createElement("button", { disabled: pending, "aria-busy": pending }, "提交"),
+    );
+  }
+  const host = browser.document.createElement("div");
+  browser.document.body.appendChild(host);
+  const root = createRoot(host as unknown as HTMLElement, {
+    onUncaughtError: (error) => escaped.push(error),
+    onCaughtError: (error) => escaped.push(error),
+  });
+  try {
+    await React.act(async () => root.render(React.createElement(Composer)));
+    const input = host.querySelector("textarea")!;
+    await React.act(async () => host.querySelector("button")!.click());
+    assert.equal(submissions.length, 1);
+    assert.equal(host.querySelector("button")!.disabled, true);
+    await React.act(async () => {
+      reject!(new TypeError("Failed to fetch"));
+    });
+    assert.equal(host.querySelector("textarea"), input, "failure must not unmount the composer");
+    assert.equal(input.value, "这段批注仍在输入框");
+    assert.equal(mounts, 1);
+    assert.equal(host.querySelector("button")!.disabled, false);
+    assert.match(host.querySelector('[role="alert"]')!.textContent, /输入内容仍保留/);
+    assert.deepEqual(escaped, []);
+    assert.equal(submissions.length, 1, "no automatic replay");
+    assert.equal(reports.length, 1);
+    assert.equal(reports[0].errorSource, "action");
+    await React.act(async () => host.querySelector("button")!.click());
+    assert.equal(submissions.length, 2);
+    assert.equal(submissions[0].get("submissionKey"), submissionKey);
+    assert.equal(submissions[1].get("submissionKey"), submissionKey);
+    assert.equal(submissions[1].get("markdown"), input.value);
+    assert.equal(host.querySelector('[role="alert"]')!.textContent, "confirmed");
+    const businessFailure = { error: "权限已变更", incidentId: "server-reference" };
+    assert.equal(
+      await runRecoverableAction<State>(async () => businessFailure, {}, new FormData(), {}),
+      businessFailure,
+    );
+    const failed = await runRecoverableAction<State>(
+      async () => {
+        throw new Error("unexpected");
+      },
+      { replyId: "old-success" },
+      new FormData(),
+      {},
+    );
+    assert.equal(failed.replyId, undefined, "an earlier success must not clear this failed input");
+  } finally {
+    await React.act(async () => root.unmount());
+    await browser.happyDOM.close();
+    for (const [key, descriptor] of Object.entries(original)) {
+      if (descriptor) Object.defineProperty(globalThis, key, descriptor);
+      else Reflect.deleteProperty(globalThis, key);
+    }
+  }
+});
+
 test("profile, notification, and revision forms keep context while showing pending feedback", async () => {
   const [
     profilePage,

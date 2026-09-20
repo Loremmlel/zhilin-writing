@@ -8,6 +8,18 @@
 - D1 `performance_logs` 独立保存性能数据。管理员登录后访问 `/api/performance` 获取最近 200 条，或用 `?requestId=<编号>` 查询关联记录。普通成员不能读取。
 - 不新增管理界面。排查时也可通过 Sites 的数据库只读工具读取该表。
 
+## 全局前端错误（2026-09-20）
+
+- `instrumentation-client.ts` 通过既有探针安装 `lib/client-errors.ts` 的标准 `error`（捕获阶段）和 `unhandledrejection` 监听；覆盖运行时错误、未处理 Promise，以及 script/link 加载失败。无 PerformanceObserver 的浏览器仍安装异常监听。
+- React 已捕获的渲染错误不会可靠地到达全局事件，因此共享 `ErrorState` 和 `RegionErrorBoundary` 调用同一个 `reportClientError`。不改框架内部，不覆盖 `console.error`，不阻止浏览器默认报错。已知的服务端 renderDigest 可与原服务器错误日志交叉定位。
+- 批注创建、批注回复、普通回复采用共享 `useRecoverableActionState`：捕获原地幂等 Action 的意外拒绝，报告后返回表单错误，不让 React 用页面错误边界替换正文。现有业务返回值原样保留；未知失败不保留前一次成功 ID，不自动重试，输入和幂等编号留在当前组件。此 Hook 不用于依赖 redirect 的导航 Action。
+- 新记录 `kind=client_error` 复用 `/api/performance` 的鉴权、体积限制、环境分组和 5,000 条滚动存储；接收端额外输出 `event=client_error_reported`、`source=client` 的结构化 Worker 错误日志，便于直接按 incidentId 排查。它是客户端提供的诊断信息，不证明服务端发生了同类错误。
+- 前后端都只允许异常类型、固定分类码、脱敏路由、UUID、数字 renderDigest，及最多五个同源构建 JS 文件名/行列（不含函数名、完整 URL、查询串）。**不上传原始 message/stack、选区、输入内容或 FormData**；分类时仅在本地匹配错误消息。前端生成的 incidentId 与服务器请求 requestId 是不同编号；未知请求未到达 Worker 时不能伪造对应关系。
+- 同一错误对象复用编号；五秒内同来源、路由和安全诊断的等价错误合并，每页面每分钟最多 20 条。新错误尝试立即刷新既有有界队列，已有在途批次时等待后续刷新。上报失败不重试，不影响业务恢复；根错误页在探针尚未安装时使用同一接口的小批次兜底。
+- 全局监听看不到已被业务捕获并吞掉的异常；HTTP 4xx/5xx 也不等同于未处理 JS 异常，仍由请求探针和服务端错误入口诊断。跨域脚本可能只有匿名信息；断网、登录失效、浏览器关闭/崩溃或上报被拦截均可能丢失报告。不保证“所有异常必达”，也不提供刷新后的批注草稿恢复。
+
+现有请求日志本来就是公共入口：Worker 包装请求，D1/R2 通过共享绑定包装计时，浏览器以 PerformanceObserver 为主并包装一次 fetch 以记录请求拒绝。具体业务的 operation/stage 和可恢复业务错误仍由调用处提供语义，进入共享服务端日志函数；这部分并非自动从全局请求中推断。新增前端异常机制沿用同样的分层，没有给每条请求或每个页面复制补丁。
+
 ## 指标口径
 
 | 字段                                         | 含义与边界                                                                                                              |
@@ -38,9 +50,11 @@
 
 ## 验证
 
-`node --experimental-strip-types --test tests/platform/performance.test.ts tests/platform/logging.test.ts`
+`node --experimental-strip-types --test tests/platform/performance.test.ts tests/platform/logging.test.ts tests/platform/client-errors.test.ts tests/platform/mutation-pending.test.ts`
 
 覆盖脱敏、并发请求隔离、D1/R2 返回和失败语义、批处理原始对象、流式字节/取消/异常、不预读、5,000 条实际 SQLite 滚动上限、日志写入失败不传播。另运行 TypeScript 静态检查；真实网络归因须部署后积累数据，不能由本地单测证明。
+
+前端检查使用 React DOM + Happy DOM 执行真实 Hook 和 form action：失败不卸载输入、pending 释放、同编号手动重试、业务失败原样返回、旧成功状态不残留；另覆盖全局事件、共享传输、去重限流、双端白名单和上报失败无递归。这属于组件/集成检查，不是真实浏览器端到端验收。
 
 ## 2026-09-09 首轮优化与对比基线
 

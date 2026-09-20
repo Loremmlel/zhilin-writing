@@ -1,7 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useRecoverableActionState } from "@/lib/actions/use-recoverable-action-state";
 
 import { LazyMarkdownEditor } from "@/components/editor/lazy-markdown-editor";
 import { ActionErrorMessage } from "@/components/action-error-message";
@@ -32,7 +33,7 @@ export function ReplyForm({
   onCancel?: () => void;
 }) {
   const router = useRouter();
-  const [state, formAction, pending] = useActionState(action, {});
+  const [state, formAction, pending] = useRecoverableActionState(action, {});
   const [markdown, setMarkdown] = useState("");
   const [submissionKey, setSubmissionKey] = useState(initialSubmissionKey);
   const [editorKey, setEditorKey] = useState(0);

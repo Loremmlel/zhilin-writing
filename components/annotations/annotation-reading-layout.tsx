@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  useActionState,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -13,6 +12,7 @@ import {
 
 import type { AnnotationActionState } from "@/app/(site)/posts/[id]/actions";
 import { ActionErrorMessage } from "@/components/action-error-message";
+import { useRecoverableActionState } from "@/lib/actions/use-recoverable-action-state";
 import { AnnotationSheet } from "@/components/annotations/annotation-sheet";
 import {
   AnnotationThread,
@@ -87,7 +87,7 @@ function AnnotationComposer({
   onPhaseChange: (event: SelectionPreviewEvent) => void;
   onClose: () => void;
 }) {
-  const [state, formAction, pending] = useActionState(action, {});
+  const [state, formAction, pending] = useRecoverableActionState(action, {});
   const [markdown, setMarkdown] = useState("");
   const [clientError, setClientError] = useState<string | null>(null);
   const handledSuccessRef = useRef<string | null>(null);

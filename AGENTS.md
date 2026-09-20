@@ -65,6 +65,13 @@
 - 新增直接 D1/R2 调用时复用 `measuredDatabase` / `measuredBucket`；不要记录 SQL、绑定值、文件路径或正文。保持 `/api/performance` 不被自身探针记录。
 - `0010_performance_logs.sql` 中的滚动上限触发器是手写迁移；Drizzle 不管理该触发器，后续生成迁移不要删掉它。
 
+## 前端异常与提交恢复
+
+- `lib/client-errors.ts` 是统一上报入口；全局 `error` / `unhandledrejection` 由客户端 instrumentation 安装，React 异常由共享页面和区域错误边界接入。不要在每个页面复制监听器、拦截 `console.error` 或改 React 内部。
+- 被业务主动捕获的未知异常如需报告，调用 `reportClientError`；校验、权限、冲突等已有安全状态不重复报为客户端异常。上报记录是未受信的客户端诊断，不能当作服务端事实。
+- 批注创建、批注回复和普通回复复用 `useRecoverableActionState`，只用于原地、幂等提交；异常转为表单状态，输入和 submissionKey 保留，不自动重放、不刷新、不做批注草稿持久化。导航型 Action 不套用此 Hook。
+- 前后端均限制诊断字段，只保留异常类型、固定分类码、同源构建 JS 文件名与行列、路由形状、事件编号和受限环境信息；不得上传原始 message、stack、表单或正文。覆盖和送达限制见 `docs/performance-probes.md`。
+
 ## 设计与交互合同
 
 - 修改 UI 前先读根目录 `DESIGN.md` 与 `UX-CONTRACT.md`，定位适用的 D1–D8、U1–U10 和共享组件所有者。它们是现行规范；历史方案用于解释取舍，不作为另起设计的入口。

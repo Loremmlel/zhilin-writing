@@ -54,7 +54,7 @@ export function sanitizeClientRecord(value: unknown): Record<string, string | nu
   if (!value || typeof value !== "object") return null;
   const input = value as Record<string, unknown>;
   if (
-    !["resource", "navigation", "interaction", "longtask", "fetch_error"].includes(
+    !["resource", "navigation", "interaction", "longtask", "fetch_error", "client_error"].includes(
       String(input.kind),
     )
   )
@@ -63,6 +63,50 @@ export function sanitizeClientRecord(value: unknown): Record<string, string | nu
     kind: String(input.kind),
     route: performanceRoute(typeof input.route === "string" ? input.route : ""),
   };
+  if (input.kind === "client_error") {
+    if (
+      typeof input.incidentId !== "string" ||
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(
+        input.incidentId,
+      )
+    )
+      return null;
+    if (
+      !["runtime", "unhandledrejection", "react", "action", "resource"].includes(
+        String(input.errorSource),
+      )
+    )
+      return null;
+    result.incidentId = input.incidentId;
+    result.errorSource = String(input.errorSource);
+    if (
+      typeof input.errorName === "string" &&
+      /^(Error|TypeError|RangeError|ReferenceError|SyntaxError|URIError|EvalError|AggregateError|AbortError|TimeoutError|Unknown)$/.test(
+        input.errorName,
+      )
+    )
+      result.errorName = input.errorName;
+    if (
+      [
+        "CHUNK_LOAD_FAILED",
+        "RESOURCE_LOAD_FAILED",
+        "FETCH_FAILED",
+        "ABORTED",
+        "UNEXPECTED_ERROR",
+      ].includes(String(input.errorCode))
+    )
+      result.errorCode = String(input.errorCode);
+    if (typeof input.renderDigest === "string" && /^\d{1,10}$/.test(input.renderDigest))
+      result.renderDigest = input.renderDigest;
+    if (
+      typeof input.frames === "string" &&
+      input.frames.length <= 750 &&
+      /^(?:[A-Za-z0-9_-]{1,120}\.m?js:\d{1,8}:\d{1,8})(?:\|[A-Za-z0-9_-]{1,120}\.m?js:\d{1,8}:\d{1,8}){0,4}$/.test(
+        input.frames,
+      )
+    )
+      result.frames = input.frames;
+  }
   if (
     typeof input.observedAt === "number" &&
     Number.isSafeInteger(input.observedAt) &&

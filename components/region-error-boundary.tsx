@@ -2,6 +2,7 @@
 
 import { Component, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
+import { reportClientError } from "@/lib/client-errors";
 
 type BoundaryProps = {
   children: ReactNode;
@@ -10,15 +11,19 @@ type BoundaryProps = {
   onRetry: () => void;
 };
 
-class RegionBoundary extends Component<BoundaryProps, { failed: boolean }> {
-  state = { failed: false };
+class RegionBoundary extends Component<BoundaryProps, { failed: boolean; incidentId?: string }> {
+  state: { failed: boolean; incidentId?: string } = { failed: false };
 
   static getDerivedStateFromError() {
     return { failed: true };
   }
 
+  componentDidCatch(error: Error) {
+    this.setState({ incidentId: reportClientError(error, "react") });
+  }
+
   retry = () => {
-    this.setState({ failed: false });
+    this.setState({ failed: false, incidentId: undefined });
     this.props.onRetry();
   };
 
@@ -28,6 +33,11 @@ class RegionBoundary extends Component<BoundaryProps, { failed: boolean }> {
       <div className="region-error" role="alert">
         <strong>{this.props.title}</strong>
         <p>{this.props.description}</p>
+        {this.state.incidentId && (
+          <p className="incident-reference">
+            错误编号：<code>{this.state.incidentId}</code>
+          </p>
+        )}
         <button className="button button--ghost button--small" type="button" onClick={this.retry}>
           重试
         </button>

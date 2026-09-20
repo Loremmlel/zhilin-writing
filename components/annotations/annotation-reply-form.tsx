@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useRecoverableActionState } from "@/lib/actions/use-recoverable-action-state";
 
 import type { AnnotationReplyActionState } from "@/app/(site)/posts/[id]/actions";
 import { ActionErrorMessage } from "@/components/action-error-message";
@@ -28,7 +29,7 @@ export function AnnotationReplyForm({
 }) {
   const editorRootRef = useRef<HTMLElement | null>(null);
   const onSuccessRef = useRef(onSuccess);
-  const [state, formAction, pending] = useActionState(action, {});
+  const [state, formAction, pending] = useRecoverableActionState(action, {});
   const [markdown, setMarkdown] = useState("");
   const [submissionKey, setSubmissionKey] = useState(initialSubmissionKey);
   const [resetRevision, setResetRevision] = useState(0);

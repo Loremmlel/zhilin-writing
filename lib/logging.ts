@@ -163,3 +163,24 @@ export function logServerRejection(context: ServerRejectionContext): string {
   );
   return incidentId;
 }
+
+// Called only after the ingestion route validates this untrusted browser report.
+export function logClientError(record: Record<string, unknown>) {
+  console.error(
+    JSON.stringify({
+      level: "error",
+      event: "client_error_reported",
+      source: "client",
+      incidentId: record.incidentId,
+      errorSource: record.errorSource,
+      errorName: record.errorName,
+      errorCode: record.errorCode,
+      renderDigest: record.renderDigest,
+      frames: record.frames,
+      route: record.route,
+      observedAt: record.observedAt,
+      browserId: record.browserId,
+      sessionId: record.sessionId,
+    }),
+  );
+}

@@ -1,7 +1,8 @@
-import { MAX_BATCH, PERFORMANCE_ENDPOINT, milliseconds, performanceRoute } from "./shared";
+import { MAX_BATCH, PERFORMANCE_ENDPOINT, milliseconds, performanceRoute } from "./shared.ts";
+import { installClientErrorReporting } from "../client-errors.ts";
 
 export function installPerformanceProbe() {
-  if (typeof window === "undefined" || !("PerformanceObserver" in window)) return;
+  if (typeof window === "undefined") return;
   const browser = window as Window & { __zhilinPerformance?: boolean };
   if (browser.__zhilinPerformance) return;
   browser.__zhilinPerformance = true;
@@ -72,7 +73,11 @@ export function installPerformanceProbe() {
     callback: (entry: PerformanceEntry) => void,
     durationThreshold?: number,
   ) => {
-    if (!PerformanceObserver.supportedEntryTypes?.includes(type)) return;
+    if (
+      typeof PerformanceObserver === "undefined" ||
+      !PerformanceObserver.supportedEntryTypes?.includes(type)
+    )
+      return;
     try {
       new PerformanceObserver((list) => {
         for (const entry of list.getEntries()) callback(entry);
@@ -85,6 +90,10 @@ export function installPerformanceProbe() {
       /* Older browsers may not implement an advertised entry type. */
     }
   };
+  installClientErrorReporting((record) => {
+    enqueue(record);
+    flush();
+  });
   const resource = (raw: PerformanceEntry) => {
     const entry = raw as PerformanceResourceTiming;
     const url = new URL(entry.name, location.href);
@@ -108,7 +117,8 @@ export function installPerformanceProbe() {
           ? milliseconds(entry.connectEnd - entry.secureConnectionStart)
           : 0,
       ttfbMs: milliseconds(entry.responseStart - entry.requestStart),
-      downloadMs: milliseconds(entry.responseEnd - entry.responseStart),
+      downloadMs:
+        entry.responseStart > 0 ? milliseconds(entry.responseEnd - entry.responseStart) : 0,
       transferBytes: entry.transferSize,
       status: entry.responseStatus,
       requestId: timing("request")?.description,

@@ -185,6 +185,8 @@ components:
 
 表单由应用处理错误，长文本不可拖拽破坏布局。账户浮层支持点击外部和 Escape 关闭。冲突、放弃草稿与恢复操作使用共享 `ModalDialog`，通过 portal 挂到 `document.body` 的全局层，避免被卡片、侧栏或滚动容器裁切及挤压；同时包含焦点循环、Escape 和焦点恢复。
 
+讨论提交的请求异常复用当前表单内的 `ActionErrorMessage` 与 `incident-reference`，保持正文、编辑器和操作区所在层级，不另开错误弹窗或替换整页。全局异常上报本身不新增提示界面；共享错误边界沿用安全说明、错误编号和恢复动作（D7，恢复语义见 UX-CONTRACT.md）。
+
 正文编辑破坏批注边界时也复用共享 `ModalDialog`：首个焦点和默认安全操作必须是“取消”，危险确认不得绑定 Enter。列表最多先展示五条受影响摘要，并明确说明撤下只发生在本地草稿、保存后才提交，Undo/放弃草稿仍可完整恢复。
 
 批注输入复用精简 Markdown 编辑器；用户只能从阅读页合法文本选区打开输入，不存在 Annotation Markdown 源码入口。移动端 thread 使用共享 ModalDialog 的 bottom-sheet 变体：限制高度、尊重安全区、内部可滚动并可由 Escape / 关闭按钮退出。

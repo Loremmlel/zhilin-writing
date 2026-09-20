@@ -17,6 +17,7 @@ export default function GlobalError({
           title="站点暂时无法显示"
           description="服务遇到了临时问题。请稍后重试；如果仍无法打开，可以先返回首页。"
           incidentId={error.digest}
+          error={error}
           reset={reset}
         />
       </body>

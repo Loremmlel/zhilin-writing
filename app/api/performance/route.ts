@@ -3,7 +3,7 @@ import { env } from "cloudflare:workers";
 import { getApiMemberAccess, getActionAdministratorAccess } from "@/lib/auth/access";
 import { MAX_BATCH, sanitizeClientRecord } from "@/lib/performance/shared";
 import { savePerformance } from "@/lib/performance/server";
-import { logServerError } from "@/lib/logging";
+import { logClientError, logServerError } from "@/lib/logging";
 
 export const dynamic = "force-dynamic";
 
@@ -47,6 +47,9 @@ export async function POST(request: Request) {
       "client",
       records.map((record) => ({ ...record, ...environment })),
     );
+    for (const record of records) {
+      if (record?.kind === "client_error") logClientError(record);
+    }
     return new Response(null, { status: 204, headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     const incidentId = logServerError({

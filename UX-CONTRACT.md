@@ -199,6 +199,8 @@
 - Version conflict: exact base revision check; no automatic merge。普通正文冲突提供 online/manual/explicit overwrite；若基础版本到当前版本之间发生任何 Annotation membership、anchor text 或 lifecycle 变化，服务端与界面都禁用 force overwrite，IndexedDB 本地草稿继续保留。
 - Stale-request handling: component effects use live flags/cleanup; file upload errors remain local and block post submission until retried or removed.
 - Mutation failure: editor state and draft remain intact.
+- 批注创建、批注回复与普通回复的请求异常由共享 `useRecoverableActionState` 留在当前表单，显示安全提示及错误编号；pending 结束后允许手动重试。正文与输入组件保持挂载，失败不刷新、不关闭弹窗、不触发成功清空；重试保留原 submissionKey。仅保留页面内输入，不增加批注草稿持久化。适用 U2/U4/U9/U10；React DOM 模拟环境验证失败、保留与重试，不冒充真实浏览器验收。
+- 全局运行时异常、未处理 Promise 和共享 React 错误边界统一向现有诊断通道报告。报告不接管浏览器默认行为，不决定导航、不自动重试业务；去重、限流、脱敏和送达边界由 `lib/client-errors.ts` / `docs/performance-probes.md` 统一维护。
 - DOCX parsing runs in a browser Worker with a 20-second hard timeout. User cancellation returns to file selection without a failure banner; unknown parser errors use actionable Chinese fallback copy and never expose raw worker messages. Import Preview persists in IndexedDB for 24 hours without the original binary; successful commit deletes the Preview record.
 - DOCX image uploads use existing temporary R2 assets. D1 failure leaves them temporary for the existing seven-day GC rather than attempting a cross-storage rollback.
 - `import_batch_id` and Preview-generated annotation/reply UUIDs remain stable across refresh and retry; duplicate commit returns the same post.
