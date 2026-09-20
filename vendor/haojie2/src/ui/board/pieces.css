@@ -1,0 +1,391 @@
+/* board/pieces.css — feature-owned rules; responsive states stay with their component. */
+.hj-game .base-token {
+  width: 11.111111%;
+  height: 7.692307%;
+  position: absolute;
+  z-index: 7;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--side);
+  background: radial-gradient(ellipse, var(--side-soft), transparent 76%);
+}
+.hj-game .base-token b {
+  font-size: 9px;
+  line-height: 1;
+  margin-top: 0;
+  font-weight: 700;
+}
+.hj-game .base-token svg {
+  width: 44%;
+  height: 44%;
+  max-width: 25px;
+}
+.hj-game .piece-wrap {
+  position: absolute;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  pointer-events: none;
+  z-index: 10;
+  /* Movement is a cancelable transform along the recorded path, never a layout tween. */
+}
+.hj-game .piece {
+  width: 76%;
+  height: 76%;
+  max-width: 56px;
+  max-height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid var(--side);
+  border-radius: 13px;
+  color: var(--side);
+  background: linear-gradient(140deg, #fffefb 0%, var(--side-soft) 100%);
+  box-shadow:
+    0 2px 0 color-mix(in srgb, var(--side), white 46%),
+    0 4px 8px #244b3d21;
+  position: relative;
+  transition:
+    box-shadow 0.2s,
+    transform 0.2s,
+    opacity 0.2s;
+}
+.hj-game .piece:after {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border: 1px solid color-mix(in srgb, var(--side), transparent 83%);
+  border-radius: 9px;
+  pointer-events: none;
+}
+.hj-game .piece strong {
+  font-family: 'Songti SC', 'Noto Serif CJK SC', 'SimSun', serif;
+  font-size: clamp(18px, 1.8vw, 25px);
+  line-height: 1;
+  font-weight: 650;
+  transform: translateY(-4px);
+}
+.hj-game .piece-code {
+  position: absolute;
+  top: 2px;
+  left: 4px;
+  font-size: 6px;
+  opacity: 0.6;
+  line-height: 1;
+}
+.hj-game .piece-hp {
+  position: absolute;
+  bottom: 3px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 8px;
+  line-height: 1;
+  font-weight: 650;
+}
+.hj-game .piece-health {
+  height: 3px;
+  position: absolute;
+  bottom: -3px;
+  left: 4px;
+  right: 4px;
+  background: #d8dfcc;
+  overflow: hidden;
+  border-radius: 4px;
+  box-shadow: 0 1px 0 #fffffa80;
+}
+.hj-game .piece-health i {
+  display: block;
+  height: 100%;
+  background: var(--side);
+  transition: width 0.5s ease 0.12s;
+}
+.hj-game .piece-heading {
+  position: absolute;
+  bottom: -7px;
+  width: 0;
+  height: 0;
+  border: 3px solid transparent;
+  border-top-color: var(--side);
+  opacity: 0.7;
+}
+.hj-game .p2 .piece-heading {
+  bottom: auto;
+  top: -7px;
+  transform: rotate(180deg);
+}
+.hj-game .piece-selected {
+  z-index: 15;
+}
+.hj-game .piece-selected .piece {
+  transform: translateY(-2px) scale(1.05);
+  box-shadow:
+    0 3px 0 color-mix(in srgb, var(--side), white 46%),
+    0 0 0 3px color-mix(in srgb, var(--side), transparent 82%),
+    0 8px 15px #1d53482d;
+}
+.hj-game .piece.sleeping {
+  opacity: 0.67;
+  box-shadow:
+    0 2px 0 #c2cdbb,
+    0 3px 6px #46624312;
+}
+.hj-game .action-pips {
+  position: absolute;
+  bottom: 0;
+  left: 16%;
+  right: 16%;
+  display: flex;
+  justify-content: center;
+  gap: 2px;
+}
+.hj-game .action-pips i {
+  width: 3px;
+  height: 3px;
+  background: #c9d0bf;
+  border-radius: 50%;
+}
+.hj-game .action-pips i.available {
+  background: var(--side);
+}
+.hj-game .sleep-badge {
+  position: absolute;
+  right: 2px;
+  top: 0;
+  background: #f5f4e9e0;
+  border: 1px solid #d9dfcf;
+  border-radius: 3px;
+  font-size: 6px;
+  line-height: 1.25;
+  padding: 1px;
+  color: #8c998a;
+}
+.hj-game .large-piece .piece {
+  width: 87%;
+  height: 87%;
+  max-width: none;
+  max-height: none;
+  border-radius: 20px;
+  background: linear-gradient(140deg, #fff9f0, var(--side-soft));
+  box-shadow:
+    0 3px 0 color-mix(in srgb, var(--side), white 46%),
+    0 5px 10px #244b3d21;
+}
+.hj-game .large-piece .piece strong {
+  font-size: 39px;
+  transform: translateY(-4px);
+}
+.hj-game .large-piece .piece:after {
+  inset: 5px;
+  border-radius: 15px;
+}
+.hj-game .large-piece .piece-hp {
+  font-size: 12px;
+  bottom: 8px;
+}
+.hj-game .large-piece .piece-code {
+  font-size: 9px;
+  top: 7px;
+  left: 9px;
+}
+.hj-game .shield-halo {
+  position: absolute;
+  inset: -5px;
+  border: 2px solid #ceb779;
+  border-radius: 16px;
+  box-shadow: 0 0 12px #e6d18855;
+  animation: hj-ward 2s ease-in-out infinite;
+}
+.hj-game .mark-dot {
+  position: absolute;
+  right: -5px;
+  top: -6px;
+  background: #c77954;
+  color: #fff7dc;
+  border: 2px solid #fffbed;
+  border-radius: 50%;
+  width: 11px;
+  height: 11px;
+  line-height: 5px;
+  text-align: center;
+  font-size: 20px;
+}
+@container haojie (max-width: 820px) {
+  .hj-game .piece strong {
+    font-size: clamp(18px, 4.7vw, 27px);
+  }
+  .hj-game .piece {
+    border-radius: 11px;
+  }
+  .hj-game .piece:after {
+    border-radius: 7px;
+  }
+  .hj-game .large-piece .piece strong {
+    font-size: 34px;
+  }
+  .hj-game .piece-hp {
+    font-size: 8px;
+    bottom: 2px;
+  }
+  .hj-game .large-piece .piece-hp {
+    font-size: 12px;
+    bottom: 8px;
+  }
+  .hj-game .piece-code {
+    font-size: 6px;
+  }
+}
+@container haojie (max-width: 450px) {
+  .hj-game .piece-code {
+    top: 2px;
+    left: 3px;
+    font-size: 5px;
+  }
+  .hj-game .piece-hp {
+    font-size: 7px;
+  }
+  .hj-game .piece strong {
+    font-size: 18px;
+    transform: translateY(-3px);
+  }
+  .hj-game .piece {
+    width: 80%;
+    height: 79%;
+    border-radius: 9px;
+  }
+  .hj-game .piece:after {
+    inset: 2px;
+    border-radius: 6px;
+  }
+  .hj-game .piece-heading {
+    display: none;
+  }
+  .hj-game .large-piece .piece strong {
+    font-size: 30px;
+  }
+  .hj-game .large-piece .piece-hp {
+    font-size: 10px;
+    bottom: 7px;
+  }
+}
+.hj-game .ultimate-piece .piece {
+  border-color: #b7964e;
+  box-shadow:
+    0 2px 0 #ab9151,
+    0 0 0 1px #f5e4b388,
+    0 4px 9px #5a43242d;
+}
+.hj-game .ultimate-piece .piece:before {
+  content: '✦';
+  position: absolute;
+  right: -6px;
+  top: -7px;
+  color: #c5a24a;
+  font-size: 12px;
+  text-shadow: 0 0 6px #f1d575;
+  z-index: 4;
+}
+.hj-game .ultimate-piece .piece-code {
+  color: #9c7d35;
+  font-weight: 700;
+  opacity: 1;
+}
+.hj-game .neutral-piece {
+  --side: #648997 !important;
+  --side-soft: #e2edf2 !important;
+}
+.hj-game .neutral-piece .piece {
+  background: linear-gradient(130deg, #f3fbff, #bcd9e9);
+  border-color: #82adbd;
+  box-shadow:
+    0 0 0 2px #bedfe155,
+    0 2px 7px #66a2c544;
+}
+.hj-game .frost-crystal {
+  position: absolute;
+  right: -6px;
+  top: -8px;
+  color: #7bacc6;
+  background: #f2fcff;
+  border: 1px solid #b8dbea;
+  border-radius: 50%;
+  font-size: 12px;
+  width: 17px;
+  height: 17px;
+  display: grid;
+  place-items: center;
+  z-index: 5;
+}
+.hj-game .gear-dot {
+  position: absolute;
+  right: -5px;
+  bottom: -3px;
+  border: 1px solid #bca069;
+  border-radius: 4px;
+  background: #fff7de;
+  color: #948056;
+  font-size: 7px;
+  line-height: 1.1;
+  padding: 2px;
+  z-index: 5;
+}
+.hj-game .silence-dot {
+  position: absolute;
+  left: -5px;
+  top: 4px;
+  background: #716b73;
+  color: #fff9ed;
+  border: 1px solid #f6f0e8;
+  border-radius: 4px;
+  font-size: 7px;
+  padding: 1px 2px;
+  z-index: 6;
+}
+.hj-game .stack-badge {
+  position: absolute;
+  right: 0;
+  top: -3px;
+  color: #9a7135;
+  background: #fbf2d9;
+  border: 1px solid #c9ac6d;
+  border-radius: 5px;
+  font-size: 8px;
+  line-height: 1.2;
+  padding: 2px 3px;
+  box-shadow: 1px 2px 0 #d3c091;
+  z-index: 7;
+}
+.hj-game .base-mark {
+  position: absolute;
+  right: 3px;
+  top: 3px;
+  color: #b77548;
+  font-size: 8px;
+}
+@container haojie (min-width: 1091px) {
+  .hj-game .piece strong {
+    font-size: clamp(18px, 2.1vw, 25px);
+  }
+  .hj-game .large-piece .piece strong {
+    font-size: 34px;
+  }
+}
+
+/* Glyphs follow the available board height, not the monitor width. */
+@container haojie (min-width: 1100px) {
+  .hj-game .piece strong {
+    font-size: clamp(15px, 2.8cqh, 27px);
+  }
+  .hj-game .piece {
+    border-radius: clamp(8px, 1.6cqh, 13px);
+  }
+  .hj-game .piece-hp {
+    font-size: clamp(7px, 1cqh, 10px);
+  }
+  .hj-game .large-piece .piece strong {
+    font-size: clamp(26px, 5cqh, 42px);
+  }
+}

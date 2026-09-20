@@ -78,7 +78,7 @@ test("asset failures remain per-file and unsafe attachments are downloaded", asy
   assert.match(postForm, /uploadAttachment\(task\.file, task\.id\)/);
   assert.match(assetRoute, /x-content-type-options/);
   assert.match(assetRoute, /\? "inline" : "attachment"/);
-  assert.match(storage, /await env\.BUCKET\.delete\(r2Key\)/);
+  assert.match(storage, /await measuredBucket\(env\.BUCKET\)\.delete\(r2Key\)/);
 });
 
 test("V7 polish keeps lifecycle states out of 404 and provides local recovery and mobile containment", async () => {

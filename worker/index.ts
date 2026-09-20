@@ -4,7 +4,12 @@ import {
   savePerformance,
   observeResponseBody,
 } from "../lib/performance/server";
-import { performanceRoute, milliseconds, PERFORMANCE_ENDPOINT } from "../lib/performance/shared";
+import {
+  performanceRoute,
+  milliseconds,
+  PERFORMANCE_ENDPOINT,
+  shouldSamplePerformance,
+} from "../lib/performance/shared";
 /** Cloudflare Worker entry point for the vinext-starter template. */
 import {
   handleImageOptimization,
@@ -79,17 +84,21 @@ const observedWorker = {
     return requestPerformance.run(context, async () => {
       const started = performance.now();
       let status = 500;
+      let sampled = true;
       try {
         const response = await worker.fetch(request, env, ctx);
         status = response.status;
+        sampled = shouldSamplePerformance(request.method, url.pathname, status);
         const headers = new Headers(response.headers);
         headers.append(
           "Server-Timing",
           `app;dur=${milliseconds(performance.now() - started)}, db;dur=${milliseconds(context.dbMs)}, dbcount;dur=${context.dbCount}, dbtrips;dur=${context.dbTrips}, r2;dur=${milliseconds(context.r2Ms)}, r2count;dur=${context.r2Count}, request;desc="${context.requestId}"`,
         );
         headers.set("X-Request-Id", context.requestId);
+        if (!sampled) headers.append("Server-Timing", 'telemetry;desc="skip"');
         const body = response.body
           ? observeResponseBody(response.body, (outcome) => {
+              if (!sampled && outcome !== "error") return;
               ctx.waitUntil(
                 savePerformance(env.DB, "server", [
                   {
@@ -152,7 +161,7 @@ const observedWorker = {
           r2Ms: milliseconds(context.r2Ms),
           r2Count: context.r2Count,
         };
-        ctx.waitUntil(savePerformance(env.DB, "server", [record]));
+        if (sampled) ctx.waitUntil(savePerformance(env.DB, "server", [record]));
       }
     });
   },

@@ -1,0 +1,104 @@
+/* shared/modal.css — feature-owned rules; responsive states stay with their component. */
+.hj-game .modal {
+  border: 1px solid #d8dfd0;
+  border-radius: 18px;
+  background: var(--panel);
+  color: var(--ink);
+  padding: 0;
+  width: min(94vw, 560px);
+  max-height: 88vh;
+  box-shadow: 0 20px 100px #15332e45;
+  overflow: hidden;
+  animation: hj-dialog 0.22s ease-out;
+}
+.hj-game .modal.wide {
+  width: min(94vw, 1010px);
+}
+.hj-game .modal::backdrop {
+  background: #1b363b77;
+  backdrop-filter: blur(5px);
+}
+.hj-game .modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+  border-bottom: 1px solid var(--line);
+  padding: 25px 29px 20px;
+  background: #fbfcf5;
+}
+.hj-game .modal-header h2 {
+  font-size: 25px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  margin-top: 5px;
+}
+.hj-game .modal-header div > p:last-child:not(.eyebrow) {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 7px;
+  line-height: 1.8;
+}
+.hj-game .modal-body {
+  padding: 22px 28px 25px;
+  max-height: calc(88vh - 148px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.hj-game .new-match-art {
+  padding: 15px 0 30px;
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  gap: 15px;
+  color: #899d74;
+}
+.hj-game .new-match-art span {
+  font-size: 11px;
+  color: #a7b596;
+  letter-spacing: 1px;
+}
+.hj-game .seed-field {
+  font-size: 12px;
+  color: #6c855c;
+  display: block;
+}
+.hj-game .seed-field > span {
+  float: right;
+  font-size: 10px;
+  color: #acb89c;
+}
+.hj-game .seed-field input {
+  margin: 8px 0 8px;
+  padding: 11px 13px;
+  border: 1px solid #d8e3c8;
+  border-radius: 8px;
+  width: 100%;
+  color: #566e45;
+  background: #f9fbf2;
+  outline: 0;
+  font-size: 12px;
+}
+@container haojie (max-width: 820px) {
+  .hj-game .modal {
+    width: 96vw;
+    max-height: 92vh;
+    border-radius: 13px;
+  }
+  .hj-game .modal.wide {
+    width: 96vw;
+  }
+  .hj-game .modal-header {
+    padding: 18px 19px 15px;
+  }
+  .hj-game .modal-header h2 {
+    font-size: 21px;
+  }
+  .hj-game .modal-header div > p:last-child:not(.eyebrow) {
+    font-size: 10px;
+  }
+  .hj-game .modal-body {
+    padding: 16px 17px 20px;
+    max-height: calc(92vh - 138px);
+  }
+}

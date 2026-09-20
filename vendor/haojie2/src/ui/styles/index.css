@@ -1,0 +1,27 @@
+/* Stable cascade: foundation → features → reduced-motion overrides. All imports inline at build time. */
+@import 'tokens.css';
+@import '../shared/controls.css';
+@import '../shared/runes.css';
+@import '../game/layout.css';
+@import '../game/header.css';
+@import '../game/scoreboard.css';
+@import '../inspector/inspector.css';
+@import '../inspector/status.css';
+@import '../inspector/actions.css';
+@import '../board/board.css';
+@import '../board/pieces.css';
+@import '../board/effects.css';
+@import '../board/vfx/vfx.css';
+@import '../board/commands.css';
+@import '../hand/hand.css';
+@import '../hand/summoning.css';
+@import '../hand/synthesis.css';
+@import '../feedback/log.css';
+@import '../feedback/feedback.css';
+@import '../shared/modal.css';
+@import '../library/codex.css';
+@import '../library/rules.css';
+@import '../shrine/shrine.css';
+@import 'motion.css';
+
+@import '../opponent/opponent.css';

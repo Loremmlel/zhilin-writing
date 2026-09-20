@@ -1,0 +1,262 @@
+/* inspector/status.css — feature-owned rules; responsive states stay with their component. */
+.hj-game .live-stats {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px;
+  padding: 12px 0;
+  border-top: 1px solid #eceee6;
+  border-bottom: 1px solid #eceee6;
+}
+.hj-game .live-stats > div {
+  grid-column: span 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+.hj-game .live-stats > div:nth-child(n + 4) {
+  grid-column: span 3;
+}
+.hj-game .live-stats span {
+  font-size: 9px;
+  color: var(--muted);
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+.hj-game .live-stats b {
+  font-size: 16px;
+  font-weight: 650;
+  line-height: 1.4;
+  font-variant-numeric: tabular-nums;
+}
+.hj-game .status-tags {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+.hj-game .status-tags span {
+  font-size: 9px;
+  padding: 2px 5px;
+  border-radius: 4px;
+  background: #f2eee1;
+  color: #94743e;
+}
+.hj-game .status-tags .upcoming {
+  background: var(--teal-soft);
+  color: var(--teal);
+}
+.hj-game .charge-meter {
+  margin-top: 14px;
+  font-size: 10px;
+  color: var(--muted);
+}
+.hj-game .charge-meter > span {
+  display: flex;
+  justify-content: space-between;
+}
+.hj-game .charge-meter b {
+  color: var(--gold);
+}
+.hj-game .charge-meter > div {
+  display: flex;
+  gap: 4px;
+  margin-top: 5px;
+}
+.hj-game .charge-meter i {
+  height: 5px;
+  flex: 1;
+  border-radius: 3px;
+  background: #eeede1;
+}
+.hj-game .charge-meter i.filled {
+  background: #b9a067;
+}
+@container haojie (max-width: 820px) {
+  .hj-game .live-stats {
+    display: flex;
+    justify-content: space-between;
+    border: 0;
+    padding: 7px 0 0;
+    gap: 8px;
+  }
+  .hj-game .live-stats > div {
+    flex-direction: row;
+    gap: 6px;
+  }
+  .hj-game .live-stats span {
+    font-size: 8px;
+    gap: 2px;
+  }
+  .hj-game .live-stats span svg {
+    width: 10px;
+  }
+  .hj-game .live-stats b {
+    font-size: 11px;
+  }
+}
+@container haojie (max-width: 450px) {
+  .hj-game .live-stats span {
+    font-size: 7px;
+  }
+  .hj-game .live-stats span svg {
+    display: none;
+  }
+  .hj-game .live-stats b {
+    font-size: 10px;
+  }
+}
+.hj-game .operation-state {
+  display: flex;
+  justify-content: space-between;
+  gap: 5px;
+  font-size: 10px;
+  padding-top: 9px;
+  color: #8a987c;
+}
+.hj-game .operation-state b {
+  color: var(--side);
+  font-weight: 600;
+}
+.hj-game .sequence-hint {
+  font-size: 9px;
+  background: #f4eedb;
+  border-radius: 5px;
+  color: #9d8451;
+  padding: 6px 8px;
+  margin-top: 8px;
+}
+.hj-game .status-tags .equipment-tag {
+  background: #e4e8ed;
+  color: #65758b;
+}
+.hj-game .stack-selector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  font-size: 9px;
+  margin-top: 10px;
+  color: #859777;
+}
+.hj-game .stack-selector span {
+  width: 100%;
+  padding-bottom: 3px;
+}
+.hj-game .stack-selector button {
+  padding: 3px 7px;
+  min-height: 24px;
+  min-width: 24px;
+  border: 1px solid #dbe3cf;
+  border-radius: 5px;
+}
+.hj-game .stack-selector button.active {
+  background: var(--side-soft);
+  border-color: var(--side);
+  color: var(--side);
+}
+@container haojie (max-width: 820px) {
+  .hj-game .operation-state {
+    font-size: 8px;
+    padding-top: 5px;
+  }
+  .hj-game .sequence-hint {
+    padding: 5px;
+    margin-top: 5px;
+    font-size: 8px;
+  }
+  .hj-game .stack-selector {
+    margin-top: 6px;
+    font-size: 8px;
+  }
+  .hj-game .stack-selector button {
+    min-width: 26px;
+    min-height: 25px;
+  }
+}
+
+@container haojie (min-width: 1100px) {
+  .hj-game .live-stats {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 5px;
+    padding: 8px 0;
+  }
+  .hj-game .live-stats > div,
+  .hj-game .live-stats > div:nth-child(n + 4) {
+    grid-column: auto;
+  }
+  .hj-game .live-stats b {
+    font-size: 14px;
+  }
+  .hj-game .live-stats span {
+    gap: 2px;
+    font-size: 9px;
+  }
+  .hj-game .live-stats span svg {
+    width: 11px;
+  }
+  .hj-game .status-tags:empty {
+    display: none;
+  }
+}
+
+.hj-game .unit-status {
+  border-top: 1px solid var(--line);
+  margin-top: 10px;
+  padding-top: 9px;
+  min-width: 0;
+}
+.hj-game .unit-status summary {
+  font-size: 12px;
+  font-weight: 650;
+  margin-bottom: 6px;
+}
+.hj-game .unit-status ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 6px;
+}
+.hj-game .unit-status li {
+  display: grid;
+  gap: 2px;
+  border-left: 2px solid var(--side);
+  padding: 5px 7px;
+  background: var(--paper);
+  border-radius: 0 5px 5px 0;
+  overflow-wrap: anywhere;
+}
+.hj-game .unit-status li.upcoming {
+  border-left-style: dashed;
+  background: var(--side-soft);
+}
+.hj-game .unit-status b {
+  font-size: 11px;
+  font-weight: 650;
+}
+.hj-game .unit-status span,
+.hj-game .unit-status > p {
+  color: var(--ink);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.hj-game .unit-status summary {
+  cursor: pointer;
+}
+.hj-game .unit-status summary:hover {
+  color: var(--ink);
+}
+.hj-game .unit-status summary:focus-visible {
+  outline: 2px solid var(--side);
+  outline-offset: 3px;
+}
+.hj-game .move-directions,
+.hj-game .path-controls {
+  margin-top: 10px;
+}
+.hj-game .path-controls > p {
+  margin: 8px 0;
+  font-size: 11px;
+}

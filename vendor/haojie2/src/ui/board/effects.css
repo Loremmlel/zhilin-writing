@@ -1,0 +1,80 @@
+.hj-game .hazard {
+  pointer-events: none;
+  position: absolute;
+  z-index: 4;
+  background: repeating-linear-gradient(
+    135deg,
+    #c49b3126 0,
+    #d765432b 5px,
+    transparent 5px,
+    transparent 13px
+  );
+  animation: hj-hazard 2s ease-in-out infinite;
+}
+.hj-game .hazard-row {
+  left: 0;
+  right: 0;
+  border-top: 1px dashed #bd7758;
+  border-bottom: 1px dashed #bd7758;
+}
+.hj-game .hazard-column {
+  top: 0;
+  bottom: 0;
+  border-left: 1px dashed #bd7758;
+  border-right: 1px dashed #bd7758;
+}
+.hj-game .ice-ground {
+  position: absolute;
+  z-index: 5;
+  width: 11.111111%;
+  height: 7.692307%;
+  display: grid;
+  place-items: center;
+  color: #7fabbac9;
+  background: #97c7db33;
+  border: 1px dashed #9cbbca;
+  pointer-events: none;
+  font-size: 24px;
+}
+.hj-game .siphon-layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 5;
+  pointer-events: none;
+}
+.hj-game .siphon-thread {
+  fill: none;
+  stroke: #9176a9;
+  stroke-width: 5;
+  opacity: 0.5;
+  stroke-dasharray: 12 8;
+  animation: hj-siphon 2s linear infinite;
+}
+.hj-game .siphon-direction {
+  stroke: #85679b;
+  fill: none;
+  stroke-width: 3;
+  opacity: 0.7;
+}
+.hj-game .ice-ground svg {
+  width: 80%;
+  height: 80%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+}
+.hj-game .pending-seal {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  border: 1px dashed #ad8541;
+  color: #85679b;
+  background: var(--panel);
+  border-radius: 3px;
+  font-size: 9px;
+  line-height: 13px;
+  min-width: 13px;
+  text-align: center;
+}

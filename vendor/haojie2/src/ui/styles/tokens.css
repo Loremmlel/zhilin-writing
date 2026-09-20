@@ -1,0 +1,73 @@
+/* styles/tokens.css — feature-owned rules; responsive states stay with their component. */
+.hj-game {
+  container: haojie / inline-size;
+  --paper: #f5f4ef;
+  --panel: #fffef9;
+  --ink: #243c3e;
+  --muted: #83908a;
+  --line: #e1e5dc;
+  --teal: #177e82;
+  --teal-soft: #e2f0ea;
+  --ember: #bd5942;
+  --ember-soft: #f6e8df;
+  --gold: #b28a49;
+  --side: var(--teal);
+  --side-soft: var(--teal-soft);
+  color: var(--ink);
+  background: radial-gradient(ellipse at 0 20%, #e6eee52e, transparent 60%), var(--paper);
+  font-family: Inter, 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+  min-height: 100vh;
+  text-align: left;
+  color-scheme: light;
+}
+.hj-game * {
+  box-sizing: border-box;
+}
+.hj-game input {
+  font: inherit;
+}
+.hj-game input:focus-visible,
+.hj-game summary:focus-visible {
+  outline: 3px solid #258c8b77;
+  outline-offset: 3px;
+}
+.hj-game h1,
+.hj-game h2,
+.hj-game h3,
+.hj-game h4,
+.hj-game p {
+  margin: 0;
+}
+.hj-game .p1 {
+  --side: var(--teal);
+  --side-soft: var(--teal-soft);
+}
+.hj-game .p2 {
+  --side: var(--ember);
+  --side-soft: var(--ember-soft);
+}
+.hj-game input[type='checkbox'] {
+  accent-color: var(--side);
+  margin-top: 3px;
+}
+.hj-game summary {
+  font-size: 12px;
+  cursor: pointer;
+  font-weight: 550;
+}
+.hj-game summary > span {
+  font-size: 9px;
+  color: #b5a578;
+  float: right;
+  font-weight: 400;
+}
+@container haojie (max-width: 820px) {
+  .hj-game summary {
+    font-size: 11px;
+  }
+  .hj-game summary > span {
+    display: none;
+  }
+}

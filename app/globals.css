@@ -1,5 +1,122 @@
 @import "tailwindcss";
 
+/* The host owns room navigation; the pinned game owns everything inside .hj-game. */
+.haojie-create {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px 24px;
+  padding: 0 0 var(--section-gap);
+  border-bottom: 1px solid var(--line);
+}
+.haojie-create fieldset {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.haojie-create legend {
+  margin-bottom: 8px;
+  font-size: 14px;
+  color: var(--muted);
+}
+.haojie-create label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--control-height);
+  cursor: pointer;
+}
+.haojie-create input {
+  accent-color: var(--green);
+}
+.haojie-create .form-error {
+  flex-basis: 100%;
+}
+.haojie-list-title {
+  margin: 28px 0 12px;
+  font-size: 18px;
+}
+.haojie-room-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.haojie-room-list li {
+  border-bottom: 1px solid var(--line);
+}
+.haojie-room-list a {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  padding: 20px 8px;
+}
+.haojie-room-list a:hover {
+  background: var(--green-pale);
+}
+.haojie-room-list strong,
+.haojie-room-bar strong {
+  overflow-wrap: anywhere;
+}
+.haojie-room-list .muted,
+.haojie-room-bar .muted {
+  font-size: 14px;
+}
+.haojie-room-bar,
+.haojie-result {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+  padding: 16px 0;
+  border-block: 1px solid var(--line);
+}
+.haojie-room-bar p {
+  margin: 6px 0 0;
+}
+.haojie-room-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.haojie-sync {
+  min-height: 48px;
+  padding: 10px 0;
+  font-size: 14px;
+  color: var(--muted);
+}
+.haojie-sync p {
+  margin: 0 0 6px;
+}
+.haojie-result {
+  margin-bottom: 20px;
+}
+.haojie-join {
+  min-width: 130px;
+}
+.haojie-room .hj-game {
+  min-height: 0;
+  isolation: isolate;
+  border-radius: var(--radius);
+}
+@media (max-width: 640px) {
+  .haojie-room-actions {
+    width: 100%;
+  }
+  .haojie-room-actions .button {
+    flex: 1;
+  }
+  .haojie-room-list a {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
 :root {
   --paper: #fbfaf7;
   --paper-strong: #fffefa;

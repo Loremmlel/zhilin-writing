@@ -90,6 +90,8 @@ export function installPerformanceProbe() {
     const url = new URL(entry.name, location.href);
     if (url.origin !== location.origin || url.pathname === PERFORMANCE_ENDPOINT) return;
     const timing = (name: string) => entry.serverTiming?.find((item) => item.name === name);
+    // The server makes one sampling decision for both sides of routine game polls.
+    if (timing("telemetry")?.description === "skip" && entry.responseStatus < 400) return;
     const record: Record<string, unknown> = {
       kind: entry.entryType,
       route: performanceRoute(url.pathname),

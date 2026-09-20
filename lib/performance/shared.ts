@@ -1,6 +1,19 @@
 export const PERFORMANCE_ENDPOINT = "/api/performance";
 export const MAX_BATCH = 30;
 
+export function isHaojiePoll(path: string) {
+  return /^\/api\/haojie\/rooms\/[0-9a-f-]{36}$/.test(path);
+}
+
+export function shouldSamplePerformance(
+  method: string,
+  path: string,
+  status: number,
+  sample = Math.random(),
+) {
+  return method !== "GET" || !isHaojiePoll(path) || status >= 400 || sample < 0.01;
+}
+
 // Only route shapes are retained; query strings, names and unknown paths are never logged.
 export function performanceRoute(path: string): string {
   path = path.replace(/\.rsc$/, "") || "/";
@@ -16,6 +29,10 @@ export function performanceRoute(path: string): string {
   if (/^\/tags\/[^/]+$/.test(path)) return "/tags/:name";
   if (/^\/notifications\/[^/]+$/.test(path)) return "/notifications/:id";
   if (/^\/admin\/revisions\/[^/]+$/.test(path)) return "/admin/revisions/:id";
+  if (path === "/games/haojie" || path === "/api/haojie/rooms") return path;
+  if (/^\/games\/haojie\/[^/]+$/.test(path)) return "/games/haojie/:id";
+  if (/^\/api\/haojie\/rooms\/[^/]+(?:\/(?:join|commands|finish))?$/.test(path))
+    return path.replace(/^(\/api\/haojie\/rooms)\/[^/]+/, "$1/:id");
   const clean = path.replace(/\/$/, "") || "/";
   if (/^\/(?:posts|users|api\/assets)\/[^/]+(?:\/(?:edit|history))?$/.test(clean))
     return clean.replace(/^(\/(?:posts|users|api\/assets))\/[^/]+/, "$1/:id");

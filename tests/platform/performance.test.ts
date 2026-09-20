@@ -9,7 +9,22 @@ import {
   savePerformance,
   observeResponseBody,
 } from "../../lib/performance/server.ts";
-import { performanceRoute, sanitizeClientRecord } from "../../lib/performance/shared.ts";
+import {
+  performanceRoute,
+  sanitizeClientRecord,
+  shouldSamplePerformance,
+} from "../../lib/performance/shared.ts";
+
+test("routine game polls are sampled while commands and failed polls retain diagnostics", () => {
+  const path = "/api/haojie/rooms/00000000-0000-4000-8000-000000000001";
+  assert.equal(shouldSamplePerformance("GET", path, 204, 0.5), false);
+  assert.equal(shouldSamplePerformance("GET", path, 200, 0.005), true);
+  assert.equal(shouldSamplePerformance("GET", path, 500, 0.5), true);
+  assert.equal(shouldSamplePerformance("POST", `${path}/commands`, 200, 0.5), true);
+  assert.equal(shouldSamplePerformance("GET", "/posts/x", 200, 0.5), true);
+  assert.equal(performanceRoute(path), "/api/haojie/rooms/:id");
+  assert.equal(performanceRoute(`${path}/commands`), "/api/haojie/rooms/:id/commands");
+});
 
 test("response probe preserves streamed bytes, cancellation and errors without reading ahead", async () => {
   let reads = 0;

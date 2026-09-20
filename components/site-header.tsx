@@ -9,10 +9,12 @@ export function SiteHeader({
   member,
   isAdmin,
   unreadCount,
+  haojieEnabled = false,
 }: {
   member: SiteUser;
   isAdmin: boolean;
   unreadCount: number;
+  haojieEnabled?: boolean;
 }) {
   return (
     <header className="site-header">
@@ -46,7 +48,7 @@ export function SiteHeader({
           <Link href="/posts/new" className="button button--primary button--write">
             写帖子
           </Link>
-          <AccountMenu member={member} isAdmin={isAdmin} />
+          <AccountMenu member={member} isAdmin={isAdmin} haojieEnabled={haojieEnabled} />
         </nav>
       </div>
     </header>

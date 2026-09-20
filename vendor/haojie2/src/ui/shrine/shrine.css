@@ -1,0 +1,156 @@
+/* Shrine additions use the existing board's ink, paper and faction tokens. */
+.hj-game .rules-choice {
+  display: grid;
+  gap: 8px;
+  margin-block: 12px;
+}
+.hj-game .rules-choice select {
+  width: 100%;
+  min-width: 0;
+}
+.hj-game .shrine-draft,
+.hj-game .shrine-setup,
+.hj-game .shrine-auras {
+  display: grid;
+  gap: 12px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--line);
+}
+.hj-game .shrine-status,
+.hj-game .shrine-setup p,
+.hj-game .shrine-draft p {
+  font-size: 12px;
+  line-height: 1.6;
+  margin: 0;
+}
+.hj-game .shrine-offers {
+  display: grid;
+  gap: 8px;
+}
+.hj-game .shrine-choice {
+  display: grid;
+  gap: 8px;
+  text-align: left;
+  padding: 12px;
+  height: auto;
+  white-space: normal;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.hj-game .shrine-choice[aria-pressed='true'] {
+  outline: 2px solid var(--side);
+  outline-offset: -2px;
+}
+.hj-game .shrine-choice-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.hj-game .shrine-choice .definition-stats {
+  margin: 0;
+}
+.hj-game .shrine-opponent,
+.hj-game .shrine-auras {
+  font-size: 12px;
+  line-height: 1.6;
+}
+.hj-game .shrine-opponent details {
+  margin: 8px 0;
+}
+.hj-game .shrine-auras h3 {
+  font-size: 12px;
+  margin: 0 0 6px;
+}
+.hj-game .shrine-preview {
+  margin-block: 16px;
+}
+.hj-game .summon-offer {
+  display: grid;
+  gap: 12px;
+  padding-block: 16px;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.hj-game .summon-offer label {
+  display: flex;
+  align-items: start;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.hj-game .summon-offer small {
+  display: block;
+}
+.hj-game .extra-summons {
+  display: grid;
+  gap: 6px;
+  grid-column: 1 / -1;
+}
+.hj-game .landmark-tile {
+  position: absolute;
+  box-sizing: border-box;
+  border: 3px double var(--player);
+  background: color-mix(in srgb, var(--player) 8%, transparent);
+  pointer-events: none;
+  z-index: 3;
+}
+.hj-game .landmark-tile.p1 {
+  --player: var(--teal);
+}
+.hj-game .landmark-tile.p2 {
+  --player: var(--ember);
+}
+.hj-game .landmark-tile.dormant {
+  border-style: dashed;
+  opacity: 0.6;
+}
+.hj-game .landmark-tile.selected {
+  outline: 2px solid var(--gold);
+  outline-offset: -2px;
+}
+.hj-game .landmark-tile span,
+.hj-game .landmark-tile b {
+  position: absolute;
+  bottom: 0;
+  padding: 1px 3px;
+  font-size: clamp(8px, 0.8vw, 12px);
+  line-height: 1;
+  color: var(--player);
+  background: var(--paper);
+}
+.hj-game .landmark-tile span {
+  left: 0;
+}
+.hj-game .landmark-tile b {
+  right: 0;
+}
+@media (max-width: 600px) {
+  .hj-game .shrine-choice {
+    padding: 10px;
+  }
+  .hj-game .shrine-choice-heading {
+    flex-wrap: wrap;
+  }
+}
+
+.hj-game .target-layer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  font-size: 11px;
+}
+.hj-game .target-layer button {
+  padding: 5px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+.hj-game .target-layer button[aria-pressed='true'] {
+  color: var(--teal);
+  background: var(--teal-soft);
+}
+.hj-game .shrine-choice {
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--paper);
+}

@@ -104,6 +104,6 @@ test("list queries batch related rows instead of querying once per rendered item
   assert.doesNotMatch(source, /rows\.map\(async \(tag\)/);
   assert.match(source, /inArray\(postTags\.postId, ids\)/);
   assert.match(source, /groupBy\(replies\.postId\)/);
-  assert.match(source, /replyToById/);
+  assert.match(source, /leftJoin\(targetUser, eq\(replies\.replyToUserId, targetUser\.id\)\)/);
   assert.match(source, /loadLifecycleQueryContext/);
 });

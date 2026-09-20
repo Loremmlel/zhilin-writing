@@ -8,7 +8,15 @@ import type { SiteUser } from "@/db/schema";
 import { isAccountMenuDismissKey, isOutsideAccountMenu } from "@/lib/ui/account-menu";
 import { Avatar } from "./avatar";
 
-export function AccountMenu({ member, isAdmin }: { member: SiteUser; isAdmin: boolean }) {
+export function AccountMenu({
+  member,
+  isAdmin,
+  haojieEnabled = false,
+}: {
+  member: SiteUser;
+  isAdmin: boolean;
+  haojieEnabled?: boolean;
+}) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -62,6 +70,11 @@ export function AccountMenu({ member, isAdmin }: { member: SiteUser; isAdmin: bo
           <Link href="/tags" onClick={() => setOpen(false)}>
             全部标签
           </Link>
+          {haojieEnabled && (
+            <Link href="/games/haojie" onClick={() => setOpen(false)}>
+              浩劫 2
+            </Link>
+          )}
           {isAdmin && (
             <Link href="/admin" onClick={() => setOpen(false)}>
               管理后台

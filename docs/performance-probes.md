@@ -75,3 +75,7 @@
 - 增加连接有效类型、估算 RTT/下行带宽（浏览器支持时）、前台/后台、在线状态、HTTP 协议、资源类型及传输前后字节数。`preRequestMs` 是 startTime 至 requestStart，包含排队、重定向、建连等，不能叫纯排队时间。导航 duration 改为 responseEnd-startTime，避免 load 完成前得到零；DOM 时刻仍单独记录。
 - 服务端记录预取标记；fetch 失败区分 AbortError、TypeError 和其它错误（TypeError 也不必然是网络故障）。交互保留受限事件类型。性能上下文关联已记录错误的 incidentId，避免 HTTP 200 的失败 Action 混入成功样本。
 - 分组数据只用于管理员诊断，不参与鉴权。仍为 5,000 条滚动上限；客户端同时限制每批 30 条及约 23KB，上报失败不重试。
+
+# 浩劫轮询采样（2026-09-20）
+
+成功的 `GET /api/haojie/rooms/:id` 按请求采样1%，同一决定覆盖 `response_ready` 与 `stream_end`。所有命令、失败请求及流错误继续记录。未采样响应保留 `Server-Timing`／请求编号，并以 `telemetry;desc="skip"` 通知客户端不再生成对应资源日志；不能只采样服务端而让客户端持续补写。房间ID在日志中规整为 `:id`，不记录种子、棋局、命令体或隐藏选择。无变化轮询不写业务数据。

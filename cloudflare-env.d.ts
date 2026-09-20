@@ -3,5 +3,6 @@ declare namespace Cloudflare {
     DB: D1Database;
     BUCKET: R2Bucket;
     BOOTSTRAP_ADMIN_EMAIL?: string;
+    HAOJIE_ENABLED?: string;
   }
 }

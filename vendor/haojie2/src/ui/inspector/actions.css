@@ -1,0 +1,96 @@
+/* inspector/actions.css — feature-owned rules; responsive states stay with their component. */
+.hj-game .unit-actions {
+  border-top: 1px solid var(--line);
+  padding-top: 13px;
+  margin-top: 15px;
+}
+.hj-game .unit-actions h4 {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--muted);
+  margin-bottom: 9px;
+}
+@container haojie (max-width: 820px) {
+  .hj-game .unit-actions {
+    margin-top: 7px;
+    padding-top: 7px;
+  }
+  .hj-game .unit-actions h4 {
+    display: none;
+  }
+}
+.hj-game .v2-actions {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 7px;
+}
+.hj-game .v2-actions button {
+  font-size: 11px;
+  justify-content: flex-start;
+  border: 1px solid #dfe6d6;
+  border-radius: 7px;
+  background: #f4f6ed;
+  min-height: 35px;
+  padding: 7px 10px;
+}
+.hj-game .v2-actions button[aria-pressed='true'] {
+  background: var(--side-soft);
+  color: var(--side);
+  border-color: var(--side);
+}
+.hj-game .v2-actions button.free-action {
+  color: #9b7e40;
+  background: #f7f0df;
+  border-color: #e8d7af;
+}
+.hj-game .revival-picker {
+  padding-top: 13px;
+  border-top: 1px solid #e0e5d7;
+  margin-top: 12px;
+}
+.hj-game .revival-picker h4 {
+  font-size: 11px;
+  color: #91759d;
+  margin-bottom: 7px;
+}
+.hj-game .revival-picker button {
+  width: 100%;
+  justify-content: space-between;
+  font-size: 11px;
+  background: #f3edf4;
+  border: 1px solid #e0d5e1;
+  border-radius: 7px;
+  padding: 8px;
+  margin: 3px 0;
+}
+.hj-game .revival-picker small {
+  font-size: 8px;
+  color: #ae9ab2;
+}
+.hj-game .revival-picker p {
+  font-size: 10px;
+  color: #a294a5;
+  line-height: 1.8;
+}
+@container haojie (max-width: 820px) {
+  .hj-game .v2-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 5px;
+  }
+  .hj-game .v2-actions button {
+    min-height: 33px;
+    font-size: 10px;
+    padding: 5px 8px;
+    white-space: normal;
+  }
+}
+
+@container haojie (min-width: 1100px) {
+  .hj-game .v2-actions {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 125px), 1fr));
+  }
+  .hj-game .unit-actions {
+    margin-top: 10px;
+    padding-top: 10px;
+  }
+}

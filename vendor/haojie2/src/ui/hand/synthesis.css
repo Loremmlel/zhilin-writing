@@ -1,0 +1,64 @@
+.hj-game .synthesis-controls {
+  display: grid;
+  gap: 10px;
+  padding: 0 14px 14px;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.hj-game .synthesis-controls p {
+  margin: 0;
+}
+.hj-game .synthesis-recipes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+.hj-game .synthesis-recipes button {
+  display: grid;
+  text-align: left;
+  padding: 8px;
+  overflow-wrap: anywhere;
+}
+.hj-game .synthesis-recipes button[aria-pressed='true'] {
+  border-color: var(--side);
+  background: var(--side-soft);
+}
+.hj-game .synthesis-controls small {
+  display: block;
+  font-size: 11px;
+  font-weight: normal;
+}
+.hj-game .synthesis-controls fieldset {
+  margin: 0;
+  padding: 8px;
+  min-width: 0;
+  border: 1px solid var(--line);
+}
+.hj-game .synthesis-controls label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  cursor: pointer;
+}
+.hj-game .synthesis-controls label:has(input:disabled) {
+  cursor: default;
+  opacity: 0.6;
+}
+.hj-game .synthesis-controls input {
+  accent-color: var(--side);
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+.hj-game .synthesis-controls input:focus-visible {
+  outline: 2px solid var(--side);
+  outline-offset: 3px;
+}
+.hj-game .synthesis-note {
+  font-size: 11px;
+}
+.hj-game .synthesis-controls > button {
+  white-space: normal;
+  min-height: 36px;
+}

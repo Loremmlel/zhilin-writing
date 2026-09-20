@@ -315,7 +315,7 @@ test("DOCX import keeps staged, cancellable progress and its recoverable source 
   for (const label of [
     "检查 DOCX 文件结构",
     "解析正文、表格与图片",
-    "生成 Markdown 预览",
+    "生成预览",
     "上传预览图片",
     "正在保存帖子",
   ]) {

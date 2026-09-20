@@ -1,0 +1,190 @@
+/* game/header.css — feature-owned rules; responsive states stay with their component. */
+.hj-game .site-header {
+  height: 88px;
+  border-bottom: 1px solid var(--line);
+  padding: 0 max(24px, calc((100% - 1190px) / 2));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #fffefaef;
+  gap: 22px;
+}
+.hj-game .brand {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  flex-shrink: 0;
+}
+.hj-game .brand-mark {
+  width: 43px;
+  height: 43px;
+  display: grid;
+  place-items: center;
+  background: var(--ink);
+  color: #e8d5ae;
+  border-radius: 13px;
+  box-shadow: 0 4px 10px #293e3a1a;
+  transform: rotate(-6deg);
+}
+.hj-game .brand-mark svg {
+  transform: rotate(6deg);
+}
+.hj-game .brand h1 {
+  font-size: 23px;
+  letter-spacing: 3px;
+  font-weight: 750;
+  line-height: 1.25;
+}
+.hj-game .brand h1 span {
+  color: var(--gold);
+  font-family: Georgia, serif;
+  font-size: 21px;
+  margin-left: 8px;
+  letter-spacing: 0;
+}
+.hj-game .brand p {
+  font-size: 9px;
+  letter-spacing: 2.4px;
+  color: var(--muted);
+  margin-top: 5px;
+}
+.hj-game nav {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.hj-game nav button {
+  font-size: 13px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  white-space: nowrap;
+}
+.hj-game nav .new-game-button {
+  border: 1px solid #cdd8ce;
+  background: #f7f9f2;
+  font-weight: 650;
+}
+.hj-game .nav-divider {
+  height: 22px;
+  width: 1px;
+  background: var(--line);
+  margin: 0 1px;
+}
+@container haojie (max-width: 820px) {
+  .hj-game .site-header {
+    height: 75px;
+    padding: 0 17px;
+    gap: 10px;
+  }
+  .hj-game .brand h1 {
+    font-size: 19px;
+    letter-spacing: 2px;
+  }
+  .hj-game .brand h1 span {
+    font-size: 17px;
+    margin-left: 5px;
+  }
+  .hj-game .brand p {
+    font-size: 7px;
+    letter-spacing: 1.8px;
+  }
+  .hj-game .brand-mark {
+    width: 35px;
+    height: 36px;
+    border-radius: 10px;
+  }
+  .hj-game .brand {
+    gap: 10px;
+  }
+  .hj-game nav {
+    gap: 5px;
+  }
+  .hj-game nav button {
+    padding: 7px;
+    font-size: 11px;
+  }
+  .hj-game .nav-divider {
+    margin: 0 1px;
+  }
+}
+@container haojie (max-width: 450px) {
+  .hj-game .site-header {
+    padding: 0 13px;
+    gap: 7px;
+  }
+  .hj-game nav {
+    gap: 3px;
+  }
+  .hj-game nav button {
+    padding: 6px;
+  }
+  .hj-game nav > button:first-child > span {
+    display: none;
+  }
+  .hj-game nav .new-game-button {
+    font-size: 10px;
+    gap: 3px;
+    padding: 6px;
+  }
+  .hj-game .nav-divider {
+    display: none;
+  }
+  .hj-game .site-header .sound-toggle {
+    width: 28px;
+  }
+  .hj-game .brand h1 {
+    font-size: 18px;
+  }
+  .hj-game .brand {
+    gap: 8px;
+  }
+}
+.hj-game .brand h1 {
+  letter-spacing: 6px;
+  font-family: 'Songti SC', 'SimSun', serif;
+  font-size: 28px;
+}
+.hj-game .brand h1 span {
+  font-family: Inter, system-ui, sans-serif;
+  letter-spacing: 0;
+  font-size: 13px;
+  background: #ede5d0;
+  border-radius: 5px;
+  padding: 2px 5px;
+  vertical-align: middle;
+}
+.hj-game .brand p {
+  font-size: 8px;
+  letter-spacing: 1.65px;
+}
+@container haojie (max-width: 820px) {
+  .hj-game .brand h1 {
+    font-size: 23px;
+    letter-spacing: 4px;
+  }
+  .hj-game .brand h1 span {
+    font-size: 10px;
+  }
+  .hj-game .brand p {
+    font-size: 6px;
+    letter-spacing: 1px;
+  }
+}
+
+@container haojie (min-width: 1100px) {
+  .hj-game .site-header {
+    height: 56px;
+    padding: 0 20px;
+  }
+  .hj-game .brand-mark {
+    width: 34px;
+    height: 34px;
+  }
+  .hj-game .brand h1 {
+    font-size: 24px;
+  }
+  .hj-game .brand p {
+    margin-top: 1px;
+    font-size: 7px;
+  }
+}

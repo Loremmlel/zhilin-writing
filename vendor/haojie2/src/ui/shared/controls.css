@@ -1,0 +1,154 @@
+/* shared/controls.css — feature-owned rules; responsive states stay with their component. */
+.hj-game button {
+  font: inherit;
+}
+.hj-game button {
+  border: 0;
+  cursor: pointer;
+  color: inherit;
+  background: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  transition:
+    background 0.18s,
+    box-shadow 0.18s,
+    transform 0.18s,
+    color 0.18s;
+}
+.hj-game button:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+.hj-game button:not(:disabled):active {
+  transform: translateY(1px);
+}
+.hj-game button:focus-visible {
+  outline: 3px solid #258c8b77;
+  outline-offset: 3px;
+}
+.hj-game button:hover:not(:disabled) {
+  background: #e9eee5;
+}
+.hj-game .icon {
+  flex-shrink: 0;
+  vertical-align: middle;
+}
+.hj-game .icon-button {
+  width: 34px;
+  height: 34px;
+  padding: 0 !important;
+  border-radius: 9px;
+  flex-shrink: 0;
+}
+.hj-game .panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  box-shadow: 0 3px 9px #243c3e02;
+  padding: 17px;
+}
+.hj-game .panel-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 13px;
+  gap: 6px;
+  border-bottom: 1px solid #eceee6;
+}
+.hj-game .panel-heading h2 {
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.hj-game .panel-heading > span {
+  font-size: 8px;
+  letter-spacing: 1.5px;
+  color: #a2aaa0;
+}
+.hj-game .panel-heading h2 b {
+  font-size: 10px;
+  font-weight: 600;
+  background: #ecf0e7;
+  color: var(--muted);
+  border-radius: 5px;
+  padding: 0 5px;
+}
+.hj-game .panel-heading > .icon {
+  color: var(--gold);
+}
+.hj-game .text-button {
+  padding: 0;
+  font-size: 11px;
+  color: var(--teal);
+  border-radius: 3px;
+}
+.hj-game .role-chip {
+  font-size: 9px;
+  letter-spacing: 0.5px;
+  padding: 2px 7px;
+  border-radius: 5px;
+  background: #edf1e8;
+  color: #788576;
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+}
+.hj-game kbd {
+  font: inherit;
+  padding: 2px 4px;
+  background: #fdfbf4;
+  border: 1px solid #e4e4d9;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+.hj-game .live-dot {
+  display: inline-block;
+  flex-shrink: 0;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #8da68a;
+}
+.hj-game .primary {
+  background: var(--ink);
+  color: #fffef2;
+  border: 1px solid var(--ink);
+  border-radius: 8px;
+  padding: 10px 17px;
+  font-size: 12px;
+  font-weight: 550;
+  box-shadow: 0 3px 7px #24423e10;
+}
+.hj-game .primary:hover:not(:disabled) {
+  background: #335452;
+}
+.hj-game .secondary {
+  border: 1px solid #d8dfd0;
+  background: #fefdf8;
+  border-radius: 8px;
+  padding: 10px 13px;
+  font-size: 11px;
+}
+.hj-game .fine-print {
+  font-size: 10px;
+  color: #9ba78c;
+  line-height: 1.9;
+  margin-top: 20px;
+}
+.hj-game .empty-state {
+  font-size: 13px;
+  text-align: center;
+  color: var(--muted);
+  padding: 50px 0;
+}
+.hj-game .full-width {
+  width: 100%;
+  margin-top: 12px;
+  min-height: 42px;
+  justify-content: center;
+}

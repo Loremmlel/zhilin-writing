@@ -18,3 +18,6 @@ tests/fixtures/docx/generated
 
 # Immutable exported design reference; preserve approved fragment bytes.
 docs/plans/zhilin-design-reference.html
+
+# Preserve the pinned upstream source exactly.
+vendor/haojie2/src

@@ -85,6 +85,13 @@
       "when": 1789795476442,
       "tag": "0011_post_visibility",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1789878563867,
+      "tag": "0012_haojie_online",
+      "breakpoints": true
     }
   ]
 }

@@ -1,0 +1,311 @@
+/* game/scoreboard.css — feature-owned rules; responsive states stay with their component. */
+.hj-game .scoreboard {
+  display: grid;
+  grid-template-columns: 1fr 120px 1fr;
+  gap: 14px;
+  margin-bottom: 22px;
+}
+.hj-game .player-score {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 22px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: var(--panel);
+  position: relative;
+  overflow: hidden;
+}
+.hj-game .player-score.p1 {
+  grid-column: 1;
+  grid-row: 1;
+}
+.hj-game .player-score.p2 {
+  grid-column: 3;
+  grid-row: 1;
+}
+.hj-game .player-score.current-player {
+  border-color: color-mix(in srgb, var(--side), white 56%);
+  box-shadow: 0 3px 13px #1d676607;
+}
+.hj-game .current-player:before {
+  position: absolute;
+  left: 0;
+  top: 17px;
+  bottom: 17px;
+  width: 3px;
+  background: var(--side);
+  content: '';
+  border-radius: 0 3px 3px 0;
+}
+.hj-game .player-seal {
+  color: var(--side);
+  background: var(--side-soft);
+  border: 1px solid color-mix(in srgb, var(--side), white 80%);
+  width: 54px;
+  height: 57px;
+  display: grid;
+  place-items: center;
+  clip-path: polygon(0 0, 100% 0, 100% 80%, 50% 100%, 0 80%);
+  padding-bottom: 6px;
+  flex-shrink: 0;
+}
+.hj-game .player-score-main {
+  flex: 1;
+  min-width: 0;
+}
+.hj-game .player-name {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  line-height: 1.3;
+}
+.hj-game .player-name h2 {
+  font-size: 15px;
+  letter-spacing: 1px;
+}
+.hj-game .player-name > span {
+  font-size: 8px;
+  color: var(--muted);
+  letter-spacing: 1px;
+}
+.hj-game .player-name > b {
+  color: var(--side);
+  background: var(--side-soft);
+  font-size: 9px;
+  font-weight: 600;
+  border-radius: 20px;
+  padding: 3px 7px;
+  margin-left: auto;
+  white-space: nowrap;
+}
+.hj-game .base-readout {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  margin: 4px 0 5px;
+}
+.hj-game .base-readout strong {
+  font-size: 26px;
+  line-height: 1.15;
+  font-weight: 700;
+  letter-spacing: -0.7px;
+  font-variant-numeric: tabular-nums;
+}
+.hj-game .base-readout > span {
+  font-size: 12px;
+  color: #9ca49a;
+}
+.hj-game .base-readout small {
+  font-size: 10px;
+  margin-left: auto;
+  color: var(--muted);
+}
+.hj-game .base-health {
+  height: 4px;
+  border-radius: 5px;
+  overflow: hidden;
+  background: var(--side-soft);
+}
+.hj-game .base-health i {
+  display: block;
+  height: 100%;
+  background: var(--side);
+  border-radius: 5px;
+  transition: width 0.6s ease;
+}
+.hj-game .round-medallion {
+  grid-column: 2;
+  grid-row: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+.hj-game .round-medallion:before {
+  content: '';
+  position: absolute;
+  inset: 14px 16px;
+  border-left: 1px solid #dedfd2;
+  border-right: 1px solid #dedfd2;
+  transform: skew(-10deg);
+  pointer-events: none;
+}
+.hj-game .round-medallion span {
+  font-size: 8px;
+  color: var(--muted);
+  letter-spacing: 2px;
+}
+.hj-game .round-medallion strong {
+  font-family: Georgia, serif;
+  font-size: 35px;
+  line-height: 1.2;
+  font-weight: 400;
+}
+.hj-game .round-medallion i {
+  font-style: normal;
+  font-size: 10px;
+  color: var(--gold);
+}
+@container haojie (max-width: 1279px) and (min-width: 821px) {
+  .hj-game .scoreboard {
+    grid-template-columns: 1fr 95px 1fr;
+  }
+  .hj-game .player-score {
+    padding: 14px;
+  }
+  .hj-game .player-name > span {
+    display: none;
+  }
+}
+@container haojie (max-width: 820px) {
+  .hj-game .scoreboard {
+    grid-template-columns: 1fr 55px 1fr;
+    gap: 6px;
+    margin-bottom: 15px;
+  }
+  .hj-game .player-score {
+    padding: 12px 10px;
+    gap: 8px;
+    border-radius: 10px;
+  }
+  .hj-game .player-seal {
+    width: 33px;
+    height: 40px;
+  }
+  .hj-game .player-seal svg {
+    width: 22px;
+  }
+  .hj-game .player-name {
+    gap: 4px;
+    flex-wrap: wrap;
+  }
+  .hj-game .player-name h2 {
+    font-size: 12px;
+    letter-spacing: 0.5px;
+  }
+  .hj-game .player-name > span {
+    display: none;
+  }
+  .hj-game .player-name > b {
+    font-size: 6px;
+    letter-spacing: 0;
+    padding: 1px 4px;
+  }
+  .hj-game .base-readout strong {
+    font-size: 23px;
+  }
+  .hj-game .base-readout > span {
+    font-size: 8px;
+  }
+  .hj-game .base-readout small {
+    font-size: 7px;
+  }
+  .hj-game .round-medallion:before {
+    inset: 15px 2px;
+    opacity: 0.5;
+  }
+  .hj-game .round-medallion span {
+    font-size: 6px;
+    letter-spacing: 1px;
+  }
+  .hj-game .round-medallion strong {
+    font-size: 28px;
+  }
+  .hj-game .round-medallion i {
+    font-size: 6px;
+    white-space: nowrap;
+  }
+}
+@container haojie (max-width: 450px) {
+  .hj-game .player-seal {
+    display: none;
+  }
+  .hj-game .player-score {
+    padding: 10px 12px;
+  }
+  .hj-game .player-name h2 {
+    font-size: 12px;
+  }
+  .hj-game .player-name > b {
+    font-size: 6px;
+  }
+}
+.hj-game .heads-readout {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  color: #9a773b !important;
+}
+.hj-game .heads-readout b {
+  font-size: 14px;
+}
+@container haojie (max-width: 820px) {
+  .hj-game .heads-readout b {
+    font-size: 11px;
+  }
+  .hj-game .heads-readout svg {
+    width: 9px;
+  }
+}
+
+@container haojie (min-width: 1100px) {
+  .hj-game .scoreboard {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 7px;
+    margin: 0;
+  }
+  .hj-game .scoreboard .player-score {
+    grid-row: 1;
+    grid-column: auto;
+    padding: 10px;
+    gap: 0;
+  }
+  .hj-game .player-seal,
+  .hj-game .player-name > span {
+    display: none;
+  }
+  .hj-game .player-name {
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  .hj-game .player-name h2 {
+    font-size: 12px;
+  }
+  .hj-game .player-name > b {
+    margin-left: 0;
+    padding: 2px 5px;
+    font-size: 8px;
+  }
+  .hj-game .base-readout {
+    flex-wrap: wrap;
+    gap: 2px 5px;
+  }
+  .hj-game .base-readout > strong {
+    font-size: 23px;
+  }
+  .hj-game .base-readout > span {
+    font-size: 10px;
+  }
+  .hj-game .heads-readout {
+    font-size: 9px;
+  }
+  .hj-game .round-medallion {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 8px;
+    min-height: 24px;
+  }
+  .hj-game .round-medallion::before {
+    display: none;
+  }
+  .hj-game .round-medallion strong {
+    font-size: 20px;
+  }
+  .hj-game .round-medallion i {
+    margin-left: auto;
+  }
+}

@@ -1,0 +1,183 @@
+/* feedback/feedback.css — feature-owned rules; responsive states stay with their component. */
+.hj-game .toast {
+  position: fixed;
+  z-index: 100;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #fffef8f7;
+  border: 1px solid #d7dfd0;
+  border-radius: 12px;
+  box-shadow: 0 8px 36px #243c3e25;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  max-width: 620px;
+  width: max-content;
+  min-width: 230px;
+  color: #65765e;
+  animation: hj-toast 0.2s ease;
+}
+.hj-game .toast p {
+  font-size: 12px;
+  line-height: 1.7;
+}
+.hj-game .toast > .icon {
+  color: #b39c66;
+}
+.hj-game .victory-banner {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 22px 25px;
+  margin-bottom: 20px;
+  background: linear-gradient(120deg, #f6edcc, #fdf9ed);
+  border: 1px solid #dfcd94;
+  border-radius: 13px;
+  color: #947d40;
+  animation: hj-arrive 0.7s;
+}
+.hj-game .victory-banner h2 {
+  font-size: 23px;
+  letter-spacing: 1px;
+}
+.hj-game .victory-banner p {
+  font-size: 11px;
+  margin-top: 5px;
+  color: #a29774;
+}
+.hj-game .victory-banner .primary {
+  margin-left: auto;
+  white-space: nowrap;
+}
+@container haojie (max-width: 820px) {
+  .hj-game .toast {
+    max-width: calc(100vw - 26px);
+    width: max-content;
+    padding: 10px 11px;
+    bottom: 16px;
+    gap: 8px;
+  }
+  .hj-game .toast p {
+    font-size: 11px;
+  }
+  .hj-game .victory-banner {
+    padding: 17px 14px;
+    gap: 11px;
+    flex-wrap: wrap;
+  }
+  .hj-game .victory-banner h2 {
+    font-size: 18px;
+  }
+  .hj-game .victory-banner p {
+    font-size: 9px;
+  }
+  .hj-game .victory-banner > .icon {
+    width: 27px;
+  }
+}
+.hj-game .summon-reveal {
+  position: fixed;
+  z-index: 70;
+  left: 50%;
+  top: 26%;
+  transform: translate(-50%, -50%);
+  background: #fffef4ef;
+  border: 1px solid #b5c8a6;
+  box-shadow: 0 12px 55px #26473033;
+  border-radius: 16px;
+  padding: 20px 35px;
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  color: var(--teal);
+  pointer-events: none;
+  min-width: 210px;
+  animation: hj-reveal 1.7s ease both;
+}
+.hj-game .summon-reveal > span {
+  font-size: 8px;
+  letter-spacing: 2px;
+  opacity: 0.6;
+  margin-bottom: 10px;
+}
+.hj-game .summon-reveal strong {
+  font-family: 'Songti SC', serif;
+  font-size: 23px;
+  letter-spacing: 3px;
+  margin-top: 7px;
+}
+.hj-game .ultimate-reveal {
+  background: radial-gradient(circle, #fff9e6, #ead197eb);
+  border: 2px solid #c3a057;
+  color: #9a7033;
+  box-shadow:
+    0 0 0 5px #d6bb7440,
+    0 0 70px #c69d5555,
+    0 12px 50px #3f321b33;
+}
+.hj-game .ultimate-reveal:before,
+.hj-game .ultimate-reveal:after {
+  content: '✦';
+  font-size: 24px;
+  position: absolute;
+  left: -25px;
+  top: 40px;
+  color: #c6a553;
+  text-shadow: 0 0 15px #edd592;
+  animation: hj-ward 0.8s ease-in-out infinite;
+}
+.hj-game .ultimate-reveal:after {
+  left: auto;
+  right: -25px;
+  top: 70px;
+}
+@container haojie (max-width: 820px) {
+  .hj-game .summon-reveal {
+    top: 36%;
+    max-width: 85vw;
+    padding: 16px 26px;
+  }
+  .hj-game .summon-reveal strong {
+    font-size: 20px;
+  }
+  .hj-game .v2-game .toast {
+    z-index: 100;
+  }
+}
+
+@container haojie (min-width: 1100px) {
+  .hj-game .victory-banner {
+    padding: 10px 12px;
+    margin: 0;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .hj-game .victory-banner h2 {
+    font-size: 16px;
+  }
+  .hj-game .victory-banner > .icon {
+    width: 22px;
+  }
+  .hj-game .victory-banner .primary {
+    padding: 6px 10px;
+  }
+}
+
+@container haojie (max-width: 1279px) and (min-width: 821px) {
+  .hj-game .hand-rail > .victory-banner {
+    grid-column: 1 / -1;
+  }
+}
+@container haojie (max-width: 820px) {
+  .hj-game .hand-rail > .victory-banner {
+    order: -1;
+    width: 100%;
+  }
+}
+@container haojie (min-width: 1100px) {
+  .hj-game .hand-rail > .victory-banner {
+    flex-shrink: 0;
+  }
+}

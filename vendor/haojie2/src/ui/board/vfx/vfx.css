@@ -1,0 +1,333 @@
+/* Paper, ink and short impulses. No full-board flashes or animated blur filters. */
+.hj-game .effects-layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 30;
+  pointer-events: none;
+  overflow: hidden;
+}
+.hj-game .vfx {
+  color: var(--side);
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.hj-game :is(.vfx-ward, .vfx-execution, .vfx-mark, .vfx-equip, .vfx-charge, .vfx-clock) {
+  color: #ad8541;
+}
+.hj-game :is(.vfx-conversion, .vfx-siphon, .vfx-silence, .vfx-counter) {
+  color: #85679b;
+}
+.hj-game :is(.vfx-freeze, .vfx-ice-mark) {
+  color: #488fa5;
+}
+.hj-game :is(.vfx-bomb, .vfx-storm, .vfx-burn, .vfx-inner-fire) {
+  color: #bc603c;
+}
+.hj-game .vfx-mend {
+  color: var(--teal);
+}
+.hj-game .vfx-solid {
+  fill: currentColor;
+  stroke-width: 1;
+}
+.hj-game .vfx-weight {
+  fill: currentColor;
+  fill-opacity: 0.18;
+  stroke-width: 4;
+}
+.hj-game .vfx-soft-fill {
+  fill: var(--panel);
+  fill-opacity: 0.75;
+}
+.hj-game .vfx-paper {
+  stroke: var(--panel);
+  stroke-width: 2;
+}
+.hj-game .vfx-thin {
+  stroke-width: 1.5;
+  opacity: 0.65;
+}
+.hj-game .vfx-dashed {
+  stroke-dasharray: 8 6;
+}
+.hj-game .vfx-glyph {
+  text-anchor: middle;
+  font-size: 29px;
+  font-weight: 650;
+  fill: currentColor;
+  stroke: var(--panel);
+  stroke-width: 3;
+  paint-order: stroke;
+}
+.hj-game .vfx-caption {
+  text-anchor: middle;
+  font-size: 17px;
+  fill: currentColor;
+  stroke: var(--panel);
+  stroke-width: 3;
+  paint-order: stroke;
+}
+.hj-game .vfx-flight {
+  animation: hj-vfx-flight var(--flight) linear var(--launch) both;
+}
+.hj-game .vfx-lob {
+  animation: hj-vfx-lob var(--flight) ease-in-out var(--launch) both;
+}
+.hj-game .vfx-trace {
+  stroke-width: 1.5;
+  stroke-dasharray: 3 17;
+  animation: hj-vfx-trace 650ms ease var(--delay) both;
+}
+.hj-game .vfx-chain {
+  stroke-width: 4;
+  stroke-dasharray: 9 6;
+}
+.hj-game .vfx-launch {
+  animation: hj-vfx-launch 280ms ease-out var(--delay) both;
+}
+.hj-game .vfx-hit {
+  animation: hj-vfx-hit 500ms ease-out var(--hit) both;
+}
+.hj-game .vfx-shards {
+  stroke-width: 3;
+}
+.hj-game .vfx-cut {
+  fill: currentColor;
+  fill-opacity: 0.65;
+  stroke-width: 1;
+}
+.hj-game .vfx-slash {
+  animation: hj-vfx-slash 340ms cubic-bezier(0.15, 0.7, 0.2, 1) var(--delay) both;
+}
+.hj-game .vfx-rune {
+  animation: hj-vfx-rune 650ms ease-out var(--delay) both;
+}
+.hj-game .vfx-seal {
+  stroke-width: 2;
+}
+.hj-game .vfx-turncoat {
+  stroke-width: 5;
+}
+.hj-game .vfx-charge-arrows {
+  stroke-width: 4;
+}
+.hj-game .vfx-token-spawn {
+  animation: hj-vfx-spawn 650ms ease-out var(--delay) both;
+}
+.hj-game .vfx-token-death {
+  animation: hj-vfx-death 600ms ease-out var(--delay) both;
+}
+.hj-game .vfx-area-cell {
+  animation: hj-vfx-area 700ms ease-out var(--tile-delay) both;
+}
+.hj-game .vfx-area-wash {
+  fill: currentColor;
+  fill-opacity: 0.08;
+  stroke-width: 1.5;
+  stroke-dasharray: 10 7;
+}
+.hj-game .vfx-flame {
+  fill: currentColor;
+  fill-opacity: 0.17;
+  stroke-width: 2.5;
+}
+.hj-game .vfx-move-path {
+  stroke-width: 2;
+  stroke-dasharray: 5 13;
+  animation: hj-vfx-trace 650ms ease var(--delay) both;
+}
+.hj-game .vfx-rush-path {
+  stroke-width: 12;
+  stroke-dasharray: 14 10;
+  animation: hj-vfx-trace 600ms ease var(--delay) both;
+}
+.hj-game .vfx-afterimage {
+  fill: currentColor;
+  fill-opacity: 0.1;
+  stroke-width: 2;
+  animation: hj-vfx-trace 450ms ease var(--delay) both;
+}
+.hj-game .vfx-siphon-line {
+  stroke-width: 2;
+  stroke-dasharray: 7 11;
+  animation: hj-vfx-trace 550ms ease var(--delay) both;
+}
+.hj-game .vfx-number {
+  text-anchor: middle;
+  font-size: 31px;
+  font-weight: 800;
+  fill: #b84f3c;
+  stroke: var(--panel);
+  stroke-width: 6;
+  paint-order: stroke;
+  animation: hj-vfx-number 920ms ease-out var(--delay) both;
+}
+.hj-game .vfx-number.healing {
+  fill: var(--teal);
+}
+@keyframes hj-vfx-flight {
+  0% {
+    opacity: 0;
+  }
+  5%,
+  90% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes hj-vfx-lob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-26px) rotate(-35deg);
+  }
+}
+@keyframes hj-vfx-trace {
+  0% {
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.45;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes hj-vfx-launch {
+  0% {
+    opacity: 0.6;
+    transform: scale(1.35);
+  }
+  70% {
+    opacity: 0.9;
+    transform: scale(0.55);
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes hj-vfx-hit {
+  0% {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  20% {
+    opacity: 1;
+    transform: scale(0.95);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.5);
+  }
+}
+@keyframes hj-vfx-slash {
+  0% {
+    opacity: 0;
+    transform: rotate(-35deg) scale(0.7);
+  }
+  30% {
+    opacity: 1;
+    transform: rotate(0deg) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: rotate(16deg) scale(1.07);
+  }
+}
+@keyframes hj-vfx-rune {
+  0% {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+  25%,
+  55% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.12);
+  }
+}
+@keyframes hj-vfx-spawn {
+  0% {
+    opacity: 0;
+    transform: scale(1.45);
+  }
+  40% {
+    opacity: 0.8;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+}
+@keyframes hj-vfx-death {
+  0% {
+    opacity: 0.8;
+    transform: scale(1);
+  }
+  30% {
+    opacity: 0.7;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-12px) scale(0.65);
+  }
+}
+@keyframes hj-vfx-area {
+  0% {
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  60% {
+    opacity: 0.65;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes hj-vfx-number {
+  0% {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  16%,
+  65% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-48px);
+  }
+}
+/* Reduced motion retains target/range/outcome, never a moving projectile at SVG (0,0). */
+.hj-game .vfx-reduced :is(.vfx-flight, .vfx-launch, .vfx-afterimage) {
+  display: none;
+}
+.hj-game .vfx-reduced * {
+  animation: none !important;
+}
+.hj-game
+  .vfx-reduced
+  :is(.vfx-hit, .vfx-slash, .vfx-rune, .vfx-area-cell, .vfx-token-spawn, .vfx-token-death) {
+  opacity: 0.7;
+}
+.hj-game .vfx-reduced :is(.vfx-trace, .vfx-move-path, .vfx-rush-path, .vfx-siphon-line) {
+  opacity: 0.25;
+}
+.hj-game .vfx-reduced .vfx-number {
+  opacity: 1;
+}

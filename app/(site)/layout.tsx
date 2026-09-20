@@ -2,6 +2,7 @@ import { requireMember } from "@/lib/auth/access";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { countUnreadNotifications } from "@/db/queries";
+import { isHaojieEnabled } from "@/lib/haojie/runtime";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +16,12 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
   }
   return (
     <div className="site-shell">
-      <SiteHeader member={member} isAdmin={allowed.isAdmin} unreadCount={unreadCount} />
+      <SiteHeader
+        member={member}
+        isAdmin={allowed.isAdmin}
+        unreadCount={unreadCount}
+        haojieEnabled={isHaojieEnabled()}
+      />
       <main className="site-main">{children}</main>
       <SiteFooter />
     </div>

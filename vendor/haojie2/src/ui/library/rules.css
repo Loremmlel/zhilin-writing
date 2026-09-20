@@ -1,0 +1,151 @@
+/* library/rules.css — feature-owned rules; responsive states stay with their component. */
+.hj-game .rule-hero {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 23px 26px;
+  border: 1px solid #d9e5cb;
+  background: #f0f5e8;
+  border-radius: 11px;
+  margin-bottom: 22px;
+  color: #759261;
+}
+.hj-game .rule-hero h3 {
+  font-size: 19px;
+  color: #456746;
+  letter-spacing: 0.6px;
+}
+.hj-game .rule-hero p {
+  font-size: 11px;
+  line-height: 1.9;
+  color: #869774;
+  margin-top: 8px;
+}
+.hj-game .rule-steps {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 21px;
+}
+.hj-game .rule-steps section {
+  padding: 0 4px;
+}
+.hj-game .rule-steps section > b {
+  font-family: Georgia, serif;
+  font-weight: 400;
+  font-size: 26px;
+  color: #b7c8a3;
+}
+.hj-game .rule-steps h3 {
+  font-size: 15px;
+  margin: 5px 0 10px;
+}
+.hj-game .rule-steps p {
+  font-size: 11px;
+  color: #859476;
+  line-height: 1.95;
+  margin-bottom: 9px;
+}
+.hj-game .rules-key {
+  border-top: 1px solid #e3e9d7;
+  margin: 20px 0;
+  padding-top: 20px;
+}
+.hj-game .rules-key h3 {
+  font-size: 15px;
+  margin-bottom: 13px;
+}
+.hj-game .stat-explainer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 24px;
+}
+.hj-game .stat-explainer span {
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #7c926a;
+}
+.hj-game .rules-key > p {
+  font-size: 11px;
+  color: #91a27c;
+  margin-top: 13px;
+  line-height: 1.9;
+}
+.hj-game .interpretations {
+  background: #f9f5e8;
+  border: 1px solid #e6debf;
+  border-radius: 9px;
+  padding: 13px 16px;
+  margin-top: 20px;
+  color: #978853;
+}
+.hj-game .interpretations ol {
+  margin: 15px 0 0;
+  padding-left: 20px;
+}
+.hj-game .interpretations li {
+  font-size: 11px;
+  line-height: 1.95;
+  padding-bottom: 10px;
+  color: #9a906f;
+}
+.hj-game .notice {
+  font-size: 11px;
+  color: #a4915f;
+  line-height: 1.9;
+  margin-top: 12px;
+}
+.hj-game .keyboard-guide {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  border-top: 1px solid #e3e9d7;
+  margin-top: 21px;
+  padding-top: 18px;
+  color: #8b9f76;
+}
+.hj-game .keyboard-guide p {
+  font-size: 10px;
+  line-height: 1.9;
+}
+@container haojie (max-width: 820px) {
+  .hj-game .rule-hero {
+    padding: 17px;
+    gap: 14px;
+  }
+  .hj-game .rule-hero > .icon {
+    width: 31px;
+  }
+  .hj-game .rule-hero h3 {
+    font-size: 16px;
+  }
+  .hj-game .rule-hero p {
+    font-size: 10px;
+  }
+  .hj-game .rule-steps {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .hj-game .rule-steps section {
+    border-bottom: 1px solid #e4e9d8;
+    padding-bottom: 7px;
+  }
+  .hj-game .rule-steps section > b {
+    float: left;
+    margin-right: 13px;
+    font-size: 22px;
+  }
+  .hj-game .rule-steps h3 {
+    padding-top: 2px;
+  }
+  .hj-game .stat-explainer {
+    gap: 8px 14px;
+  }
+  .hj-game .stat-explainer span {
+    font-size: 10px;
+  }
+}
+.hj-game .rule-steps p {
+  color: #64755f;
+}

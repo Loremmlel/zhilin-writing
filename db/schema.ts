@@ -38,6 +38,65 @@ export const users = sqliteTable(
   ],
 );
 
+export const haojieRooms = sqliteTable(
+  "haojie_rooms",
+  {
+    id: text("id").primaryKey(),
+    player1Id: text("player1_id")
+      .notNull()
+      .references(() => users.id),
+    player2Id: text("player2_id").references(() => users.id),
+    creationRequestId: text("creation_request_id").notNull(),
+    mode: text("mode", { enum: ["classic", "shrine"] }).notNull(),
+    status: text("status", { enum: ["waiting", "playing", "finished", "cancelled"] }).notNull(),
+    revision: integer("revision").notNull().default(0),
+    stateJson: text("state_json"),
+    engineVersion: text("engine_version").notNull(),
+    ruleset: text("ruleset").notNull(),
+    viewVersion: integer("view_version").notNull(),
+    lastChange: text("last_change").notNull(),
+    winner: text("winner", { enum: ["1", "2", "draw"] }),
+    endReason: text("end_reason", { enum: ["game", "resign", "cancel"] }),
+    createdAt: integer("created_at").notNull(),
+    updatedAt: integer("updated_at").notNull(),
+  },
+  (table) => [
+    uniqueIndex("haojie_rooms_creation_unique").on(table.player1Id, table.creationRequestId),
+    index("haojie_rooms_player1_status_idx").on(table.player1Id, table.status, table.updatedAt),
+    index("haojie_rooms_player2_status_idx").on(table.player2Id, table.status, table.updatedAt),
+    check(
+      "haojie_rooms_distinct_players",
+      sql`${table.player2Id} IS NULL OR ${table.player2Id} != ${table.player1Id}`,
+    ),
+    check("haojie_rooms_revision_valid", sql`${table.revision} >= 0`),
+    check(
+      "haojie_rooms_lifecycle_valid",
+      sql`(${table.status} IN ('waiting', 'cancelled') AND ${table.player2Id} IS NULL AND ${table.stateJson} IS NULL) OR (${table.status} IN ('playing', 'finished') AND ${table.player2Id} IS NOT NULL AND ${table.stateJson} IS NOT NULL)`,
+    ),
+  ],
+);
+
+export const haojieRequests = sqliteTable(
+  "haojie_requests",
+  {
+    roomId: text("room_id")
+      .notNull()
+      .references(() => haojieRooms.id),
+    actorId: text("actor_id")
+      .notNull()
+      .references(() => users.id),
+    requestId: text("request_id").notNull(),
+    kind: text("kind").notNull(),
+    requestHash: text("request_hash").notNull(),
+    revision: integer("revision").notNull(),
+    createdAt: integer("created_at").notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.roomId, table.actorId, table.requestId] }),
+    index("haojie_requests_actor_time_idx").on(table.actorId, table.createdAt),
+  ],
+);
+
 export const posts = sqliteTable(
   "posts",
   {

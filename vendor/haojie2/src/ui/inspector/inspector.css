@@ -1,0 +1,277 @@
+/* inspector/inspector.css — feature-owned rules; responsive states stay with their component. */
+.hj-game .inspector-profile {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  padding: 20px 0 15px;
+  gap: 9px;
+}
+.hj-game .inspector-profile h3 {
+  font-size: 21px;
+  font-weight: 650;
+  letter-spacing: 2px;
+  line-height: 1.3;
+}
+.hj-game .ability-copy {
+  font-size: 11px;
+  line-height: 1.85;
+  color: #76827a;
+  margin: 14px 0 0;
+}
+.hj-game .inspector-empty {
+  text-align: center;
+  padding: 27px 0 18px;
+}
+.hj-game .empty-orbit {
+  height: 92px;
+  width: 92px;
+  margin: 0 auto 17px;
+  border: 1px dashed #d8dfd1;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  position: relative;
+  color: #a8b8a8;
+}
+.hj-game .empty-orbit:before {
+  content: '';
+  position: absolute;
+  inset: 12px;
+  border: 1px solid #e8ebe0;
+  border-radius: 50%;
+}
+.hj-game .inspector-empty h3 {
+  font-weight: 550;
+  font-size: 15px;
+  letter-spacing: 1px;
+}
+.hj-game .inspector-empty p {
+  font-size: 11px;
+  line-height: 1.9;
+  color: var(--muted);
+  margin: 10px 7px 21px;
+}
+.hj-game .field-note {
+  padding: 17px 15px;
+  border-left: 2px solid #d9cbb0;
+  background: linear-gradient(90deg, #eee8d93d, transparent);
+}
+.hj-game .field-note > span {
+  font-size: 8px;
+  letter-spacing: 1.9px;
+  color: #ac9d7f;
+}
+.hj-game .field-note h3 {
+  font-family: 'Songti SC', 'SimSun', serif;
+  font-size: 17px;
+  letter-spacing: 2px;
+  margin: 8px 0;
+  color: #7c8070;
+  font-weight: 500;
+}
+.hj-game .field-note p {
+  font-size: 10px;
+  color: #909586;
+  line-height: 1.8;
+}
+.hj-game .field-note > div {
+  font-size: 8px;
+  color: #9fa395;
+  margin-top: 13px;
+  line-height: 2.1;
+}
+.hj-game .base-inspector {
+  text-align: center;
+  padding: 28px 0;
+  color: var(--side);
+}
+.hj-game .base-inspector h3 {
+  font-size: 20px;
+  margin: 12px 0;
+}
+.hj-game .base-inspector strong {
+  font-size: 25px;
+}
+.hj-game .base-inspector small {
+  font-size: 12px;
+  color: var(--muted);
+}
+.hj-game .base-inspector p {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 12px;
+}
+.hj-game .inspector .definition-stats {
+  margin-top: 7px;
+}
+@container haojie (max-width: 820px) {
+  .hj-game .inspector {
+    padding: 10px 13px;
+    box-shadow: 0 3px 14px #244a3614;
+    background: #fffef9f7;
+    backdrop-filter: blur(8px);
+  }
+  .hj-game .inspector > .panel-heading {
+    display: none;
+  }
+  .hj-game .inspector-profile {
+    flex-direction: row;
+    flex-wrap: wrap;
+    padding: 0;
+    gap: 10px;
+  }
+  .hj-game .inspector-profile .rune.large {
+    width: 35px;
+    height: 36px;
+    border-radius: 10px;
+  }
+  .hj-game .inspector-profile .rune.large b {
+    font-size: 21px;
+  }
+  .hj-game .inspector-profile .rune.large .rune-spark {
+    display: none;
+  }
+  .hj-game .inspector-profile .role-chip {
+    order: 2;
+    font-size: 7px;
+    margin-left: auto;
+  }
+  .hj-game .inspector-profile h3 {
+    font-size: 15px;
+    letter-spacing: 1px;
+    order: 1;
+  }
+  .hj-game .inspector .status-tags,
+  .hj-game .inspector .charge-meter {
+    display: none;
+  }
+  .hj-game .field-note {
+    display: none;
+  }
+  .hj-game .inspector .definition-stats {
+    padding: 7px 0;
+    margin-top: 7px;
+  }
+  .hj-game .base-inspector {
+    padding: 7px;
+    display: flex;
+    gap: 15px;
+    align-items: center;
+  }
+  .hj-game .base-inspector svg {
+    width: 30px;
+    height: 30px;
+  }
+  .hj-game .base-inspector h3 {
+    font-size: 15px;
+    margin: 0;
+  }
+  .hj-game .base-inspector strong {
+    font-size: 20px;
+  }
+  .hj-game .base-inspector p {
+    display: none;
+  }
+}
+@container haojie (max-width: 450px) {
+  .hj-game .inspector-profile h3 {
+    font-size: 14px;
+  }
+  .hj-game .inspector .definition-stats span svg {
+    display: none;
+  }
+}
+.hj-game .ability-details {
+  margin: 13px 0 0;
+  border-top: 1px solid var(--line);
+  padding-top: 9px;
+}
+.hj-game .ability-details h4 {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: #77866e;
+  align-items: center;
+}
+.hj-game .ability-details .ability-copy {
+  margin: 9px 0 0;
+}
+@container haojie (max-width: 820px) {
+  .hj-game .ability-details {
+    margin-top: 6px;
+    padding-top: 5px;
+  }
+  .hj-game .ability-details h4 {
+    font-size: 9px;
+  }
+  .hj-game .ability-details .ability-copy {
+    display: block;
+    max-height: 110px;
+    overflow: auto;
+    font-size: 10px;
+  }
+  .hj-game .inspector .charge-meter {
+    display: block !important;
+    font-size: 8px;
+    margin-top: 6px;
+  }
+  .hj-game .inspector .status-tags {
+    display: flex !important;
+    gap: 3px;
+    margin-top: 5px;
+  }
+  .hj-game .inspector .status-tags span {
+    font-size: 7px;
+    padding: 1px 3px;
+  }
+  .hj-game .inspector {
+    position: relative;
+  }
+}
+.hj-game .ability-copy {
+  color: #64755f;
+}
+
+@container haojie (min-width: 1100px) {
+  .hj-game .inspector {
+    padding: 13px;
+  }
+  .hj-game .inspector > .panel-heading {
+    padding-bottom: 9px;
+  }
+  .hj-game .inspector-profile {
+    display: grid;
+    grid-template-columns: 54px minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    justify-items: start;
+    gap: 4px 12px;
+    padding: 12px 0;
+  }
+  .hj-game .inspector-profile .rune.large {
+    grid-row: 1 / 3;
+    width: 52px;
+    height: 54px;
+    border-radius: 14px;
+  }
+  .hj-game .inspector-profile .rune.large b {
+    font-size: 30px;
+  }
+  .hj-game .inspector-profile .role-chip {
+    align-self: end;
+  }
+  .hj-game .inspector-profile h3 {
+    font-size: 18px;
+    align-self: start;
+  }
+  .hj-game .inspector-empty {
+    padding: 16px 0;
+  }
+  .hj-game .empty-orbit {
+    width: 56px;
+    height: 56px;
+    margin-bottom: 10px;
+  }
+  .hj-game .field-note {
+    display: none;
+  }
+}

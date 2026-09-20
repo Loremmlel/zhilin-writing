@@ -1,0 +1,129 @@
+/* board/commands.css — feature-owned rules; responsive states stay with their component. */
+.hj-game .instruction-bar {
+  min-height: 51px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  background: #e9f0e6;
+  border: 1px solid #dce6d6;
+  border-radius: 10px;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  position: relative;
+}
+.hj-game .instruction-bar p {
+  font-size: 11px;
+  line-height: 1.7;
+  color: #687d6b;
+  flex: 1;
+}
+.hj-game .instruction-icon {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  background: #dbe7d5;
+  color: #68866a;
+  border-radius: 8px;
+}
+.hj-game .reaction-bar {
+  background: #fff1d6;
+  border-color: #dfc893;
+}
+.hj-game .reaction-bar p {
+  color: #94743d;
+}
+.hj-game .command-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 13px;
+}
+.hj-game .history-actions {
+  display: flex;
+  gap: 5px;
+}
+.hj-game .history-actions button {
+  height: 39px;
+  min-width: 37px;
+  border: 1px solid #dce2d4;
+  border-radius: 8px;
+  background: var(--panel);
+  font-size: 11px;
+  padding: 8px 11px;
+  color: #6c8070;
+}
+.hj-game .finish-button {
+  min-height: 40px;
+  min-width: 168px;
+  justify-content: space-between;
+  padding-left: 24px;
+  padding-right: 17px;
+  letter-spacing: 1px;
+}
+.hj-game .turn-hint {
+  font-size: 9px;
+  text-align: right;
+  color: #9aa18f;
+  margin-top: 7px;
+}
+@container haojie (max-width: 1279px) and (min-width: 821px) {
+  .hj-game .instruction-bar,
+  .hj-game .command-bar,
+  .hj-game .turn-hint {
+    max-width: 620px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+}
+@container haojie (max-width: 820px) {
+  .hj-game .instruction-bar {
+    padding: 8px 10px;
+    min-height: 46px;
+    margin-bottom: 10px;
+  }
+  .hj-game .instruction-bar p {
+    font-size: 10px;
+  }
+  .hj-game .instruction-icon {
+    width: 24px;
+    height: 24px;
+  }
+}
+@container haojie (max-width: 450px) {
+  .hj-game .finish-button {
+    min-width: 165px;
+  }
+}
+
+@container haojie (min-width: 1100px) {
+  .hj-game .instruction-bar {
+    grid-area: instruction;
+    margin: 0;
+    width: 100%;
+    max-width: none;
+    min-height: 44px;
+    padding: 8px 10px;
+  }
+  .hj-game .command-bar {
+    grid-area: commands;
+    margin: 0;
+    width: 100%;
+    max-width: none;
+    gap: 8px;
+  }
+  .hj-game .finish-button {
+    flex: 1;
+    min-width: 0;
+    padding: 9px 10px;
+    letter-spacing: 0;
+  }
+  .hj-game .turn-hint {
+    grid-area: hint;
+    margin: 0;
+    max-width: none;
+    text-align: left;
+  }
+}

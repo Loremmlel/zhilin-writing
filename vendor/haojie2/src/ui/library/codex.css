@@ -1,0 +1,199 @@
+/* library/codex.css — feature-owned rules; responsive states stay with their component. */
+.hj-game .codex-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 13px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+.hj-game .search-field {
+  background: #f5f7ed;
+  border: 1px solid #dce4d1;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  flex: 1;
+  min-width: 245px;
+  color: #92a087;
+}
+.hj-game .search-field input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  outline: 0;
+  font-size: 12px;
+}
+.hj-game .search-field > span {
+  font-size: 10px;
+  border-radius: 5px;
+  padding: 1px 5px;
+  background: #e9eee0;
+  min-width: 24px;
+  text-align: center;
+}
+.hj-game .filter-tabs {
+  display: flex;
+  background: #eff3e7;
+  border-radius: 8px;
+  padding: 3px;
+  gap: 2px;
+}
+.hj-game .filter-tabs button {
+  padding: 6px 10px;
+  font-size: 10px;
+  border-radius: 6px;
+  white-space: nowrap;
+  color: #879679;
+}
+.hj-game .filter-tabs button.active {
+  background: #fffef8;
+  color: var(--teal);
+  box-shadow: 0 1px 4px #183a2110;
+}
+.hj-game .codex-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 13px;
+}
+.hj-game .codex-card {
+  border: 1px solid #dde5d1;
+  background: #fdfef8;
+  border-radius: 11px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+}
+.hj-game .codex-card.is-spell {
+  background: #fdfaf1;
+  border-color: #e6dec6;
+}
+.hj-game .codex-card-heading {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  margin-bottom: 15px;
+}
+.hj-game .codex-card .rune.large {
+  width: 57px;
+  height: 59px;
+  border-radius: 14px;
+}
+.hj-game .codex-card .rune.large b {
+  font-size: 31px;
+}
+.hj-game .piece-index {
+  color: #a2ae95;
+  font-size: 8px;
+  letter-spacing: 1px;
+}
+.hj-game .codex-card h3 {
+  font-size: 16px;
+  line-height: 1.4;
+  margin: 2px 0 5px;
+  letter-spacing: 0.5px;
+}
+.hj-game .codex-card .role-chip {
+  font-size: 8px;
+}
+.hj-game .codex-card > p {
+  font-size: 11px;
+  line-height: 1.9;
+  color: #7b8b6b;
+  margin-top: 12px;
+  flex: 1;
+}
+.hj-game .skill-label {
+  font-size: 9px;
+  color: #ae9660;
+  padding-top: 11px;
+  margin-top: 11px;
+  border-top: 1px dashed #dfe5d3;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+@container haojie (max-width: 820px) {
+  .hj-game .codex-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .hj-game .codex-card {
+    padding: 12px;
+  }
+  .hj-game .codex-card-heading {
+    gap: 9px;
+  }
+  .hj-game .codex-card .rune.large {
+    width: 43px;
+    height: 46px;
+  }
+  .hj-game .codex-card .rune.large b {
+    font-size: 24px;
+  }
+  .hj-game .codex-card h3 {
+    font-size: 14px;
+  }
+  .hj-game .codex-card > p {
+    font-size: 10px;
+  }
+  .hj-game .filter-tabs {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .hj-game .filter-tabs button {
+    flex: 1;
+  }
+  .hj-game .search-field {
+    min-width: 100%;
+  }
+  .hj-game .codex-tools {
+    gap: 9px;
+  }
+}
+@container haojie (max-width: 450px) {
+  .hj-game .codex-grid {
+    grid-template-columns: 1fr;
+  }
+  .hj-game .codex-card {
+    padding: 15px;
+  }
+  .hj-game .codex-card-heading {
+    gap: 13px;
+  }
+  .hj-game .codex-card .rune.large {
+    width: 55px;
+    height: 57px;
+  }
+  .hj-game .codex-card .rune.large b {
+    font-size: 30px;
+  }
+  .hj-game .codex-card > p {
+    font-size: 11px;
+  }
+}
+.hj-game .ultimate-codex {
+  border-color: #dfc98f;
+  background: linear-gradient(140deg, #fffdf4, #f4edda);
+}
+.hj-game .ultimate-codex .piece-index {
+  color: #b1985c;
+  font-weight: 650;
+  letter-spacing: 1.4px;
+}
+@container haojie (max-width: 820px) {
+  .hj-game .filter-tabs {
+    flex-wrap: wrap;
+  }
+  .hj-game .filter-tabs button {
+    font-size: 9px;
+    padding: 6px 7px;
+  }
+}
+.hj-game .codex-card > p {
+  color: #64755f;
+}
