@@ -314,6 +314,7 @@ test("built Worker serves authenticated two-player HTTP rooms and existing pages
     assert.match(gameHtml, /浩劫/);
     assert.match(gameHtml, /class="hj-game/);
     assert.match(gameHtml, /认输/);
+    assert.match(gameHtml, /发送表情/);
     assert.doesNotMatch(gameHtml, /这个区域暂时无法显示|HAOJIE_DATABASE_UNAVAILABLE/);
     const command = input(1, { command: { type: "summon" } });
     const moved = await json(await request(`${path}/commands`, "a", command));
@@ -325,12 +326,39 @@ test("built Worker serves authenticated two-player HTTP rooms and existing pages
     const unchanged = await request(`${path}?after=2`, "b");
     assert.equal(unchanged.status, 204);
     assert.match(unchanged.headers.get("cache-control"), /no-store/);
+    const emojis = {
+      items: [
+        { id: crypto.randomUUID(), emoji: "😂" },
+        { id: crypto.randomUUID(), emoji: "👍" },
+      ],
+    };
+    const sentEmojis = await json(await request(`${path}/reactions`, "b", emojis));
+    assert.equal(sentEmojis.reactions.sequence, 2);
+    assert.equal(sentEmojis.reactions.items[0].player, 2);
+    assert.equal(
+      (await json(await request(`${path}/reactions`, "b", emojis))).reactions.sequence,
+      2,
+    );
+    const emojiPoll = await json(await request(`${path}?after=2&afterReaction=0`, "a"));
+    assert.equal(emojiPoll.room.revision, 2);
+    assert.equal(emojiPoll.update, null);
+    assert.deepEqual(emojiPoll.reactions, sentEmojis.reactions);
+    assert.equal((await request(`${path}?after=2&afterReaction=2`, "a")).status, 204);
+    await json(await request(`${path}/reactions`, "c", emojis), 404);
+    await json(await request(`${path}/reactions`, "b", { ...emojis, player: 1 }), 400);
+    await json(
+      await request(`${path}/reactions`, "b", {
+        items: [{ id: crypto.randomUUID(), emoji: "invalid" }],
+      }),
+      400,
+    );
     await json(
       await request(`${path}/commands`, "b", input(2, { command: { type: "summon", player: 1 } })),
       422,
     );
     await db.prepare("DELETE FROM allowed_users WHERE id = 'b'").run();
     await json(await request(`${path}?after=2`, "b"), 403);
+    await json(await request(`${path}/reactions`, "b", emojis), 403);
     const ended = await json(await request(`${path}/finish`, "a", input(2, { kind: "resign" })));
     assert.equal(ended.room.winner, 2);
     assert.equal(ended.room.status, "finished");

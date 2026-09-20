@@ -5,6 +5,14 @@ import {
   type RoomSnapshot,
 } from "./contracts.ts";
 import type { CommandReceipt } from "../../vendor/haojie2/src/ui/online/types";
+import {
+  REACTION_BATCH_SIZE,
+  REACTION_RELEASE_MS,
+  type HaojieEmoji,
+  type ReactionInput,
+  type RoomReaction,
+  type RoomReactions,
+} from "./reactions.ts";
 
 export type GameApiError = { code: string; message: string; incidentId?: string };
 export type RoomClientState = {
@@ -13,11 +21,14 @@ export type RoomClientState = {
   pending: boolean;
   error: GameApiError | null;
   fatal: boolean;
+  reactions: RoomReaction[];
+  reactionPending: number;
+  reactionError: GameApiError | null;
 };
 type Pending = { path: string; body: string; resolve: (receipt: CommandReceipt) => void };
 type JsonReply = RoomMutation & { error?: GameApiError; snapshot?: RoomSnapshot };
 
-export async function roomFetch(
+export async function roomFetch<T = JsonReply>(
   url: string,
   init: RequestInit = {},
   fetcher: typeof fetch = fetch,
@@ -31,7 +42,7 @@ export async function roomFetch(
     credentials: "same-origin",
     cache: "no-store",
   });
-  const body = response.status === 204 ? null : ((await response.json()) as JsonReply);
+  const body = response.status === 204 ? null : ((await response.json()) as T);
   return { response, body };
 }
 
@@ -85,15 +96,25 @@ export class RoomClient {
   private refreshAfterPoll = false;
   private endpoint: string;
   private fetcher: typeof fetch;
+  private reactionSequence: number;
+  private outgoingReactions: ReactionInput[] = [];
+  private reactionQueue: RoomReaction[] = [];
+  private reactionAbort: AbortController | null = null;
+  private reactionSendTimer: ReturnType<typeof setTimeout> | undefined;
+  private reactionPlayTimer: ReturnType<typeof setTimeout> | undefined;
 
   constructor(initial: RoomSnapshot, fetcher: typeof fetch = fetch) {
     this.fetcher = fetcher;
+    this.reactionSequence = initial.reactions?.sequence ?? 0;
     this.state = {
       snapshot: initial,
       connection: "connecting",
       pending: false,
       error: null,
       fatal: false,
+      reactions: [],
+      reactionPending: 0,
+      reactionError: null,
     };
     this.endpoint = `/api/haojie/rooms/${initial.room.id}`;
   }
@@ -110,6 +131,95 @@ export class RoomClient {
     const oldViewer = this.state.snapshot.room.viewer;
     if (oldViewer && snapshot.room.viewer !== oldViewer) throw new Error("ROOM_SEAT_CHANGED");
     this.publish({ snapshot: acceptRoomSnapshot(this.state.snapshot, snapshot, force) });
+    this.acceptReactions(snapshot.reactions);
+    if (this.state.snapshot.room.status !== "playing" && this.outgoingReactions.length) {
+      this.outgoingReactions = [];
+      this.publish({ reactionPending: 0 });
+    }
+  }
+  private acceptReactions(reactions?: RoomReactions) {
+    if (!reactions || reactions.sequence <= this.reactionSequence) return;
+    if (this.visible)
+      this.reactionQueue.push(
+        ...reactions.items.filter((item) => item.sequence > this.reactionSequence),
+      );
+    this.reactionSequence = reactions.sequence;
+    if (!this.reactionPlayTimer) this.playReaction();
+  }
+  private playReaction = () => {
+    this.reactionPlayTimer = undefined;
+    if (!this.running || !this.visible) return;
+    const item = this.reactionQueue.shift();
+    if (!item) return;
+    this.publish({ reactions: [...this.state.reactions.slice(-31), item] });
+    this.reactionPlayTimer = setTimeout(this.playReaction, REACTION_RELEASE_MS);
+  };
+  sendReaction = (emoji: HaojieEmoji) => {
+    if (
+      !this.running ||
+      this.state.fatal ||
+      !this.state.snapshot.room.viewer ||
+      this.state.snapshot.room.status !== "playing"
+    )
+      return;
+    this.outgoingReactions.push({ id: crypto.randomUUID(), emoji });
+    this.publish({ reactionPending: this.outgoingReactions.length });
+    if (!this.reactionAbort && !this.reactionSendTimer && !this.state.reactionError)
+      this.reactionSendTimer = setTimeout(() => void this.flushReactions(), 120);
+  };
+  retryReactions = () => {
+    if (!this.running || this.state.fatal || this.reactionAbort) return;
+    clearTimeout(this.reactionSendTimer);
+    this.publish({ reactionError: null });
+    void this.flushReactions();
+  };
+  private async flushReactions() {
+    this.reactionSendTimer = undefined;
+    if (!this.running || this.state.fatal || this.reactionAbort || !this.outgoingReactions.length)
+      return;
+    const items = this.outgoingReactions.slice(0, REACTION_BATCH_SIZE);
+    const abort = new AbortController();
+    this.reactionAbort = abort;
+    try {
+      const { response, body } = await roomFetch<{
+        reactions?: RoomReactions;
+        error?: GameApiError;
+      }>(
+        `${this.endpoint}/reactions`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ items }),
+          signal: abort.signal,
+        },
+        this.fetcher,
+      );
+      if (!this.running || abort.signal.aborted) return;
+      if (!response.ok) {
+        if ([401, 403, 404, 409].includes(response.status)) this.outgoingReactions = [];
+        this.publish({
+          reactionPending: this.outgoingReactions.length,
+          reactionError: body?.error ?? {
+            code: "REACTION_FAILED",
+            message: "表情发送失败，请重试。",
+          },
+        });
+        return;
+      }
+      if (!body?.reactions) throw new Error("INVALID_REACTION_RESPONSE");
+      this.acceptReactions(body.reactions);
+      this.outgoingReactions.splice(0, items.length);
+      this.publish({ reactionPending: this.outgoingReactions.length, reactionError: null });
+    } catch {
+      if (this.running && !abort.signal.aborted)
+        this.publish({
+          reactionError: { code: "REACTION_UNCERTAIN", message: "表情发送暂未确认，可以重试。" },
+        });
+    } finally {
+      if (this.reactionAbort === abort) this.reactionAbort = null;
+      if (this.running && this.outgoingReactions.length && !this.state.reactionError)
+        this.reactionSendTimer = setTimeout(() => void this.flushReactions(), 1000);
+    }
   }
   start() {
     this.running = true;
@@ -120,11 +230,19 @@ export class RoomClient {
     clearTimeout(this.timer);
     this.pollAbort?.abort();
     this.writeAbort?.abort();
+    this.reactionAbort?.abort();
+    clearTimeout(this.reactionSendTimer);
+    clearTimeout(this.reactionPlayTimer);
+    this.reactionSendTimer = undefined;
+    this.reactionPlayTimer = undefined;
+    this.reactionQueue = [];
+    this.outgoingReactions = [];
     this.pending?.resolve({ ok: false, message: "页面已关闭。" });
     this.pending = null;
   }
   setVisible(visible: boolean) {
     this.visible = visible;
+    if (!visible) this.reactionQueue = [];
     if (visible) this.refresh();
   }
   refresh = () => {
@@ -147,7 +265,7 @@ export class RoomClient {
     const abort = new AbortController();
     this.pollAbort = abort;
     const full = force || this.state.connection !== "connected";
-    const after = full ? "" : `?after=${this.state.snapshot.room.revision}`;
+    const after = `?afterReaction=${this.reactionSequence}${full ? "" : `&after=${this.state.snapshot.room.revision}`}`;
     let failure: GameApiError | null = null;
     try {
       const { response, body } = await roomFetch(

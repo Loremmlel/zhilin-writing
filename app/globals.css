@@ -1,5 +1,107 @@
 @import "tailwindcss";
 
+.haojie-emoji-picker {
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  width: min(312px, calc(100vw - 24px));
+  max-height: calc(100dvh - 24px);
+  overflow: auto;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  color: var(--ink);
+  background: var(--paper-strong);
+  box-shadow: 0 8px 28px rgb(36 45 39 / 14%);
+  z-index: var(--z-popover);
+}
+.haojie-emoji-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+.haojie-emoji-heading .button {
+  width: 36px;
+  min-height: 36px;
+  padding: 0;
+  font-size: 22px;
+}
+.haojie-emoji-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 4px;
+}
+.haojie-emoji-option {
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  font-size: 26px;
+  line-height: 1;
+  background: transparent;
+  cursor: pointer;
+}
+.haojie-emoji-option:hover,
+.haojie-emoji-option:active {
+  background: var(--green-soft);
+  border-color: var(--green);
+}
+.haojie-emoji-option:focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: 1px;
+}
+.haojie-emoji-option:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+.haojie-emoji-pending {
+  min-height: 20px;
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+.haojie-reaction-layer {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: var(--z-popover);
+}
+.haojie-reaction {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--paper-strong);
+  box-shadow: 0 4px 14px rgb(36 45 39 / 16%);
+  font-size: 34px;
+  line-height: 1;
+  transform: translateY(-80px);
+  visibility: hidden;
+}
+.haojie-reaction--own {
+  background: var(--green);
+  border-color: var(--green-dark);
+}
+@media (forced-colors: active) {
+  .haojie-reaction {
+    border: 2px solid CanvasText;
+  }
+  .haojie-reaction--own {
+    border: 4px double Highlight;
+  }
+}
+
 /* The host owns room navigation; the pinned game owns everything inside .hj-game. */
 .haojie-create {
   display: flex;

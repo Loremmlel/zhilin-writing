@@ -38,6 +38,14 @@ before(async () => {
     "utf8",
   );
   await db.batch(migration.split("--> statement-breakpoint").map((sql) => db.prepare(sql.trim())));
+  await db
+    .prepare(
+      await readFile(
+        new URL("../../drizzle/0014_closed_rocket_raccoon.sql", import.meta.url),
+        "utf8",
+      ),
+    )
+    .run();
   await db.prepare("INSERT INTO users VALUES ('a', '甲'), ('b', '乙'), ('c', '丙')").run();
 });
 after(() => mf.dispose());
@@ -260,4 +268,60 @@ test("HTTP boundary rejects cross-site, oversized and malformed commands", async
   );
   assert.throws(() => api.parseAfter("9007199254740992"));
   assert.equal(api.parseAfter(null), -1);
+});
+
+test("emoji bursts stay ordered and idempotent without changing game state or admitting spectators", async () => {
+  const { room: created } = await room();
+  const makeItems = (count: number) =>
+    Array.from({ length: count }, () => ({ id: crypto.randomUUID(), emoji: "😂" as const }));
+  await assert.rejects(
+    api.sendReactions(db, created.id, "b", makeItems(1)),
+    rejection("ROOM_FORBIDDEN"),
+  );
+  await api.mutateRoom(db, created.id, "b", input("join", 0));
+  const before = (await api.getRoom(db, created.id, "a"))!;
+  const items = makeItems(8);
+  const both = await Promise.all([
+    api.sendReactions(db, created.id, "a", items),
+    api.sendReactions(db, created.id, "b", makeItems(8)),
+  ]);
+  assert.equal(Math.max(...both.map((result) => result.reactions.sequence)), 16);
+  const replay = await api.sendReactions(db, created.id, "a", items);
+  assert.equal(replay.reactions.sequence, 16);
+  assert.equal(replay.reactions.items.length, 16);
+  assert.deepEqual(
+    replay.reactions.items.map((item) => item.sequence),
+    Array.from({ length: 16 }, (_, i) => i + 1),
+  );
+  assert.equal(replay.reactions.items.filter((item) => item.player === 1).length, 8);
+  const poll = (await api.getRoom(db, created.id, "b", 1, 0))!;
+  assert.equal(poll.room.revision, 1);
+  assert.equal(poll.update, null, "emoji-only polls do not transfer or re-run the game snapshot");
+  assert.deepEqual(poll.reactions, replay.reactions);
+  assert.equal(await api.getRoom(db, created.id, "b", 1, 16), null);
+  assert.deepEqual((await api.getRoom(db, created.id, "a"))!.update, before.update);
+  await assert.rejects(
+    api.sendReactions(db, created.id, "c", makeItems(1)),
+    rejection("ROOM_UNAVAILABLE"),
+  );
+  await assert.rejects(api.sendReactions(db, created.id, "b", items), rejection("REQUEST_REUSED"));
+  assert.throws(
+    () => api.parseReaction({ items: [{ id: crypto.randomUUID(), emoji: "<script>" }] }),
+    rejection("INVALID_REQUEST"),
+  );
+  assert.throws(
+    () => api.parseReaction({ items: [...items, items[0]] }),
+    rejection("INVALID_REQUEST"),
+  );
+  assert.throws(() => api.parseReaction({ items, player: 2 }), rejection("INVALID_REQUEST"));
+  for (let i = 0; i < 18; i++) await api.sendReactions(db, created.id, "a", makeItems(8));
+  const bounded = (await api.getRoom(db, created.id, "a"))!.reactions!;
+  assert.equal(bounded.sequence, 160);
+  assert.equal(bounded.items.length, 128);
+  assert.equal(bounded.items[0].sequence, 33);
+  await api.mutateRoom(db, created.id, "a", input("resign", 1));
+  await assert.rejects(
+    api.sendReactions(db, created.id, "a", makeItems(1)),
+    rejection("ROOM_NOT_PLAYING"),
+  );
 });

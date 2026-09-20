@@ -10,6 +10,13 @@ import {
 } from "../../vendor/haojie2/src/engine/index";
 import { pageBounds, PAGE_SIZE } from "../pagination.ts";
 import {
+  REACTION_LIMIT,
+  REACTION_TTL_MS,
+  type ReactionInput,
+  type RoomReaction,
+  type RoomReactions,
+} from "./reactions.ts";
+import {
   HAOJIE_ENGINE_VERSION,
   HaojieError,
   type MutationInput,
@@ -29,6 +36,7 @@ type RoomRow = {
   status: RoomSummary["status"];
   revision: number;
   stateJson: string | null;
+  reactionsJson: string;
   engineVersion: string;
   ruleset: string;
   viewVersion: number;
@@ -48,7 +56,7 @@ const ROOM_JOINS = `FROM haojie_rooms r JOIN users p1 ON p1.id = r.player1_id
 function roomQuery(db: D1Database, id: string, actor: string, after = -1) {
   return db
     .prepare(
-      `SELECT ${ROOM_COLUMNS},
+      `SELECT ${ROOM_COLUMNS}, r.reactions_json AS reactionsJson,
     CASE WHEN r.revision != ? AND (r.player1_id = ? OR r.player2_id = ?)
       THEN r.state_json ELSE NULL END AS stateJson
     ${ROOM_JOINS} WHERE r.id = ?
@@ -81,6 +89,7 @@ function snapshot(row: RoomRow, actor: string, after = -1): RoomSnapshot {
     row.viewVersion === PLAYER_VIEW_VERSION;
   return {
     room,
+    reactions: room.viewer ? readReactions(row.reactionsJson) : { sequence: 0, items: [] },
     update:
       row.stateJson && room.viewer && compatible
         ? {
@@ -101,9 +110,79 @@ function requireRoom(row: RoomRow | null | undefined): RoomRow {
   return row;
 }
 
-export async function getRoom(db: D1Database, id: string, actor: string, after = -1) {
+export async function getRoom(
+  db: D1Database,
+  id: string,
+  actor: string,
+  after = -1,
+  afterReaction?: number,
+) {
   const row = requireRoom(await roomQuery(db, id, actor, after).first<RoomRow>());
-  return row.revision === after ? null : snapshot(row, actor, after);
+  const reactionsChanged =
+    afterReaction !== undefined && readReactions(row.reactionsJson).sequence > afterReaction;
+  return row.revision === after && !reactionsChanged ? null : snapshot(row, actor, after);
+}
+
+function readReactions(json: string): RoomReactions {
+  const items = JSON.parse(json) as RoomReaction[];
+  return {
+    sequence: items.at(-1)?.sequence ?? 0,
+    items: items.filter((item) => item.createdAt > Date.now() - REACTION_TTL_MS),
+  };
+}
+
+export async function sendReactions(
+  db: D1Database,
+  id: string,
+  actor: string,
+  items: ReactionInput[],
+): Promise<{ reactions: RoomReactions }> {
+  const now = Date.now();
+  // Bounded append and deduplication in one statement; game revision/state remain untouched.
+  const updated = await db
+    .prepare(
+      `UPDATE haojie_rooms SET reactions_json = (
+    SELECT json_group_array(json(value)) FROM (
+      SELECT value, seq FROM (
+        SELECT value, json_extract(value, '$.sequence') AS seq FROM json_each(reactions_json)
+        UNION ALL
+        SELECT json_object('id', json_extract(n.value, '$.id'),
+          'sequence', COALESCE(json_extract(reactions_json, '$[#-1].sequence'), 0) + CAST(n.key AS INTEGER) + 1,
+          'player', CASE WHEN player1_id = ? THEN 1 ELSE 2 END,
+          'emoji', json_extract(n.value, '$.emoji'), 'createdAt', ?),
+          COALESCE(json_extract(reactions_json, '$[#-1].sequence'), 0) + CAST(n.key AS INTEGER) + 1 AS seq
+        FROM json_each(?) n
+        WHERE NOT EXISTS (SELECT 1 FROM json_each(reactions_json) old
+          WHERE json_extract(old.value, '$.id') = json_extract(n.value, '$.id'))
+        ORDER BY seq DESC LIMIT ?
+      ) ORDER BY seq ASC
+    )
+  ) WHERE id = ? AND status = 'playing' AND (player1_id = ? OR player2_id = ?)
+    AND NOT EXISTS (SELECT 1 FROM json_each(reactions_json) old JOIN json_each(?) n
+      ON json_extract(old.value, '$.id') = json_extract(n.value, '$.id')
+      WHERE json_extract(old.value, '$.emoji') != json_extract(n.value, '$.emoji')
+        OR json_extract(old.value, '$.player') != CASE WHEN player1_id = ? THEN 1 ELSE 2 END)
+    RETURNING reactions_json AS reactionsJson`,
+    )
+    .bind(
+      actor,
+      now,
+      JSON.stringify(items),
+      REACTION_LIMIT,
+      id,
+      actor,
+      actor,
+      JSON.stringify(items),
+      actor,
+    )
+    .first<{ reactionsJson: string }>();
+  if (updated) return { reactions: readReactions(updated.reactionsJson) };
+  const row = requireRoom(await roomQuery(db, id, actor, Number.MAX_SAFE_INTEGER).first<RoomRow>());
+  const player = summary(row, actor).viewer;
+  if (!player) throw new HaojieError("ROOM_FORBIDDEN", 403, "你不是这局的玩家。");
+  if (row.status !== "playing")
+    throw new HaojieError("ROOM_NOT_PLAYING", 409, "对局已结束，未发送的表情已取消。");
+  throw new HaojieError("REQUEST_REUSED", 409, "这次表情请求已被使用，请重新选择。");
 }
 
 export async function listRooms(db: D1Database, actor: string, requestedPage = 1) {

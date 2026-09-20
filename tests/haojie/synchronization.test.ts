@@ -173,3 +173,125 @@ test("conflicts restore a fresh snapshot; authentication failure stops polling",
   await flush();
   assert.equal(reads, before);
 });
+
+test("emoji bursts queue every click, release smoothly and deduplicate poll/receipt races", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  const items: import("../../lib/haojie/reactions.ts").RoomReaction[] = [];
+  const sent: { id: string; emoji: "😂" }[][] = [];
+  const client = new RoomClient(initial, async (_url, init) => {
+    if (init?.method === "POST") {
+      const batch = JSON.parse(String(init.body)).items;
+      sent.push(batch);
+      items.push(
+        ...batch.map((item: { id: string; emoji: "😂" }, index: number) => ({
+          ...item,
+          player: 1 as const,
+          sequence: items.length + index + 1,
+          createdAt: Date.now(),
+        })),
+      );
+      return Response.json({ reactions: { sequence: items.length, items } });
+    }
+    return Response.json({ ...initial, reactions: { sequence: items.length, items } });
+  });
+  t.after(() => client.stop());
+  client.start();
+  await flush();
+  for (let i = 0; i < 20; i++) client.sendReaction("😂");
+  assert.equal(client.getSnapshot().reactionPending, 20, "no click cooldown or dropped clicks");
+  assert.equal(client.getSnapshot().pending, false, "emoji queue must not lock the board");
+  t.mock.timers.tick(120);
+  await flush();
+  assert.equal(sent[0].length, 8);
+  assert.equal(
+    client.getSnapshot().reactions.length,
+    1,
+    "a received burst must not spawn all at once",
+  );
+  assert.equal(client.getSnapshot().reactionPending, 12);
+  t.mock.timers.tick(149);
+  assert.equal(client.getSnapshot().reactions.length, 1);
+  t.mock.timers.tick(1);
+  assert.equal(client.getSnapshot().reactions.length, 2);
+  client.refresh();
+  await flush();
+  const board = client.getSnapshot().snapshot.update;
+  for (let i = 0; i < 50; i++) {
+    t.mock.timers.tick(150);
+    await flush();
+  }
+  assert.deepEqual(
+    sent.map((batch) => batch.length),
+    [8, 8, 4],
+  );
+  assert.equal(client.getSnapshot().reactionPending, 0);
+  assert.equal(client.getSnapshot().reactions.length, 20);
+  assert.equal(new Set(client.getSnapshot().reactions.map((item) => item.id)).size, 20);
+  assert.equal(
+    client.getSnapshot().snapshot.update,
+    board,
+    "reaction-only polls preserve the rendered board",
+  );
+  const resumed = new RoomClient({ ...initial, reactions: { sequence: 20, items } }, async () =>
+    Response.json({ ...initial, reactions: { sequence: 20, items } }),
+  );
+  resumed.start();
+  await flush();
+  assert.equal(resumed.getSnapshot().reactions.length, 0, "refreshing does not replay history");
+  resumed.stop();
+});
+
+test("emoji failure preserves its batch for explicit retry and does not disconnect the game", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  const bodies: string[] = [];
+  const client = new RoomClient(initial, async (_url, init) => {
+    if (init?.method !== "POST") return Response.json(initial);
+    bodies.push(String(init.body));
+    if (bodies.length === 1) throw new TypeError("response lost");
+    const item = JSON.parse(String(init.body)).items[0];
+    return Response.json({
+      reactions: {
+        sequence: 1,
+        items: [{ ...item, sequence: 1, player: 1, createdAt: Date.now() }],
+      },
+    });
+  });
+  t.after(() => client.stop());
+  client.start();
+  await flush();
+  client.sendReaction("😂");
+  t.mock.timers.tick(120);
+  await flush();
+  assert.equal(client.getSnapshot().connection, "connected");
+  assert.equal(client.getSnapshot().pending, false);
+  assert.equal(client.getSnapshot().reactionPending, 1);
+  assert.equal(client.getSnapshot().reactionError?.code, "REACTION_UNCERTAIN");
+  client.retryReactions();
+  await flush();
+  assert.equal(bodies[0], bodies[1]);
+  assert.equal(client.getSnapshot().reactionPending, 0);
+  assert.equal(client.getSnapshot().reactionError, null);
+});
+
+test("parabolic emoji falls remain narrow and inside mobile and desktop viewports", async () => {
+  const { reactionFlight } = await import("../../lib/haojie/reactions.ts");
+  for (const [width, height] of [
+    [320, 568],
+    [390, 844],
+    [1440, 900],
+    [2560, 1440],
+  ]) {
+    for (let i = 0; i < 100; i++) {
+      const flight = reactionFlight(String(i), width, height);
+      assert.ok(flight.distance / flight.drift ** 2 >= 0.025 - 1e-10);
+      assert.ok(flight.start >= 8 && flight.start + 64 <= width - 8);
+      assert.ok(flight.start + flight.drift >= 8 && flight.start + flight.drift + 64 <= width - 8);
+      assert.ok(Math.abs(flight.drift) <= 180);
+      assert.deepEqual(
+        reactionFlight(String(i), width, height),
+        flight,
+        "same event has stable randomness",
+      );
+    }
+  }
+});

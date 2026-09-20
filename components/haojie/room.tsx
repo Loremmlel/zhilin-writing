@@ -1,8 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, useSyncExternalStore } from "react";
-import { HaojieOnlineGame } from "@/vendor/haojie2/src/ui/online/HaojieOnlineGame";
+import { memo, useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import {
+  HaojieOnlineGame,
+  type HaojieOnlineGameProps,
+} from "@/vendor/haojie2/src/ui/online/HaojieOnlineGame";
 import {
   HAOJIE_ENGINE_VERSION,
   HAOJIE_PATH,
@@ -13,9 +16,17 @@ import {
 import { RoomClient } from "@/lib/haojie/client";
 import { ModalDialog } from "../modal-dialog";
 import { PageHeader } from "../page-header";
+import { HaojieEmojiPicker, HaojieReactions } from "./reactions";
+
+const MemoizedHaojieGame = memo(HaojieOnlineGame);
 
 export function HaojieRoom({ initial }: { initial: RoomSnapshot }) {
   const [client] = useState(() => new RoomClient(initial));
+  const onCommand = useCallback<HaojieOnlineGameProps["onCommand"]>(
+    (command, context) =>
+      client.submit({ kind: "command", command, baseRevision: context.baseRevision }),
+    [client],
+  );
   const state = useSyncExternalStore(client.subscribe, client.getSnapshot, client.getSnapshot);
   const [confirm, setConfirm] = useState(false);
   const [copyState, setCopyState] = useState("");
@@ -77,6 +88,13 @@ export function HaojieRoom({ initial }: { initial: RoomSnapshot }) {
           </p>
         </div>
         <div className="haojie-room-actions">
+          {room.status === "playing" && room.viewer && (
+            <HaojieEmojiPicker
+              disabled={state.fatal || state.connection !== "connected"}
+              pending={state.reactionPending}
+              onSend={client.sendReaction}
+            />
+          )}
           {room.status === "waiting" && room.viewer === 1 && (
             <button type="button" className="button button--ghost" onClick={copyInvite}>
               复制邀请链接
@@ -95,6 +113,22 @@ export function HaojieRoom({ initial }: { initial: RoomSnapshot }) {
         </div>
       </div>
       <div className="haojie-sync" aria-live="polite">
+        {state.reactionError && (
+          <p className="form-error" role="alert">
+            {state.reactionError.message}
+            {state.reactionError.incidentId && (
+              <>
+                {" "}
+                错误编号：<code>{state.reactionError.incidentId}</code>
+              </>
+            )}
+            {state.reactionPending > 0 && !ended && (
+              <button type="button" className="text-button" onClick={client.retryReactions}>
+                重试发送
+              </button>
+            )}
+          </p>
+        )}
         {copyState && <p role="status">{copyState}</p>}
         {!state.fatal && !ended && (
           <p role="status">
@@ -174,15 +208,14 @@ export function HaojieRoom({ initial }: { initial: RoomSnapshot }) {
         </div>
       )}
       {update && (
-        <HaojieOnlineGame
+        <MemoizedHaojieGame
           update={update}
           connection={state.connection}
           disabled={ended || busy}
-          onCommand={(command, context) =>
-            client.submit({ kind: "command", command, baseRevision: context.baseRevision })
-          }
+          onCommand={onCommand}
         />
       )}
+      <HaojieReactions items={state.reactions} viewer={room.viewer} />
       <ModalDialog
         open={confirm}
         title={`${finishLabel}？`}

@@ -1,0 +1,1 @@
+ALTER TABLE `haojie_rooms` ADD `reactions_json` text DEFAULT '[]' NOT NULL;

@@ -54,6 +54,7 @@ export const haojieRooms = sqliteTable(
     status: text("status", { enum: ["waiting", "playing", "finished", "cancelled"] }).notNull(),
     revision: integer("revision").notNull().default(0),
     stateJson: text("state_json"),
+    reactionsJson: text("reactions_json").notNull().default("[]"),
     engineVersion: text("engine_version").notNull(),
     ruleset: text("ruleset").notNull(),
     viewVersion: integer("view_version").notNull(),

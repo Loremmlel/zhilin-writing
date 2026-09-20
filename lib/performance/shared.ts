@@ -31,7 +31,7 @@ export function performanceRoute(path: string): string {
   if (/^\/admin\/revisions\/[^/]+$/.test(path)) return "/admin/revisions/:id";
   if (path === "/games/haojie" || path === "/api/haojie/rooms") return path;
   if (/^\/games\/haojie\/[^/]+$/.test(path)) return "/games/haojie/:id";
-  if (/^\/api\/haojie\/rooms\/[^/]+(?:\/(?:join|commands|finish))?$/.test(path))
+  if (/^\/api\/haojie\/rooms\/[^/]+(?:\/(?:join|commands|finish|reactions))?$/.test(path))
     return path.replace(/^(\/api\/haojie\/rooms)\/[^/]+/, "$1/:id");
   const clean = path.replace(/\/$/, "") || "/";
   if (/^\/(?:posts|users|api\/assets)\/[^/]+(?:\/(?:edit|history))?$/.test(clean))

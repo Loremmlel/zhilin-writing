@@ -1,6 +1,33 @@
 import { z } from "zod";
 import { parseCommand, RuleError } from "../../vendor/haojie2/src/engine/index";
 import { HaojieError, type MutationInput } from "./contracts.ts";
+import { HAOJIE_EMOJIS, REACTION_BATCH_SIZE } from "./reactions.ts";
+
+const reactionSchema = z
+  .object({
+    items: z
+      .array(
+        z
+          .object({
+            id: z.uuid(),
+            emoji: z.enum(HAOJIE_EMOJIS.map(([emoji]) => emoji)),
+          })
+          .strict(),
+      )
+      .min(1)
+      .max(REACTION_BATCH_SIZE),
+  })
+  .strict();
+
+export function parseReaction(input: unknown) {
+  const parsed = reactionSchema.safeParse(input);
+  if (
+    !parsed.success ||
+    new Set(parsed.data.items.map((item) => item.id)).size !== parsed.data.items.length
+  )
+    throw new HaojieError("INVALID_REQUEST", 400, "请选择列表中的表情。");
+  return parsed.data;
+}
 
 const envelope = {
   requestId: z.uuid(),

@@ -1,5 +1,6 @@
 import type { Command, Player } from "../../vendor/haojie2/src/engine/types";
 import type { OnlineUpdate } from "../../vendor/haojie2/src/ui/online/types";
+import type { RoomReactions } from "./reactions.ts";
 
 export const HAOJIE_ENGINE_VERSION = "7824f47c0deb0797819833f6641021f87f4aecbd";
 export const HAOJIE_PATH = "/games/haojie";
@@ -21,6 +22,7 @@ export type RoomSummary = {
 export type RoomSnapshot = {
   room: RoomSummary;
   update: OnlineUpdate | null;
+  reactions?: RoomReactions;
 };
 export type RoomMutation = RoomSnapshot & { receipt: { ok: true; revision: number } };
 export type MutationInput = {
