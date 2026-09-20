@@ -24,11 +24,71 @@ test("sidebar cards follow document order and do not overlap", () => {
     12,
   );
   assert.deepEqual(result.cards, [
-    { annotationId: "a", top: 10 },
-    { annotationId: "b", top: 142 },
-    { annotationId: "c", top: 234 },
+    { annotationId: "a", top: 0 },
+    { annotationId: "b", top: 132 },
+    { annotationId: "c", top: 224 },
   ]);
-  assert.equal(result.height, 294);
+  assert.equal(result.height, 284);
+});
+
+test("crowded cards share displacement while isolated cards keep their anchors", () => {
+  const anchors = [40, 400, 440, 480, 1100].map((top, index) => ({
+    annotationId: String(index),
+    top,
+    right: 100,
+    height: 20,
+  }));
+  const heights = new Map(anchors.map(({ annotationId }) => [annotationId, 200]));
+  heights.set("0", 100);
+  const result = layoutAnnotationCards(anchors, heights, 14);
+  assert.deepEqual(
+    result.cards.map(({ top }) => top),
+    [40, 226, 440, 654, 1100],
+  );
+  assert.equal(result.height, 1300);
+});
+
+test("neighboring groups merge when balancing would collide, respecting the body start", () => {
+  const anchors = [600, 800, 810, 820].map((top, index) => ({
+    annotationId: String(index),
+    top,
+    right: 100,
+    height: 20,
+  }));
+  const heights = new Map(anchors.map(({ annotationId }) => [annotationId, 200]));
+  // The three lower cards would move into the first card, so all four must move together.
+  const balanced = layoutAnnotationCards(anchors, heights, 14);
+  assert.deepEqual(
+    balanced.cards.map(({ top }) => top),
+    [436.5, 650.5, 864.5, 1078.5],
+  );
+  const bounded = layoutAnnotationCards(anchors, heights, 14, 580);
+  assert.deepEqual(
+    bounded.cards.map(({ top }) => top),
+    [580, 794, 1008, 1222],
+  );
+  assert.equal(bounded.height, 1422);
+  assert.deepEqual(layoutAnnotationCards([], heights, 14, 80), { cards: [], height: 0 });
+});
+
+test("reply expansion rebalances variable-height cards and closing restores their positions", () => {
+  const anchors = [400, 440, 480, 1400].map((top, index) => ({
+    annotationId: String(index),
+    top,
+    right: 100,
+    height: 20,
+  }));
+  const heights = new Map(anchors.map(({ annotationId }) => [annotationId, 200]));
+  const initial = layoutAnnotationCards(anchors, heights, 14, 80);
+  heights.set("1", 500);
+  const expanded = layoutAnnotationCards(anchors, heights, 14, 80);
+  assert.deepEqual(
+    expanded.cards.map(({ top }) => top),
+    [126, 340, 854, 1400],
+  );
+  assert.equal(expanded.height, 1600);
+  heights.set("1", 200);
+  assert.deepEqual(layoutAnnotationCards(anchors, heights, 14, 80), initial);
 });
 
 test("sidebar placement ignores anchors that are not present in the live editor document", () => {

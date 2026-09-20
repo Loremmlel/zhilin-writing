@@ -125,15 +125,41 @@ export function layoutAnnotationCards(
   anchors: AnnotationAnchorBox[],
   cardHeights: Map<string, number>,
   gap: number,
+  minTop = 0,
 ) {
   const sorted = [...anchors].sort(
     (a, b) => a.top - b.top || a.annotationId.localeCompare(b.annotationId),
   );
-  let cursor = 0;
-  const cards = sorted.map((anchor) => {
-    const top = Math.max(anchor.top, cursor);
-    cursor = top + (cardHeights.get(anchor.annotationId) ?? 0) + gap;
-    return { annotationId: anchor.annotationId, top };
+  const offsets: number[] = [];
+  const groups: Array<{ start: number; count: number; sum: number }> = [];
+  let offset = 0;
+
+  // Subtract packed card heights so non-overlap becomes a nondecreasing sequence.
+  // Pool adjacent conflicts (isotonic regression) to minimize squared anchor drift.
+  sorted.forEach((anchor, index) => {
+    offsets.push(offset);
+    groups.push({ start: index, count: 1, sum: anchor.top - offset });
+    offset += (cardHeights.get(anchor.annotationId) ?? 0) + gap;
+    while (groups.length > 1) {
+      const current = groups[groups.length - 1];
+      const previous = groups[groups.length - 2];
+      if (previous.sum / previous.count <= current.sum / current.count) break;
+      previous.sum += current.sum;
+      previous.count += current.count;
+      groups.pop();
+    }
   });
-  return { cards, height: Math.max(0, cursor - gap) };
+
+  const cards: Array<{ annotationId: string; top: number }> = [];
+  for (const group of groups) {
+    const top = Math.max(minTop, group.sum / group.count);
+    for (let index = group.start; index < group.start + group.count; index += 1) {
+      cards.push({ annotationId: sorted[index].annotationId, top: top + offsets[index] });
+    }
+  }
+  const last = cards[cards.length - 1];
+  return {
+    cards,
+    height: last ? last.top + (cardHeights.get(last.annotationId) ?? 0) : 0,
+  };
 }

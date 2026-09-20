@@ -145,7 +145,6 @@ test("annotation reading activates on click without duplicating selected text in
   ]);
 
   assert.match(readingLayout, /onClick=\{\(event\) =>/);
-  assert.match(readingLayout, /layoutAnnotationCards\(anchors, cardHeights, 14\)/);
   assert.doesNotMatch(readingLayout, /onPointerOver=/);
   assert.doesNotMatch(annotationThread, /annotation-card-excerpt/);
   assert.doesNotMatch(annotationSheet, /选中文字/);

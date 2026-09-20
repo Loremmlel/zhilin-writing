@@ -302,7 +302,12 @@ export function AnnotationReadingLayout({
       anchors.push({ annotationId: annotation.id, ...geometry });
       cardHeights.set(annotation.id, card.offsetHeight);
     }
-    const placement = layoutAnnotationCards(anchors, cardHeights, 14);
+    const placement = layoutAnnotationCards(
+      anchors,
+      cardHeights,
+      14,
+      bodyRect.top - layoutRect.top,
+    );
     const byId = new Map(anchors.map((anchor) => [anchor.annotationId, anchor]));
     const tops: Record<string, number> = {};
     const paths: AnnotationConnector[] = [];

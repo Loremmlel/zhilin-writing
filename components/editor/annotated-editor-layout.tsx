@@ -113,7 +113,12 @@ export function AnnotatedEditorLayout({
       anchors.push({ annotationId: annotation.id, ...geometry });
       cardHeights.set(annotation.id, card.offsetHeight);
     }
-    const placement = layoutAnnotationCards(anchors, cardHeights, 14);
+    const placement = layoutAnnotationCards(
+      anchors,
+      cardHeights,
+      14,
+      editorRect.top - layoutRect.top,
+    );
     const anchorsById = new Map(anchors.map((anchor) => [anchor.annotationId, anchor]));
     const tops: Record<string, number> = {};
     const nextConnectors: AnnotationConnector[] = [];
