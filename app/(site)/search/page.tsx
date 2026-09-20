@@ -1,4 +1,4 @@
-import { requireMember } from "@/lib/auth/access";
+import { requireWritingMember } from "@/lib/auth/access";
 import { PostCard } from "@/components/post-card";
 import { PageHeader } from "@/components/page-header";
 import { Pagination } from "@/components/pagination";
@@ -12,7 +12,7 @@ export default async function SearchPage({
 }: {
   searchParams: Promise<{ q?: string; page?: string }>;
 }) {
-  const { member } = await requireMember("/search");
+  const { member } = await requireWritingMember("/search");
   const params = await searchParams;
   const query = typeof params.q === "string" ? params.q.trim() : "";
   const result = query

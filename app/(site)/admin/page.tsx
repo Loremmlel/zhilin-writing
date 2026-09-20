@@ -7,7 +7,12 @@ import { AdminBulkSelection } from "@/components/admin/admin-bulk-selection";
 import { AdminContentPreview } from "@/components/admin/admin-content-preview";
 import { AdminContentTable, type AdminTableColumn } from "@/components/admin/admin-content-table";
 import { AdminShell, type AdminNavKey } from "@/components/admin/admin-shell";
-import { AddAllowlistForm, RemoveAllowlistForm } from "@/components/admin/allowlist-forms";
+import {
+  AddAllowlistForm,
+  RemoveAllowlistForm,
+  UpdatePermissionGroupForm,
+} from "@/components/admin/allowlist-forms";
+import { permissionGroupLabels } from "@/lib/auth/permissions";
 import { ContentLifecycleControl } from "@/components/admin/content-lifecycle-control";
 import { AdminListSkeleton } from "@/components/loading/skeletons";
 import { RegionErrorBoundary } from "@/components/region-error-boundary";
@@ -44,6 +49,7 @@ import {
   moderateReplyAction,
   purgeContentAction,
   removeAllowlistAction,
+  updatePermissionGroupAction,
 } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -778,7 +784,7 @@ async function AdminMembers() {
             <tr>
               <th scope="col">邮箱</th>
               <th scope="col">社区资料</th>
-              <th scope="col">资格</th>
+              <th scope="col">权限组</th>
               <th scope="col">加入时间</th>
               <th scope="col">操作</th>
             </tr>
@@ -796,7 +802,9 @@ async function AdminMembers() {
                     {entry.isAdmin ? (
                       <span className="status-pill status-pill--current">唯一管理员</span>
                     ) : (
-                      <span className="status-pill status-pill--normal">已受邀</span>
+                      <span className="status-pill status-pill--normal">
+                        {permissionGroupLabels[entry.permissionGroup]}
+                      </span>
                     )}
                   </td>
                   <td>
@@ -808,11 +816,19 @@ async function AdminMembers() {
                     {entry.isAdmin ? (
                       <small>唯一管理员不可移除</small>
                     ) : (
-                      <RemoveAllowlistForm
-                        action={removeAllowlistAction}
-                        id={entry.id}
-                        email={entry.email}
-                      />
+                      <div className="permission-group-actions">
+                        <UpdatePermissionGroupForm
+                          action={updatePermissionGroupAction}
+                          id={entry.id}
+                          email={entry.email}
+                          permissionGroup={entry.permissionGroup}
+                        />
+                        <RemoveAllowlistForm
+                          action={removeAllowlistAction}
+                          id={entry.id}
+                          email={entry.email}
+                        />
+                      </div>
                     )}
                   </td>
                 </tr>

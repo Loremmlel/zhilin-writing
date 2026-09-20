@@ -3107,6 +3107,7 @@ input[type="file"] {
   font-weight: 650;
 }
 .allowlist-add-form .text-input {
+  grid-column: 1 / -1;
   min-width: 0;
   height: 40px;
 }
@@ -3116,6 +3117,36 @@ input[type="file"] {
 }
 .allowlist-add-form .form-error {
   grid-column: 1 / -1;
+}
+.permission-group-field {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  font-size: 14px;
+}
+.permission-group-field legend {
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+.permission-group-field label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: 14px;
+  min-height: 32px;
+  cursor: pointer;
+}
+.permission-group-field input {
+  accent-color: var(--green);
+}
+.allowlist-add-form > .button {
+  align-self: end;
+}
+.permission-group-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
 }
 .admin-aside-list {
   margin-top: 15px;
@@ -4975,4 +5006,8 @@ input[type="file"] {
 }
 .post-visibility-users span {
   overflow-wrap: anywhere;
+}
+
+.header-inner.header-inner--game {
+  grid-template-columns: minmax(0, 1fr) auto;
 }

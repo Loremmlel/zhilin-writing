@@ -4,7 +4,7 @@ import { parsePostVisibilityField, PostVisibilityError } from "@/lib/posts/visib
 import { revalidatePath } from "next/cache";
 
 import type { PostActionState } from "@/components/editor/post-editor-form";
-import { getApiMemberAccess } from "@/lib/auth/access";
+import { getApiWritingAccess } from "@/lib/auth/access";
 import { actionAccessFailure } from "@/lib/actions/result";
 import { logServerError } from "@/lib/logging";
 import { createPost } from "@/lib/posts/service";
@@ -31,7 +31,7 @@ export async function createPostAction(
 ): Promise<PostActionState> {
   let actorUserId: string | undefined;
   try {
-    const access = await getApiMemberAccess();
+    const access = await getApiWritingAccess();
     if (!access.ok) return actionAccessFailure(access.code);
     const { member } = access;
     actorUserId = member.id;

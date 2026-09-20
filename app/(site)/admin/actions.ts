@@ -2,7 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 
-import { addAllowedUser, findAllowedUser, removeAllowedUser } from "@/db/queries";
+import {
+  addAllowedUser,
+  findAllowedUser,
+  removeAllowedUser,
+  updateAllowedUserGroup,
+} from "@/db/queries";
+import { isPermissionGroup } from "@/lib/auth/permissions";
 import type { LifecycleActionState } from "@/components/lifecycle/delete-content-control";
 import { getActionAdministratorAccess } from "@/lib/auth/access";
 import { actionAccessFailure, type ActionAccessErrorCode } from "@/lib/actions/result";
@@ -72,9 +78,13 @@ export async function addAllowlistAction(
   if (!access.ok) return actionAccessFailure(access.code);
   const { member } = access;
   const email = normalizeEmail(String(formData.get("email") ?? ""));
+  const permissionGroup = formData.get("permissionGroup") ?? "normal";
+  if (!isPermissionGroup(permissionGroup)) return { error: "请选择有效权限组" };
   if (!email || !email.includes("@")) return { error: "请输入有效邮箱" };
   try {
-    if (!(await findAllowedUser(email))) await addAllowedUser(email, false, member.id);
+    if (await findAllowedUser(email))
+      return { error: "该邮箱已在白名单中，可在成员列表修改权限组" };
+    await addAllowedUser(email, false, member.id, permissionGroup);
   } catch (error) {
     const incidentId = logServerError({
       operation: "allowlist.add",
@@ -85,6 +95,32 @@ export async function addAllowlistAction(
     return { error: "白名单更新失败，请稍后重试", incidentId };
   }
   revalidatePath("/admin");
+  return { success: true };
+}
+
+export async function updatePermissionGroupAction(
+  _state: AllowlistActionState,
+  formData: FormData,
+): Promise<AllowlistActionState> {
+  const access = await getActionAdministratorAccess();
+  if (!access.ok) return actionAccessFailure(access.code);
+  const id = String(formData.get("id") ?? "");
+  const permissionGroup = formData.get("permissionGroup");
+  if (!id || !isPermissionGroup(permissionGroup)) return { error: "请选择有效权限组" };
+  try {
+    if (!(await updateAllowedUserGroup(id, permissionGroup)))
+      return { error: "该邀请已失效，或不能修改管理员的权限组" };
+  } catch (error) {
+    const incidentId = logServerError({
+      operation: "allowlist.group",
+      entityId: id,
+      userId: access.member.id,
+      error,
+      errorCode: "ALLOWLIST_GROUP_FAILED",
+    });
+    return { error: "权限组更新失败，请稍后重试", incidentId };
+  }
+  revalidatePath("/", "layout");
   return { success: true };
 }
 

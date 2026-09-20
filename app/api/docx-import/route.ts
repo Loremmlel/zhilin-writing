@@ -1,4 +1,4 @@
-import { getApiMemberAccess } from "@/lib/auth/access";
+import { getApiWritingAccess } from "@/lib/auth/access";
 import {
   DocxImportBodyError,
   parseDocxImportCommitBody,
@@ -10,6 +10,7 @@ import { logServerError } from "@/lib/logging";
 export const dynamic = "force-dynamic";
 
 const errorMessages: Record<string, string> = {
+  WRITING_REQUIRED: "当前权限组不能导入随笔。",
   AUTH_EXPIRED: "登录状态已失效，请重新登录后继续。",
   ACCESS_REVOKED: "你的站点访问权限已被移除。",
   ONBOARDING_REQUIRED: "请先完成站内资料设置后再导入 DOCX。",
@@ -22,7 +23,7 @@ const errorMessages: Record<string, string> = {
 };
 
 export async function POST(request: Request) {
-  const access = await getApiMemberAccess();
+  const access = await getApiWritingAccess();
   if (!access.ok) {
     return Response.json(
       {

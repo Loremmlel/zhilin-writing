@@ -8,7 +8,7 @@ export async function listPostVisibilityUsers() {
     .select({ id: users.id, displayName: users.displayName })
     .from(users)
     .innerJoin(allowedUsers, eq(users.emailKey, allowedUsers.email))
-    .where(eq(allowedUsers.isAdmin, false))
+    .where(and(eq(allowedUsers.isAdmin, false), eq(allowedUsers.permissionGroup, "normal")))
     .orderBy(users.displayName);
 }
 

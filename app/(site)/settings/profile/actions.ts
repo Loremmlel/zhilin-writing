@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { isDisplayNameTaken, updateUserProfile, updateUserProfileWithAvatar } from "@/db/queries";
 import { storeTemporaryAsset } from "@/lib/assets/storage";
 import { getApiMemberAccess } from "@/lib/auth/access";
+import { canAccessWriting } from "@/lib/auth/permissions";
 import { actionAccessFailure, type ActionAccessErrorCode } from "@/lib/actions/result";
 import { validateDisplayName } from "@/lib/domain/rules";
 import { logServerError } from "@/lib/logging";
@@ -50,5 +51,5 @@ export async function updateProfileAction(
     });
     return { error: "资料保存失败，请稍后重试", incidentId };
   }
-  redirect(`/users/${member.id}`);
+  redirect(canAccessWriting(access.allowed) ? `/users/${member.id}` : "/games/haojie");
 }

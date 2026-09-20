@@ -6,11 +6,38 @@ import { useRouter } from "next/navigation";
 import type { AllowlistActionState } from "@/app/(site)/admin/actions";
 import { ActionErrorMessage } from "@/components/action-error-message";
 import { ModalDialog } from "@/components/modal-dialog";
+import { PendingSubmitButton } from "@/components/pending/pending-submit-button";
+import { permissionGroupLabels, type PermissionGroup } from "@/lib/auth/permissions";
 
 type AllowlistAction = (
   state: AllowlistActionState,
   formData: FormData,
 ) => Promise<AllowlistActionState>;
+
+function PermissionGroupField({
+  value = "normal",
+  disabled,
+}: {
+  value?: PermissionGroup;
+  disabled: boolean;
+}) {
+  return (
+    <fieldset className="permission-group-field" disabled={disabled}>
+      <legend>权限组</legend>
+      {(["normal", "game"] as const).map((group) => (
+        <label key={group}>
+          <input
+            type="radio"
+            name="permissionGroup"
+            value={group}
+            defaultChecked={value === group}
+          />
+          {permissionGroupLabels[group]}
+        </label>
+      ))}
+    </fieldset>
+  );
+}
 
 export function AddAllowlistForm({ action }: { action: AllowlistAction }) {
   const router = useRouter();
@@ -41,19 +68,82 @@ export function AddAllowlistForm({ action }: { action: AllowlistAction }) {
         aria-describedby={state.error ? `${inputId}-error` : undefined}
         disabled={pending || state.code === "ACCESS_REVOKED"}
       />
-      <button
+      <PermissionGroupField disabled={pending || state.code === "ACCESS_REVOKED"} />
+      <PendingSubmitButton
         className="button button--primary"
         disabled={pending || state.code === "ACCESS_REVOKED"}
-        aria-busy={pending}
+        pendingLabel="正在添加…"
       >
-        {pending ? "正在添加…" : "加入白名单"}
-      </button>
+        加入白名单
+      </PendingSubmitButton>
       <ActionErrorMessage
         error={state.error}
         incidentId={state.incidentId}
         id={`${inputId}-error`}
       />
     </form>
+  );
+}
+
+export function UpdatePermissionGroupForm({
+  action,
+  id,
+  email,
+  permissionGroup,
+}: {
+  action: AllowlistAction;
+  id: string;
+  email: string;
+  permissionGroup: PermissionGroup;
+}) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [state, formAction, pending] = useActionState(
+    async (previous: AllowlistActionState, data: FormData) => {
+      const result = await action(previous, data);
+      if (result.success) {
+        setOpen(false);
+        router.refresh();
+      }
+      return result;
+    },
+    {},
+  );
+  return (
+    <>
+      <button className="text-button" type="button" onClick={() => setOpen(true)}>
+        修改权限组
+      </button>
+      <ModalDialog
+        open={open}
+        title={`修改 ${email} 的权限组`}
+        description="普通组可使用全部社区功能；游戏组仅可使用浩劫 2 和编辑自己的资料。已有内容会保留。"
+        onClose={() => !pending && setOpen(false)}
+      >
+        <form action={formAction} className="moderation-form" noValidate aria-busy={pending}>
+          <input type="hidden" name="id" value={id} />
+          <PermissionGroupField value={permissionGroup} disabled={pending} />
+          <ActionErrorMessage error={state.error} incidentId={state.incidentId} />
+          <div className="dialog-actions">
+            <button
+              className="button button--ghost"
+              type="button"
+              disabled={pending}
+              onClick={() => setOpen(false)}
+            >
+              取消
+            </button>
+            <PendingSubmitButton
+              className="button button--primary"
+              disabled={pending || state.code === "ACCESS_REVOKED"}
+              pendingLabel="正在保存…"
+            >
+              确认修改
+            </PendingSubmitButton>
+          </div>
+        </form>
+      </ModalDialog>
+    </>
   );
 }
 

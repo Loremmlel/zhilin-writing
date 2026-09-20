@@ -6,7 +6,7 @@ import { NotificationList } from "@/components/notification-list";
 import { MarkAllNotificationsForm } from "@/components/notifications/mark-all-notifications-form";
 import { RegionErrorBoundary } from "@/components/region-error-boundary";
 import { listNotificationsPage } from "@/db/queries";
-import { requireMember } from "@/lib/auth/access";
+import { requireWritingMember } from "@/lib/auth/access";
 import { markAllNotificationsReadAction } from "./actions";
 
 import { PageHeader } from "@/components/page-header";
@@ -19,7 +19,10 @@ export default async function NotificationsPage({
 }: {
   searchParams: Promise<{ tab?: string; page?: string }>;
 }) {
-  const [{ member }, params] = await Promise.all([requireMember("/notifications"), searchParams]);
+  const [{ member }, params] = await Promise.all([
+    requireWritingMember("/notifications"),
+    searchParams,
+  ]);
   const unreadOnly = params.tab === "unread";
   return (
     <div className="page-column notifications-page">

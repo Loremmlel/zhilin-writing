@@ -3,6 +3,7 @@ import { readFile, readdir } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { join } from "node:path";
 import test from "node:test";
+import { encodeReply } from "react-server-dom-webpack/client.edge";
 import { Miniflare } from "miniflare";
 
 test("built Worker serves authenticated two-player HTTP rooms and existing pages on isolated D1", async () => {
@@ -30,6 +31,13 @@ test("built Worker serves authenticated two-player HTTP rooms and existing pages
       .filter((name) => /^\d{4}_.+\.sql$/.test(name))
       .sort();
     for (const file of migrations) {
+      if (file.startsWith("0013_")) {
+        await db
+          .prepare(
+            "INSERT INTO allowed_users(id,email,is_admin,added_at,added_by_user_id) VALUES ('legacy','legacy@example.test',0,0,'test-owner')",
+          )
+          .run();
+      }
       const sql = await readFile(new URL(`../../drizzle/${file}`, import.meta.url), "utf8");
       await db.batch(
         sql
@@ -39,6 +47,11 @@ test("built Worker serves authenticated two-player HTTP rooms and existing pages
           .map((part) => db.prepare(part)),
       );
     }
+    assert.equal(
+      (await db.prepare("SELECT permission_group FROM allowed_users WHERE id='legacy'").first())
+        .permission_group,
+      "normal",
+    );
     for (const [id, name] of [
       ["a", "甲"],
       ["b", "乙"],
@@ -57,6 +70,12 @@ test("built Worker serves authenticated two-player HTTP rooms and existing pages
           .bind(id, `${id}@example.test`),
       ]);
     }
+    await db.prepare("UPDATE allowed_users SET permission_group='game' WHERE id='b'").run();
+    await db
+      .prepare(
+        "INSERT INTO posts(id,author_id,title,markdown,search_text,published_at,last_activity_at,visibility_user_ids) VALUES('private-post','a','私密随笔标题','私密随笔正文','私密随笔正文',0,0,'[\"a\",\"b\"]')",
+      )
+      .run();
     const request = (path, actor, body) =>
       mf.dispatchFetch(`https://site.test${path}`, {
         method: body ? "POST" : "GET",
@@ -86,6 +105,192 @@ test("built Worker serves authenticated two-player HTTP rooms and existing pages
     assert.equal(lobby.status, 200);
     assert.match(lobbyHtml, /创建房间/);
     assert.match(lobbyHtml, /暂无未结束的对局/);
+    // Game members cannot discover writing content through any page or resource entry point.
+    for (const route of [
+      "/",
+      "/posts/private-post",
+      "/posts/new",
+      "/posts/import",
+      "/posts/private-post/edit",
+      "/users/a",
+      "/users/b?tab=activity",
+      "/search?q=私密",
+      "/tags",
+      "/tags/校园",
+      "/notifications",
+      "/notifications/missing",
+      "/admin",
+    ]) {
+      const response = await request(route, "b");
+      const html = await response.text();
+      assert.doesNotMatch(html, /私密随笔标题|私密随笔正文/, route);
+      assert.ok([200, 302, 303, 307].includes(response.status), `${route}: ${response.status}`);
+      assert.ok(response.headers.get("location") || html.includes("/games/haojie"), route);
+    }
+    const gameLobby = await request("/games/haojie", "b");
+    const gameLobbyHtml = await gameLobby.text();
+    assert.equal(gameLobby.status, 200);
+    assert.match(gameLobbyHtml, /创建房间/);
+    assert.doesNotMatch(
+      gameLobbyHtml,
+      /href="\/(?:posts|notifications|search|tags|users)(?:[/?"])/,
+    );
+    const profile = await request("/settings/profile", "b");
+    assert.equal(profile.status, 200);
+    assert.match(await profile.text(), /保存资料/);
+    assert.equal(
+      (await json(await request("/api/docx-import", "b", {}), 403)).error.code,
+      "WRITING_REQUIRED",
+    );
+    const bucket = await mf.getR2Bucket("BUCKET");
+    for (const [id, owner, kind, status] of [
+      ["image", "a", "image", "permanent"],
+      ["own-upload", "b", "image", "temporary"],
+      ["avatar", "b", "avatar", "permanent"],
+    ]) {
+      await bucket.put(id, "private-asset-bytes");
+      await db
+        .prepare(
+          "INSERT INTO assets(id,owner_id,r2_key,kind,filename,mime_type,byte_size,status,created_at) VALUES(?,?,?,?,?,'image/png',19,?,0)",
+        )
+        .bind(id, owner, id, kind, `${id}.png`, status)
+        .run();
+    }
+    await db
+      .prepare(
+        "INSERT INTO post_asset_refs(post_id,asset_id,usage) VALUES('private-post','image','inline')",
+      )
+      .run();
+    await db.prepare("UPDATE users SET avatar_asset_id='avatar' WHERE id='b'").run();
+    for (const id of ["image", "own-upload"])
+      assert.equal((await request(`/api/assets/${id}`, "b")).status, 404);
+    assert.equal((await request("/api/assets/avatar", "b")).status, 200);
+    assert.equal((await request("/api/assets/image", "a")).status, 200);
+    const upload = new FormData();
+    upload.set("file", new Blob(["content"], { type: "text/plain" }), "essay.txt");
+    const uploadRequest = new Request("https://site.test/api/assets", {
+      method: "POST",
+      headers: { "oai-authenticated-user-email": "b@example.test" },
+      body: upload,
+    });
+    const uploadResponse = await mf.dispatchFetch(uploadRequest.url, {
+      method: "POST",
+      headers: Object.fromEntries(uploadRequest.headers),
+      body: await uploadRequest.arrayBuffer(),
+    });
+    assert.equal((await json(uploadResponse, 403)).code, "WRITING_REQUIRED");
+    const source = await readFile(join(root, "index.js"), "utf8");
+    const action = async (name, actor, args) => {
+      const match = source.match(
+        new RegExp(`registerServerReference\\(${name}, "([^"]+)", "${name}"\\)`),
+      );
+      assert.ok(match, `built action: ${name}`);
+      const encoded = new Request("https://site.test/games/haojie", {
+        method: "POST",
+        headers: {
+          Origin: (await mf.ready).origin,
+          "oai-authenticated-user-email": `${actor}@example.test`,
+          "next-action": `${match[1]}#${name}`,
+        },
+        body: await encodeReply(args),
+      });
+      return mf.dispatchFetch(encoded.url, {
+        method: "POST",
+        headers: Object.fromEntries(encoded.headers),
+        body: await encoded.arrayBuffer(),
+      });
+    };
+    const form = (values) => {
+      const data = new FormData();
+      for (const [key, value] of Object.entries(values)) data.set(key, value);
+      return data;
+    };
+    for (const [name, args] of [
+      ["createPostAction", [{}, form({ title: "未授权写入", markdown: "未授权正文" })]],
+      ["createReplyAction", ["private-post", null, {}, new FormData()]],
+      ["createAnnotationAction", ["private-post", {}, new FormData()]],
+      ["createAnnotationReplyAction", ["private-post", "missing", null, {}, new FormData()]],
+      ["markAllNotificationsReadAction", [{}, new FormData()]],
+    ])
+      assert.match(await (await action(name, "b", args)).text(), /WRITING_REQUIRED/, name);
+    assert.equal((await db.prepare("SELECT count(*) AS n FROM posts").first()).n, 1);
+    const savedProfile = await action("updateProfileAction", "b", [
+      {},
+      form({ displayName: "乙的新昵称", bio: "个人简介" }),
+    ]);
+    assert.equal(
+      (await db.prepare("SELECT display_name FROM users WHERE id='b'").first()).display_name,
+      "乙的新昵称",
+    );
+    assert.ok([...savedProfile.headers.values()].some((value) => value === "/games/haojie"));
+    await db.prepare("UPDATE users SET display_name='乙' WHERE id='b'").run();
+    await db.prepare("UPDATE allowed_users SET is_admin=1 WHERE id='a'").run();
+    assert.match(
+      await (
+        await action("addAllowlistAction", "b", [
+          {},
+          form({ email: "unauthorized@test", permissionGroup: "normal" }),
+        ])
+      ).text(),
+      /ADMIN_REQUIRED/,
+    );
+    const invited = await action("addAllowlistAction", "a", [
+      {},
+      form({ email: "new-game@test", permissionGroup: "game" }),
+    ]);
+    await invited.text();
+    const newInvite = await db
+      .prepare("SELECT * FROM allowed_users WHERE email='new-game@test'")
+      .first();
+    assert.equal(newInvite.permission_group, "game");
+    assert.equal(newInvite.is_admin, 0);
+    await (
+      await action("updatePermissionGroupAction", "a", [
+        {},
+        form({ id: newInvite.id, permissionGroup: "normal" }),
+      ])
+    ).text();
+    assert.equal(
+      (
+        await db
+          .prepare("SELECT permission_group FROM allowed_users WHERE id=?")
+          .bind(newInvite.id)
+          .first()
+      ).permission_group,
+      "normal",
+    );
+    await (
+      await action("updatePermissionGroupAction", "a", [
+        {},
+        form({ id: "a", permissionGroup: "game" }),
+      ])
+    ).text();
+    assert.equal(
+      (await db.prepare("SELECT permission_group FROM allowed_users WHERE id='a'").first())
+        .permission_group,
+      "normal",
+    );
+    await (
+      await action("updatePermissionGroupAction", "a", [
+        {},
+        form({ id: "b", permissionGroup: "administrator" }),
+      ])
+    ).text();
+    assert.equal(
+      (await db.prepare("SELECT permission_group FROM allowed_users WHERE id='b'").first())
+        .permission_group,
+      "game",
+    );
+    const adminPage = await request("/admin?section=members", "a");
+    const adminHtml = await adminPage.text();
+    assert.equal(adminPage.status, 200);
+    assert.match(adminHtml, /修改权限组/);
+    assert.match(adminHtml, /游戏组/);
+    // A fresh request observes a group change immediately, even with an existing post allowlist.
+    await db.prepare("UPDATE allowed_users SET permission_group='normal' WHERE id='b'").run();
+    assert.match(await (await request("/", "b")).text(), /私密随笔标题/);
+    await db.prepare("UPDATE allowed_users SET permission_group='game' WHERE id='b'").run();
+    assert.doesNotMatch(await (await request("/", "b")).text(), /私密随笔标题/);
     const created = await json(
       await request("/api/haojie/rooms", "a", { requestId: crypto.randomUUID(), mode: "classic" }),
     );

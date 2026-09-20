@@ -1,0 +1,1 @@
+ALTER TABLE `allowed_users` ADD `permission_group` text DEFAULT 'normal' NOT NULL;

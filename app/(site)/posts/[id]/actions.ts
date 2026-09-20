@@ -9,7 +9,7 @@ import { revalidatePath } from "next/cache";
 import type { PostActionState } from "@/components/editor/post-editor-form";
 import type { ReplyActionState } from "@/components/reply-form";
 import type { LifecycleActionState } from "@/components/lifecycle/delete-content-control";
-import { getApiMemberAccess } from "@/lib/auth/access";
+import { getApiWritingAccess } from "@/lib/auth/access";
 import { actionAccessFailure, type ActionAccessErrorCode } from "@/lib/actions/result";
 import {
   createAnnotation,
@@ -94,7 +94,7 @@ export async function updatePostAction(
 ): Promise<PostActionState> {
   let actorUserId: string | undefined;
   try {
-    const access = await getApiMemberAccess();
+    const access = await getApiWritingAccess();
     if (!access.ok) return actionAccessFailure(access.code);
     const { member } = access;
     actorUserId = member.id;
@@ -139,7 +139,7 @@ export async function createReplyAction(
 ): Promise<ReplyActionState> {
   let actorUserId: string | undefined;
   try {
-    const access = await getApiMemberAccess();
+    const access = await getApiWritingAccess();
     if (!access.ok) return actionAccessFailure(access.code);
     const { member } = access;
     actorUserId = member.id;
@@ -176,7 +176,7 @@ export async function createAnnotationAction(
   let actorUserId: string | undefined;
   let selection: AnnotationSelectionDescriptor | undefined;
   try {
-    const access = await getApiMemberAccess();
+    const access = await getApiWritingAccess();
     if (!access.ok) return actionAccessFailure(access.code);
     const { member } = access;
     actorUserId = member.id;
@@ -235,7 +235,7 @@ export async function createAnnotationReplyAction(
   markPerformanceOperation("annotation-reply.create");
   let actorUserId: string | undefined;
   try {
-    const access = await getApiMemberAccess();
+    const access = await getApiWritingAccess();
     if (!access.ok) return actionAccessFailure(access.code);
     const { member } = access;
     actorUserId = member.id;
@@ -273,7 +273,7 @@ export async function deletePostAction(
   void _state;
   let actorUserId: string | undefined;
   try {
-    const access = await getApiMemberAccess();
+    const access = await getApiWritingAccess();
     if (!access.ok) return actionAccessFailure(access.code);
     const { member } = access;
     actorUserId = member.id;
@@ -302,7 +302,7 @@ export async function deleteReplyAction(
   void _state;
   let actorUserId: string | undefined;
   try {
-    const access = await getApiMemberAccess();
+    const access = await getApiWritingAccess();
     if (!access.ok) return actionAccessFailure(access.code);
     const { member } = access;
     actorUserId = member.id;
@@ -333,7 +333,7 @@ export async function deleteAnnotationAction(
   void _state;
   let actorUserId: string | undefined;
   try {
-    const access = await getApiMemberAccess();
+    const access = await getApiWritingAccess();
     if (!access.ok) return actionAccessFailure(access.code);
     const { member } = access;
     actorUserId = member.id;
@@ -362,7 +362,7 @@ export async function deleteAnnotationReplyAction(
   void _state;
   let actorUserId: string | undefined;
   try {
-    const access = await getApiMemberAccess();
+    const access = await getApiWritingAccess();
     if (!access.ok) return actionAccessFailure(access.code);
     const { member } = access;
     actorUserId = member.id;
@@ -391,7 +391,7 @@ export async function removeImportedAnnotationThreadAction(
   void _state;
   let actorUserId: string | undefined;
   try {
-    const access = await getApiMemberAccess();
+    const access = await getApiWritingAccess();
     if (!access.ok) return actionAccessFailure(access.code);
     const { member } = access;
     actorUserId = member.id;

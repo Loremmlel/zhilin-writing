@@ -7,7 +7,7 @@ import {
   annotationTargetHref,
   replyTargetHref,
 } from "@/lib/activity/policy";
-import { requireMember } from "@/lib/auth/access";
+import { requireWritingMember } from "@/lib/auth/access";
 import { formatDocxAttributionNotice } from "@/lib/notifications/policy";
 import {
   notificationTargetNotice,
@@ -22,7 +22,7 @@ export default async function OpenNotificationPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const { member } = await requireMember(`/notifications/${id}`);
+  const { member } = await requireWritingMember(`/notifications/${id}`);
   const item = await findOwnedNotification(id, member.id);
   if (!item) notFound();
   await markNotificationRead(id, member.id);

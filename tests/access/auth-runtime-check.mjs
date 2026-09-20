@@ -62,7 +62,7 @@ export default async function checkAuthRuntime() {
   await queries.ensureConfiguredAdministrator("owner@example.com");
   assert.equal(writes, 0);
   sqlite.exec(
-    "INSERT INTO allowed_users VALUES ('member','member@example.com',0,0,'owner'); INSERT INTO allowed_users VALUES ('legacy','legacy@example.com',1,0,NULL)",
+    "INSERT INTO allowed_users(id,email,is_admin,added_at,added_by_user_id) VALUES ('member','member@example.com',0,0,'owner'); INSERT INTO allowed_users(id,email,is_admin,added_at,added_by_user_id) VALUES ('legacy','legacy@example.com',1,0,NULL)",
   );
   await queries.ensureConfiguredAdministrator("new@example.com");
   assert.equal(writes, 3);
@@ -85,6 +85,7 @@ export default async function checkAuthRuntime() {
   let reads = 0;
   const auth = load("lib/auth/access.ts", {
     "vinext/cache": { cacheForRequest },
+    "./permissions": await import(path + "lib/auth/permissions.ts"),
     "cloudflare:workers": { env: {} },
     "next/navigation": {
       redirect: (url) => {
@@ -100,7 +101,14 @@ export default async function checkAuthRuntime() {
         reads++;
         return email === "revoked"
           ? null
-          : { allowed: { email, isAdmin: false }, member: email === "new" ? null : { id: email } };
+          : {
+              allowed: {
+                email,
+                isAdmin: false,
+                permissionGroup: email === "game" ? "game" : "normal",
+              },
+              member: email === "new" ? null : { id: email },
+            };
       },
     },
     "@/lib/domain/rules": await import(path + "lib/domain/rules.ts"),
@@ -126,10 +134,24 @@ export default async function checkAuthRuntime() {
     }),
   );
   assert.equal(reads, 3);
+  await identity.run({ email: "game" }, () =>
+    runWithRequestContext(createRequestContext(), async () => {
+      assert.equal((await auth.requireMember("/games/haojie")).member.id, "game");
+      await assert.rejects(auth.requireWritingMember("/posts/x"), /games\/haojie/);
+      assert.deepEqual(await auth.getApiWritingAccess(), {
+        ok: false,
+        code: "WRITING_REQUIRED",
+        status: 403,
+      });
+      assert.equal((await auth.getApiMemberAccess()).ok, true);
+    }),
+  );
 
   sqlite.exec(
     "INSERT INTO users(id,email_key,display_name,joined_at,updated_at) VALUES('author','author@example.test','Author',0,0),('reader','reader@example.test','Reader',0,0)",
   );
+  await queries.addAllowedUser("author@example.test", false, "owner");
+  await queries.addAllowedUser("reader@example.test", false, "owner");
   sqlite.exec(
     "INSERT INTO posts(id,author_id,title,markdown,published_at,last_activity_at) VALUES('post','author','Title','Body',0,0)",
   );
@@ -219,7 +241,6 @@ export default async function checkAuthRuntime() {
   );
   assert.equal(await accessService.getAssetAccessFacts("missing", "reader"), null);
   assert.equal(await queries.findAllowedMember("absent@example.test", null), null);
-  await queries.addAllowedUser("author@example.test", false, "owner");
   const joinedStart = statements.length;
   const accessRow = await queries.findAllowedMember("author@example.test", null);
   assert.equal(accessRow.member.id, "author");

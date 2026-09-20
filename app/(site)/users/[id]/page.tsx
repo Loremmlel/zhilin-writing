@@ -14,7 +14,7 @@ import { formatJoinedDate } from "@/lib/format";
 import { Pagination } from "@/components/pagination";
 import { parsePage } from "@/lib/pagination";
 import { canonicalPage } from "@/lib/page-navigation";
-import { requireMember } from "@/lib/auth/access";
+import { requireWritingMember } from "@/lib/auth/access";
 export const metadata = { title: "成员主页" };
 
 export default async function UserPage({
@@ -26,7 +26,8 @@ export default async function UserPage({
 }) {
   const [{ id }, query] = await Promise.all([params, searchParams]);
   const tab = query.tab === "activity" ? "activity" : "posts";
-  const [user, { member }] = await Promise.all([findUserById(id), requireMember(`/users/${id}`)]);
+  const { member } = await requireWritingMember(`/users/${id}`);
+  const user = await findUserById(id);
   if (!user) notFound();
   return (
     <div className="page-column profile-page">

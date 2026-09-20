@@ -25,7 +25,10 @@ export function parsePostVisibilityField(value: FormDataEntryValue | null) {
 
 // Evaluated with the authenticated viewer ID, never a client-supplied role.
 export function postVisibilityCondition(viewerId: string) {
-  return sql`(${posts.visibilityUserIds} is null
-    or exists (select 1 from json_each(${posts.visibilityUserIds}) where value = ${viewerId})
-    or exists (select 1 from users visibility_viewer inner join allowed_users visibility_admin on visibility_admin.email = visibility_viewer.email_key where visibility_viewer.id = ${viewerId} and visibility_admin.is_admin = 1))`;
+  return sql`exists (select 1 from users visibility_viewer
+    inner join allowed_users visibility_access on visibility_access.email = visibility_viewer.email_key
+    where visibility_viewer.id = ${viewerId} and
+      (visibility_access.is_admin = 1 or (visibility_access.permission_group = 'normal' and
+        (${posts.visibilityUserIds} is null
+          or exists (select 1 from json_each(${posts.visibilityUserIds}) where value = ${viewerId})))))`;
 }

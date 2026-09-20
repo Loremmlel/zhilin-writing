@@ -5,7 +5,7 @@ import type { AnnotationCardView } from "@/components/annotations/annotation-thr
 import { PostEditorForm } from "@/components/editor/post-editor-form";
 import { getPost } from "@/db/queries";
 import { listCurrentAnnotationThreads } from "@/lib/annotations/queries";
-import { requireMember } from "@/lib/auth/access";
+import { requireWritingMember } from "@/lib/auth/access";
 import { assetMarkdown } from "@/lib/domain/rules";
 import { formatDateTime } from "@/lib/format";
 import { renderMarkdown } from "@/lib/markdown/render";
@@ -15,7 +15,7 @@ export const metadata = { title: "编辑帖子" };
 
 export default async function EditPostPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { member } = await requireMember(`/posts/${id}/edit`);
+  const { member } = await requireWritingMember(`/posts/${id}/edit`);
   const [item, rawAnnotations, visibilityUsers] = await Promise.all([
     getPost(id, member.id),
     listCurrentAnnotationThreads(id, member.id),

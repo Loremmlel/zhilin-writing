@@ -17,7 +17,7 @@ import { RegionErrorBoundary } from "@/components/region-error-boundary";
 import { getPostDetail, listReplies } from "@/db/queries";
 import { listCurrentAnnotationThreads } from "@/lib/annotations/queries";
 import { getAnnotationMutationPermissions } from "@/lib/annotations/policy";
-import { requireMember } from "@/lib/auth/access";
+import { requireWritingMember } from "@/lib/auth/access";
 import { formatDateTime } from "@/lib/format";
 import { deletePostConfirmation } from "@/lib/lifecycle/policy";
 import { logServerRenderError } from "@/lib/logging";
@@ -65,7 +65,7 @@ export default async function PostPage({
   searchParams: Promise<PostQuery>;
 }) {
   const [{ id }, query] = await Promise.all([params, searchParams]);
-  const { member } = await requireMember(`/posts/${id}`);
+  const { member } = await requireWritingMember(`/posts/${id}`);
   const [item, rawAnnotations] = await Promise.all([
     getPostDetail(id, member.id),
     listCurrentAnnotationThreads(id, member.id, {

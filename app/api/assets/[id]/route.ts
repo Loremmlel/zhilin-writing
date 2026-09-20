@@ -1,5 +1,6 @@
 import { findAsset } from "@/db/queries";
 import { getApiMemberAccess } from "@/lib/auth/access";
+import { canAccessWriting } from "@/lib/auth/permissions";
 import { accessErrorMessage } from "@/lib/actions/result";
 import { canReadAsset } from "@/lib/assets/access-service";
 import { getStoredObject } from "@/lib/assets/storage";
@@ -16,7 +17,11 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
   const { member, allowed } = access;
   const { id } = await context.params;
   const asset = await findAsset(id);
-  if (!asset || !(await canReadAsset(id, { userId: member.id, isAdmin: allowed.isAdmin }))) {
+  if (
+    !asset ||
+    (!canAccessWriting(allowed) && !(asset.kind === "avatar" && asset.ownerId === member.id)) ||
+    !(await canReadAsset(id, { userId: member.id, isAdmin: allowed.isAdmin }))
+  ) {
     return new Response("Not found", { status: 404 });
   }
   const object = await getStoredObject(asset.r2Key);

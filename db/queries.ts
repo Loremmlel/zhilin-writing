@@ -174,11 +174,17 @@ export async function findAllowedMember(email: string, configuredAdminEmail: str
   return row ? { allowed: row.allowed, member: row.member } : null;
 }
 
-export async function addAllowedUser(email: string, isAdmin: boolean, addedByUserId?: string) {
+export async function addAllowedUser(
+  email: string,
+  isAdmin: boolean,
+  addedByUserId?: string,
+  permissionGroup: "normal" | "game" = "normal",
+) {
   const record = {
     id: crypto.randomUUID(),
     email,
     isAdmin,
+    permissionGroup,
     addedAt: new Date(),
     addedByUserId: addedByUserId ?? null,
   };
@@ -225,6 +231,15 @@ export async function ensureConfiguredAdministrator(email: string) {
   ]);
 
   return findAllowedUser(email);
+}
+
+export async function updateAllowedUserGroup(id: string, permissionGroup: "normal" | "game") {
+  const rows = await getDb()
+    .update(allowedUsers)
+    .set({ permissionGroup })
+    .where(and(eq(allowedUsers.id, id), eq(allowedUsers.isAdmin, false)))
+    .returning({ id: allowedUsers.id });
+  return rows.length > 0;
 }
 
 export async function removeAllowedUser(id: string) {

@@ -1,4 +1,4 @@
-import { requireMember } from "@/lib/auth/access";
+import { requireWritingMember } from "@/lib/auth/access";
 import Link from "next/link";
 import { PostCard } from "@/components/post-card";
 import { PageHeader } from "@/components/page-header";
@@ -14,7 +14,7 @@ export default async function TagPage({
   params: Promise<{ name: string }>;
   searchParams: Promise<{ page?: string }>;
 }) {
-  const { member } = await requireMember("/tags");
+  const { member } = await requireWritingMember("/tags");
   const [{ name }, query] = await Promise.all([params, searchParams]);
   const decoded = decodeURIComponent(name);
   const path = `/tags/${encodeURIComponent(decoded)}`;

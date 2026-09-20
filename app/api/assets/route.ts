@@ -1,4 +1,5 @@
 import { getApiMemberAccess } from "@/lib/auth/access";
+import { canAccessWriting } from "@/lib/auth/permissions";
 import { accessErrorMessage } from "@/lib/actions/result";
 import { storeTemporaryAsset } from "@/lib/assets/storage";
 import { AssetStorageError } from "@/lib/assets/errors";
@@ -24,6 +25,11 @@ export async function POST(request: Request) {
       return Response.json({ error: "请选择文件" }, { status: 400 });
     }
     const kind = formData.get("kind") === "avatar" ? "avatar" : undefined;
+    if (!canAccessWriting(access.allowed) && kind !== "avatar")
+      return Response.json(
+        { error: accessErrorMessage("WRITING_REQUIRED"), code: "WRITING_REQUIRED" },
+        { status: 403 },
+      );
     const asset = await storeTemporaryAsset(member.id, value, kind);
     const url = `/api/assets/${asset.id}`;
     return Response.json(

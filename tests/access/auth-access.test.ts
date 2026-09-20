@@ -116,7 +116,11 @@ test("mutations and asset APIs use typed access instead of navigation redirects"
 
   for (const [index, source] of sources.entries()) {
     assert.doesNotMatch(source, /requireMember|requireAdministrator/, paths[index]);
-    assert.match(source, /getApiMemberAccess|getActionAdministratorAccess/, paths[index]);
+    assert.match(
+      source,
+      /getApiMemberAccess|getApiWritingAccess|getActionAdministratorAccess/,
+      paths[index],
+    );
   }
 });
 

@@ -15,6 +15,9 @@ export const allowedUsers = sqliteTable(
     id: text("id").primaryKey(),
     email: text("email").notNull(),
     isAdmin: integer("is_admin", { mode: "boolean" }).notNull().default(false),
+    permissionGroup: text("permission_group", { enum: ["normal", "game"] })
+      .notNull()
+      .default("normal"),
     addedAt: integer("added_at", { mode: "timestamp_ms" }).notNull(),
     addedByUserId: text("added_by_user_id"),
   },

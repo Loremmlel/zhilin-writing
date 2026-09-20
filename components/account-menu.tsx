@@ -12,10 +12,12 @@ export function AccountMenu({
   member,
   isAdmin,
   haojieEnabled = false,
+  writingEnabled = true,
 }: {
   member: SiteUser;
   isAdmin: boolean;
   haojieEnabled?: boolean;
+  writingEnabled?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -61,15 +63,19 @@ export function AccountMenu({
       </button>
       {open && (
         <div className="account-popover" aria-label="账户选项">
-          <Link href={`/users/${member.id}`} onClick={() => setOpen(false)}>
-            我的主页
-          </Link>
+          {writingEnabled && (
+            <Link href={`/users/${member.id}`} onClick={() => setOpen(false)}>
+              我的主页
+            </Link>
+          )}
           <Link href="/settings/profile" onClick={() => setOpen(false)}>
             编辑资料
           </Link>
-          <Link href="/tags" onClick={() => setOpen(false)}>
-            全部标签
-          </Link>
+          {writingEnabled && (
+            <Link href="/tags" onClick={() => setOpen(false)}>
+              全部标签
+            </Link>
+          )}
           {haojieEnabled && (
             <Link href="/games/haojie" onClick={() => setOpen(false)}>
               浩劫 2

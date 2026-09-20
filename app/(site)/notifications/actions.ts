@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { markAllNotificationsRead } from "@/db/queries";
-import { getApiMemberAccess } from "@/lib/auth/access";
+import { getApiWritingAccess } from "@/lib/auth/access";
 import { actionAccessFailure, type ActionAccessErrorCode } from "@/lib/actions/result";
 import { logServerError } from "@/lib/logging";
 
@@ -20,7 +20,7 @@ export async function markAllNotificationsReadAction(
 ): Promise<NotificationActionState> {
   void _previous;
   void _formData;
-  const access = await getApiMemberAccess();
+  const access = await getApiWritingAccess();
   if (!access.ok) return actionAccessFailure(access.code);
   const { member } = access;
   try {

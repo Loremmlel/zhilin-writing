@@ -114,6 +114,9 @@ test("production lists traverse beyond old caps, keep stable ties, and clamp aft
       "INSERT INTO users(id,email_key,display_name,bio,joined_at,updated_at) VALUES ('author','author@example.test','作者','',1,1),('reader','reader@example.test','读者','',1,1)",
     );
     db.exec(
+      "INSERT INTO allowed_users(id,email,is_admin,added_at) VALUES ('aa','author@example.test',0,1),('ar','reader@example.test',0,1)",
+    );
+    db.exec(
       "INSERT INTO tags(id,name,normalized_name,created_at) VALUES ('t1','校园','校园',1),('t2','随笔','随笔',1)",
     );
     const insertPost = db.prepare(
@@ -194,7 +197,7 @@ test("production lists traverse beyond old caps, keep stable ties, and clamp aft
       "INSERT INTO users(id,email_key,display_name,bio,joined_at,updated_at) VALUES ('admin','admin@example.test','管理员','',1,1)",
     );
     db.exec(
-      "INSERT INTO allowed_users(id,email,is_admin,added_at) VALUES ('aa','author@example.test',0,1),('ar','reader@example.test',0,1),('admin','admin@example.test',1,1)",
+      "INSERT INTO allowed_users(id,email,is_admin,added_at) VALUES ('admin','admin@example.test',1,1)",
     );
     assert.deepEqual((await visibility.listPostVisibilityUsers()).map((user) => user.id).sort(), [
       "author",
@@ -240,6 +243,24 @@ test("production lists traverse beyond old caps, keep stable ties, and clamp aft
     db.prepare("UPDATE posts SET visibility_user_ids=? WHERE id='p065'").run(
       JSON.stringify(["author", "reader"]),
     );
+    db.exec("UPDATE allowed_users SET permission_group='game' WHERE id='ar'");
+    assert.equal((await queries.listPostsPage("reader")).total, 0);
+    assert.equal((await queries.listTags("reader")).length, 0);
+    assert.equal((await queries.listUserActivityPage("author", "reader")).total, 0);
+    assert.equal((await queries.listNotificationsPage("reader")).total, 0);
+    assert.equal(await queries.countUnreadNotifications("reader"), 0);
+    assert.equal(await queries.getPost("p065", "reader"), null);
+    assert.equal(await visibility.canViewPost("p065", "reader"), false);
+    assert.deepEqual(
+      (await visibility.listPostVisibilityUsers()).map((u) => u.id),
+      ["author"],
+    );
+    assert.equal(
+      await assets.canReadAsset("private-image", { userId: "reader", isAdmin: false }),
+      false,
+    );
+    assert.equal((await queries.listPostsPage("admin")).total, 65);
+    db.exec("UPDATE allowed_users SET permission_group='normal' WHERE id='ar'");
     assert.equal((await queries.listPostsPage("reader", { page: 4 })).total, 1);
     assert.equal((await queries.listPostsPage("reader", { page: 4 })).page, 1);
     assert.equal(
