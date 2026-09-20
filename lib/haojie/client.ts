@@ -32,10 +32,11 @@ export async function roomFetch<T = JsonReply>(
   url: string,
   init: RequestInit = {},
   fetcher: typeof fetch = fetch,
+  timeoutMs = 12000,
 ) {
   const signal = init.signal
-    ? AbortSignal.any([init.signal, AbortSignal.timeout(12000)])
-    : AbortSignal.timeout(12000);
+    ? AbortSignal.any([init.signal, AbortSignal.timeout(timeoutMs)])
+    : AbortSignal.timeout(timeoutMs);
   const response = await fetcher(url, {
     ...init,
     signal,
@@ -93,6 +94,9 @@ export class RoomClient {
   private pending: Pending | null = null;
   private uncertain = false;
   private failures = 0;
+  private lastContactAt = Date.now();
+  private contactVersion = 0;
+  private offline = false;
   private refreshAfterPoll = false;
   private endpoint: string;
   private fetcher: typeof fetch;
@@ -241,29 +245,51 @@ export class RoomClient {
     this.pending = null;
   }
   setVisible(visible: boolean) {
+    if (this.visible === visible) return;
     this.visible = visible;
     if (!visible) this.reactionQueue = [];
     if (visible) this.refresh();
   }
-  refresh = () => {
+  setOnline(online: boolean) {
+    this.offline = !online;
     if (!this.running || this.state.fatal) return;
+    if (online) {
+      this.refresh();
+      return;
+    }
+    clearTimeout(this.timer);
+    this.pollAbort?.abort();
+    this.writeAbort?.abort();
+    if (this.pending) this.uncertain = true;
+    this.publish({
+      connection: "disconnected",
+      error: { code: "OFFLINE", message: "网络已断开，联网后会自动恢复。" },
+    });
+  }
+  refresh = () => {
+    if (!this.running || this.state.fatal || this.offline) return;
     clearTimeout(this.timer);
     if (this.pending && !this.writeAbort) void this.sendPending();
     if (this.pollAbort) {
       this.refreshAfterPoll = true;
       return;
     }
-    this.failures = 0;
     void this.poll(true);
   };
+  private contacted() {
+    this.lastContactAt = Date.now();
+    this.contactVersion++;
+    this.failures = 0;
+  }
   private terminal(error: GameApiError) {
     this.publish({ connection: "disconnected", error, fatal: true });
     clearTimeout(this.timer);
   }
   private async poll(force = false) {
-    if (!this.running || this.pollAbort || this.state.fatal) return;
+    if (!this.running || this.pollAbort || this.state.fatal || this.offline) return;
     const abort = new AbortController();
     this.pollAbort = abort;
+    const contactVersion = this.contactVersion;
     const full = force || this.state.connection !== "connected";
     const after = `?afterReaction=${this.reactionSequence}${full ? "" : `&after=${this.state.snapshot.room.revision}`}`;
     let failure: GameApiError | null = null;
@@ -272,6 +298,7 @@ export class RoomClient {
         this.endpoint + after,
         { signal: abort.signal },
         this.fetcher,
+        4000,
       );
       if (!this.running || abort.signal.aborted) return;
       if (!response.ok) {
@@ -284,34 +311,43 @@ export class RoomClient {
       }
       if (body) this.accept(body, full);
       const recovering = full || this.failures > 0;
-      this.failures = 0;
+      this.contacted();
       this.publish({
         connection: this.uncertain ? "connecting" : "connected",
         error: this.uncertain || !recovering ? this.state.error : null,
       });
+      if (this.pending && !this.writeAbort) void this.sendPending();
     } catch {
       if (!this.running || abort.signal.aborted) return;
+      // A command receipt received since this read began is newer evidence of connectivity.
+      if (contactVersion !== this.contactVersion) return;
       this.failures++;
-      this.publish({
-        connection: this.failures >= 4 ? "disconnected" : "connecting",
-        error: failure ?? { code: "CONNECTION_LOST", message: "连接中断，正在恢复局面。" },
-      });
+      if (
+        this.state.connection !== "connected" ||
+        (this.failures >= 2 && Date.now() - this.lastContactAt >= 4000)
+      )
+        this.publish({
+          connection: this.failures >= 4 ? "disconnected" : "connecting",
+          error: this.uncertain
+            ? this.state.error
+            : (failure ?? { code: "CONNECTION_LOST", message: "网络暂时不稳定，正在自动重连。" }),
+        });
     } finally {
       if (this.pollAbort === abort) this.pollAbort = null;
-      if (this.running && !this.state.fatal) {
+      if (this.running && !this.state.fatal && !this.offline) {
         const again = this.refreshAfterPoll;
         this.refreshAfterPoll = false;
         const active = ["waiting", "playing"].includes(this.state.snapshot.room.status);
-        if (again || (active && this.failures < 4))
+        if (again || active)
           this.timer = setTimeout(
             () => void this.poll(again),
             again
               ? 0
-              : this.failures
-                ? Math.min(8000, 1000 * 2 ** (this.failures - 1))
-                : this.visible
-                  ? 1000
-                  : 10000,
+              : !this.visible
+                ? 10000
+                : this.failures && this.state.connection !== "connected"
+                  ? Math.min(8000, 500 * 2 ** Math.min(this.failures - 1, 4))
+                  : 500,
           );
       }
     }
@@ -336,7 +372,8 @@ export class RoomClient {
     });
   }
   private async sendPending() {
-    if (!this.pending || this.writeAbort || !this.running || this.state.fatal) return;
+    if (!this.pending || this.writeAbort || !this.running || this.state.fatal || this.offline)
+      return;
     const pending = this.pending;
     const abort = new AbortController();
     this.writeAbort = abort;
@@ -364,6 +401,7 @@ export class RoomClient {
             this.accept(body, this.uncertain);
             this.pending = null;
             this.uncertain = false;
+            this.contacted();
             this.publish({ pending: false, connection: "connected", error: null });
             pending.resolve(body.receipt);
             return;
@@ -376,6 +414,7 @@ export class RoomClient {
             };
             this.pending = null;
             this.uncertain = false;
+            this.contacted();
             this.publish({ pending: false, error, connection: "connected" });
             if ([401, 403, 404].includes(response.status) || error.code === "ENGINE_MISMATCH")
               this.terminal(error);

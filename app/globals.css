@@ -174,21 +174,47 @@
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: 12px 24px;
-  padding: 16px 0;
-  border-block: 1px solid var(--line);
+  gap: 8px 16px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
 }
-.haojie-room-bar p {
-  margin: 6px 0 0;
+.haojie-room.page-column {
+  padding-block: 0;
+}
+.haojie-room-viewport {
+  container: haojie-room / inline-size;
+}
+.haojie-room-content {
+  padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+}
+.haojie-room-meta {
+  flex: 1;
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0 12px;
+  min-width: 0;
+}
+.haojie-room-bar > .button {
+  flex-shrink: 0;
 }
 .haojie-room-actions {
+  position: fixed;
+  right: max(16px, calc((100% - 1320px) / 2 + 16px), env(safe-area-inset-right, 0px));
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  z-index: calc(var(--z-header) - 1);
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 8px;
+  padding: 6px;
+  max-width: calc(100% - 32px);
+  background: var(--paper-strong);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: 0 4px 18px #242d2714;
 }
 .haojie-sync {
-  min-height: 48px;
-  padding: 10px 0;
+  padding: 8px 0;
   font-size: 14px;
   color: var(--muted);
 }
@@ -196,7 +222,7 @@
   margin: 0 0 6px;
 }
 .haojie-result {
-  margin-bottom: 20px;
+  flex-shrink: 0;
 }
 .haojie-join {
   min-width: 130px;
@@ -206,12 +232,97 @@
   isolation: isolate;
   border-radius: var(--radius);
 }
-@media (max-width: 640px) {
-  .haojie-room-actions {
-    width: 100%;
+.site-main:has(.haojie-game-stage) + .site-footer {
+  display: none;
+}
+.haojie-loading {
+  position: fixed;
+  inset: var(--header-height) 0 0;
+  z-index: calc(var(--z-header) - 2);
+  display: grid;
+  place-items: center;
+  padding: 24px 16px 88px;
+  overflow-y: auto;
+  background: #fbfaf7b8;
+}
+.haojie-loading--pending {
+  visibility: hidden;
+  animation: haojie-loading-show 0s 700ms forwards;
+}
+.haojie-loading-panel {
+  width: min(100%, 380px);
+  padding: 24px;
+  background: var(--paper-strong);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  text-align: center;
+}
+.haojie-loading-panel strong {
+  display: block;
+}
+.haojie-loading-panel p {
+  color: var(--muted);
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+.haojie-loading-actions {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.haojie-spinner {
+  display: block;
+  width: 24px;
+  height: 24px;
+  margin: 0 auto 16px;
+  border: 2px solid var(--line);
+  border-top-color: var(--green);
+  border-radius: 50%;
+  animation: haojie-loading-spin 800ms linear infinite;
+}
+@keyframes haojie-loading-show {
+  to {
+    visibility: visible;
   }
-  .haojie-room-actions .button {
+}
+@keyframes haojie-loading-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .haojie-spinner {
+    animation: none;
+  }
+}
+@container haojie-room (min-width: 1100px) {
+  .haojie-room-content:has(.haojie-game-stage) {
+    display: flex;
+    flex-direction: column;
+    height: calc(100dvh - var(--header-height));
+    min-height: 580px;
+    padding-bottom: 0;
+  }
+  .haojie-room-bar,
+  .haojie-sync {
+    flex-shrink: 0;
+  }
+  .haojie-game-stage {
     flex: 1;
+    min-height: 0;
+    container: haojie-viewport / size;
+  }
+  .haojie-room .hj-game {
+    --haojie-height: 100cqh;
+  }
+  .haojie-room .hj-game .hand-rail {
+    padding-bottom: calc(60px + env(safe-area-inset-bottom, 0px));
+  }
+}
+@media (max-width: 640px) {
+  .haojie-room-meta {
+    flex-basis: calc(100% - 160px);
   }
   .haojie-room-list a {
     align-items: flex-start;

@@ -15,7 +15,6 @@ import {
 } from "@/lib/haojie/contracts";
 import { RoomClient } from "@/lib/haojie/client";
 import { ModalDialog } from "../modal-dialog";
-import { PageHeader } from "../page-header";
 import { HaojieEmojiPicker, HaojieReactions } from "./reactions";
 
 const MemoizedHaojieGame = memo(HaojieOnlineGame);
@@ -34,11 +33,15 @@ export function HaojieRoom({ initial }: { initial: RoomSnapshot }) {
   useEffect(() => {
     client.start();
     const visibility = () => client.setVisible(document.visibilityState === "visible");
+    const connectivity = () => client.setOnline(navigator.onLine);
     visibility();
-    window.addEventListener("online", client.refresh);
+    if (!navigator.onLine) connectivity();
+    window.addEventListener("online", connectivity);
+    window.addEventListener("offline", connectivity);
     document.addEventListener("visibilitychange", visibility);
     return () => {
-      window.removeEventListener("online", client.refresh);
+      window.removeEventListener("online", connectivity);
+      window.removeEventListener("offline", connectivity);
       document.removeEventListener("visibilitychange", visibility);
       client.stop();
     };
@@ -46,6 +49,8 @@ export function HaojieRoom({ initial }: { initial: RoomSnapshot }) {
   const compatible = room.engineVersion === HAOJIE_ENGINE_VERSION;
   const busy = state.pending || state.connection !== "connected" || !compatible || state.fatal;
   const ended = room.status === "finished" || room.status === "cancelled";
+  const loading = state.fatal || !compatible || (!ended && busy);
+  const notice = state.reactionError || copyState || (!loading && state.error);
   const winner =
     room.winner === 1 ? room.player1.name : room.winner === 2 ? room.player2?.name : null;
   const finishLabel = room.status === "waiting" ? "取消房间" : "认输";
@@ -68,27 +73,109 @@ export function HaojieRoom({ initial }: { initial: RoomSnapshot }) {
   }
   return (
     <div className="haojie-room page-column" data-workspace-expanded="true">
-      <PageHeader
-        title="浩劫 2"
-        actions={
-          <Link className="button button--ghost" href={HAOJIE_PATH}>
-            返回房间列表
-          </Link>
-        }
-      />
-      <div className="haojie-room-bar">
-        <div>
-          <strong>
-            {room.player1.name} <span className="muted">对</span>{" "}
-            {room.player2?.name ?? "等待另一位玩家"}
-          </strong>
-          <p className="muted">
-            {roomModeLabel(room.mode)} · {roomStatusLabel(room.status)}
-            {room.viewer ? ` · 你是 ${room.viewer} 号玩家` : ""}
-          </p>
+      <div className="haojie-room-viewport">
+        <div className="haojie-room-content">
+          <h1 className="sr-only">浩劫 2 对局</h1>
+          <div className="haojie-room-bar">
+            <Link className="button button--ghost" href={HAOJIE_PATH}>
+              返回房间列表
+            </Link>
+            <div className="haojie-room-meta">
+              <strong>
+                {room.player1.name} <span className="muted">对</span>{" "}
+                {room.player2?.name ?? "等待另一位玩家"}
+              </strong>
+              <span className="muted">
+                {roomModeLabel(room.mode)}
+                {room.viewer ? ` · 你是 ${room.viewer} 号玩家` : ""}
+              </span>
+            </div>
+            <span className="muted" role="status">
+              {state.pending ? "正在确认操作…" : roomStatusLabel(room.status)}
+            </span>
+          </div>
+          {notice && (
+            <div className="haojie-sync" aria-live="polite">
+              {state.reactionError && (
+                <p className="form-error" role="alert">
+                  {state.reactionError.message}
+                  {state.reactionError.incidentId && (
+                    <>
+                      {" "}
+                      错误编号：<code>{state.reactionError.incidentId}</code>
+                    </>
+                  )}
+                  {state.reactionPending > 0 && !ended && (
+                    <button type="button" className="text-button" onClick={client.retryReactions}>
+                      重试发送
+                    </button>
+                  )}
+                </p>
+              )}
+              {copyState && <p role="status">{copyState}</p>}
+              {!loading && state.error && (
+                <p className="form-error" role="alert">
+                  {state.error.message}
+                  {state.error.incidentId && (
+                    <>
+                      {" "}
+                      错误编号：<code>{state.error.incidentId}</code>
+                    </>
+                  )}
+                </p>
+              )}
+            </div>
+          )}
+          {room.status === "waiting" && (
+            <section className="empty-state haojie-waiting">
+              <p>
+                {room.viewer === 1
+                  ? "把邀请链接发给另一位成员，即可开始对局。"
+                  : `${room.player1.name} 邀请你进行一场${roomModeLabel(room.mode)}对局。`}
+              </p>
+              {!room.viewer && (
+                <button
+                  type="button"
+                  className="button button--primary haojie-join"
+                  disabled={busy}
+                  aria-busy={state.pending}
+                  onClick={() => void client.submit({ kind: "join", baseRevision: room.revision })}
+                >
+                  {state.pending ? "正在加入…" : "加入对局"}
+                </button>
+              )}
+            </section>
+          )}
+          {ended && (
+            <div className="haojie-result" role="status">
+              <strong>
+                {room.status === "cancelled"
+                  ? "房间已取消"
+                  : room.winner === "draw"
+                    ? "本局平局"
+                    : `${winner ?? "对手"} 获胜`}
+              </strong>
+              {room.endReason === "resign" && <span>本局以认输结束</span>}
+              <Link className="button button--ghost" href={HAOJIE_PATH}>
+                再开一局
+              </Link>
+            </div>
+          )}
+          {update && (
+            <div className="haojie-game-stage" inert={loading}>
+              <MemoizedHaojieGame
+                update={update}
+                connection={state.connection}
+                disabled={ended || busy}
+                onCommand={onCommand}
+              />
+            </div>
+          )}
         </div>
-        <div className="haojie-room-actions">
-          {room.status === "playing" && room.viewer && (
+      </div>
+      {!ended && room.viewer && (
+        <div className="haojie-room-actions" role="group" aria-label="对局操作">
+          {room.status === "playing" && (
             <HaojieEmojiPicker
               disabled={state.fatal || state.connection !== "connected"}
               pending={state.reactionPending}
@@ -100,120 +187,68 @@ export function HaojieRoom({ initial }: { initial: RoomSnapshot }) {
               复制邀请链接
             </button>
           )}
-          {!ended && room.viewer && (
-            <button
-              type="button"
-              className="button button--danger-quiet"
-              disabled={busy}
-              onClick={() => setConfirm(true)}
-            >
-              {finishLabel}
-            </button>
-          )}
-        </div>
-      </div>
-      <div className="haojie-sync" aria-live="polite">
-        {state.reactionError && (
-          <p className="form-error" role="alert">
-            {state.reactionError.message}
-            {state.reactionError.incidentId && (
-              <>
-                {" "}
-                错误编号：<code>{state.reactionError.incidentId}</code>
-              </>
-            )}
-            {state.reactionPending > 0 && !ended && (
-              <button type="button" className="text-button" onClick={client.retryReactions}>
-                重试发送
-              </button>
-            )}
-          </p>
-        )}
-        {copyState && <p role="status">{copyState}</p>}
-        {!state.fatal && !ended && (
-          <p role="status">
-            {state.connection === "connected"
-              ? state.pending
-                ? "正在确认操作…"
-                : "局面已同步"
-              : state.connection === "connecting"
-                ? "正在同步局面…"
-                : "连接已中断"}
-          </p>
-        )}
-        {state.error && (
-          <p className="form-error" role="alert">
-            {state.error.message}
-            {state.error.incidentId && (
-              <>
-                {" "}
-                错误编号：<code>{state.error.incidentId}</code>
-              </>
-            )}
-          </p>
-        )}
-        {!compatible && (
-          <p className="form-error" role="alert">
-            这局使用不同版本，当前暂不能继续操作。
-          </p>
-        )}
-        {(state.connection === "disconnected" || state.error) && !state.fatal && (
-          <button type="button" className="button button--ghost" onClick={client.refresh}>
-            重新连接
-          </button>
-        )}
-        {state.fatal && (
           <button
             type="button"
-            className="button button--ghost"
-            onClick={() => window.location.reload()}
+            className="button button--danger-quiet"
+            disabled={busy}
+            onClick={() => setConfirm(true)}
           >
-            重新加载
+            {finishLabel}
           </button>
-        )}
-      </div>
-      {room.status === "waiting" && (
-        <section className="empty-state haojie-waiting">
-          <p>
-            {room.viewer === 1
-              ? "把邀请链接发给另一位成员，即可开始对局。"
-              : `${room.player1.name} 邀请你进行一场${roomModeLabel(room.mode)}对局。`}
-          </p>
-          {!room.viewer && (
-            <button
-              type="button"
-              className="button button--primary haojie-join"
-              disabled={busy}
-              aria-busy={state.pending}
-              onClick={() => void client.submit({ kind: "join", baseRevision: room.revision })}
-            >
-              {state.pending ? "正在加入…" : "加入对局"}
-            </button>
-          )}
-        </section>
-      )}
-      {ended && (
-        <div className="haojie-result" role="status">
-          <strong>
-            {room.status === "cancelled"
-              ? "房间已取消"
-              : room.winner === "draw"
-                ? "本局平局"
-                : `${winner ?? "对手"} 获胜`}
-          </strong>
-          {room.endReason === "resign" && <span>本局以认输结束</span>}
-          <Link className="button button--ghost" href={HAOJIE_PATH}>
-            再开一局
-          </Link>
         </div>
       )}
-      {update && (
-        <MemoizedHaojieGame
-          update={update}
-          connection={state.connection}
-          disabled={ended || busy}
-          onCommand={onCommand}
-        />
+      {loading && (
+        <div
+          className={`haojie-loading${state.pending && state.connection === "connected" && !state.fatal && compatible ? " haojie-loading--pending" : ""}`}
+        >
+          <div className="haojie-loading-panel">
+            <div role={state.fatal || !compatible ? "alert" : "status"}>
+              {!state.fatal && compatible && <span className="haojie-spinner" aria-hidden="true" />}
+              <strong>
+                {state.fatal
+                  ? "对局暂不可用"
+                  : !compatible
+                    ? "版本不兼容"
+                    : state.pending
+                      ? "加载中，正在确认操作…"
+                      : state.error
+                        ? "加载中，正在恢复连接…"
+                        : "加载中，正在同步局面…"}
+              </strong>
+              <p>
+                {!compatible
+                  ? "这局使用不同版本，当前暂不能继续操作。"
+                  : (state.error?.message ??
+                    (state.pending
+                      ? "正在等待服务器确认，请稍候。"
+                      : "正在获取最新局面，请稍候。"))}
+              </p>
+              {state.error?.incidentId && (
+                <p>
+                  错误编号：<code>{state.error.incidentId}</code>
+                </p>
+              )}
+            </div>
+            <div className="haojie-loading-actions">
+              {state.fatal || !compatible ? (
+                <button
+                  type="button"
+                  className="button button--primary"
+                  onClick={() => window.location.reload()}
+                >
+                  重新加载
+                </button>
+              ) : (
+                <button type="button" className="button button--primary" onClick={client.refresh}>
+                  立即重试
+                </button>
+              )}
+              <Link className="button button--ghost" href={HAOJIE_PATH}>
+                返回房间列表
+              </Link>
+            </div>
+          </div>
+        </div>
       )}
       <HaojieReactions items={state.reactions} viewer={room.viewer} />
       <ModalDialog

@@ -81,7 +81,10 @@ test("polling is serial, continues on the player's turn, slows in background and
   assert.equal(reads.length, 2);
   reads[1](new Response(null, { status: 204 }));
   await flush();
-  t.mock.timers.tick(1000);
+  t.mock.timers.tick(499);
+  await flush();
+  assert.equal(reads.length, 2);
+  t.mock.timers.tick(1);
   await flush();
   assert.equal(reads.length, 3);
   client.setVisible(false);
@@ -98,6 +101,115 @@ test("polling is serial, continues on the player's turn, slows in background and
   t.mock.timers.tick(30000);
   await flush();
   assert.equal(reads.length, 4);
+});
+
+test("brief poll failures stay interactive; sustained failure keeps retrying until recovery", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout", "Date"], now: 0 });
+  let available = true;
+  let reads = 0;
+  const client = new RoomClient(initial, async () => {
+    reads++;
+    if (!available) throw new TypeError("network unavailable");
+    return Response.json(initial);
+  });
+  t.after(() => client.stop());
+  client.start();
+  await flush();
+  available = false;
+  for (let i = 0; i < 7; i++) {
+    t.mock.timers.tick(500);
+    await flush();
+    assert.equal(client.getSnapshot().connection, "connected");
+    assert.equal(client.getSnapshot().error, null);
+  }
+  t.mock.timers.tick(500);
+  await flush();
+  assert.equal(client.getSnapshot().connection, "disconnected");
+  assert.equal(client.getSnapshot().error?.code, "CONNECTION_LOST");
+  const before = reads;
+  t.mock.timers.tick(8000);
+  await flush();
+  assert.equal(reads, before + 1, "automatic retries do not stop after four failures");
+  available = true;
+  t.mock.timers.tick(8000);
+  await flush();
+  assert.equal(client.getSnapshot().connection, "connected");
+  assert.equal(client.getSnapshot().error, null);
+  const recovered = reads;
+  t.mock.timers.tick(500);
+  await flush();
+  assert.equal(reads, recovered + 1);
+});
+
+test("a single timeout and failed reads predating a successful write do not interrupt play", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout", "Date"], now: 0 });
+  const failures: ((error: Error) => void)[] = [];
+  let reads = 0;
+  const client = new RoomClient(initial, async (_url, init) => {
+    if (init?.method === "POST")
+      return Response.json({ ...at(2), receipt: { ok: true, revision: 2 } });
+    if (reads++ === 0) return Response.json(initial);
+    return new Promise((_resolve, reject) => failures.push(reject));
+  });
+  t.after(() => client.stop());
+  client.start();
+  await flush();
+  t.mock.timers.tick(500);
+  t.mock.timers.tick(4000);
+  failures[0](new DOMException("Timed out", "TimeoutError"));
+  await flush();
+  assert.equal(client.getSnapshot().connection, "connected", "one slow timeout is insufficient");
+  assert.equal(client.getSnapshot().error, null);
+  t.mock.timers.tick(500);
+  assert.equal(
+    (await client.submit({ kind: "command", baseRevision: 1, command: { type: "end" } })).ok,
+    true,
+  );
+  t.mock.timers.tick(4000);
+  failures[1](new TypeError("old read failed"));
+  await flush();
+  t.mock.timers.tick(500);
+  failures[2](new TypeError("first failure since write"));
+  await flush();
+  assert.equal(client.getSnapshot().connection, "connected");
+  assert.equal(client.getSnapshot().error, null);
+  assert.equal(client.getSnapshot().snapshot.room.revision, 2);
+});
+
+test("explicit offline state is immediate and reconnect retries the same unconfirmed command", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  const bodies: string[] = [];
+  let reads = 0;
+  const client = new RoomClient(initial, async (_url, init) => {
+    if (init?.method !== "POST") {
+      reads++;
+      return Response.json(initial);
+    }
+    bodies.push(String(init.body));
+    if (bodies.length > 1) return Response.json({ ...at(2), receipt: { ok: true, revision: 2 } });
+    return new Promise((_resolve, reject) =>
+      init.signal!.addEventListener("abort", () => reject(init.signal!.reason), { once: true }),
+    );
+  });
+  t.after(() => client.stop());
+  client.start();
+  await flush();
+  const ack = client.submit({ kind: "command", baseRevision: 1, command: { type: "end" } });
+  client.setOnline(false);
+  await flush();
+  assert.equal(client.getSnapshot().connection, "disconnected");
+  assert.equal(client.getSnapshot().error?.code, "OFFLINE");
+  assert.equal(client.getSnapshot().pending, true);
+  t.mock.timers.tick(10000);
+  await flush();
+  assert.equal(reads, 1);
+  client.setOnline(true);
+  await flush();
+  assert.deepEqual(await ack, { ok: true, revision: 2 });
+  assert.equal(bodies.length, 2);
+  assert.equal(bodies[0], bodies[1]);
+  assert.equal(client.getSnapshot().pending, false);
+  assert.equal(client.getSnapshot().connection, "connected");
 });
 
 test("lost receipt keeps the operation locked and retries the identical request after newer polls", async (t) => {
