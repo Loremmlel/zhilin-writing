@@ -1,4 +1,4 @@
-import { hasTrait } from './traits';
+import { hasTrait, isHookImmune } from './traits';
 import { ALL_CELLS, attackPath, canPlace } from './geometry';
 import { allegiance, getStats, passive, template } from './state';
 import type { GamePosition, Reaction } from './types';
@@ -16,6 +16,7 @@ export function hitPullDestination(s: GamePosition, r: Reaction) {
   if (
     !source ||
     !victim ||
+    isHookImmune(victim) ||
     source.owner !== r.owner ||
     !passive(s, source) ||
     allegiance(s, victim) === r.owner

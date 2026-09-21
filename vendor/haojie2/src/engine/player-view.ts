@@ -17,7 +17,7 @@ import { definition } from './catalog';
 import { ensure } from './state';
 
 /** Bump on rule changes; hosts must also pin the same source revision for both bundles. */
-export const HAOJIE_RULESET = '3.0-feedback3' as const;
+export const HAOJIE_RULESET = '3.0-feedback4' as const;
 export const PLAYER_VIEW_VERSION = 1 as const;
 export interface PlayerView {
   viewVersion: typeof PLAYER_VIEW_VERSION;

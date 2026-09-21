@@ -49,7 +49,7 @@ export function HaojieRoom({ initial }: { initial: RoomSnapshot }) {
   const compatible = room.engineVersion === HAOJIE_ENGINE_VERSION;
   const busy = state.pending || state.connection !== "connected" || !compatible || state.fatal;
   const ended = room.status === "finished" || room.status === "cancelled";
-  const loading = state.fatal || !compatible || (!ended && busy);
+  const loading = state.fatal || (!ended && busy);
   const notice = state.reactionError || copyState || (!loading && state.error);
   const winner =
     room.winner === 1 ? room.player1.name : room.winner === 2 ? room.player2?.name : null;

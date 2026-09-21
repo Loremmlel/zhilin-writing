@@ -76,6 +76,7 @@ export {
   aura,
   signedAttack,
   canDeployKind,
+  isHookImmune,
 } from './traits';
 export {
   landmarkAt,

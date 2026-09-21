@@ -6,6 +6,7 @@ import {
   HAOJIE_RULESET,
   PLAYER_VIEW_VERSION,
   RuleError,
+  validState,
   type GameState,
 } from "../../vendor/haojie2/src/engine/index";
 import { pageBounds, PAGE_SIZE } from "../pagination.ts";
@@ -87,19 +88,33 @@ function snapshot(row: RoomRow, actor: string, after = -1): RoomSnapshot {
     row.engineVersion === HAOJIE_ENGINE_VERSION &&
     row.ruleset === HAOJIE_RULESET &&
     row.viewVersion === PLAYER_VIEW_VERSION;
+  // Feedback 3 has the same state/view schema. Project completed games read-only;
+  // mutation version checks stay exact, and stored states are never migrated.
+  const historical =
+    row.status === "finished" &&
+    row.engineVersion === "7824f47c0deb0797819833f6641021f87f4aecbd" &&
+    row.ruleset === "3.0-feedback3" &&
+    row.viewVersion === PLAYER_VIEW_VERSION;
+  const state =
+    row.stateJson && room.viewer && (compatible || historical)
+      ? (JSON.parse(row.stateJson) as GameState)
+      : null;
   return {
     room,
     reactions: room.viewer ? readReactions(row.reactionsJson) : { sequence: 0, items: [] },
     update:
-      row.stateJson && room.viewer && compatible
+      state && room.viewer && (!historical || validState(state))
         ? {
             matchId: row.id,
             revision: row.revision,
             kind:
-              after >= 0 && row.revision === after + 1 && row.lastChange === "command"
+              !historical &&
+              after >= 0 &&
+              row.revision === after + 1 &&
+              row.lastChange === "command"
                 ? "update"
                 : "snapshot",
-            view: getPlayerView(JSON.parse(row.stateJson) as GameState, room.viewer),
+            view: getPlayerView(state, room.viewer),
           }
         : null,
   };

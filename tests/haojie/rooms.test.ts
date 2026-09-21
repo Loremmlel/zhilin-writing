@@ -109,6 +109,75 @@ test("room lifecycle binds seats, deduplicates creation and atomically admits on
   );
 });
 
+test("completed feedback3 rooms remain private read-only snapshots without migrating stored games", async () => {
+  const { room: created } = await room("shrine");
+  const joined = await api.mutateRoom(db, created.id, "b", input("join", 0));
+  await api.mutateRoom(
+    db,
+    created.id,
+    "a",
+    input("command", 1, {
+      command: {
+        type: "choose-shrine",
+        shrineKind: joined.update!.view.state.shrineDraft!.offers[1][0],
+        parity: "odd",
+      },
+    }),
+  );
+  await api.mutateRoom(db, created.id, "a", input("resign", 2));
+  const oldVersion = "7824f47c0deb0797819833f6641021f87f4aecbd";
+  await db
+    .prepare("UPDATE haojie_rooms SET engine_version = ?, ruleset = '3.0-feedback3' WHERE id = ?")
+    .bind(oldVersion, created.id)
+    .run();
+  const stored = () =>
+    db
+      .prepare(
+        "SELECT state_json, revision, engine_version, ruleset FROM haojie_rooms WHERE id = ?",
+      )
+      .bind(created.id)
+      .first();
+  const before = await stored();
+  for (const actor of ["a", "b"]) {
+    const result = (await api.getRoom(db, created.id, actor, 2))!;
+    assert.equal(result.room.status, "finished");
+    assert.equal(result.room.engineVersion, oldVersion);
+    assert.equal(result.room.winner, 2);
+    assert.equal(result.update?.kind, "snapshot");
+    assert.equal(result.update?.view.ruleset, "3.0-feedback4");
+    assert.equal(result.update?.view.viewer, actor === "a" ? 1 : 2);
+    assert.equal(Boolean(result.update?.view.state.shrineDraft?.choices[1]), actor === "a");
+    noPrivate(result);
+  }
+  assert.equal(await api.getRoom(db, created.id, "a", 3), null);
+  await assert.rejects(api.getRoom(db, created.id, "c"), rejection("ROOM_UNAVAILABLE"));
+  await assert.rejects(
+    api.mutateRoom(db, created.id, "a", input("resign", 3)),
+    rejection("ENGINE_MISMATCH"),
+  );
+  assert.deepEqual(await stored(), before);
+
+  await db
+    .prepare("UPDATE haojie_rooms SET status = 'playing' WHERE id = ?")
+    .bind(created.id)
+    .run();
+  assert.equal((await api.getRoom(db, created.id, "a"))!.update, null);
+  await assert.rejects(
+    api.mutateRoom(db, created.id, "a", input("command", 3, { command: { type: "summon" } })),
+    rejection("ENGINE_MISMATCH"),
+  );
+  await db
+    .prepare("UPDATE haojie_rooms SET status = 'finished', ruleset = 'unknown' WHERE id = ?")
+    .bind(created.id)
+    .run();
+  assert.equal((await api.getRoom(db, created.id, "a"))!.update, null);
+  await db
+    .prepare("UPDATE haojie_rooms SET ruleset = '3.0-feedback3', state_json = '{}' WHERE id = ?")
+    .bind(created.id)
+    .run();
+  assert.equal((await api.getRoom(db, created.id, "a"))!.update, null);
+});
+
 test("commands commit once, reject stale or forged actions, and recover a lost receipt", async () => {
   const { room: created } = await room();
   await api.mutateRoom(db, created.id, "b", input("join", 0));

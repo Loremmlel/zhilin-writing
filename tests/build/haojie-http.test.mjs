@@ -305,6 +305,7 @@ test("built Worker serves authenticated two-player HTTP rooms and existing pages
     assert.equal(joined.room.viewer, 2);
     assert.equal(joined.room.player2.name, "乙");
     assert.equal(joined.room.revision, 1);
+    assert.equal(joined.update.view.ruleset, "3.0-feedback4");
     assert.equal("seed" in joined.update.view.state, false);
     assert.equal("rng" in joined.update.view.state, false);
     await json(await request(path, "c"), 404);
@@ -370,6 +371,18 @@ test("built Worker serves authenticated two-player HTTP rooms and existing pages
       "finished",
       "room survives a Worker restart",
     );
+    await (
+      await mf.getD1Database("DB")
+    )
+      .prepare("UPDATE haojie_rooms SET engine_version = ?, ruleset = '3.0-feedback3' WHERE id = ?")
+      .bind("7824f47c0deb0797819833f6641021f87f4aecbd", created.room.id)
+      .run();
+    const historical = await request(`/games/haojie/${created.room.id}`, "a");
+    const historicalHtml = await historical.text();
+    assert.equal(historical.status, 200);
+    assert.match(historicalHtml, /class="hj-game/);
+    assert.match(historicalHtml, /已结束/);
+    assert.doesNotMatch(historicalHtml, /版本不兼容|这个区域暂时无法显示/);
   } finally {
     await mf.dispose();
   }

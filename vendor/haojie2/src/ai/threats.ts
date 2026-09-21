@@ -1,4 +1,5 @@
 import {
+  refusesConversion,
   abilityKinds,
   allPieces,
   hasTrait,
@@ -248,7 +249,7 @@ export function analyzePayload(
     targets: [],
   };
   const effect = u.effects.find((e) => e.type === type);
-  if (!effect) return result;
+  if (!effect || (type === 'convert' && refusesConversion(u))) return result;
   const view = actionWindow(s, u.owner, effect.from > effectClock(s, effect, u));
   result.window = view.ply;
   const carrier = view.units.find((v) => v.id === u.id);
@@ -257,8 +258,7 @@ export function analyzePayload(
   for (const victim of view.units) {
     if (victim.owner === u.owner || !topTarget(view, asTarget(victim))) continue;
     let reason = '可兑现';
-    if (type === 'convert' && hasTrait(victim, 5)) reason = '大肉比无法被策反';
-    else if (has(view, victim, 'immune')) reason = '金身保护';
+    if (has(view, victim, 'immune')) reason = '金身保护';
     else if (!Number.isFinite(hitDistance(view, carrier, asTarget(victim))))
       reason = '无合法攻击路径';
     else if (

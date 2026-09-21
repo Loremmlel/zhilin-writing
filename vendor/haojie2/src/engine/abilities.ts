@@ -5,6 +5,8 @@ import {
   isLandmark,
   isMage,
   refusesWeapons,
+  refusesConversion,
+  isHookImmune,
   refusesFriendlyAttackBuff,
   weaponHealth,
 } from './traits';
@@ -209,7 +211,10 @@ function resolveSkill(s: GamePosition, c: Command, ctx: Resolution) {
   switch (kind) {
     case 5: {
       const victims = targets(s).filter(
-        (t) => ring(u, t.unit ?? t) && (t.owner === u.owner || topTarget(s, t)),
+        (t) =>
+          (t.unit ? allegiance(s, t.unit) : t.owner) !== u.owner &&
+          ring(u, t.unit ?? t) &&
+          topTarget(s, t),
       );
       areaDamage(s, victims, (p) => (ring(u, p) ? COMBAT_RULES.giantAreaDamage : 0), source, ctx);
       break;
@@ -226,6 +231,7 @@ function resolveSkill(s: GamePosition, c: Command, ctx: Resolution) {
     case 7: {
       const t = enemy(c.targetId),
         to = point(c.x, c.y);
+      ensure(!isHookImmune(t.unit!), '大肉比不能被钩子牵引。');
       ensure(
         !equal(t, to) &&
           canPlace(s, t.unit!, to) &&
@@ -425,6 +431,7 @@ function resolveSkill(s: GamePosition, c: Command, ctx: Resolution) {
       const t = enemy(c.targetId, true),
         v = t.unit!,
         to = { x: u.x, y: u.owner === 1 ? u.y + u.size : u.y - v.size };
+      ensure(!isHookImmune(v), '大肉比不能被钩子牵引。');
       ensure(canPlace(s, v, to), '身前没有合法落位。');
       if (!protectedEffect(s, t, source, ctx)) {
         emit(s, {
@@ -511,6 +518,7 @@ function resolveCast(s: GamePosition, c: Command, ctx: Resolution) {
   let target = c.targetId ? findTarget(s, c.targetId) : undefined;
   if ([17, 18, 22, 'u17'].includes(card.kind))
     ensure(target?.unit && allegiance(s, target.unit) === owner, '请选择友方随从。');
+  if (card.kind === 22) ensure(!refusesConversion(target!.unit!), '大肉比不能使用策反。');
   if (card.kind === 'u26') ensure(target?.unit, '心灵之火只能选择随从。');
   if (card.kind === 8) {
     const p = point(c.x, c.y);

@@ -179,7 +179,7 @@ export function unitActions(s: GamePosition, u: Unit): ActionSpec[] {
           ]),
           spec('sacrifice', '献祭射击', skill, [
             target('献祭 1/2：选择另一友方', 'friend'),
-            { kind: 'column', label: '献祭 2/2：选择射击列' },
+            { kind: 'column', label: '献祭 2/2：选择射击列，可命中敌方基地' },
           ]),
         );
         break;

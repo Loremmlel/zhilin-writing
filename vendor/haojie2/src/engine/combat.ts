@@ -8,6 +8,8 @@ import {
   isLandmark,
   isShrine,
   signedAttack,
+  refusesConversion,
+  isHookImmune,
 } from './traits';
 import {
   damageBonus,
@@ -643,11 +645,11 @@ export function performAttack(
       const victim = t.unit;
       if (
         convert &&
+        !refusesConversion(u) &&
         victim &&
         alive(s, victim) &&
         allegiance(s, victim) === other(u.owner) &&
         !isShrine(victim) &&
-        !hasTrait(victim, 5) &&
         hits.some((h) => h.id === victim.id && h.actual > 0) &&
         !protectedEffect(s, asTarget(victim), { owner: u.owner, unit: u, kind: 'skill' }, ctx)
       ) {
@@ -937,18 +939,9 @@ function resolveAttack(
   const victim = t.unit;
   if (victim && alive(s, victim) && !ally) {
     const conversion = u.effects.find((e) => e.type === 'convert' && activeEffect(s, e, u));
-    if (conversion && attackLoss > 0) {
+    if (conversion && !refusesConversion(u) && attackLoss > 0) {
       u.effects = u.effects.filter((e) => e !== conversion);
-      if (hasTrait(victim, 5))
-        emit(s, {
-          type: 'shield',
-          to: victim,
-          owner: victim.owner,
-          action: 'conversion',
-          stage: 'blocked',
-          text: '大肉比 · 无法策反',
-        });
-      if (!hasTrait(victim, 5) && !protectedEffect(s, t, skillSource, ctx)) {
+      if (!protectedEffect(s, t, skillSource, ctx)) {
         victim.owner = u.owner;
         victim.offset = 0;
         victim.born = s.turns[u.owner] - (hasTrait(victim, 23) ? 1 : 0);
@@ -986,7 +979,7 @@ function resolveAttack(
     if (hasWeapon(u, 'u28') || (!u.silenced && hasTrait(u, 'u6') && !hasWeapon(u, 'u5')))
       burn(s, t, skillSource, ctx);
     if (!u.silenced && hasTrait(u, 'u20')) knockback(s, u, t, path, ctx);
-    if (hasTrait(u, 'formless') && passive(s, u) && alive(s, u))
+    if (hasTrait(u, 'formless') && passive(s, u) && alive(s, u) && !isHookImmune(victim))
       s.pending.push({
         kind: 'hit-pull',
         owner: u.owner,

@@ -36,6 +36,9 @@ export const canAttackFriend = (u: Unit, target: Unit): boolean =>
   signedAttack(u) ||
   (!u.silenced && anyTrait(u, [2, 'u21', 'sage', 's5', 's14'])) ||
   (!target.silenced && anyTrait(target, [16, 's6']));
+// Printed giant restrictions also apply to inherited giant traits and survive silence.
+export const refusesConversion = (u: Unit): boolean => hasTrait(u, 5);
+export const isHookImmune = (u: Unit): boolean => hasTrait(u, 5);
 // Printed equipment restrictions survive silence; inherited restrictions apply as abilities.
 export const refusesWeapons = (u: Unit): boolean => anyTrait(u, [10, 's7']);
 export const refusesFriendlyAttackBuff = (u: Unit): boolean => anyTrait(u, [10, 's7']);
