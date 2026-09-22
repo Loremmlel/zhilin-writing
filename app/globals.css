@@ -335,6 +335,10 @@
   isolation: isolate;
   border-radius: var(--radius);
 }
+/* Restore native dialog centering after the site's global margin reset. */
+.haojie-room .hj-game dialog.modal {
+  margin: auto;
+}
 .haojie-loading {
   position: fixed;
   inset: var(--header-height) 0 0;
