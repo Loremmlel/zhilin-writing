@@ -229,8 +229,8 @@ export async function createRoom(db: D1Database, actor: string, requestId: strin
     .prepare(
       `INSERT INTO haojie_rooms
     (id, player1_id, creation_request_id, mode, status, revision, engine_version, ruleset,
-     view_version, last_change, created_at, updated_at)
-    SELECT ?, ?, ?, ?, 'waiting', 0, ?, ?, ?, 'create', ?, ?
+     view_version, last_change, created_at, updated_at, recording_complete)
+    SELECT ?, ?, ?, ?, 'waiting', 0, ?, ?, ?, 'create', ?, ?, 1
     WHERE (SELECT COUNT(*) FROM haojie_rooms WHERE player1_id = ? AND created_at > ?) < 4
     ON CONFLICT(player1_id, creation_request_id) DO NOTHING`,
     )
@@ -442,6 +442,27 @@ export async function mutateRoom(
           (room_id, actor_id, request_id, kind, request_hash, revision, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
           )
           .bind(id, actor, input.requestId, input.kind, hash, row.revision + 1, now),
+        // Append-only audit history is independent of the bounded undo stack.
+        db
+          .prepare(`INSERT INTO haojie_records (room_id, revision, record_json) VALUES (?, ?, ?)`)
+          .bind(
+            id,
+            row.revision + 1,
+            JSON.stringify({
+              revision: row.revision + 1,
+              kind: input.kind,
+              actorId: actor,
+              player: input.kind === "join" ? 2 : viewer,
+              createdAt: now,
+              request: input,
+              undoneCommandRevision: restoredRevision,
+              state: nextState,
+              undo,
+              status: nextStatus,
+              winner,
+              endReason,
+            }),
+          ),
         ...(input.kind === "command"
           ? [
               db
@@ -469,7 +490,8 @@ export async function mutateRoom(
         db
           .prepare(
             `UPDATE haojie_rooms SET player2_id = ?, status = ?, state_json = ?,
-          revision = revision + 1, last_change = ?, winner = ?, end_reason = ?, updated_at = ?, undo_json = ? WHERE id = ?`,
+          revision = revision + 1, last_change = ?, winner = ?, end_reason = ?, updated_at = ?, undo_json = ?,
+          recording_complete = CASE WHEN ? = 'join' THEN 1 ELSE recording_complete END WHERE id = ?`,
           )
           .bind(
             nextPlayer2,
@@ -480,6 +502,7 @@ export async function mutateRoom(
             endReason,
             now,
             undo ? JSON.stringify(undo) : null,
+            input.kind,
             id,
           ),
       ]);

@@ -56,12 +56,16 @@ export const haojieRooms = sqliteTable(
     stateJson: text("state_json"),
     reactionsJson: text("reactions_json").notNull().default("[]"),
     undoJson: text("undo_json"),
+    recordingComplete: integer("recording_complete").notNull().default(0),
+    archiveKey: text("archive_key"),
+    archiveBytes: integer("archive_bytes"),
+    archivedAt: integer("archived_at"),
     engineVersion: text("engine_version").notNull(),
     ruleset: text("ruleset").notNull(),
     viewVersion: integer("view_version").notNull(),
     lastChange: text("last_change").notNull(),
     winner: text("winner", { enum: ["1", "2", "draw"] }),
-    endReason: text("end_reason", { enum: ["game", "resign", "cancel"] }),
+    endReason: text("end_reason", { enum: ["game", "resign", "cancel", "aborted"] }),
     createdAt: integer("created_at").notNull(),
     updatedAt: integer("updated_at").notNull(),
   },
@@ -89,6 +93,18 @@ export const haojieHistory = sqliteTable(
       .references(() => haojieRooms.id),
     revision: integer("revision").notNull(),
     stateJson: text("state_json").notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.roomId, table.revision] })],
+);
+
+export const haojieRecords = sqliteTable(
+  "haojie_records",
+  {
+    roomId: text("room_id")
+      .notNull()
+      .references(() => haojieRooms.id),
+    revision: integer("revision").notNull(),
+    recordJson: text("record_json").notNull(),
   },
   (table) => [primaryKey({ columns: [table.roomId, table.revision] })],
 );

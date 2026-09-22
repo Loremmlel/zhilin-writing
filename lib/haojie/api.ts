@@ -1,3 +1,4 @@
+import { scheduleRoomArchive } from "./archive-runtime";
 import { getApiMemberAccess } from "../auth/access";
 import { accessErrorMessage } from "../actions/result";
 import { logServerError } from "../logging";
@@ -49,6 +50,8 @@ export async function haojieApi(request: Request, operation: Operation, roomId?:
           ? parseAfter(url.searchParams.get("afterReaction"))
           : undefined,
       );
+      if (result && ["finished", "cancelled"].includes(result.room.status))
+        scheduleRoomArchive(roomId!);
       return result
         ? Response.json(result, { headers })
         : new Response(null, { status: 204, headers });
@@ -62,9 +65,9 @@ export async function haojieApi(request: Request, operation: Operation, roomId?:
       const input = parseCreate(body);
       return Response.json(await createRoom(db, actor, input.requestId, input.mode), { headers });
     }
-    return Response.json(await mutateRoom(db, roomId!, actor, parseMutation(operation, body)), {
-      headers,
-    });
+    const result = await mutateRoom(db, roomId!, actor, parseMutation(operation, body));
+    if (["finished", "cancelled"].includes(result.room.status)) scheduleRoomArchive(roomId!);
+    return Response.json(result, { headers });
   } catch (error) {
     if (error instanceof HaojieError) {
       let snapshot;

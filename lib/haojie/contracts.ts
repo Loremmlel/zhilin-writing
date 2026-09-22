@@ -15,7 +15,7 @@ export type RoomSummary = {
   player2: { id: string; name: string } | null;
   viewer: Player | null;
   winner: Player | "draw" | null;
-  endReason: "game" | "resign" | "cancel" | null;
+  endReason: "game" | "resign" | "cancel" | "aborted" | null;
   updatedAt: number;
   engineVersion: string;
 };

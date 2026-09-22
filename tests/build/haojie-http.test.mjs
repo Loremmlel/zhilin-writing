@@ -26,7 +26,7 @@ test("built Worker serves authenticated two-player HTTP rooms and existing pages
   };
   const mf = new Miniflare(options);
   try {
-    const db = await mf.getD1Database("DB");
+    let db = await mf.getD1Database("DB");
     const migrations = (await readdir(new URL("../../drizzle/", import.meta.url)))
       .filter((name) => /^\d{4}_.+\.sql$/.test(name))
       .sort();
@@ -37,6 +37,18 @@ test("built Worker serves authenticated two-player HTTP rooms and existing pages
             "INSERT INTO allowed_users(id,email,is_admin,added_at,added_by_user_id) VALUES ('legacy','legacy@example.test',0,0,'test-owner')",
           )
           .run();
+      }
+      if (file.startsWith("0016_")) {
+        await db.batch([
+          db.prepare(
+            "INSERT INTO users(id,email_key,display_name,joined_at,updated_at) VALUES ('legacy-player','legacy-player@example.test','旧玩家',0,0), ('legacy-other','legacy-other@example.test','旧对手',0,0)",
+          ),
+          db.prepare(`INSERT INTO haojie_rooms (id,player1_id,player2_id,creation_request_id,mode,status,revision,state_json,engine_version,ruleset,view_version,last_change,winner,end_reason,created_at,updated_at)
+            VALUES ('00000000-0000-4000-8000-000000000001','legacy-player','legacy-other','legacy','classic','finished',3,'{}','old','old',1,'resign','2','resign',0,3)`),
+          db.prepare(
+            `INSERT INTO haojie_history VALUES ('00000000-0000-4000-8000-000000000001',2,'{"step":1}'),('00000000-0000-4000-8000-000000000001',3,'{"step":2}')`,
+          ),
+        ]);
       }
       const sql = await readFile(new URL(`../../drizzle/${file}`, import.meta.url), "utf8");
       await db.batch(
@@ -379,9 +391,156 @@ test("built Worker serves authenticated two-player HTTP rooms and existing pages
     const ended = await json(await request(`${path}/finish`, "a", input(4, { kind: "resign" })));
     assert.equal(ended.room.winner, 2);
     assert.equal(ended.room.status, "finished");
+    let automaticArchive;
+    for (let attempt = 0; attempt < 50; attempt++) {
+      automaticArchive = await db
+        .prepare("SELECT archive_key FROM haojie_rooms WHERE id = ?")
+        .bind(created.room.id)
+        .first();
+      if (automaticArchive.archive_key) break;
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    }
+    assert.ok(
+      automaticArchive.archive_key,
+      "terminal request automatically uploads without an admin action",
+    );
+    // Admin-only archive surface, actual streamed R2 bytes, undo history, and idempotent retry.
+    const download = `/api/admin/games/${created.room.id}/download`;
+    await json(await request(download), 401);
+    await json(await request(download, "c"), 403);
+    const archivedAction = await action("manageGameArchive", "a", [
+      created.room.id,
+      5,
+      "archive",
+      {},
+      new FormData(),
+    ]);
+    assert.match(await archivedAction.text(), /"success":true/);
+    const downloaded = await request(download, "a");
+    assert.match(downloaded.headers.get("content-disposition"), /attachment/);
+    const archive = await json(downloaded);
+    assert.equal(archive.formatVersion, 1);
+    assert.equal(archive.room.historyComplete, true);
+    assert.equal(archive.room.endReason, "resign");
+    assert.deepEqual(
+      archive.records.map((r) => r.kind),
+      ["join", "command", "undo-request", "undo-accept", "resign"],
+    );
+    assert.equal(typeof archive.records[0].state.rng, "number");
+    assert.deepEqual(archive.records[3].state, archive.records[0].state);
+    assert.equal(archive.records[3].undoneCommandRevision, 2);
+    const page = await request("/admin/games", "a");
+    assert.equal(page.status, 200);
+    assert.match(await page.text(), /下载 JSON/);
+    const denied = await action("manageGameArchive", "c", [
+      created.room.id,
+      5,
+      "archive",
+      {},
+      new FormData(),
+    ]);
+    assert.match(await denied.text(), /ADMIN_REQUIRED/);
+    const legacyId = "00000000-0000-4000-8000-000000000001";
+    // Missing object storage does not lose a terminal game's records.
+    await mf.setOptions({ ...options, r2Buckets: [] });
+    db = await mf.getD1Database("DB");
+    assert.match(
+      await (
+        await action("manageGameArchive", "a", [legacyId, 3, "archive", {}, new FormData()])
+      ).text(),
+      /归档失败/,
+    );
+    assert.equal(
+      (await db.prepare("SELECT archive_key FROM haojie_rooms WHERE id = ?").bind(legacyId).first())
+        .archive_key,
+      null,
+    );
+    await mf.setOptions(options);
+    db = await mf.getD1Database("DB");
+    // Force failure after R2 upload: the same object is safely finalized by retry.
+    await db
+      .prepare(
+        "CREATE TRIGGER fail_archive BEFORE UPDATE OF archive_key ON haojie_rooms BEGIN SELECT RAISE(ABORT, 'test'); END",
+      )
+      .run();
+    const failed = await action("manageGameArchive", "a", [
+      legacyId,
+      1,
+      "archive",
+      {},
+      new FormData(),
+    ]);
+    assert.match(await failed.text(), /归档失败/);
+    assert.equal(
+      (await db.prepare("SELECT archive_key FROM haojie_rooms WHERE id = ?").bind(legacyId).first())
+        .archive_key,
+      null,
+    );
+    assert.equal(
+      (
+        await db
+          .prepare("SELECT COUNT(*) AS n FROM haojie_records WHERE room_id = ?")
+          .bind(legacyId)
+          .first()
+      ).n,
+      3,
+    );
+    await db.prepare("DROP TRIGGER fail_archive").run();
+    assert.match(
+      await (
+        await action("manageGameArchive", "a", [legacyId, 1, "archive", {}, new FormData()])
+      ).text(),
+      /"success":true/,
+    );
+    const legacy = await json(await request(`/api/admin/games/${legacyId}/download`, "a"));
+    assert.equal(legacy.room.historyComplete, false);
+    assert.deepEqual(
+      legacy.records.map((r) => r.kind),
+      ["legacy-snapshot", "legacy-snapshot", "legacy-baseline"],
+    );
+    assert.equal(legacy.records[0].state.step, 1);
+    const toAbort = await json(
+      await request("/api/haojie/rooms", "a", { requestId: crypto.randomUUID(), mode: "classic" }),
+    );
+    await json(
+      await request(`/api/haojie/rooms/${toAbort.room.id}/join`, "c", {
+        requestId: crypto.randomUUID(),
+        baseRevision: 0,
+        engineVersion: toAbort.room.engineVersion,
+      }),
+    );
+    assert.match(
+      await (
+        await action("manageGameArchive", "a", [toAbort.room.id, 0, "abort", {}, new FormData()])
+      ).text(),
+      /局面已变化/,
+    );
+    assert.match(
+      await (
+        await action("manageGameArchive", "c", [toAbort.room.id, 1, "abort", {}, new FormData()])
+      ).text(),
+      /ADMIN_REQUIRED/,
+    );
+    assert.match(
+      await (
+        await action("manageGameArchive", "a", [toAbort.room.id, 1, "abort", {}, new FormData()])
+      ).text(),
+      /"success":true/,
+    );
+    const abortedRoom = await json(await request(`/api/haojie/rooms/${toAbort.room.id}`, "c"));
+    assert.equal(abortedRoom.room.endReason, "aborted");
+    assert.equal(abortedRoom.room.winner, null);
+    const abortedPage = await request(`/games/haojie/${toAbort.room.id}`, "c");
+    assert.match(await abortedPage.text(), /管理员已结束本局/);
+    const abortedArchive = await json(
+      await request(`/api/admin/games/${toAbort.room.id}/download`, "a"),
+    );
+    assert.equal(abortedArchive.records.at(-1).actorId, "a");
+    assert.equal(abortedArchive.records.at(-1).kind, "admin-abort");
     await mf.setOptions({ ...options, bindings: { HAOJIE_ENABLED: "false" } });
     assert.equal((await json(await request(path, "a"), 404)).error.code, "GAME_UNAVAILABLE");
     await mf.setOptions(options);
+    db = await mf.getD1Database("DB");
     assert.equal(
       (await json(await request(path, "a"))).room.status,
       "finished",

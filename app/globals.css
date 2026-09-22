@@ -2912,6 +2912,14 @@ input[type="file"] {
   justify-content: space-between;
   gap: 20px;
 }
+.admin-content-topbar > h1 {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.35;
+}
+.admin-content-section > .admin-table-scroll {
+  flex: 1;
+}
 .admin-content-topbar .list-tabs {
   flex: 1;
   height: 40px;

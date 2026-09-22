@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 
 import type { AdminContentType } from "@/lib/admin/query";
 
-export type AdminNavKey = "overview" | AdminContentType | "members" | "audit";
+export type AdminNavKey = "overview" | AdminContentType | "members" | "audit" | "games";
 
 const contentLinks: Array<{ key: AdminContentType; label: string }> = [
   { key: "posts", label: "帖子" },
@@ -19,6 +19,7 @@ const navLabels: Record<AdminNavKey, string> = {
   "annotation-replies": "批注回复",
   members: "成员与白名单",
   audit: "操作日志",
+  games: "对局档案",
 };
 
 function Navigation({ active }: { active: AdminNavKey }) {
@@ -49,6 +50,14 @@ function Navigation({ active }: { active: AdminNavKey }) {
         aria-current={active === "members" ? "page" : undefined}
       >
         成员与白名单
+      </Link>
+      <p>游戏</p>
+      <Link
+        href="/admin/games"
+        className={active === "games" ? "is-active" : ""}
+        aria-current={active === "games" ? "page" : undefined}
+      >
+        对局档案
       </Link>
       <p>系统</p>
       <Link

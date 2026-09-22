@@ -9,7 +9,7 @@ import type { MutationInput } from "../../lib/haojie/contracts.ts";
 // Bundle the unmodified upstream extensionless imports, using the installed build tool.
 const bundled = await build({
   stdin: {
-    contents: `export * from './lib/haojie/service.ts'; export * from './lib/haojie/input.ts'; export * from './lib/haojie/contracts.ts';`,
+    contents: `export { isLegal } from './vendor/haojie2/src/engine/index.ts'; export * from './lib/haojie/service.ts'; export * from './lib/haojie/archives.ts'; export * from './lib/haojie/input.ts'; export * from './lib/haojie/contracts.ts';`,
     resolveDir: fileURLToPath(new URL("../../", import.meta.url)),
   },
   bundle: true,
@@ -20,7 +20,9 @@ const bundled = await build({
 });
 const api = (await import(
   `data:text/javascript;base64,${Buffer.from(bundled.outputFiles[0].contents).toString("base64")}`
-)) as typeof import("../../lib/haojie/service.ts") &
+)) as Pick<typeof import("../../vendor/haojie2/src/engine/index.ts"), "isLegal"> &
+  typeof import("../../lib/haojie/archives.ts") &
+  typeof import("../../lib/haojie/service.ts") &
   typeof import("../../lib/haojie/input.ts") &
   typeof import("../../lib/haojie/contracts.ts");
 const mf = new Miniflare({
@@ -53,6 +55,13 @@ before(async () => {
   );
   await db.batch(
     undoMigration.split("--> statement-breakpoint").map((sql) => db.prepare(sql.trim())),
+  );
+  const archiveMigration = await readFile(
+    new URL("../../drizzle/0016_sharp_thunderball.sql", import.meta.url),
+    "utf8",
+  );
+  await db.batch(
+    archiveMigration.split("--> statement-breakpoint").map((sql) => db.prepare(sql.trim())),
   );
 });
 after(() => mf.dispose());
@@ -572,4 +581,112 @@ test("emoji bursts stay ordered and idempotent without changing game state or ad
     api.sendReactions(db, created.id, "a", makeItems(1)),
     rejection("ROOM_NOT_PLAYING"),
   );
+});
+
+test("archive journal outlives the undo window and keeps undone commands; admin termination uses CAS", async () => {
+  const { room: created } = await room();
+  let current = await api.mutateRoom(db, created.id, "b", input("join", 0));
+  for (let i = 0; i < 70; i++) {
+    await db.prepare("UPDATE haojie_requests SET created_at = 0").run();
+    const stored = await db
+      .prepare("SELECT state_json FROM haojie_rooms WHERE id = ?")
+      .bind(created.id)
+      .first<{ state_json: string }>();
+    const state = JSON.parse(stored!.state_json);
+    const basic = ["summon", "begin", "skip-synthesis", "end"].map((type) => ({ type }));
+    const deployments = state.hands[state.active].flatMap((card: { cardId?: string; id: string }) =>
+      Array.from({ length: 90 }, (_, at) => ({
+        type: "deploy",
+        cardId: card.id,
+        x: at % 9,
+        y: Math.floor(at / 9),
+      })),
+    );
+    const command = [...basic, ...deployments].find((c) => api.isLegal(state, c as never));
+    assert.ok(command, "passive legal game has a next action");
+    current = await api.mutateRoom(
+      db,
+      created.id,
+      state.active === 1 ? "a" : "b",
+      input("command", current.room.revision, { command }),
+    );
+  }
+  assert.equal(
+    (await db
+      .prepare("SELECT COUNT(*) AS n FROM haojie_history WHERE room_id = ?")
+      .bind(created.id)
+      .first<{ n: number }>())!.n,
+    60,
+  );
+  const journal = async () =>
+    (
+      await db
+        .prepare("SELECT record_json FROM haojie_records WHERE room_id = ? ORDER BY revision")
+        .bind(created.id)
+        .all<{ record_json: string }>()
+    ).results.map((r) => JSON.parse(r.record_json));
+  assert.equal((await journal()).length, 71);
+  const last = (await journal()).at(-1);
+  const ask = await api.mutateRoom(
+    db,
+    created.id,
+    "a",
+    input("undo-request", current.room.revision),
+  );
+  current = await api.mutateRoom(
+    db,
+    created.id,
+    "b",
+    input("undo-accept", ask.room.revision, { undoId: ask.undo!.id }),
+  );
+  const records = await journal();
+  assert.equal(records.length, 73);
+  assert.deepEqual(records[70], last);
+  assert.equal(records.at(-1).undoneCommandRevision, 71);
+  assert.deepEqual(records.at(-1).state, records[69].state);
+  await assert.rejects(
+    api.abortRoom(db, created.id, "c", current.room.revision - 1),
+    rejection("REVISION_CONFLICT"),
+  );
+  const races = await Promise.allSettled([
+    api.abortRoom(db, created.id, "c", current.room.revision),
+    api.mutateRoom(db, created.id, "a", input("resign", current.room.revision)),
+  ]);
+  assert.equal(races.filter((r) => r.status === "fulfilled").length, 1);
+  assert.equal((await journal()).length, 74);
+  assert.equal((await api.archiveRoomInfo(db, created.id)).status, "finished");
+  const { room: waiting } = await room();
+  await api.abortRoom(db, waiting.id, "c", 0);
+  await api.abortRoom(db, waiting.id, "c", 0);
+  const aborted = await api.archiveRoomInfo(db, waiting.id);
+  assert.equal(aborted.status, "cancelled");
+  assert.equal(aborted.winner, null);
+  assert.equal(aborted.endReason, "aborted");
+  assert.equal(aborted.recordCount, 1);
+});
+
+test("journal insertion failure rolls back state and receipt and can be retried", async () => {
+  const { room: created } = await room();
+  await api.mutateRoom(db, created.id, "b", input("join", 0));
+  const move = input("command", 1, { command: { type: "summon" } });
+  const before = await api.getRoom(db, created.id, "a");
+  await db
+    .prepare(
+      "CREATE TRIGGER fail_journal BEFORE INSERT ON haojie_records BEGIN SELECT RAISE(ABORT, 'test'); END",
+    )
+    .run();
+  await assert.rejects(api.mutateRoom(db, created.id, "a", move));
+  assert.deepEqual(await api.getRoom(db, created.id, "a"), before);
+  assert.equal((await api.archiveRoomInfo(db, created.id)).recordCount, 1);
+  assert.equal(
+    await db
+      .prepare("SELECT request_id FROM haojie_requests WHERE request_id = ?")
+      .bind(move.requestId)
+      .first(),
+    null,
+  );
+  await db.prepare("DROP TRIGGER fail_journal").run();
+  await api.mutateRoom(db, created.id, "a", move);
+  await api.mutateRoom(db, created.id, "a", move);
+  assert.equal((await api.archiveRoomInfo(db, created.id)).recordCount, 2);
 });

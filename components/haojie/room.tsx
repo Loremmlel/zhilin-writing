@@ -188,9 +188,11 @@ export function HaojieRoom({ initial }: { initial: RoomSnapshot }) {
               <strong>
                 {room.status === "cancelled"
                   ? "房间已取消"
-                  : room.winner === "draw"
-                    ? "本局平局"
-                    : `${winner ?? "对手"} 获胜`}
+                  : room.endReason === "aborted"
+                    ? "管理员已结束本局"
+                    : room.winner === "draw"
+                      ? "本局平局"
+                      : `${winner ?? "对手"} 获胜`}
               </strong>
               {room.endReason === "resign" && <span>本局以认输结束</span>}
               <Link className="button button--ghost" href={HAOJIE_PATH}>
