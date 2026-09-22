@@ -19,6 +19,9 @@ export interface HaojieOnlineGameProps {
   connection: 'connecting' | 'connected' | 'disconnected';
   /** Host policy lock, never derive this solely from whose turn it is. */
   disabled?: boolean;
+  /** Optional host-owned consent flow; the board never restores local state. */
+  onUndo?: () => void;
+  canUndo?: boolean;
   error?: { id: string; message: string };
   /** Host generates requestId, deduplicates retries, persists the result, and resolves a real ack. */
   onCommand: (command: Command, context: CommandContext) => Promise<CommandReceipt>;

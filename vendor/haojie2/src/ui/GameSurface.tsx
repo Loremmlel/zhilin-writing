@@ -90,10 +90,11 @@ export function GameSurface({
               selectedId={game.selectedId}
               onCell={game.onCell}
               effects={game.effects}
-              canUndo={!!local?.session.past.length}
+              canUndo={local ? !!local.session.past.length : !!online?.canUndo}
               canRedo={!!local?.session.future.length}
-              rewind={local?.rewind ?? (() => {})}
-              showHistory={!!local}
+              rewind={local?.rewind ?? (() => online?.onUndo?.())}
+              showHistory={!!local || !!online?.onUndo}
+              showRedo={!!local}
               run={game.run}
               onCancel={game.cancel}
               onTargetLayer={(layer) =>

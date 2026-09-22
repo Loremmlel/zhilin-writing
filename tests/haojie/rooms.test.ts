@@ -47,6 +47,13 @@ before(async () => {
     )
     .run();
   await db.prepare("INSERT INTO users VALUES ('a', '甲'), ('b', '乙'), ('c', '丙')").run();
+  const undoMigration = await readFile(
+    new URL("../../drizzle/0015_great_king_cobra.sql", import.meta.url),
+    "utf8",
+  );
+  await db.batch(
+    undoMigration.split("--> statement-breakpoint").map((sql) => db.prepare(sql.trim())),
+  );
 });
 after(() => mf.dispose());
 const input = (kind: MutationInput["kind"], revision: number, extra = {}): MutationInput =>
@@ -68,7 +75,10 @@ async function room(mode: "classic" | "shrine" = "classic") {
 function noPrivate(value: unknown) {
   if (!value || typeof value !== "object") return;
   for (const [key, child] of Object.entries(value)) {
-    assert.ok(!["seed", "rng", "past", "future"].includes(key), `private ${key}`);
+    assert.ok(
+      !["seed", "rng", "past", "future", "stateJson", "undoJson"].includes(key),
+      `private ${key}`,
+    );
     noPrivate(child);
   }
 }
@@ -315,6 +325,165 @@ test("D1 abort rolls back both receipt and state; cancel only applies before joi
   );
 });
 
+test("undo needs opponent consent, survives reload, and restores exactly one deterministic step once", async () => {
+  const { room: created } = await room();
+  await api.mutateRoom(db, created.id, "b", input("join", 0));
+  const stored = () =>
+    db
+      .prepare("SELECT state_json FROM haojie_rooms WHERE id = ?")
+      .bind(created.id)
+      .first<{ state_json: string }>();
+  const before = (await stored())!.state_json;
+  await assert.rejects(
+    api.mutateRoom(db, created.id, "a", input("undo-request", 1)),
+    rejection("UNDO_UNAVAILABLE"),
+  );
+  const move = input("command", 1, { command: { type: "summon" } });
+  await api.mutateRoom(db, created.id, "a", move);
+  const after = (await stored())!.state_json;
+  const ask = input("undo-request", 2);
+  const requested = await api.mutateRoom(db, created.id, "a", ask);
+  assert.equal(requested.undo?.status, "pending");
+  assert.equal((await stored())!.state_json, after);
+  assert.equal((await api.mutateRoom(db, created.id, "a", ask)).receipt.revision, 3);
+  const reloaded = (await api.getRoom(db, created.id, "b"))!;
+  assert.deepEqual(reloaded.undo, requested.undo);
+  noPrivate(reloaded);
+  await assert.rejects(
+    api.mutateRoom(db, created.id, "c", input("undo-accept", 3, { undoId: ask.requestId })),
+    rejection("ROOM_UNAVAILABLE"),
+  );
+  await assert.rejects(
+    api.mutateRoom(db, created.id, "a", input("undo-accept", 3, { undoId: ask.requestId })),
+    rejection("UNDO_NOT_ALLOWED"),
+  );
+  await assert.rejects(
+    api.mutateRoom(db, created.id, "b", input("undo-accept", 3, { undoId: crypto.randomUUID() })),
+    rejection("UNDO_CHANGED"),
+  );
+  await assert.rejects(
+    api.mutateRoom(db, created.id, "a", input("command", 3, { command: { type: "summon" } })),
+    rejection("UNDO_PENDING"),
+  );
+  const accept = input("undo-accept", 3, { undoId: ask.requestId });
+  const results = await Promise.all([
+    api.mutateRoom(db, created.id, "b", accept),
+    api.mutateRoom(db, created.id, "b", accept),
+  ]);
+  assert.deepEqual(
+    results.map((result) => result.receipt.revision),
+    [4, 4],
+  );
+  assert.equal(results[0].undo?.status, "accepted");
+  assert.equal(results[0].update?.kind, "snapshot");
+  assert.equal(results[0].canUndo, false);
+  assert.equal(
+    (await stored())!.state_json,
+    before,
+    "includes RNG, logs, reactions and all game fields",
+  );
+  assert.equal(
+    (await api.mutateRoom(db, created.id, "a", move)).receipt.revision,
+    2,
+    "old command retry must not replay the undone command",
+  );
+  assert.equal((await stored())!.state_json, before);
+  await api.mutateRoom(db, created.id, "a", input("command", 4, { command: { type: "summon" } }));
+  assert.equal((await stored())!.state_json, after, "undo cannot reroll randomness");
+});
+
+test("undo rejection/cancellation and racing consent preserve state; failed restore is atomic", async () => {
+  const { room: created } = await room();
+  await api.mutateRoom(db, created.id, "b", input("join", 0));
+  await api.mutateRoom(db, created.id, "a", input("command", 1, { command: { type: "summon" } }));
+  const before = (await api.getRoom(db, created.id, "a"))!.update!.view.state;
+  const ask = await api.mutateRoom(db, created.id, "b", input("undo-request", 2));
+  const declined = await api.mutateRoom(
+    db,
+    created.id,
+    "a",
+    input("undo-reject", 3, { undoId: ask.undo!.id }),
+  );
+  assert.equal(declined.undo?.status, "rejected");
+  assert.deepEqual(declined.update!.view.state, before);
+  assert.equal(declined.canUndo, true);
+  const ask2 = await api.mutateRoom(db, created.id, "a", input("undo-request", 4));
+  const cancelled = await api.mutateRoom(
+    db,
+    created.id,
+    "a",
+    input("undo-cancel", 5, { undoId: ask2.undo!.id }),
+  );
+  assert.equal(cancelled.undo?.status, "cancelled");
+  assert.deepEqual(cancelled.update!.view.state, before);
+  await assert.rejects(
+    api.mutateRoom(db, created.id, "b", input("undo-accept", 6, { undoId: ask2.undo!.id })),
+    rejection("UNDO_CHANGED"),
+  );
+  const ask3 = await api.mutateRoom(db, created.id, "a", input("undo-request", 6));
+  const accept = input("undo-accept", 7, { undoId: ask3.undo!.id });
+  await db
+    .prepare(
+      "CREATE TRIGGER haojie_test_undo_abort BEFORE UPDATE OF state_json ON haojie_rooms BEGIN SELECT RAISE(ABORT, 'injected'); END",
+    )
+    .run();
+  await assert.rejects(api.mutateRoom(db, created.id, "b", accept));
+  assert.deepEqual((await api.getRoom(db, created.id, "a"))!.undo, ask3.undo);
+  assert.equal(
+    (await db
+      .prepare("SELECT COUNT(*) AS n FROM haojie_history WHERE room_id = ?")
+      .bind(created.id)
+      .first<{ n: number }>())!.n,
+    1,
+  );
+  await db.prepare("DROP TRIGGER haojie_test_undo_abort").run();
+  const race = await Promise.allSettled([
+    api.mutateRoom(db, created.id, "b", accept),
+    api.mutateRoom(db, created.id, "a", input("undo-cancel", 7, { undoId: ask3.undo!.id })),
+  ]);
+  assert.equal(race.filter((result) => result.status === "fulfilled").length, 1);
+  assert.equal((await api.getRoom(db, created.id, "a"))!.room.revision, 8);
+});
+
+test("shrine undo keeps private choices private, blocks stale rebasing, and retains earlier history", async () => {
+  const { room: created } = await room("shrine");
+  const joined = await api.mutateRoom(db, created.id, "b", input("join", 0));
+  const offers = joined.update!.view.state.shrineDraft!.offers;
+  const choose = (p: 1 | 2) => ({ type: "choose-shrine", shrineKind: offers[p][0], parity: "odd" });
+  await api.mutateRoom(db, created.id, "a", input("command", 1, { command: choose(1) }));
+  await api.mutateRoom(db, created.id, "b", input("command", 1, { command: choose(2) }));
+  const ask = await api.mutateRoom(db, created.id, "b", input("undo-request", 3));
+  const restored = await api.mutateRoom(
+    db,
+    created.id,
+    "a",
+    input("undo-accept", 4, { undoId: ask.undo!.id }),
+  );
+  assert.equal(restored.canUndo, true);
+  assert.equal(restored.update!.view.state.shrineDraft!.choices[2], undefined);
+  const opponent = (await api.getRoom(db, created.id, "b"))!;
+  assert.equal(opponent.update!.view.state.shrineDraft!.choices[1], undefined);
+  noPrivate(opponent);
+  await assert.rejects(
+    api.mutateRoom(db, created.id, "b", input("command", 4, { command: choose(2) })),
+    rejection("REVISION_CONFLICT"),
+  );
+  const ask2 = await api.mutateRoom(db, created.id, "a", input("undo-request", 5));
+  const restored2 = await api.mutateRoom(
+    db,
+    created.id,
+    "b",
+    input("undo-accept", 6, { undoId: ask2.undo!.id }),
+  );
+  assert.deepEqual(restored2.update!.view.state, joined.update!.view.state);
+  assert.equal(restored2.canUndo, false);
+  await api.mutateRoom(db, created.id, "b", input("resign", 7));
+  await assert.rejects(
+    api.mutateRoom(db, created.id, "a", input("undo-request", 8)),
+    rejection("ROOM_STATUS_CONFLICT"),
+  );
+});
+
 test("HTTP boundary rejects cross-site, oversized and malformed commands", async () => {
   const request = (body: string, origin = "https://example.test") =>
     new Request("https://example.test/api/haojie/rooms", {
@@ -337,6 +506,16 @@ test("HTTP boundary rejects cross-site, oversized and malformed commands", async
   );
   assert.throws(() => api.parseAfter("9007199254740992"));
   assert.equal(api.parseAfter(null), -1);
+  const undo = input("undo-accept", 3, { undoId: crypto.randomUUID() });
+  assert.deepEqual(api.parseMutation("undo", undo), undo);
+  assert.throws(
+    () => api.parseMutation("undo", { ...undo, requester: 2 }),
+    rejection("INVALID_REQUEST"),
+  );
+  assert.throws(
+    () => api.parseMutation("undo", { ...undo, undoId: "invalid" }),
+    rejection("INVALID_REQUEST"),
+  );
 });
 
 test("emoji bursts stay ordered and idempotent without changing game state or admitting spectators", async () => {

@@ -55,6 +55,7 @@ export const haojieRooms = sqliteTable(
     revision: integer("revision").notNull().default(0),
     stateJson: text("state_json"),
     reactionsJson: text("reactions_json").notNull().default("[]"),
+    undoJson: text("undo_json"),
     engineVersion: text("engine_version").notNull(),
     ruleset: text("ruleset").notNull(),
     viewVersion: integer("view_version").notNull(),
@@ -78,6 +79,18 @@ export const haojieRooms = sqliteTable(
       sql`(${table.status} IN ('waiting', 'cancelled') AND ${table.player2Id} IS NULL AND ${table.stateJson} IS NULL) OR (${table.status} IN ('playing', 'finished') AND ${table.player2Id} IS NOT NULL AND ${table.stateJson} IS NOT NULL)`,
     ),
   ],
+);
+
+export const haojieHistory = sqliteTable(
+  "haojie_history",
+  {
+    roomId: text("room_id")
+      .notNull()
+      .references(() => haojieRooms.id),
+    revision: integer("revision").notNull(),
+    stateJson: text("state_json").notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.roomId, table.revision] })],
 );
 
 export const haojieRequests = sqliteTable(

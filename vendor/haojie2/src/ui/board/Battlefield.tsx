@@ -22,6 +22,7 @@ export function Battlefield({
   endError,
   readOnly = false,
   showHistory = true,
+  showRedo = true,
 }: {
   state: GamePosition;
   intent: Intent;
@@ -38,6 +39,7 @@ export function Battlefield({
   endError: string | null;
   readOnly?: boolean;
   showHistory?: boolean;
+  showRedo?: boolean;
 }) {
   const reaction = s.pending[0],
     maySkip = canSkipReaction(s),
@@ -93,9 +95,11 @@ export function Battlefield({
               <Icon name="undo" />
               悔棋
             </button>
-            <button aria-label="重做" disabled={!canRedo} onClick={() => rewind(true)}>
-              <Icon name="redo" />
-            </button>
+            {showRedo && (
+              <button aria-label="重做" disabled={!canRedo} onClick={() => rewind(true)}>
+                <Icon name="redo" />
+              </button>
+            )}
           </div>
         )}
         {reaction?.kind === 'hit-pull' && (

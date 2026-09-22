@@ -65,6 +65,46 @@ test("snapshots ignore stale responses and suppress incomplete animations across
   assert.equal(acceptRoomSnapshot(current, at(3), true).update!.kind, "snapshot");
 });
 
+test("undo consent uses the same reliable write channel and reaches the opponent through polling", async (t) => {
+  const undoId = crypto.randomUUID();
+  const pending: RoomSnapshot = {
+    ...at(2),
+    undo: { id: undoId, requester: 2, status: "pending" },
+    canUndo: true,
+  };
+  const restored: RoomSnapshot = {
+    ...at(3),
+    update: { ...at(3).update!, kind: "snapshot" },
+    undo: { ...pending.undo!, status: "accepted" },
+    canUndo: false,
+  };
+  const writes: { url: string; body: Record<string, unknown> }[] = [];
+  const client = new RoomClient(initial, async (url, init) => {
+    if (!init?.body) return Response.json(pending);
+    writes.push({ url: String(url), body: JSON.parse(String(init.body)) });
+    return Response.json({ ...restored, receipt: { ok: true, revision: 3 } });
+  });
+  t.after(() => client.stop());
+  client.start();
+  await flush();
+  assert.equal(client.getSnapshot().snapshot.undo?.status, "pending");
+  const receipt = await client.submit({ kind: "undo-accept", undoId, baseRevision: 2 });
+  assert.deepEqual(receipt, { ok: true, revision: 3 });
+  assert.match(writes[0].url, /\/undo$/);
+  assert.equal(writes[0].body.kind, "undo-accept");
+  assert.equal(writes[0].body.undoId, undoId);
+  assert.equal(client.getSnapshot().snapshot.undo?.status, "accepted");
+  assert.equal(client.getSnapshot().snapshot.update?.kind, "snapshot");
+  assert.equal(client.getSnapshot().pending, false);
+  client.refresh();
+  await flush();
+  assert.equal(
+    client.getSnapshot().snapshot.undo?.status,
+    "accepted",
+    "late pending poll cannot reopen consent",
+  );
+});
+
 test("polling is serial, continues on the player's turn, slows in background and stops at the end", async (t) => {
   t.mock.timers.enable({ apis: ["setTimeout"] });
   const reads: ((value: Response) => void)[] = [];

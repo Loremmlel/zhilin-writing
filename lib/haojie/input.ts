@@ -40,6 +40,16 @@ const createSchema = z
 const joinSchema = z.object(envelope).strict();
 const commandSchema = z.object({ ...envelope, command: z.unknown() }).strict();
 const finishSchema = z.object({ ...envelope, kind: z.enum(["cancel", "resign"]) }).strict();
+const undoSchema = z.discriminatedUnion("kind", [
+  z.object({ ...envelope, kind: z.literal("undo-request") }).strict(),
+  z
+    .object({
+      ...envelope,
+      kind: z.enum(["undo-accept", "undo-reject", "undo-cancel"]),
+      undoId: z.uuid(),
+    })
+    .strict(),
+]);
 
 export function parseRoomId(id: string) {
   if (!z.uuid().safeParse(id).success)
@@ -104,7 +114,10 @@ export function parseCreate(input: unknown) {
   return parsed.data;
 }
 
-export function parseMutation(kind: "join" | "command" | "finish", input: unknown): MutationInput {
+export function parseMutation(
+  kind: "join" | "command" | "finish" | "undo",
+  input: unknown,
+): MutationInput {
   if (kind === "command") {
     const parsed = commandSchema.safeParse(input);
     if (!parsed.success) throw new HaojieError("INVALID_REQUEST", 400, "操作请求格式无效。");
@@ -115,7 +128,9 @@ export function parseMutation(kind: "join" | "command" | "finish", input: unknow
       throw error;
     }
   }
-  const parsed = (kind === "join" ? joinSchema : finishSchema).safeParse(input);
+  const parsed = (
+    kind === "join" ? joinSchema : kind === "undo" ? undoSchema : finishSchema
+  ).safeParse(input);
   if (!parsed.success) throw new HaojieError("INVALID_REQUEST", 400, "操作请求格式无效。");
   return (kind === "join" ? { ...parsed.data, kind } : parsed.data) as MutationInput;
 }

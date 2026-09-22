@@ -26,10 +26,18 @@ export function HaojieRoom({ initial }: { initial: RoomSnapshot }) {
       client.submit({ kind: "command", command, baseRevision: context.baseRevision }),
     [client],
   );
+  const onUndo = useCallback(() => {
+    void client.submit({
+      kind: "undo-request",
+      baseRevision: client.getSnapshot().snapshot.room.revision,
+    });
+  }, [client]);
   const state = useSyncExternalStore(client.subscribe, client.getSnapshot, client.getSnapshot);
   const [confirm, setConfirm] = useState(false);
   const [copyState, setCopyState] = useState("");
-  const { room, update } = state.snapshot;
+  const { room, update, undo, canUndo } = state.snapshot;
+  const undoPending = undo?.status === "pending";
+  const requestedUndo = undo?.requester === room.viewer;
   useEffect(() => {
     client.start();
     const visibility = () => client.setVisible(document.visibilityState === "visible");
@@ -71,6 +79,10 @@ export function HaojieRoom({ initial }: { initial: RoomSnapshot }) {
       baseRevision: room.revision,
     });
   }
+  function respondUndo(kind: "undo-accept" | "undo-reject" | "undo-cancel") {
+    if (!undoPending || !undo || busy) return;
+    void client.submit({ kind, undoId: undo.id, baseRevision: room.revision });
+  }
   return (
     <div className="haojie-room page-column" data-workspace-expanded="true">
       <div className="haojie-room-viewport">
@@ -94,6 +106,31 @@ export function HaojieRoom({ initial }: { initial: RoomSnapshot }) {
               {state.pending ? "正在确认操作…" : roomStatusLabel(room.status)}
             </span>
           </div>
+          {undo && !ended && (
+            <div className="haojie-sync" role="status">
+              {undoPending
+                ? requestedUndo
+                  ? "已申请悔棋，等待对方确认。"
+                  : "对方申请悔棋，等待你的确认。"
+                : undo.status === "accepted"
+                  ? "双方已同意，已回退上一步。"
+                  : undo.status === "rejected"
+                    ? requestedUndo
+                      ? "对方未同意悔棋。"
+                      : "已拒绝悔棋。"
+                    : "悔棋请求已撤回。"}
+              {undoPending && requestedUndo && (
+                <button
+                  type="button"
+                  className="text-button"
+                  disabled={busy}
+                  onClick={() => respondUndo("undo-cancel")}
+                >
+                  撤回请求
+                </button>
+              )}
+            </div>
+          )}
           {notice && (
             <div className="haojie-sync" aria-live="polite">
               {state.reactionError && (
@@ -166,8 +203,10 @@ export function HaojieRoom({ initial }: { initial: RoomSnapshot }) {
               <MemoizedHaojieGame
                 update={update}
                 connection={state.connection}
-                disabled={ended || busy}
+                disabled={ended || busy || undoPending}
                 onCommand={onCommand}
+                onUndo={onUndo}
+                canUndo={canUndo && !undoPending}
               />
             </div>
           )}
@@ -251,6 +290,43 @@ export function HaojieRoom({ initial }: { initial: RoomSnapshot }) {
         </div>
       )}
       <HaojieReactions items={state.reactions} viewer={room.viewer} />
+      <ModalDialog
+        open={undoPending && !requestedUndo && !ended && !loading && !confirm}
+        title="对方申请悔棋"
+        description="是否同意撤销最近一次操作，回到上一步？"
+        onClose={() => respondUndo("undo-reject")}
+        alert
+      >
+        {state.error && (
+          <p className="form-error" role="alert">
+            {state.error.message}
+            {state.error.incidentId && (
+              <>
+                {" "}
+                错误编号：<code>{state.error.incidentId}</code>
+              </>
+            )}
+          </p>
+        )}
+        <div className="dialog-actions">
+          <button
+            type="button"
+            className="button button--ghost"
+            disabled={busy}
+            onClick={() => respondUndo("undo-reject")}
+          >
+            拒绝
+          </button>
+          <button
+            type="button"
+            className="button button--primary"
+            disabled={busy}
+            onClick={() => respondUndo("undo-accept")}
+          >
+            同意悔棋
+          </button>
+        </div>
+      </ModalDialog>
       <ModalDialog
         open={confirm}
         title={`${finishLabel}？`}

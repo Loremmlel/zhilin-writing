@@ -316,6 +316,8 @@ test("built Worker serves authenticated two-player HTTP rooms and existing pages
     assert.match(gameHtml, /class="hj-game/);
     assert.match(gameHtml, /认输/);
     assert.match(gameHtml, /发送表情/);
+    assert.match(gameHtml, /aria-label="悔棋"/);
+    assert.doesNotMatch(gameHtml, /aria-label="重做"/);
     assert.doesNotMatch(gameHtml, /这个区域暂时无法显示|HAOJIE_DATABASE_UNAVAILABLE/);
     const command = input(1, { command: { type: "summon" } });
     const moved = await json(await request(`${path}/commands`, "a", command));
@@ -357,10 +359,24 @@ test("built Worker serves authenticated two-player HTTP rooms and existing pages
       await request(`${path}/commands`, "b", input(2, { command: { type: "summon", player: 1 } })),
       422,
     );
+    const asked = await json(
+      await request(`${path}/undo`, "a", input(2, { kind: "undo-request" })),
+    );
+    assert.equal(asked.undo.status, "pending");
+    const undoInput = input(3, { kind: "undo-accept", undoId: asked.undo.id });
+    await json(await request(`${path}/undo`, "c", undoInput), 404);
+    await json(await request(`${path}/undo`, "a", undoInput), 409);
+    const accepted = await json(await request(`${path}/undo`, "b", undoInput));
+    assert.equal(accepted.receipt.revision, 4);
+    assert.equal(accepted.undo.status, "accepted");
+    assert.equal(accepted.update.kind, "snapshot");
+    assert.deepEqual(accepted.update.view.state, joined.update.view.state);
+    assert.equal((await json(await request(`${path}/undo`, "b", undoInput))).receipt.revision, 4);
     await db.prepare("DELETE FROM allowed_users WHERE id = 'b'").run();
     await json(await request(`${path}?after=2`, "b"), 403);
     await json(await request(`${path}/reactions`, "b", emojis), 403);
-    const ended = await json(await request(`${path}/finish`, "a", input(2, { kind: "resign" })));
+    await json(await request(`${path}/undo`, "b", input(4, { kind: "undo-request" })), 403);
+    const ended = await json(await request(`${path}/finish`, "a", input(4, { kind: "resign" })));
     assert.equal(ended.room.winner, 2);
     assert.equal(ended.room.status, "finished");
     await mf.setOptions({ ...options, bindings: { HAOJIE_ENABLED: "false" } });

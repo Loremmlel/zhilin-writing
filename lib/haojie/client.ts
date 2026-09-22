@@ -1,6 +1,6 @@
 import {
   HAOJIE_ENGINE_VERSION,
-  type MutationInput,
+  type RoomClientInput,
   type RoomMutation,
   type RoomSnapshot,
 } from "./contracts.ts";
@@ -352,16 +352,21 @@ export class RoomClient {
       }
     }
   }
-  submit(
-    input: Omit<MutationInput, "requestId" | "engineVersion"> & { command?: unknown },
-  ): Promise<CommandReceipt> {
+  submit(input: RoomClientInput): Promise<CommandReceipt> {
     if (this.pending || this.state.fatal || this.state.connection !== "connected")
       return Promise.resolve({ ok: false, message: "请等待局面同步后再操作。" });
-    const path = input.kind === "command" ? "commands" : input.kind === "join" ? "join" : "finish";
+    const path =
+      input.kind === "command"
+        ? "commands"
+        : input.kind === "join"
+          ? "join"
+          : input.kind.startsWith("undo-")
+            ? "undo"
+            : "finish";
     const { kind, ...fields } = input;
     const body = JSON.stringify({
       ...fields,
-      ...(path === "finish" ? { kind } : {}),
+      ...(path === "finish" || path === "undo" ? { kind } : {}),
       requestId: crypto.randomUUID(),
       engineVersion: HAOJIE_ENGINE_VERSION,
     });

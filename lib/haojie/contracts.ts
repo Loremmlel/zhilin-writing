@@ -23,15 +23,26 @@ export type RoomSnapshot = {
   room: RoomSummary;
   update: OnlineUpdate | null;
   reactions?: RoomReactions;
+  canUndo?: boolean;
+  undo?: RoomUndo | null;
+};
+export type RoomUndo = {
+  id: string;
+  requester: Player;
+  status: "pending" | "accepted" | "rejected" | "cancelled";
 };
 export type RoomMutation = RoomSnapshot & { receipt: { ok: true; revision: number } };
-export type MutationInput = {
-  requestId: string;
-  engineVersion: string;
+export type RoomClientInput = {
   baseRevision: number;
 } & (
-  { kind: "join" } | { kind: "command"; command: Command } | { kind: "cancel" } | { kind: "resign" }
+  | { kind: "join" }
+  | { kind: "command"; command: Command }
+  | { kind: "cancel" }
+  | { kind: "resign" }
+  | { kind: "undo-request" }
+  | { kind: "undo-accept" | "undo-reject" | "undo-cancel"; undoId: string }
 );
+export type MutationInput = RoomClientInput & { requestId: string; engineVersion: string };
 export const roomModeLabel = (mode: RoomMode) => (mode === "shrine" ? "神龛" : "经典");
 export const roomStatusLabel = (status: RoomStatus) =>
   ({ waiting: "等待加入", playing: "对局中", finished: "已结束", cancelled: "已取消" })[status];

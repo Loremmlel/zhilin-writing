@@ -15,7 +15,7 @@ import { getHaojieDb, isHaojieEnabled } from "./runtime";
 import { createRoom, getRoom, listRooms, mutateRoom, sendReactions } from "./service";
 
 const headers = { "Cache-Control": "private, no-store" };
-type Operation = "list" | "create" | "read" | "join" | "command" | "finish" | "reaction";
+type Operation = "list" | "create" | "read" | "join" | "command" | "finish" | "reaction" | "undo";
 
 export async function haojieApi(request: Request, operation: Operation, roomId?: string) {
   let actor: string | undefined;

@@ -26,6 +26,10 @@ export function useOnlineController(props: HaojieOnlineGameProps) {
   const mounted = useRef(true);
   const played = useRef(update.revision);
   const { state, viewer } = update.view;
+  // A host confirmation must not sit behind the game's native top-layer dialog.
+  useEffect(() => {
+    if (props.disabled) setModal(null);
+  }, [props.disabled]);
   function release(request: Submission) {
     if (pending.current !== request) return;
     pending.current = null;
@@ -151,6 +155,8 @@ export function useOnlineController(props: HaojieOnlineGameProps) {
       submitting,
       blocked,
       revision: update.revision,
+      onUndo: props.onUndo,
+      canUndo: !!props.canUndo && !blocked,
     },
   };
 }

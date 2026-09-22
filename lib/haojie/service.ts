@@ -25,6 +25,7 @@ import {
   type RoomMutation,
   type RoomSnapshot,
   type RoomSummary,
+  type RoomUndo,
 } from "./contracts.ts";
 
 type RoomRow = {
@@ -38,6 +39,8 @@ type RoomRow = {
   revision: number;
   stateJson: string | null;
   reactionsJson: string;
+  undoJson: string | null;
+  canUndo: number;
   engineVersion: string;
   ruleset: string;
   viewVersion: number;
@@ -57,7 +60,8 @@ const ROOM_JOINS = `FROM haojie_rooms r JOIN users p1 ON p1.id = r.player1_id
 function roomQuery(db: D1Database, id: string, actor: string, after = -1) {
   return db
     .prepare(
-      `SELECT ${ROOM_COLUMNS}, r.reactions_json AS reactionsJson,
+      `SELECT ${ROOM_COLUMNS}, r.reactions_json AS reactionsJson, r.undo_json AS undoJson,
+    EXISTS (SELECT 1 FROM haojie_history h WHERE h.room_id = r.id) AS canUndo,
     CASE WHEN r.revision != ? AND (r.player1_id = ? OR r.player2_id = ?)
       THEN r.state_json ELSE NULL END AS stateJson
     ${ROOM_JOINS} WHERE r.id = ?
@@ -101,6 +105,8 @@ function snapshot(row: RoomRow, actor: string, after = -1): RoomSnapshot {
       : null;
   return {
     room,
+    canUndo: compatible && room.status === "playing" && !!room.viewer && !!row.canUndo,
+    undo: room.viewer && row.undoJson ? (JSON.parse(row.undoJson) as RoomUndo) : null,
     reactions: room.viewer ? readReactions(row.reactionsJson) : { sequence: 0, items: [] },
     update:
       state && room.viewer && (!historical || validState(state))
@@ -322,6 +328,9 @@ export async function mutateRoom(
     let nextStatus = row.status;
     let winner = row.winner;
     let endReason = row.endReason;
+    let undo: RoomUndo | null = row.undoJson ? (JSON.parse(row.undoJson) as RoomUndo) : null;
+    let canUndo = row.canUndo;
+    let restoredRevision: number | null = null;
     if (input.kind === "join") {
       if (viewer) return { ...snapshot(row, actor), receipt: { ok: true, revision: row.revision } };
       if (row.status !== "waiting" || row.player2Id)
@@ -336,7 +345,8 @@ export async function mutateRoom(
       const rebase =
         input.kind === "command" &&
         nextState &&
-        input.baseRevision < row.revision &&
+        input.baseRevision === row.revision - 1 &&
+        row.lastChange === "command" &&
         canRebasePlayerCommand(nextState, viewer, input.command);
       if (input.baseRevision !== row.revision && !rebase)
         throw new HaojieError("REVISION_CONFLICT", 409, "局面已更新，请根据最新局面重新操作。");
@@ -352,7 +362,51 @@ export async function mutateRoom(
           winner = viewer === 1 ? "2" : "1";
           endReason = "resign";
           nextStatus = "finished";
-        } else {
+          undo = null;
+        } else if (input.kind === "undo-request") {
+          if (undo?.status === "pending")
+            throw new HaojieError("UNDO_PENDING", 409, "请先处理当前悔棋请求。");
+          if (!canUndo) throw new HaojieError("UNDO_UNAVAILABLE", 409, "当前没有可以撤销的操作。");
+          undo = { id: input.requestId, requester: viewer, status: "pending" };
+        } else if (
+          input.kind === "undo-accept" ||
+          input.kind === "undo-reject" ||
+          input.kind === "undo-cancel"
+        ) {
+          if (undo?.status !== "pending" || undo.id !== input.undoId)
+            throw new HaojieError("UNDO_CHANGED", 409, "这次悔棋请求已处理，请查看最新局面。");
+          if ((input.kind === "undo-cancel") !== (undo.requester === viewer))
+            throw new HaojieError(
+              "UNDO_NOT_ALLOWED",
+              409,
+              "只能由对方决定是否同意，申请方可撤回请求。",
+            );
+          if (input.kind === "undo-accept") {
+            const history = await db
+              .prepare(
+                "SELECT revision, state_json AS stateJson FROM haojie_history WHERE room_id = ? ORDER BY revision DESC LIMIT 2",
+              )
+              .bind(id)
+              .all<{ revision: number; stateJson: string }>();
+            const previous = history.results[0];
+            if (!previous)
+              throw new HaojieError("UNDO_UNAVAILABLE", 409, "当前没有可以撤销的操作。");
+            nextState = JSON.parse(previous.stateJson) as GameState;
+            restoredRevision = previous.revision;
+            canUndo = history.results.length > 1 ? 1 : 0;
+          }
+          undo = {
+            ...undo,
+            status:
+              input.kind === "undo-accept"
+                ? "accepted"
+                : input.kind === "undo-reject"
+                  ? "rejected"
+                  : "cancelled",
+          };
+        } else if (input.kind === "command") {
+          if (undo?.status === "pending")
+            throw new HaojieError("UNDO_PENDING", 409, "正在等待悔棋确认，请先处理请求。");
           try {
             nextState = applyPlayerCommand(nextState, viewer, input.command);
           } catch (error) {
@@ -360,6 +414,8 @@ export async function mutateRoom(
               throw new HaojieError("COMMAND_REJECTED", 422, error.message);
             throw error;
           }
+          undo = null;
+          canUndo = 1;
           if (nextState.winner) {
             winner = String(nextState.winner) as RoomRow["winner"];
             endReason = "game";
@@ -386,10 +442,34 @@ export async function mutateRoom(
           (room_id, actor_id, request_id, kind, request_hash, revision, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
           )
           .bind(id, actor, input.requestId, input.kind, hash, row.revision + 1, now),
+        ...(input.kind === "command"
+          ? [
+              db
+                .prepare(
+                  "INSERT INTO haojie_history (room_id, revision, state_json) VALUES (?, ?, ?)",
+                )
+                .bind(id, row.revision + 1, row.stateJson),
+              // Match the game's 60-step history without loading it into every poll or Worker.
+              db
+                .prepare(
+                  `DELETE FROM haojie_history WHERE room_id = ? AND revision < (
+            SELECT revision FROM haojie_history WHERE room_id = ? ORDER BY revision DESC LIMIT 1 OFFSET 59
+          )`,
+                )
+                .bind(id, id),
+            ]
+          : []),
+        ...(restoredRevision !== null
+          ? [
+              db
+                .prepare("DELETE FROM haojie_history WHERE room_id = ? AND revision = ?")
+                .bind(id, restoredRevision),
+            ]
+          : []),
         db
           .prepare(
             `UPDATE haojie_rooms SET player2_id = ?, status = ?, state_json = ?,
-          revision = revision + 1, last_change = ?, winner = ?, end_reason = ?, updated_at = ? WHERE id = ?`,
+          revision = revision + 1, last_change = ?, winner = ?, end_reason = ?, updated_at = ?, undo_json = ? WHERE id = ?`,
           )
           .bind(
             nextPlayer2,
@@ -399,6 +479,7 @@ export async function mutateRoom(
             winner,
             endReason,
             now,
+            undo ? JSON.stringify(undo) : null,
             id,
           ),
       ]);
@@ -435,6 +516,8 @@ export async function mutateRoom(
       winner,
       endReason,
       updatedAt: now,
+      undoJson: undo ? JSON.stringify(undo) : null,
+      canUndo,
     };
     // Join needs the authenticated guest's display name; reads never expose another seat's view.
     if (input.kind === "join")
