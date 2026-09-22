@@ -160,15 +160,12 @@
 .haojie-room-list a:hover {
   background: var(--green-pale);
 }
-.haojie-room-list strong,
-.haojie-room-bar strong {
+.haojie-room-list strong {
   overflow-wrap: anywhere;
 }
-.haojie-room-list .muted,
-.haojie-room-bar .muted {
+.haojie-room-list .muted {
   font-size: 14px;
 }
-.haojie-room-bar,
 .haojie-result {
   display: flex;
   align-items: center;
@@ -178,33 +175,105 @@
   padding: 8px 0;
   border-bottom: 1px solid var(--line);
 }
-.haojie-room.page-column {
-  padding-block: 0;
+.site-shell:has(.haojie-room) > .site-header,
+.site-main:has(.haojie-room) + .site-footer {
+  display: none;
+}
+.haojie-room {
+  --header-height: 48px;
+}
+.haojie-room-bar {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-header);
+  background: var(--paper);
+  border-bottom: 1px solid var(--line);
+}
+.haojie-room-nav {
+  width: min(var(--page-max), calc(100% - var(--page-gutter) * 2));
+  min-height: 47px;
+  margin: auto;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 14px;
+}
+.haojie-room-back {
+  flex: none;
+  padding-inline: 4px;
+}
+.haojie-room-info {
+  position: relative;
+  min-width: 0;
+  flex: 1;
+}
+.haojie-room-info summary {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  list-style: none;
+  cursor: pointer;
+  border-radius: var(--radius);
+  min-height: 40px;
+}
+.haojie-room-info summary::-webkit-details-marker {
+  display: none;
+}
+.haojie-room-info summary strong {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.haojie-room-mode {
+  flex: none;
+}
+.haojie-room-info-panel {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  width: min(320px, calc(100vw - 120px));
+  padding: 16px;
+  overflow-wrap: anywhere;
+  background: var(--paper-strong);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+.haojie-room-info-panel p {
+  margin: 8px 0 0;
+  color: var(--muted);
+}
+.haojie-room-status {
+  display: flex;
+  align-items: center;
+  flex: none;
+  gap: 8px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.account-menu--compact .account-menu-trigger > span:not(.avatar) {
+  display: none;
+}
+.account-menu--compact .account-menu-trigger {
+  min-width: 40px;
+  min-height: 40px;
+  justify-content: center;
 }
 .haojie-room-viewport {
   container: haojie-room / inline-size;
 }
-.haojie-room-content {
-  padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px));
-}
-.haojie-room-meta {
-  flex: 1;
-  display: flex;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: 0 12px;
-  min-width: 0;
-}
-.haojie-room-bar > .button {
-  flex-shrink: 0;
+.haojie-room-viewport.page-column {
+  padding: 0;
 }
 .haojie-room-actions {
   position: fixed;
-  right: max(16px, calc((100% - 1320px) / 2 + 16px), env(safe-area-inset-right, 0px));
+  right: max(16px, env(safe-area-inset-right, 0px));
   bottom: calc(16px + env(safe-area-inset-bottom, 0px));
   z-index: calc(var(--z-header) - 1);
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
+  align-items: flex-end;
   gap: 8px;
   padding: 6px;
   max-width: calc(100% - 32px);
@@ -213,13 +282,47 @@
   border-radius: var(--radius);
   box-shadow: 0 4px 18px #242d2714;
 }
-.haojie-sync {
-  padding: 8px 0;
-  font-size: 14px;
-  color: var(--muted);
+.haojie-action-controls {
+  display: flex;
+  gap: 8px;
 }
-.haojie-sync p {
-  margin: 0 0 6px;
+.haojie-actions-toggle {
+  display: none;
+}
+.haojie-room-notices {
+  position: fixed;
+  top: calc(var(--header-height) + 12px);
+  right: max(16px, env(safe-area-inset-right, 0px));
+  width: min(380px, calc(100% - 32px));
+  max-height: calc(100dvh - var(--header-height) - 104px);
+  overflow-y: auto;
+  display: grid;
+  gap: 8px;
+  z-index: calc(var(--z-header) - 1);
+  pointer-events: none;
+}
+.haojie-room-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 12px 16px;
+  background: var(--paper-strong);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  font-size: 14px;
+  overflow-wrap: anywhere;
+  pointer-events: auto;
+}
+.haojie-room-notice > div {
+  min-width: 0;
+  flex: 1;
+}
+.haojie-room-notice p {
+  margin: 0;
+}
+.haojie-room-notice > button {
+  flex: none;
 }
 .haojie-result {
   flex-shrink: 0;
@@ -231,9 +334,6 @@
   min-height: 0;
   isolation: isolate;
   border-radius: var(--radius);
-}
-.site-main:has(.haojie-game-stage) + .site-footer {
-  display: none;
 }
 .haojie-loading {
   position: fixed;
@@ -304,10 +404,6 @@
     min-height: 580px;
     padding-bottom: 0;
   }
-  .haojie-room-bar,
-  .haojie-sync {
-    flex-shrink: 0;
-  }
   .haojie-game-stage {
     flex: 1;
     min-height: 0;
@@ -316,13 +412,30 @@
   .haojie-room .hj-game {
     --haojie-height: 100cqh;
   }
-  .haojie-room .hj-game .hand-rail {
-    padding-bottom: calc(60px + env(safe-area-inset-bottom, 0px));
+}
+@media (max-width: 900px) {
+  .haojie-room-mode {
+    display: none;
   }
 }
 @media (max-width: 640px) {
-  .haojie-room-meta {
-    flex-basis: calc(100% - 160px);
+  .haojie-room-nav {
+    gap: 8px;
+  }
+  .haojie-room-status {
+    flex-direction: column;
+    gap: 0;
+    font-size: 12px;
+  }
+  .haojie-actions-toggle {
+    display: inline-flex;
+    order: 1;
+  }
+  .haojie-room-actions:not([data-open="true"]) .haojie-action-controls {
+    display: none;
+  }
+  .haojie-room-content {
+    padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px));
   }
   .haojie-room-list a {
     align-items: flex-start;

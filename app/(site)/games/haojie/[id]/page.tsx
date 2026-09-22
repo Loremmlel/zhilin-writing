@@ -5,12 +5,13 @@ import { parseRoomId } from "@/lib/haojie/input";
 import { getRoom } from "@/lib/haojie/service";
 import { getHaojieDb, isHaojieEnabled } from "@/lib/haojie/runtime";
 import { HaojieRoom } from "@/components/haojie/room";
+import { canAccessWriting } from "@/lib/auth/permissions";
 
 export const metadata = { title: "浩劫 2 对局" };
 export default async function RoomPage({ params }: { params: Promise<{ id: string }> }) {
   if (!isHaojieEnabled()) notFound();
   const { id } = await params;
-  const { member } = await requireMember(`${HAOJIE_PATH}/${encodeURIComponent(id)}`);
+  const { member, allowed } = await requireMember(`${HAOJIE_PATH}/${encodeURIComponent(id)}`);
   let initial;
   try {
     parseRoomId(id);
@@ -19,5 +20,13 @@ export default async function RoomPage({ params }: { params: Promise<{ id: strin
     if (error instanceof HaojieError && error.status === 404) notFound();
     throw error;
   }
-  return <HaojieRoom key={`${id}:${member.id}`} initial={initial} />;
+  return (
+    <HaojieRoom
+      key={`${id}:${member.id}`}
+      initial={initial}
+      member={member}
+      isAdmin={allowed.isAdmin}
+      writingEnabled={canAccessWriting(allowed)}
+    />
+  );
 }

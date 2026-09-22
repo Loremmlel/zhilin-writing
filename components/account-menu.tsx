@@ -13,11 +13,13 @@ export function AccountMenu({
   isAdmin,
   haojieEnabled = false,
   writingEnabled = true,
+  compact = false,
 }: {
   member: SiteUser;
   isAdmin: boolean;
   haojieEnabled?: boolean;
   writingEnabled?: boolean;
+  compact?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -49,7 +51,7 @@ export function AccountMenu({
   }, [open]);
 
   return (
-    <div className="account-menu" ref={rootRef}>
+    <div className={`account-menu${compact ? " account-menu--compact" : ""}`} ref={rootRef}>
       <button
         ref={triggerRef}
         type="button"
@@ -63,6 +65,11 @@ export function AccountMenu({
       </button>
       {open && (
         <div className="account-popover" aria-label="账户选项">
+          {compact && writingEnabled && (
+            <Link href="/" onClick={() => setOpen(false)}>
+              返回知临中学
+            </Link>
+          )}
           {writingEnabled && (
             <Link href={`/users/${member.id}`} onClick={() => setOpen(false)}>
               我的主页
