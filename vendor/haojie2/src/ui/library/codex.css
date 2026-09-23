@@ -1,4 +1,4 @@
-/* library/codex.css — feature-owned rules; responsive states stay with their component. */
+/* 功能样式及响应式状态就近维护，与所属组件保持一致。 */
 .hj-game .codex-tools {
   display: flex;
   flex-wrap: wrap;
@@ -196,4 +196,22 @@
 }
 .hj-game .codex-card > p {
   color: #64755f;
+}
+
+/* 名称链接沿用纸面色板；不改变行高，触摸和键盘均可打开介绍。 */
+.hj-game .unit-link {
+  color: var(--teal);
+  text-decoration: none;
+  cursor: pointer;
+}
+.hj-game .unit-link:hover {
+  color: var(--ink);
+}
+.hj-game .unit-link:active {
+  color: var(--ink);
+}
+.hj-game .unit-link:focus-visible {
+  outline: 2px solid var(--teal);
+  outline-offset: 3px;
+  border-radius: 2px;
 }

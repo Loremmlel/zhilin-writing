@@ -1,7 +1,7 @@
 import type { Session } from '../../engine';
 import { createSession, parseSession } from '../../engine';
 
-/** The key tracks the save schema, not the application release or build SHA. */
+/** 存储键跟随存档格式，不跟随发布版本或构建 SHA。 */
 export const DEFAULT_STORAGE_KEY = 'haojie.session.v2';
 export type StoragePort = Pick<Storage, 'getItem' | 'setItem'>;
 export type SaveStatus = 'saved' | 'snapshot' | 'disabled' | 'blocked' | 'unavailable';

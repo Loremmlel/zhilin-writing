@@ -16,14 +16,14 @@ import {
   getStats,
   targetAt,
 } from '../../engine';
-import type { Intent } from '../game/selection';
+import type { Intent } from '../game/interaction/selection';
 import {
   canChoose,
   intentTone,
   intentRoutes,
   directionArrow,
   directionLabel,
-} from '../game/selection';
+} from '../game/interaction/selection';
 import { Icon, playerStyle } from '../shared/visuals';
 import { Effects } from './Effects';
 
@@ -330,15 +330,6 @@ export function Board({
                 >
                   <PieceFace unit={u} batches={effects} reduced={reduced} sleeping={stats.sleeping}>
                     <span className="piece-heading" />
-                    <span className="piece-code">
-                      {u.kind === '3p'
-                        ? '3′'
-                        : String(u.kind).startsWith('u')
-                          ? String(u.kind).toUpperCase()
-                          : typeof u.kind === 'number'
-                            ? u.kind
-                            : '◆'}
-                    </span>
                     <strong>{d.glyph}</strong>
                     <span className="piece-hp">{format(u.hp)}</span>
                     <div className="piece-health">

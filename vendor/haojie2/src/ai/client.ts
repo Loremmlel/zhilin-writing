@@ -1,8 +1,12 @@
-import { search } from './search';
+import { search } from './planning/search';
 import type { Decision, SearchRequest, SearchResponse } from './types';
 declare const __HAOJIE_AI_WORKER__: string | undefined;
 export type ExecutionMode = 'worker' | 'cooperative';
-/** One disposable request per client. Only sanitized observations are sent, never Session/GameState. */
+/**
+ * 每个客户端同时只持有一个可取消请求，只发送脱敏观察。
+ * 优先运行内联 Worker；不可用或无响应时清理旧资源，再用同一搜索器协作计算。
+ * 取消与完成共用清理出口，终止线程、回收 Blob URL 并清除计时器。
+ */
 export class AiClient {
   private cancelCurrent: (() => void) | null = null;
   mode: ExecutionMode = 'cooperative';
@@ -10,6 +14,7 @@ export class AiClient {
     this.cancelCurrent?.();
     this.cancelCurrent = null;
   }
+  /** 新请求自动取消旧请求；取消以 AbortError 拒绝，宿主仍须阻止过期结果落子。 */
   plan(request: SearchRequest, forceFallback = false): Promise<Decision> {
     this.cancel();
     return new Promise((resolve, reject) => {

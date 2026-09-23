@@ -2,7 +2,7 @@ import type { Command, Player } from "../../vendor/haojie2/src/engine/types";
 import type { OnlineUpdate } from "../../vendor/haojie2/src/ui/online/types";
 import type { RoomReactions } from "./reactions.ts";
 
-export const HAOJIE_ENGINE_VERSION = "2a9768eebcdefde8bb53ee791a885ce4e54ca810";
+export const HAOJIE_ENGINE_VERSION = "b49223f9f8f3e8beb55199b963afbd4bf2020126";
 export const HAOJIE_PATH = "/games/haojie";
 export type RoomStatus = "waiting" | "playing" | "finished" | "cancelled";
 export type RoomMode = "classic" | "shrine";

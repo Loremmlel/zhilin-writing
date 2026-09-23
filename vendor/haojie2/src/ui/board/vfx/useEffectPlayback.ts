@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { GameEvent } from '../../../engine';
 import { appendBatch, planEffects, type EffectBatch } from './plan';
 
-/** Presentation time only. Does not delay commands or change AI pacing. */
+/** 只管理展示时间，不延迟命令，也不改变 AI 节奏。 */
 export function useEffectPlayback() {
   const [batches, setBatches] = useState<EffectBatch[]>([]);
   const sequence = useRef(0);

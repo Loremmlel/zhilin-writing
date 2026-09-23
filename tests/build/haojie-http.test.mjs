@@ -317,7 +317,7 @@ test("built Worker serves authenticated two-player HTTP rooms and existing pages
     assert.equal(joined.room.viewer, 2);
     assert.equal(joined.room.player2.name, "乙");
     assert.equal(joined.room.revision, 1);
-    assert.equal(joined.update.view.ruleset, "3.0-feedback4");
+    assert.equal(joined.update.view.ruleset, "3.0-feedback4-counter-freeze");
     assert.equal("seed" in joined.update.view.state, false);
     assert.equal("rng" in joined.update.view.state, false);
     await json(await request(path, "c"), 404);

@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { actorCommandError, type Command } from '../../engine';
 import { LOCAL_MATCH } from '../../match/settings';
-import type { GameModal } from '../game/types';
-import { useGameInteraction } from '../game/useGameInteraction';
+import type { GameModal } from '../game/interaction/types';
+import { useGameInteraction } from '../game/interaction/useGameInteraction';
 import { useGamePresentation } from '../session/useGamePresentation';
 import { selectOnlineUpdate, type HaojieOnlineGameProps } from './types';
 
@@ -10,7 +10,7 @@ interface Submission {
   abort: AbortController;
   acceptedRevision?: number;
 }
-/** Caches only host snapshots. It never creates a game, dispatches a rule or opens local storage. */
+/** 仅缓存宿主快照，不创建对局、不执行规则命令，也不打开本地存储。 */
 export function useOnlineController(props: HaojieOnlineGameProps) {
   const [update, setUpdate] = useState(props.update);
   const incoming = selectOnlineUpdate(update, props.update);
@@ -67,7 +67,7 @@ export function useOnlineController(props: HaojieOnlineGameProps) {
       release(request);
   }, [update]);
 
-  // An equal-revision reconnect snapshot clears effects, never newer state or a pending ack.
+  // 相同修订号的重连快照可清除特效，但不能覆盖较新局面或待处理回执。
   useEffect(() => {
     if (props.update.kind === 'snapshot' && props.update.revision >= current.current.revision)
       presentation.clear();
@@ -114,8 +114,8 @@ export function useOnlineController(props: HaojieOnlineGameProps) {
         if (!Number.isSafeInteger(receipt.revision) || receipt.revision <= baseRevision)
           throw new Error('宿主返回了无效的提交修订号，请重新同步局面。');
         request.acceptedRevision = receipt.revision;
-        // A broadcast alone never unlocks a pending submission. A real ack AND its committed
-        // snapshot are required, in either arrival order (including later opponent revisions).
+        // 单独收到广播不能解锁待提交操作；必须同时取得真实回执
+        // 和对应已提交快照，二者到达顺序不限，也可能先收到后续对手修订。
         if (current.current.revision >= receipt.revision) release(request);
       })
       .catch((error: unknown) => {

@@ -1,5 +1,5 @@
-import { redo, undo } from '../engine/history';
-import type { Session } from '../engine/history';
+import { redo, undo } from '../engine/session/history';
+import type { Session } from '../engine/session/history';
 import type { Command, GameState } from '../engine/types';
 import { LOCAL_MATCH } from './settings';
 export const matchSettings = (s: Session) => s.match ?? LOCAL_MATCH;
@@ -9,7 +9,7 @@ export const ownsComputerDecision = (s: Session) =>
   (s.present.pending[0]?.owner ?? s.present.active) !== matchSettings(s).human;
 const humanNode = (s: GameState, human: number) =>
   (s.pending[0]?.owner ?? s.active) === human && !s.winner;
-/** Rewind a whole response to the most recent human decision, never only the AI's last atomic hit. */
+/** 撤销整段电脑回应并回到最近的人类决策点，不只撤销 AI 最后一发原子命中。 */
 export function rewindMatch(s: Session, forward = false): Session {
   if (matchSettings(s).mode === 'local') return forward ? redo(s) : undo(s);
   const human = matchSettings(s).human;
@@ -38,7 +38,7 @@ export function rewindMatch(s: Session, forward = false): Session {
   };
 }
 
-/** Only the human's own free BW ability can interrupt an AI turn; engine still validates its cost/targets. */
+/** 只有人类自己的免费巨大化能打断 AI 回合；引擎仍验证费用和目标。 */
 export function humanCommandAllowed(s: Session, c: Command): boolean {
   const match = matchSettings(s);
   if (match.mode === 'local') return true;

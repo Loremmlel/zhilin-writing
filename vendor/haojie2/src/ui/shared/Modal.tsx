@@ -18,16 +18,41 @@ export function Modal({
     id = useId();
   useEffect(() => {
     const dialog = ref.current!;
+    const trigger = document.activeElement;
     if (!dialog.open) dialog.showModal();
     return () => {
       if (dialog.open) dialog.close();
+      if (trigger instanceof HTMLElement && trigger.isConnected) trigger.focus();
     };
   }, []);
+  useEffect(() => {
+    // 介绍内继续查看另一单位时，原链接可能卸载；将焦点保留在当前弹窗。
+    if (ref.current && !ref.current.contains(document.activeElement))
+      ref.current.querySelector<HTMLButtonElement>('button')?.focus();
+  }, [title]);
   return (
     <dialog
       className={`modal ${wide ? 'wide' : ''}`}
       ref={ref}
       aria-labelledby={id}
+      onKeyDown={(event) => {
+        event.stopPropagation();
+        if (event.key !== 'Tab') return;
+        const controls = Array.from(
+          event.currentTarget.querySelectorAll<HTMLElement>(
+            'button:not(:disabled),a[href],input:not(:disabled),select:not(:disabled),textarea:not(:disabled),summary,[tabindex="0"]',
+          ),
+        ).filter((element) => element.getClientRects().length > 0);
+        const first = controls[0],
+          last = controls.at(-1);
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last?.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first?.focus();
+        }
+      }}
       onCancel={(e) => {
         e.preventDefault();
         onClose();

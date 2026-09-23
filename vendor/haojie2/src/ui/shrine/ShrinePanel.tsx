@@ -1,3 +1,4 @@
+import { UnitText } from '../library/UnitReference';
 import { useState } from 'react';
 import {
   aura,
@@ -13,7 +14,7 @@ import {
 import type { MatchSettings } from '../../match/settings';
 import { DefinitionStats } from '../shared/DefinitionStats';
 
-/** Only the draft's public candidates and committed flags are rendered before reveal. */
+/** 共同揭示前只渲染公开候选与提交标志。 */
 export function ShrinePanel({
   state: s,
   match,
@@ -49,22 +50,31 @@ export function ShrinePanel({
           {draft.offers[viewer].map((kind) => {
             const d = definition(kind);
             return (
-              <button
-                className="shrine-choice"
-                key={kind}
-                aria-pressed={selected === kind}
-                disabled={
-                  readOnly || draft.committed[viewer] || (seat === undefined && s.active !== viewer)
-                }
-                onClick={() => setSelected(kind)}
-              >
-                <span className="shrine-choice-heading">
-                  <b>{d.name}</b>
-                  <small>{d.role}</small>
-                </span>
-                <DefinitionStats d={d} />
-                <span>{d.description}</span>
-              </button>
+              <div className="shrine-offer-card" key={kind}>
+                <b>
+                  <UnitText>{d.name}</UnitText>
+                </b>
+                <button
+                  className="shrine-choice"
+                  aria-label={`选择${d.name}`}
+                  aria-pressed={selected === kind}
+                  disabled={
+                    readOnly ||
+                    draft.committed[viewer] ||
+                    (seat === undefined && s.active !== viewer)
+                  }
+                  onClick={() => setSelected(kind)}
+                >
+                  <span className="shrine-choice-heading">
+                    <b>{d.name}</b>
+                    <small>{d.role}</small>
+                  </span>
+                  <DefinitionStats d={d} />
+                </button>
+                <p>
+                  <UnitText>{d.description}</UnitText>
+                </p>
+              </div>
             );
           })}
         </div>
@@ -99,8 +109,12 @@ export function ShrinePanel({
           </summary>
           {draft.offers[opponent].map((kind) => (
             <details key={kind}>
-              <summary>{definition(kind).name}</summary>
-              <p>{definition(kind).description}</p>
+              <summary>
+                <UnitText>{definition(kind).name}</UnitText>
+              </summary>
+              <p>
+                <UnitText>{definition(kind).description}</UnitText>
+              </p>
             </details>
           ))}
         </details>
@@ -137,11 +151,13 @@ export function ShrinePanel({
               {s.auras?.[p].map((a) => (
                 <details key={a.kind}>
                   <summary>
-                    {definition(a.kind).name}
+                    <UnitText>{definition(a.kind).name}</UnitText>
                     {a.parity ? (a.parity === 'odd' ? ' · 奇数' : ' · 偶数') : ''}
                     {a.usedPly === s.ply ? ' · 本回合已用' : ''}
                   </summary>
-                  <p>{definition(a.kind).description}</p>
+                  <p>
+                    <UnitText>{definition(a.kind).description}</UnitText>
+                  </p>
                 </details>
               ))}
             </div>

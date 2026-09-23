@@ -32,15 +32,6 @@ export function HandCard({
       <div className="hand-card-main">
         <div>
           <h3>{cd.name}</h3>
-          <span className="summon-number">
-            {String(c.kind).startsWith('u')
-              ? String(c.kind).toUpperCase()
-              : typeof c.kind === 'number'
-                ? String(c.kind).padStart(2, '0')
-                : c.kind === '3p' || c.kind === '17p'
-                  ? `${String(c.kind).slice(0, -1).padStart(2, '0')}′`
-                  : '◆'}
-          </span>
         </div>
         {isStored(cd) ? (
           <p className={limit === 1 ? 'expires-soon' : ''}>

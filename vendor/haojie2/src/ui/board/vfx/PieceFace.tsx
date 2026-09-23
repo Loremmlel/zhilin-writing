@@ -2,7 +2,7 @@ import { useEffect, useRef, type ReactNode } from 'react';
 import type { Unit } from '../../../engine';
 import type { EffectBatch } from './plan';
 
-/** Animate the face only: grid positioning, HP and input remain authoritative. */
+/** 只动画化棋子外观，网格位置、生命及输入仍以权威局面为准。 */
 export function PieceFace({
   unit,
   batches,
@@ -69,7 +69,7 @@ export function PieceFace({
     });
     if (elapsed > 0) animation.currentTime = elapsed;
     return () => animation.cancel();
-    // Geometry is snapshotted in the cue. Expiry/rerender must not replay an old action.
+    // 几何信息已保存在提示快照中；到期或重新渲染不能重播旧动作。
   }, [key, reduced]);
   return (
     <div ref={ref} className={`piece ${sleeping ? 'sleeping' : ''}`}>

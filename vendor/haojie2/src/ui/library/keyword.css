@@ -1,0 +1,37 @@
+.hj-game .library-sections {
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  width: fit-content;
+  max-width: 100%;
+}
+.hj-game .keyword-card .codex-card-heading {
+  margin-bottom: 0;
+}
+.hj-game .keyword-instance,
+.hj-game .keyword-sources {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line, #dde5d1);
+}
+.hj-game .keyword-card h4,
+.hj-game .keyword-index h4 {
+  font-size: 11px;
+  color: var(--ink);
+}
+.hj-game .keyword-instance p,
+.hj-game .keyword-sources p {
+  margin-top: 8px;
+  font-size: 11px;
+  line-height: 1.9;
+}
+.hj-game .keyword-index ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  list-style: none;
+  padding: 0;
+  margin: 10px 0 18px;
+}
+.hj-game .keyword-index li {
+  font-size: 12px;
+}

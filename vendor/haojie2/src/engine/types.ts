@@ -1,5 +1,6 @@
-import type { EventFacts } from './event-facts';
-/** All game state is data. No renderer, network or wall clock is required. */
+import type { EventFacts } from './core/event-facts';
+import type { KeywordId } from './library/keywords';
+/** 游戏状态完全由数据表示，不依赖渲染器、网络或墙钟。 */
 export type Player = 1 | 2;
 export type Kind =
   | number
@@ -35,6 +36,8 @@ export interface Definition {
   actions: number;
   move: number;
   description: string;
+  /** 同名规则词在本段说明中的明确含义；不往纯文本描述中嵌入 HTML。 */
+  keywordReferences?: Readonly<Record<string, KeywordId>>;
   skill?: string;
   spell?: number;
   weapon?: number;
@@ -89,17 +92,17 @@ export interface Unit extends Point {
   kills: number;
   attackBonus: number;
   rangeBonus: number;
-  /** Legacy aggregate flag; new protections are spent per source, not per recipient. */
+  /** 旧版总保护标志；新版按来源消耗，不按受保护者合并。 */
   guardUsed: boolean;
   guardSourceIds?: string[];
-  /** U13 allowance follows the real turn, not U17's independent unit clock. */
+  /** 改判次数跟随实际回合，不跟随冲锋号令的个人时钟。 */
   rerollUsedPly?: number;
   effects: Effect[];
   equipment: Kind[];
   silenced: boolean;
   freeUsed: number;
   onceUsed: boolean;
-  /** Skill identities acquired by ZF without changing its printed identity. */
+  /** 强夺获得的能力身份，不改变原有印刷身份。 */
   traits?: Kind[];
   abilityUsage?: Partial<Record<Kind, { once: boolean; free: number }>>;
   abilityCharges?: Partial<Record<Kind, AbilityCharge>>;
@@ -127,7 +130,7 @@ export interface Card {
 }
 export interface Reaction {
   kind: 'death-shot' | 'reflect' | 'bounce' | 'hut-spawn' | 'hit-pull';
-  /** Fixed struck unit; a follow-up cannot select a different victim. */
+  /** 固定为被命中棋子，后续操作不能另选受害者。 */
   targetId?: string;
   owner: Player;
   source: Unit;
@@ -216,12 +219,12 @@ export interface GamePosition {
   events: GameEvent[];
   winner?: Player | 'draw';
 }
-/** Full authority. Public positions never manufacture these private random fields. */
+/** 完整权威局面；公开局面绝不能虚构这些私有随机字段。 */
 export interface GameState extends GamePosition {
   seed: number;
   rng: number;
 }
-/** Typed command payload shared by UI, saved replays and future server adapters. */
+/** 界面、存档回放及服务器适配共用的命令载荷类型。 */
 export interface Command {
   type:
     | 'end'
@@ -266,9 +269,9 @@ export interface Command {
   row?: number;
   mode?: string;
   ultimate?: boolean;
-  /** Direction of the final attack-path step; the engine constructs and validates the route. */
+  /** 攻击路径最后一步方向；路径由引擎构造并验证。 */
   direction?: AttackDirection;
-  /** A player-selected route. Combat validates every point before any mutation. */
+  /** 玩家选择的路径；战斗结算在任何修改前逐点验证。 */
   path?: Point[];
   charge?: boolean;
   cardIds?: string[];

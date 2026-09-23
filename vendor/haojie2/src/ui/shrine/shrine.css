@@ -1,4 +1,4 @@
-/* Shrine additions use the existing board's ink, paper and faction tokens. */
+/* 神龛样式沿用现有棋盘的墨色、纸色和阵营 token。 */
 .hj-game .rules-choice {
   display: grid;
   gap: 8px;
@@ -26,6 +26,13 @@
 .hj-game .shrine-offers {
   display: grid;
   gap: 8px;
+}
+.hj-game .shrine-offer-card {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
 }
 .hj-game .shrine-choice {
   display: grid;

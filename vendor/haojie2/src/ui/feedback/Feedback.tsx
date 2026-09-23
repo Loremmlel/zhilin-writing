@@ -1,3 +1,4 @@
+import { UnitText } from '../library/UnitReference';
 import type { GameEvent } from '../../engine';
 import { Icon } from '../shared/visuals';
 
@@ -20,13 +21,17 @@ export function Feedback({
         >
           <span>{reveals.some((e) => e.ultimate) ? 'ULTIMATE SUMMON' : 'SUMMON'}</span>
           <Icon name="spark" size={28} />
-          <strong>{reveals.map((e) => e.text).join(' · ')}</strong>
+          <strong>
+            <UnitText>{reveals.map((e) => e.text).join(' · ')}</UnitText>
+          </strong>
         </div>
       )}
       {notice && (
         <div className="toast" role="status">
           <Icon name="help" size={18} />
-          <p>{notice}</p>
+          <p>
+            <UnitText>{notice}</UnitText>
+          </p>
           <button className="icon-button" aria-label="关闭提示" onClick={() => onDismiss()}>
             <Icon name="x" size={16} />
           </button>

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Command, Session } from '../../engine';
 import { createGame, createSession, dispatch } from '../../engine';
-import type { HaojieGameProps } from '../game/types';
+import type { HaojieGameProps } from '../game/interaction/types';
 import type { SaveStatus } from './storage';
 import { DEFAULT_STORAGE_KEY, readStoredSession, SAVE_LABELS, writeStoredSession } from './storage';
 import { useGamePresentation } from './useGamePresentation';
@@ -25,7 +25,7 @@ function boot(props: HaojieGameProps, key: string | null) {
     return { session: fallback(), notice: '浏览器禁止本机保存，请导出对局。', writable: false };
   }
 }
-/** Local authority only: the controlled entry never mounts this hook or its persistence/AI. */
+/** 仅用于本地权威局面；受控入口不挂载此 Hook，也不启动其存档和 AI。 */
 export function useGameSession(props: HaojieGameProps) {
   const storageKey = props.storageKey === undefined ? DEFAULT_STORAGE_KEY : props.storageKey;
   const [initial] = useState(() => boot(props, storageKey));

@@ -1,5 +1,8 @@
 import type { GameEvent } from '../../engine';
-/** Optional synthesized audio: no media downloads and no autoplay. */
+/**
+ * 每个游戏实例独立持有的可选合成音效，只消费已提交事件，不参与规则结算。
+ * 开启声音后才创建音频上下文；卸载时由 dispose 释放，不下载媒体或自动播放。
+ */
 export class Soundscape {
   private context: AudioContext | null = null;
   play(events: GameEvent[], enabled: boolean): void {
@@ -26,7 +29,7 @@ export class Soundscape {
       osc.start(now);
       osc.stop(now + 0.25);
     } catch {
-      /* Audio is an enhancement; a blocked device cannot interrupt play. */
+      /* 音频只是增强功能；设备被阻止时不能中断对局。 */
     }
   }
   dispose(): void {

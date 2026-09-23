@@ -1,9 +1,9 @@
-/** Headless command port. No readline/DOM/timers: the CLI and tests use the real match engine. */
+/** 无界面的命令入口，不使用 readline、DOM 或计时器；CLI 与测试运行真实对局引擎。 */
 import { createGame, createSession, dispatch, parseSession } from '../engine';
 import type { Command, GameState, Session } from '../engine';
 import { decisionOwner, fingerprint, observe } from '../ai/observation';
-import { decide } from '../ai/search';
-import { cachedDecision } from '../ai/plan-cache';
+import { decide } from '../ai/planning/search';
+import { cachedDecision } from '../ai/planning/plan-cache';
 import type { Decision, PlanStep, SearchLimits } from '../ai/types';
 import { allocateBudget, emptyBudget } from '../ai/budget';
 import type { MatchSettings } from './settings';

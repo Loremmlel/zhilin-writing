@@ -1,4 +1,4 @@
-/* game/layout.css — feature-owned rules; responsive states stay with their component. */
+/* 功能样式及响应式状态就近维护，与所属组件保持一致。 */
 .hj-game .game-container {
   max-width: 1210px;
   margin: auto;
@@ -159,16 +159,14 @@
   }
 }
 
-/* On compact screens these wrappers do not change the existing reading order. */
+/* 紧凑屏幕中这些容器不改变原有阅读顺序。 */
 .hj-game .game-layout,
 .hj-game .match-overview,
 .hj-game .hand-scroll {
   display: contents;
 }
 
-/* Desktop workbench: spend vertical space on the board, horizontal space on UI.
-   --haojie-height lets an embedding host provide its own available block size.
-   Never hide page overflow to pretend that the board fits. */
+/* 桌面将纵向空间留给棋盘，横向空间留给操作区。宿主可用 --haojie-height 指定可用高度，禁止隐藏页面溢出来假装棋盘完整可见。 */
 @container haojie (min-width: 1100px) {
   .hj-game .game-container {
     width: 100%;
@@ -179,7 +177,7 @@
     container: arena / size;
   }
   .hj-game .game-layout {
-    /* These two chrome dimensions are shared with board.css. */
+    /* 这两个界面尺寸与 board.css 共用。 */
     --board-inline-chrome: 36px;
     --board-block-chrome: 74px;
     display: grid;

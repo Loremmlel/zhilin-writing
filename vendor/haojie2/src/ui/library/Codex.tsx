@@ -1,11 +1,20 @@
 import { useState } from 'react';
-import { CATALOG } from '../../engine';
-import { DefinitionStats } from '../shared/DefinitionStats';
+import { CATALOG, KEYWORD_IDS, keywordDefinition, definition } from '../../engine';
+import { DefinitionCard } from './DefinitionCard';
+import { UnitText } from './UnitReference';
 import { Modal } from '../shared/Modal';
-import { Icon, Rune } from '../shared/visuals';
+import { Icon } from '../shared/visuals';
+import { KeywordCard } from './KeywordCard';
 export function Codex({ onClose }: { onClose: () => void }) {
   const [query, setQuery] = useState(''),
-    [filter, setFilter] = useState('全部');
+    [filter, setFilter] = useState('全部'),
+    [section, setSection] = useState<'units' | 'keywords'>('units');
+  const keywords = KEYWORD_IDS.filter((id) => {
+    const d = keywordDefinition(id);
+    return `${d.name}${d.category}${d.description}${d.aliases?.join('') ?? ''}${d.sources.map((kind) => definition(kind).name).join('')}`
+      .toLowerCase()
+      .includes(query.trim().toLowerCase());
+  });
   const entries = CATALOG.filter((d) => {
     const match =
       filter === '全部' ||
@@ -29,6 +38,22 @@ export function Codex({ onClose }: { onClose: () => void }) {
       wide
       onClose={onClose}
     >
+      <div className="filter-tabs library-sections" aria-label="图鉴分类">
+        <button
+          aria-pressed={section === 'units'}
+          className={section === 'units' ? 'active' : ''}
+          onClick={() => setSection('units')}
+        >
+          单位与装备
+        </button>
+        <button
+          aria-pressed={section === 'keywords'}
+          className={section === 'keywords' ? 'active' : ''}
+          onClick={() => setSection('keywords')}
+        >
+          状态与特性
+        </button>
+      </div>
       <div className="codex-tools">
         <label className="search-field">
           <Icon name="target" />
@@ -39,63 +64,49 @@ export function Codex({ onClose }: { onClose: () => void }) {
             placeholder="搜索名称、能力或编号…"
             aria-label="搜索图鉴"
           />
-          <span>{entries.length}</span>
-        </label>
-        <div className="filter-tabs">
-          {['全部', '普通', '终极', '神龛', '地标', '光环', '法术', '武器', '变体'].map((f) => (
+          {query && (
             <button
-              key={f}
-              aria-pressed={f === filter}
-              className={f === filter ? 'active' : ''}
-              onClick={() => setFilter(f)}
+              className="icon-button"
+              aria-label="清空图鉴搜索"
+              onClick={(event) => {
+                setQuery('');
+                event.currentTarget.parentElement?.querySelector('input')?.focus();
+              }}
             >
-              {f}
+              <Icon name="x" />
             </button>
-          ))}
-        </div>
+          )}
+          <span>{section === 'units' ? entries.length : keywords.length}</span>
+        </label>
+        {section === 'units' && (
+          <div className="filter-tabs">
+            {['全部', '普通', '终极', '神龛', '地标', '光环', '法术', '武器', '变体'].map((f) => (
+              <button
+                key={f}
+                aria-pressed={f === filter}
+                className={f === filter ? 'active' : ''}
+                onClick={() => setFilter(f)}
+              >
+                {f}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
       <div className="codex-grid">
-        {entries.map((d) => (
-          <article
-            key={d.id}
-            className={`codex-card ${d.spell !== undefined ? 'is-spell' : ''} ${d.tier === 'ultimate' ? 'ultimate-codex' : ''} ${d.weapon !== undefined ? 'is-weapon' : ''}`}
-          >
-            <div className="codex-card-heading">
-              <Rune kind={d.id} large />
-              <div>
-                <span className="piece-index">
-                  {d.tier === 'normal'
-                    ? `普通 ${String(d.id).padStart(2, '0')}`
-                    : d.tier === 'ultimate'
-                      ? `终极 ${String(d.id).slice(1).padStart(2, '0')}`
-                      : d.tier === 'shrine'
-                        ? `神龛 ${String(d.id).slice(1)}`
-                        : '变体 / 合成'}
-                </span>
-                <h3>{d.name}</h3>
-                <span className="role-chip">
-                  {d.role}
-                  {d.mage ? ' · 法师' : ''}
-                  {d.size ? ' · 2×2' : ''}
-                </span>
-              </div>
-            </div>
-            <DefinitionStats d={d} />
-            <p>{d.description}</p>
-            {d.skill && (
-              <div className="skill-label">
-                <Icon name="spark" size={14} />
-                {d.skill}
-              </div>
-            )}
-          </article>
-        ))}
+        {section === 'keywords'
+          ? keywords.map((id) => <KeywordCard key={id} id={id} />)
+          : entries.map((d) => <DefinitionCard key={d.id} d={d} />)}
       </div>
-      {entries.length === 0 && (
+      {(section === 'units' ? entries.length : keywords.length) === 0 && (
         <p className="empty-state">没有匹配条目。可以搜索“冰冻”“人头”“复活”或“法师”。</p>
       )}
       <p className="fine-print">
-        图鉴与引擎共用定义。神龛只在独立神龛模式开局抽取；牢千K由3名终极13合成，两个模式均可使用。
+        <UnitText>
+          {
+            '图鉴与引擎共用定义。神龛只在独立神龛模式开局抽取；牢千K由3名改判小法师合成，两个模式均可使用。'
+          }
+        </UnitText>
       </p>
     </Modal>
   );

@@ -3,7 +3,7 @@ import type { GameEvent } from '../../engine';
 import { Soundscape } from '../audio/Soundscape';
 import { useEffectPlayback } from '../board/vfx/useEffectPlayback';
 
-/** Disposable effects only. Local and controlled sessions feed the same accepted event batches. */
+/** 仅管理可丢弃特效；本地与受控会话输入相同的已接受事件批次。 */
 export function useGamePresentation(initialNotice = '') {
   const playback = useEffectPlayback();
   const [notice, setNotice] = useState(initialNotice);

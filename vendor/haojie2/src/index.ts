@@ -1,4 +1,4 @@
-/** Public embedding entry. Import engine/index directly when React is not needed. */
+/** 公开嵌入入口；不需要 React 时直接导入 engine/index。 */
 export * from './engine';
 export { HaojieGame } from './ui/Game';
 export type { HaojieGameProps } from './ui/Game';

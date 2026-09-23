@@ -1,3 +1,4 @@
+import { UnitText } from '../library/UnitReference';
 import type { GamePosition } from '../../engine';
 import { Icon } from '../shared/visuals';
 
@@ -26,7 +27,9 @@ export function BattleLog({
           .map((line, i) => (
             <li key={`${i}-${line}`}>
               <i />
-              <p>{line.split('·').slice(1).join('·').trim()}</p>
+              <p>
+                <UnitText>{line.split('·').slice(1).join('·').trim()}</UnitText>
+              </p>
             </li>
           ))}
       </ol>

@@ -1,8 +1,9 @@
+import { UnitText } from '../library/UnitReference';
 import type { MatchSettings } from '../../match/settings';
 import { MatchOptions } from '../opponent/MatchOptions';
 import { useState } from 'react';
 import type { GamePosition } from '../../engine';
-import type { GameModal } from '../game/types';
+import type { GameModal } from '../game/interaction/types';
 import { Codex } from '../library/Codex';
 import { Rules } from '../library/Rules';
 import { Modal } from '../shared/Modal';
@@ -35,7 +36,9 @@ export function GameDialogs({
         >
           <ol className="full-log">
             {s.log.map((line, i) => (
-              <li key={i}>{line}</li>
+              <li key={i}>
+                <UnitText>{line}</UnitText>
+              </li>
             ))}
           </ol>
         </Modal>

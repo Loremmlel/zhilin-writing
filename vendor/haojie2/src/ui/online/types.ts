@@ -1,9 +1,9 @@
-import { HAOJIE_RULESET, PLAYER_VIEW_VERSION } from '../../engine/player-view';
+import { HAOJIE_RULESET, PLAYER_VIEW_VERSION } from '../../engine/online/player-view';
 import type { Command, PlayerView } from '../../engine';
 
 export interface OnlineUpdate {
   matchId: string;
-  /** Monotonic room revision, not ply, serial or the save schema version. */
+  /** 单调递增的房间修订号，不是 ply、serial 或存档格式版本。 */
   revision: number;
   kind: 'update' | 'snapshot';
   view: PlayerView;
@@ -11,19 +11,19 @@ export interface OnlineUpdate {
 export type CommandReceipt = { ok: true; revision: number } | { ok: false; message: string };
 export interface CommandContext {
   baseRevision: number;
-  /** Cancellation stops UI waiting; it does not roll back an already committed server command. */
+  /** 取消只停止界面等待，不回滚服务器已经提交的命令。 */
   signal: AbortSignal;
 }
 export interface HaojieOnlineGameProps {
   update: OnlineUpdate;
   connection: 'connecting' | 'connected' | 'disconnected';
-  /** Host policy lock, never derive this solely from whose turn it is. */
+  /** 宿主策略锁，不能仅根据当前回合所属方推导。 */
   disabled?: boolean;
   /** Optional host-owned consent flow; the board never restores local state. */
   onUndo?: () => void;
   canUndo?: boolean;
   error?: { id: string; message: string };
-  /** Host generates requestId, deduplicates retries, persists the result, and resolves a real ack. */
+  /** 宿主生成 requestId、对重试去重、持久化结果并返回真实回执。 */
   onCommand: (command: Command, context: CommandContext) => Promise<CommandReceipt>;
 }
 export function updateError(update: OnlineUpdate): string | null {
@@ -48,7 +48,7 @@ export function updateError(update: OnlineUpdate): string | null {
     return '受控棋盘只接受玩家视图，不能传入完整权威状态。';
   return null;
 }
-/** Duplicate or older updates never replace a newer accepted host snapshot. */
+/** 重复或过期更新不能替换已接受的较新宿主快照。 */
 export function selectOnlineUpdate(previous: OnlineUpdate, incoming: OnlineUpdate): OnlineUpdate {
   const error = updateError(incoming);
   if (error) throw new Error(error);

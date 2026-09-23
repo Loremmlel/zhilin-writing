@@ -1,5 +1,5 @@
 import { Icon } from '../shared/visuals';
-import type { GameModal } from './types';
+import type { GameModal } from './interaction/types';
 
 export function GameHeader({
   sound,

@@ -2,7 +2,7 @@ import { useLayoutEffect, useRef, type CSSProperties, type ReactNode } from 'rea
 import type { Unit } from '../../../engine';
 import { center, MOVE_MS, type EffectBatch } from './plan';
 
-/** The real piece is already at its new square; only a temporary transform follows the route. */
+/** 真实棋子已在新格，仅通过临时变换表现路径移动。 */
 export function PiecePosition({
   unit,
   batches,

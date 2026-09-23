@@ -92,12 +92,14 @@ function snapshot(row: RoomRow, actor: string, after = -1): RoomSnapshot {
     row.engineVersion === HAOJIE_ENGINE_VERSION &&
     row.ruleset === HAOJIE_RULESET &&
     row.viewVersion === PLAYER_VIEW_VERSION;
-  // Feedback 3 has the same state/view schema. Project completed games read-only;
+  // Feedback 3 and 4 have the same state/view schema. Project completed games read-only;
   // mutation version checks stay exact, and stored states are never migrated.
   const historical =
     row.status === "finished" &&
-    row.engineVersion === "7824f47c0deb0797819833f6641021f87f4aecbd" &&
-    row.ruleset === "3.0-feedback3" &&
+    ((row.engineVersion === "7824f47c0deb0797819833f6641021f87f4aecbd" &&
+      row.ruleset === "3.0-feedback3") ||
+      (row.engineVersion === "2a9768eebcdefde8bb53ee791a885ce4e54ca810" &&
+        row.ruleset === "3.0-feedback4")) &&
     row.viewVersion === PLAYER_VIEW_VERSION;
   const state =
     row.stateJson && room.viewer && (compatible || historical)

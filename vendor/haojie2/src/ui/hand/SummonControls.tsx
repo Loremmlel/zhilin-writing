@@ -1,3 +1,4 @@
+import { UnitText } from '../library/UnitReference';
 import { useState } from 'react';
 import { definition, summonRerolls, type Command, type GamePosition } from '../../engine';
 import { RerollControls } from './RerollControls';
@@ -30,10 +31,12 @@ function SummonOffer({
           />
           <span>
             <b>
-              {definition(group[0].kind).name}
+              <UnitText>{definition(group[0].kind).name}</UnitText>
               {group.length > 1 ? ` × ${group.length}` : ''}
             </b>
-            <small>{definition(group[0].kind).description}</small>
+            <small>
+              <UnitText>{definition(group[0].kind).description}</UnitText>
+            </small>
           </span>
         </label>
       ))}

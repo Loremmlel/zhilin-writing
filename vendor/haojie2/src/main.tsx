@@ -3,6 +3,7 @@ import type { ErrorInfo, ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { HaojieGame } from './index';
 
+/** 捕获渲染异常并保留可读恢复提示；不自动清除存档或重建对局。 */
 class ErrorBoundary extends Component<{ children: ReactNode }, { error: string | null }> {
   state: { error: string | null } = { error: null };
   static getDerivedStateFromError(error: Error) {

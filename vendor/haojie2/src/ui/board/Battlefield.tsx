@@ -1,8 +1,9 @@
+import { UnitText } from '../library/UnitReference';
 import type { EffectBatch } from './vfx/plan';
 import type { Command, GamePosition, Point } from '../../engine';
 import { definition, faction, isStored, canSkipReaction, queryCommandError } from '../../engine';
-import type { Intent } from '../game/selection';
-import { instruction } from '../game/selection';
+import type { Intent } from '../game/interaction/selection';
+import { instruction } from '../game/interaction/selection';
 import { Icon } from '../shared/visuals';
 import { Board } from './Board';
 
@@ -54,7 +55,7 @@ export function Battlefield({
         </span>
         <p>
           {reaction ? `${faction(reaction.owner)} · ` : ''}
-          {instruction(s, activeIntent)}
+          <UnitText>{instruction(s, activeIntent)}</UnitText>
         </p>
         {intent.kind !== 'none' && !reaction && (
           <button className="icon-button" aria-label="取消当前操作" onClick={() => onCancel()}>

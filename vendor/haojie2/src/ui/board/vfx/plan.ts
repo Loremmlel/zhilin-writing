@@ -1,5 +1,5 @@
 import type { GameEvent, Kind, Player, Point } from '../../../engine';
-import type { EventActor } from '../../../engine/event-facts';
+import type { EventActor } from '../../../engine/core/event-facts';
 
 export type Family =
   | 'slash'
@@ -40,7 +40,7 @@ export interface Cue {
   owner: Player;
   from: Point;
   to: Point;
-  /** Projectile contact may precede a relocation to the final `to` square. */
+  /** 飞行物接触目标后，目标才可能继续移动到最终 to 坐标。 */
   impactTo?: Point;
   route: Point[];
   movement?: Point[];
@@ -84,7 +84,7 @@ const specials = new Set<Family>([
 const ballistic = new Set<Family>(['arrow', 'cannon', 'stone', 'bolt', 'hook', 'mend']);
 const priority = (cue: Cue) => (resultTypes.has(cue.family) ? 3 : cue.family === 'move' ? 0 : 1);
 
-/** Cosmetic identity only. No ranges, probabilities or damage values live here. */
+/** 只定义视觉身份，不保存射程、概率或伤害数值。 */
 function attackFamily(e: GameEvent): Family {
   if (e.action === 'mend') return 'mend';
   if (e.action === 'judgement') return 'cannon';
@@ -124,13 +124,13 @@ function make(e: GameEvent, kind: Family, start: number, id: string): Cue | unde
       ? center(e.actor, e.actor.size)
       : to;
   let route = e.path?.map((p) => center(p)) ?? [from, to];
-  // Connect contact cells to the centers inside each unit footprint; never shortcut the rule path.
+  // 将接触格连接至各棋子覆盖区域中心，不截短规则路径。
   if (!same(route[0], from)) route = [from, ...route];
   if (!same(route.at(-1)!, to)) route = [...route, to];
   const movement = e.type === 'move' ? [...route] : undefined;
   if (e.type === 'move' && kind === 'hook' && e.actor) {
     from = center(e.actor, e.actor.size);
-    // Hook extends to the old victim position; relocation remains a separate rule fact.
+    // 钩子伸向受害者旧位置；牵引位移仍为独立规则事实。
     route = [from, center(e.from!, e.subject?.size)];
   }
   const windup = kind === 'cannon' ? 130 : kind === 'slash' ? 30 : 60;
@@ -165,7 +165,7 @@ function make(e: GameEvent, kind: Family, start: number, id: string): Cue | unde
   };
 }
 
-/** No clock, random draws or state mutations; old events fall back to a generic safe cue. */
+/** 不读取时钟、不抽随机数、不改局面；旧事件回退为安全的通用提示。 */
 export function planEffects(events: readonly GameEvent[]): Cue[] {
   const groups = new Map<string, GameEvent[]>();
   for (const event of events) {
@@ -208,7 +208,7 @@ export function planEffects(events: readonly GameEvent[]): Cue[] {
       const position = e.subject?.id ?? e.unitId ?? `${e.to?.x},${e.to?.y}`;
       if (e.type === 'damage' || e.type === 'heal') {
         let delay = at;
-        // Drain is drawn only for an actual heal, not for a predicted or blocked hit.
+        // 仅在实际治疗发生时绘制吸取效果，不为预测或被阻挡命中绘制。
         if (e.type === 'heal' && e.action === 'siphon') {
           const flow = make(e, 'siphon', at, e.id + ':flow');
           if (flow) {
@@ -250,10 +250,10 @@ export function planEffects(events: readonly GameEvent[]): Cue[] {
   return limitCues(cues);
 }
 
-/** Enforce the same priority cap at both the planner and the playback boundary. */
+/** 规划与播放边界执行相同的优先级数量上限。 */
 function limitCues(cues: readonly Cue[]): Cue[] {
   if (cues.length <= MAX_CUES) return [...cues];
-  // Evict decoration before numeric/death feedback in unusually large packets.
+  // 特大事件包优先淘汰装饰，保留数值和死亡反馈。
   const kept = new Set(
     cues
       .map((c, i) => ({ c, i }))

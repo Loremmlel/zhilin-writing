@@ -1,4 +1,4 @@
-/* hand/hand.css — feature-owned rules; responsive states stay with their component. */
+/* 功能样式及响应式状态就近维护，与所属组件保持一致。 */
 .hj-game .hand-intro {
   display: flex;
   align-items: center;
@@ -24,6 +24,7 @@
   gap: 9px;
 }
 .hj-game .hand-card {
+  display: flex;
   width: 100%;
   position: relative;
   justify-content: flex-start;

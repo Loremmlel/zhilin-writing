@@ -1,4 +1,4 @@
-import { search } from './search';
+import { search } from './planning/search';
 import type { SearchRequest, SearchResponse } from './types';
 const port = self as unknown as {
   onmessage: ((e: MessageEvent<SearchRequest>) => void) | null;

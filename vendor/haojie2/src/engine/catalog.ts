@@ -1,6 +1,6 @@
 import type { Definition, Kind, Point } from './types';
-export const RULESET_ID = '3.0-feedback4-2026-09-21';
-/** Numeric combat parameters shared by resolution and read-only AI estimates. */
+export const RULESET_ID = '3.0-feedback4-counter-freeze-2026-09-21';
+/** 结算与 AI 只读估算共用的战斗数值。 */
 export const COMBAT_RULES = {
   sacrificeMaxHpCost: 20,
   sageAuraAttack: 5,
@@ -20,7 +20,7 @@ export const COMBAT_RULES = {
   goldSpellChance: 1 / 5,
   littleGoldImmunity: 1 / 2,
 } as const;
-/** Single source for both rule stats and the UI codex. Fractional attributes retain their exact numeric value. */
+/** 规则属性与界面图鉴的唯一来源；分数属性保留精确数值。 */
 export const CATALOG: Definition[] = [
   {
     id: 1,
@@ -96,6 +96,7 @@ export const CATALOG: Definition[] = [
     id: 5,
     tier: 'normal',
     name: '大肉比',
+    keywordReferences: { 不能被任何钩子牵引: 'hook-immunity' },
     glyph: '岳',
     role: '重装',
     attack: 10,
@@ -268,6 +269,7 @@ export const CATALOG: Definition[] = [
     id: 17,
     tier: 'normal',
     name: '金身',
+    keywordReferences: { 免疫所有伤害: 'immune' },
     glyph: '御',
     role: '法术',
     attack: 0,
@@ -276,7 +278,7 @@ export const CATALOG: Definition[] = [
     actions: 0,
     move: 0,
     description:
-      '抽到17时只有1/5概率获得金身，否则变为小金耶。使一个友方直到其下回合开始免疫所有伤害与所有敌方技能、法术，包括死吧！和策反。己方献祭等非伤害效果不受阻止。',
+      '抽取金身时只有1/5概率获得金身，否则变为小金耶。使一个友方直到其下回合开始免疫所有伤害与所有敌方技能、法术，包括死吧！和策反。己方献祭等非伤害效果不受阻止。',
     spell: 100,
   },
   {
@@ -291,12 +293,13 @@ export const CATALOG: Definition[] = [
     actions: 1,
     move: 1,
     description:
-      '抽到17时4/5概率变为小金耶。每次将受到正数伤害时独立判定，50%概率免疫该次伤害；沉默后失效。不会免疫非伤害的处决、献祭或策反。',
+      '抽取金身时4/5概率变为小金耶。每次将受到正数伤害时独立判定，50%概率免疫该次伤害；沉默后失效。不会免疫非伤害的处决、献祭或策反。',
   },
   {
     id: 18,
     tier: 'normal',
     name: '死吧！',
+    keywordReferences: { 金身: 'immune' },
     glyph: '灭',
     role: '法术',
     attack: 0,
@@ -356,6 +359,7 @@ export const CATALOG: Definition[] = [
     id: 22,
     tier: 'normal',
     name: '策反',
+    keywordReferences: { 金身: 'immune', 策反: 'convert' },
     glyph: '易',
     role: '法术',
     attack: 0,
@@ -371,6 +375,7 @@ export const CATALOG: Definition[] = [
     id: 23,
     tier: 'normal',
     name: '独行侠',
+    keywordReferences: { 休眠: 'fatigue' },
     glyph: '孤',
     role: '爆发',
     attack: 5,
@@ -495,6 +500,7 @@ export const CATALOG: Definition[] = [
     id: 'u4',
     tier: 'ultimate',
     name: '破法者',
+    keywordReferences: { 金身: 'immune', 免疫塔: 'protection' },
     glyph: '禁',
     role: '终极随从',
     attack: 10,
@@ -517,7 +523,7 @@ export const CATALOG: Definition[] = [
     actions: 0,
     move: 0,
     description:
-      '法师专用，装备后射程+1。攻击命中敌方随从后冰冻两回合：不能行动，每回合结束扣5血；仍属原阵营，友方攻击可穿过，常驻光环和被动依然生效。法师名单：普通19，终极6、13、14、19、20。',
+      '法师专用，装备后射程+1。攻击命中敌方随从后冰冻两回合：不能行动，每回合结束扣5血；仍属原阵营，友方攻击可穿过，常驻光环和被动依然生效，万法真君的反制除外。法师名单：路障小法师、大法师、改判小法师、灵魂法师、溟界小法师、击退法师、万法真君、法力之泉。',
     weapon: 15,
   },
   {
@@ -687,6 +693,7 @@ export const CATALOG: Definition[] = [
     id: 'u16',
     tier: 'ultimate',
     name: '靴子',
+    keywordReferences: { 额外执行一次攻击操作: 'extra-attack' },
     glyph: '靴',
     role: '武器',
     attack: 0,
@@ -786,7 +793,7 @@ export const CATALOG: Definition[] = [
     actions: 1,
     move: 0.5,
     description:
-      '范围内友方死亡时，可在范围内合法空地召唤一只普通20，并扣自身10生命上限。每次死亡分别处理；无处放置或被沉默则不触发；冰冻不关闭光环。',
+      '范围内友方死亡时，可在范围内合法空地召唤一只超级跑得快，并扣自身10生命上限。每次死亡分别处理；无处放置或被沉默则不触发；冰冻不关闭光环。',
     skill: '死亡召唤',
   },
   {
@@ -837,6 +844,7 @@ export const CATALOG: Definition[] = [
     id: 'u26',
     tier: 'ultimate',
     name: '心灵之火',
+    keywordReferences: { 攻击力始终等于它当前的生命值: 'inner-fire' },
     glyph: '心',
     role: '终极法术',
     attack: 0,
@@ -852,6 +860,7 @@ export const CATALOG: Definition[] = [
     id: 'u27',
     tier: 'ultimate',
     name: '矿工',
+    keywordReferences: { 两个操作: 'extra-operation' },
     glyph: '矿',
     role: '终极随从',
     attack: 30,
@@ -892,7 +901,7 @@ export const CATALOG: Definition[] = [
       '3张未装备炎魔之心在己方回合开始合成。不能主动攻击；沉默移除此限制，之后可正常攻击。每个己方回合结束，对以自身为中心13×13内当前生命最高的敌方造成80技能伤害，不受路径阻挡；命中格的敌方叠放者均受击，上下左右四格只对敌方溅射10，大体型按各覆盖格分别受伤。半速移动需蓄力。',
   },
 ];
-// Synthesis results never enter either random summon pool.
+// 合成结果不进入任何随机召唤池。
 CATALOG.push(
   {
     id: 'sage',
@@ -948,7 +957,7 @@ CATALOG.push(
     actions: 1,
     move: 1,
     description:
-      '3座跑得快小屋合成。范围内每个友方棋子死亡时，必须扣10生命上限并在范围内选择合法位置召唤一只普通20超级跑得快；包括自己召唤的单位。每次死亡分别处理，不按克隆批次合并。无合法位置或上限不足10时不召唤、不扣费；恰好10时先召唤再离场。',
+      '3座跑得快小屋合成。范围内每个友方棋子死亡时，必须扣10生命上限并在范围内选择合法位置召唤一只超级跑得快；包括自己召唤的单位。每次死亡分别处理，不按克隆批次合并。无合法位置或上限不足10时不召唤、不扣费；恰好10时先召唤再离场。',
   },
   {
     id: 'archmage',
@@ -966,7 +975,7 @@ CATALOG.push(
       '3名法术反制小法师合成。法师单位。敌方释放法术时有2/3概率反制，法术消耗但无效；成功时自身生命上限和当前生命各+15。多个反制来源按入场顺序独立尝试，首个成功后停止，只有成功来源成长。沉默或冰冻时不反制。',
   },
 );
-// 3.0: shrine identities stay outside both random summon pools.
+// 神龛身份独立于普通和终极随机召唤池。
 export const SHRINE_POOL: Kind[] = Array.from({ length: 16 }, (_, i) => `s${i + 1}` as Kind);
 export const FLAG_CELLS: Point[] = [
   { x: 4, y: 7 },
@@ -1008,8 +1017,12 @@ CATALOG.push(
     0,
     0,
     0,
-    '地标，只能部署于开局公共三行。友方随从部署其上获得17冲锋号令；原本具有冲锋者本回合可执行两次完整操作。重建5个己方回合。地标每己方回合可主动攻击一次同格敌方，不能移动。',
-    { role: '神龛地标', landmark: { rebuild: 5 } },
+    '地标，只能部署于开局公共三行。友方随从部署其上获得冲锋号令效果；原本具有冲锋者本回合可执行两次完整操作。重建5个己方回合。地标每己方回合可主动攻击一次同格敌方，不能移动。',
+    {
+      role: '神龛地标',
+      landmark: { rebuild: 5 },
+      keywordReferences: { 两次完整操作: 'extra-operation' },
+    },
   ),
   shrine(
     's2',
@@ -1078,7 +1091,7 @@ CATALOG.push(
     100,
     2,
     1,
-    '无限攻击射程，仍遵守路径阻挡。不能装备任何武器，也不能接受友方单位提供的攻击力增益。该限制同样适用于所有模式的普通10投石机。',
+    '无限攻击射程，仍遵守路径阻挡。不能装备任何武器，也不能接受友方单位提供的攻击力增益。该限制同样适用于所有模式的投石机。',
   ),
   shrine(
     's8',
@@ -1196,7 +1209,7 @@ CATALOG.push(
     0,
     0,
     0,
-    '特殊合成光环：3名终极13改判小法师合成。永久存在，每个实际己方回合最多一次，把一次召唤改为从该来源池自选一个结果。适用于经典和神龛模式，不进入16神龛抽选池。',
+    '特殊合成光环：3名改判小法师合成。永久存在，每个实际己方回合最多一次，把一次召唤改为从该来源池自选一个结果。适用于经典和神龛模式，不进入16神龛抽选池。',
     { role: '合成光环', aura: true },
   ),
 );
@@ -1221,7 +1234,7 @@ export const RULE_NOTES = [
   '主动蓄力替代旧版定炮自动蓄力。回合开始已经持有的层数才能用于分数行为；名刀虽不能攻击，仍可蓄力移动。',
   '金身免疫伤害及一切敌方技能法术，包括死吧！与策反；不阻止己方的非伤害献祭。策反要求攻击本身造成正伤害，标记爆炸不算；策反后的下一己方回合可以行动。',
   '经典模式终极召唤在回合开始、看到该次结果之前支付2人头替换一次普通召唤。终极池28个编号等概率有放回。克隆一批8枚最后死亡才计算一颗人头。',
-  '冰冻保留所有权记录用于回合计时、复原、死亡归属与人头判定，但仍保留原阵营与常驻光环、被动；友方攻击可以穿过，敌方攻击仍被其阻挡。冰冻/眩晕持续期按被影响单位的己方回合；每回合末伤害按双方回合结束分别结算。',
+  '冰冻保留所有权记录用于回合计时、复原、死亡归属与人头判定，但仍保留原阵营与常驻光环、被动；万法真君的反制是例外，冰冻时停用，普通法术反制小法师仍可反制。友方攻击可以穿过，敌方攻击仍被其阻挡。冰冻/眩晕持续期按被影响单位的己方回合；每回合末伤害按双方回合结束分别结算。',
   '武器采用一个装备槽；再次装备替换原武器，不返还旧武器牌。移除武器会撤销其数值，当前生命不超过新上限。每枚棋子只能同时装备一件武器。',
   '持续法术与多目标技能先确定本次目标，再逐个结算。每个目标一次免疫塔判定，单次效果内被塔挡住的目标不重复消耗塔生命上限。',
   '末日守卫两个概率采用互斥区间。精英杀手暴击率最多100%，吸血可超过100%；第5个人头只加一次射程。',

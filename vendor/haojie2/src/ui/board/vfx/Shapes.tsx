@@ -7,7 +7,7 @@ export const routePath = (route: Cue['route']) =>
   route.map((p, i) => `${i ? 'L' : 'M'}${p.x} ${p.y}`).join(' ');
 const at = (p: Cue['to']) => `translate(${p.x} ${p.y})`;
 
-/** Explicit relative start is essential: the parent SVG survives between commands. */
+/** 必须显式指定相对开始时间，因为父 SVG 会跨命令保留。 */
 function Flight({ cue, children, reduced }: { cue: Cue; children: ReactNode; reduced: boolean }) {
   const motion = useRef<SVGAnimateMotionElement>(null);
   const windup = cue.family === 'cannon' ? 130 : 60;

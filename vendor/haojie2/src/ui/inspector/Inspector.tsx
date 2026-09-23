@@ -1,7 +1,7 @@
 import type { Dispatch, SetStateAction } from 'react';
 import type { ActionSpec, GamePosition } from '../../engine';
 import { definition, faction, getStats, occupants, landmarkAt } from '../../engine';
-import type { Intent } from '../game/selection';
+import type { Intent } from '../game/interaction/selection';
 import { DefinitionStats } from '../shared/DefinitionStats';
 import { Icon, Rune } from '../shared/visuals';
 import { ActionPanel } from './ActionPanel';

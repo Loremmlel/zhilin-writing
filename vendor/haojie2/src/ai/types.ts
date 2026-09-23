@@ -1,12 +1,12 @@
-import type { PayloadAnalysis } from './threats';
+import type { PayloadAnalysis } from './evaluation/threats';
 import type { Command, GameState, Player } from '../engine/types';
 export type Difficulty = 'easy' | 'medium' | 'hard';
-/** No real seed, PRNG state, event history or logs cross the planning boundary. */
+/** 规划边界不接收真实种子、PRNG 状态、历史事件或日志。 */
 export type Observation = Omit<GameState, 'seed' | 'rng' | 'events' | 'log'>;
 export interface SearchLimits {
   simulations: number;
   milliseconds: number;
-  /** Work mode is reproducible; timed mode explicitly trades reproducibility for a deadline. */
+  /** work 模式可复现；timed 模式明确以可复现性换取截止时间。 */
   mode?: 'work' | 'timed';
   trace?: boolean;
 }

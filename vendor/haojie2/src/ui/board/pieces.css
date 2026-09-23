@@ -1,4 +1,4 @@
-/* board/pieces.css — feature-owned rules; responsive states stay with their component. */
+/* 功能样式及响应式状态就近维护，与所属组件保持一致。 */
 .hj-game .base-token {
   width: 11.111111%;
   height: 7.692307%;
@@ -30,7 +30,7 @@
   align-items: center;
   pointer-events: none;
   z-index: 10;
-  /* Movement is a cancelable transform along the recorded path, never a layout tween. */
+  /* 沿已记录路径执行可取消的位移变换，不对布局做补间动画。 */
 }
 .hj-game .piece {
   width: 76%;
@@ -67,14 +67,6 @@
   line-height: 1;
   font-weight: 650;
   transform: translateY(-4px);
-}
-.hj-game .piece-code {
-  position: absolute;
-  top: 2px;
-  left: 4px;
-  font-size: 6px;
-  opacity: 0.6;
-  line-height: 1;
 }
 .hj-game .piece-hp {
   position: absolute;
@@ -186,11 +178,6 @@
   font-size: 12px;
   bottom: 8px;
 }
-.hj-game .large-piece .piece-code {
-  font-size: 9px;
-  top: 7px;
-  left: 9px;
-}
 .hj-game .shield-halo {
   position: absolute;
   inset: -5px;
@@ -234,16 +221,8 @@
     font-size: 12px;
     bottom: 8px;
   }
-  .hj-game .piece-code {
-    font-size: 6px;
-  }
 }
 @container haojie (max-width: 450px) {
-  .hj-game .piece-code {
-    top: 2px;
-    left: 3px;
-    font-size: 5px;
-  }
   .hj-game .piece-hp {
     font-size: 7px;
   }
@@ -287,11 +266,6 @@
   font-size: 12px;
   text-shadow: 0 0 6px #f1d575;
   z-index: 4;
-}
-.hj-game .ultimate-piece .piece-code {
-  color: #9c7d35;
-  font-weight: 700;
-  opacity: 1;
 }
 .hj-game .neutral-piece {
   --side: #648997 !important;
@@ -374,7 +348,7 @@
   }
 }
 
-/* Glyphs follow the available board height, not the monitor width. */
+/* 字形大小跟随棋盘可用高度，不跟随显示器宽度。 */
 @container haojie (min-width: 1100px) {
   .hj-game .piece strong {
     font-size: clamp(15px, 2.8cqh, 27px);

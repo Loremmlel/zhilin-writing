@@ -1,6 +1,6 @@
 import { DIFFICULTIES } from './difficulty';
 import { decisionOwner } from './observation';
-import { getStats } from '../engine/state';
+import { getStats } from '../engine/core/state';
 import type { GameState } from '../engine/types';
 import type { Difficulty, SearchLimits } from './types';
 export interface TurnBudget {
@@ -10,7 +10,7 @@ export interface TurnBudget {
   commands: number;
 }
 export const emptyBudget = (): TurnBudget => ({ ply: -1, nodes: 0, ms: 0, commands: 0 });
-/** Shared by browser scheduling and the command-line arena. Presentation delay is never charged. */
+/** 浏览器调度和命令行对战共用预算分配；展示延迟不计入计算预算。 */
 export function allocateBudget(
   s: GameState,
   difficulty: Difficulty,
@@ -31,7 +31,7 @@ export function allocateBudget(
       (st.operationsLeft > 0 || u.mode === 'attack' || u.mode === 'move')
     );
   }).length;
-  // Several actors can share a cached plan; don't exhaust the entire turn on its first three actors.
+  // 多个行动者可共用缓存计划，不能让前三个行动者耗尽整回合预算。
   const planningBatches = Math.max(1, Math.ceil(activeUnits / 3));
   return {
     mode: 'work',

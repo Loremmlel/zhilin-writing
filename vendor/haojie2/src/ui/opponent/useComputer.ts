@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { AiClient } from '../../ai/client';
-import { cachedDecision } from '../../ai/plan-cache';
+import { cachedDecision } from '../../ai/planning/plan-cache';
 import { allocateBudget } from '../../ai/budget';
 import { decisionOwner, observe } from '../../ai/observation';
 import type { Decision, PlanStep } from '../../ai/types';
 import type { Command, Player, Session } from '../../engine';
 import { matchSettings, ownsComputerDecision } from '../../match/history';
-import type { GameModal } from '../game/types';
+import type { GameModal } from '../game/interaction/types';
 import { actionDelay, waitForPresentation } from './pacing';
 interface Port {
   session: Session;
@@ -15,7 +15,7 @@ interface Port {
   modal: GameModal;
   notice: (message: string) => void;
 }
-/** Cancels stale work on every state revision. Workers never receive the saved game's RNG. */
+/** 每次局面修订都取消旧任务；Worker 从不接收存档中的 RNG。 */
 export function useComputer({ session, live, apply, modal, notice }: Port) {
   const client = useRef<AiClient | null>(null),
     revision = useRef(0),
@@ -105,7 +105,7 @@ export function useComputer({ session, live, apply, modal, notice }: Port) {
           });
           setThinking(false);
           await waitForPresentation(minimum - (performance.now() - startedDecision), abort.signal);
-          // Pausing/undo/import can happen after planning, while we are only presenting a pause.
+          // 规划结束后的展示等待期间，仍可能发生暂停、悔棋或导入。
           if (
             !alive ||
             abort.signal.aborted ||
@@ -132,7 +132,7 @@ export function useComputer({ session, live, apply, modal, notice }: Port) {
           if (alive && id === revision.current) setThinking(false);
         }
       },
-      0, // Start computing promptly; presentation and search run on overlapping clocks.
+      0, // 立即启动计算，让搜索与展示等待重叠。
     );
     return () => {
       alive = false;

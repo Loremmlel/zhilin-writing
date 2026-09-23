@@ -8,9 +8,9 @@ import {
   type Kind,
 } from '../../engine';
 import { Modal } from '../shared/Modal';
-import { DefinitionStats } from '../shared/DefinitionStats';
+import { DefinitionCard } from '../library/DefinitionCard';
 
-/** Intercepts only human draw commands; the engine validates pool, costs and allowance atomically. */
+/** 仅拦截人类抽取命令；引擎原子验证来源池、费用和次数。 */
 export function SummonChoiceDialog({
   state,
   command,
@@ -45,8 +45,7 @@ export function SummonChoiceDialog({
       </label>
       {kind !== undefined && (
         <div className="shrine-preview">
-          <DefinitionStats d={definition(kind)} />
-          <p>{definition(kind).description}</p>
+          <DefinitionCard d={definition(kind)} />
         </div>
       )}
       <button

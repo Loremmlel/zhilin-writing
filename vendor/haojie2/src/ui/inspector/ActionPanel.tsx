@@ -1,7 +1,7 @@
 import type { Dispatch, SetStateAction } from 'react';
 import type { ActionSpec, GamePosition } from '../../engine';
 import { actionError, definition, queryCommandError, allPieces, getStats } from '../../engine';
-import type { Intent } from '../game/selection';
+import type { Intent } from '../game/interaction/selection';
 import { Icon } from '../shared/visuals';
 
 export function ActionPanel({

@@ -9,7 +9,7 @@ function OnlineMatch(props: HaojieOnlineGameProps) {
   const game = useOnlineController(props);
   return <GameSurface game={game} online={game.online} />;
 }
-/** Updates do not remount the board. Only changing the actual match or authenticated seat resets it. */
+/** 普通更新不重新挂载棋盘；仅更换实际对局或已认证席位时重置。 */
 export function HaojieOnlineGame(props: HaojieOnlineGameProps) {
   const error = updateError(props.update);
   if (error)

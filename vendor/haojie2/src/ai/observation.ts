@@ -1,10 +1,10 @@
-import { visibleShrineDraft } from '../engine/player-view';
+import { visibleShrineDraft } from '../engine/online/player-view';
 import type { GameState, Player } from '../engine/types';
 import type { Observation } from './types';
 export const decisionOwner = (s: Pick<GameState, 'pending' | 'active'>): Player =>
   s.pending[0]?.owner ?? s.active;
 function fields(s: GameState, viewer: Player = decisionOwner(s)): Observation {
-  // Explicit whitelist: adding a future secret field to GameState must not expose it to the AI.
+  // 明确使用白名单：未来在 GameState 添加秘密字段，也不能自动向 AI 暴露。
   return {
     version: s.version,
     serial: s.serial,
@@ -51,13 +51,13 @@ export function hash(text: string): number {
   for (let i = 0; i < text.length; i++) result = Math.imul(result ^ text.charCodeAt(i), 16777619);
   return result >>> 0;
 }
-/** Compact cache key for UI reuse. Search deduplication additionally retains full state text. */
+/** 供界面复用的紧凑缓存键；搜索去重还保留完整局面文本。 */
 export function fingerprint(s: GameState | Observation): string {
   const text = JSON.stringify('rng' in s ? fields(s) : s);
   return `${hash(text).toString(36)}:${text.length}`;
 }
 export function positionKey(s: GameState): string {
   const o = fields(s);
-  // Event ids affect serial, not rules. Object ids and pending/death links remain intact.
+  // 事件标识影响 serial，但不影响规则；保留对象 ID 及反应、死亡记录的关联。
   return JSON.stringify({ ...o, serial: 0 });
 }

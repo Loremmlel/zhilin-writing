@@ -1,7 +1,7 @@
 import type { Command, GamePosition } from '../../engine';
 import { definition, summonRerolls } from '../../engine';
 
-/** The rule-owned options also drive card actions and AI. Opening this disclosure spends nothing. */
+/** 规则选项同时驱动卡牌操作与 AI；展开说明不消耗资源。 */
 export function RerollControls({
   state,
   run,

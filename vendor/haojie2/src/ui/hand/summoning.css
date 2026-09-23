@@ -1,4 +1,4 @@
-/* hand/summoning.css — feature-owned rules; responsive states stay with their component. */
+/* 功能样式及响应式状态就近维护，与所属组件保持一致。 */
 .hj-game .summon-controls {
   display: flex;
   flex-direction: column;

@@ -1,4 +1,4 @@
-/* Paper, ink and short impulses. No full-board flashes or animated blur filters. */
+/* 延续纸面、墨色和短促动效，不使用全棋盘闪烁或动态模糊滤镜。 */
 .hj-game .effects-layer {
   position: absolute;
   inset: 0;
@@ -313,7 +313,7 @@
     transform: translateY(-48px);
   }
 }
-/* Reduced motion retains target/range/outcome, never a moving projectile at SVG (0,0). */
+/* 减少动态效果时保留目标、范围和结果，不能把飞行物留在 SVG 原点。 */
 .hj-game .vfx-reduced :is(.vfx-flight, .vfx-launch, .vfx-afterimage) {
   display: none;
 }

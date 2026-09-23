@@ -1,5 +1,5 @@
 import type { Player } from '../engine/types';
-/** Session metadata, not combat state: saved modes never influence damage or randomness. */
+/** 对局元数据而非战斗状态；保存的模式不影响伤害或随机结果。 */
 export interface MatchSettings {
   mode: 'local' | 'ai';
   rules?: 'classic' | 'shrine';

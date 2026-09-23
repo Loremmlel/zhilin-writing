@@ -1,7 +1,8 @@
+import { UnitText } from '../library/UnitReference';
 import { useState } from 'react';
 import { availableSyntheses, definition, synthesisDestinations } from '../../engine';
 import type { ActionSpec, Command, GamePosition } from '../../engine';
-/** Transient selection only; material removal + deployment are one engine command. */
+/** 只保存临时材料选择；移除材料与部署由同一引擎命令原子完成。 */
 export function SynthesisControls({
   state: s,
   run,
@@ -43,7 +44,12 @@ export function SynthesisControls({
       </div>
       {option && (
         <>
-          <p className="synthesis-description">{definition(option.recipe.result).description}</p>
+          <p>
+            <UnitText>{`${definition(option.recipe.material).name} × 3 → ${definition(option.recipe.result).name}`}</UnitText>
+          </p>
+          <p className="synthesis-description">
+            <UnitText>{definition(option.recipe.result).description}</UnitText>
+          </p>
           <fieldset disabled={disabled}>
             <legend>选择材料 · {selected.length}/3</legend>
             {option.ids.map((id) => {
@@ -65,7 +71,7 @@ export function SynthesisControls({
                     }
                   />
                   <span>
-                    {definition(option.recipe.material).name}
+                    <UnitText>{definition(option.recipe.material).name}</UnitText>
                     <small>{label}</small>
                   </span>
                 </label>

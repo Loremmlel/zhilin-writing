@@ -1,4 +1,6 @@
 export * from './types';
+export { KEYWORDS, KEYWORD_IDS, keywordDefinition, effectKeyword } from './library/keywords';
+export type { KeywordId, KeywordDefinition, RuleReference } from './library/keywords';
 export {
   CATALOG,
   LIBRARY,
@@ -8,9 +10,9 @@ export {
   SUMMON_POOL,
   ULTIMATE_POOL,
 } from './catalog';
-export { createGame, createDemoGame, applyCommand, commandError, isLegal } from './game';
-export { createSession, dispatch, undo, redo, parseSession, validState } from './history';
-export type { Session } from './history';
+export { createGame, createDemoGame, applyCommand, commandError, isLegal } from './commands/game';
+export { createSession, dispatch, undo, redo, parseSession, validState } from './session/history';
+export type { Session } from './session/history';
 export {
   getStats,
   faction,
@@ -25,7 +27,7 @@ export {
   passive,
   age,
   storageRemaining,
-} from './state';
+} from './core/state';
 export {
   WIDTH,
   HEIGHT,
@@ -47,9 +49,9 @@ export {
   pathDirection,
   other,
   basePoint,
-} from './geometry';
-export { unitActions, cardActions, reactionAction, actionError } from './options';
-export type { ActionSpec, SelectionStep } from './options';
+} from './core/geometry';
+export { unitActions, cardActions, reactionAction, actionError } from './commands/options';
+export type { ActionSpec, SelectionStep } from './commands/options';
 
 export {
   SYNTHESIS_RECIPES,
@@ -57,14 +59,20 @@ export {
   synthesisMaterials,
   synthesisPlacement,
   synthesisDestinations,
-} from './synthesis';
-export type { SynthesisRecipe } from './synthesis';
+} from './setup/synthesis';
+export type { SynthesisRecipe } from './setup/synthesis';
 export { COMBAT_RULES } from './catalog';
-export { firelordStrike } from './firelord';
-export { attackAuraSources, piercing, healingAttack, counterChance } from './state';
-export { hitPullDestination, hutSpawnPoints, canSkipReaction } from './reactions';
-export { availableGuardians, guardProtections } from './protection';
-export { canRerollWith, rerollCommands, summonRerolls, summonPool } from './summoning';
+export { firelordStrike } from './commands/firelord';
+export {
+  attackAuraSources,
+  piercing,
+  healingAttack,
+  counterChance,
+  canCounterSpell,
+} from './core/state';
+export { hitPullDestination, hutSpawnPoints, canSkipReaction } from './commands/reactions';
+export { availableGuardians, guardProtections } from './core/protection';
+export { canRerollWith, rerollCommands, summonRerolls, summonPool } from './setup/summoning';
 
 export { SHRINE_POOL, FLAG_CELLS } from './catalog';
 export {
@@ -77,7 +85,7 @@ export {
   signedAttack,
   canDeployKind,
   isHookImmune,
-} from './traits';
+} from './core/traits';
 export {
   landmarkAt,
   liveLandmark,
@@ -85,12 +93,12 @@ export {
   canChooseSummon,
   selectableSummons,
   commandSummonPool,
-} from './shrines';
+} from './setup/shrines';
 
-export { inspectCommand, queryCommandError, canAttemptCommand } from './game';
-export type { CommandInspection } from './game';
-export { parseCommand, actorCommandError, applyPlayerCommand } from './authority';
-export { getPlayerView, HAOJIE_RULESET, PLAYER_VIEW_VERSION } from './player-view';
-export type { PlayerView } from './player-view';
+export { inspectCommand, queryCommandError, canAttemptCommand } from './commands/game';
+export type { CommandInspection } from './commands/game';
+export { parseCommand, actorCommandError, applyPlayerCommand } from './online/authority';
+export { getPlayerView, HAOJIE_RULESET, PLAYER_VIEW_VERSION } from './online/player-view';
+export type { PlayerView } from './online/player-view';
 
-export { canRebasePlayerCommand } from './authority';
+export { canRebasePlayerCommand } from './online/authority';
