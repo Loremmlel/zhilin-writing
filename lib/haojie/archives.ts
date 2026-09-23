@@ -1,5 +1,5 @@
 import { pageBounds, PAGE_SIZE } from "../pagination.ts";
-import { HaojieError } from "./contracts.ts";
+import { HAOJIE_ENGINE_VERSION, HaojieError } from "./contracts.ts";
 
 export type ArchiveRoom = {
   id: string;
@@ -79,7 +79,7 @@ export async function abortRoom(
         .prepare(
           `INSERT INTO haojie_records (room_id, revision, record_json)
         SELECT id, revision, json_object('revision', revision, 'kind', 'admin-abort', 'actorId', ?, 'createdAt', ?,
-          'state', json(state_json), 'status', status, 'winner', NULL, 'endReason', 'aborted') FROM haojie_rooms WHERE id = ?`,
+          'status', status, 'winner', NULL, 'endReason', 'aborted') FROM haojie_rooms WHERE id = ?`,
         )
         .bind(actorId, now, id),
     ]);
@@ -99,6 +99,13 @@ export async function archiveRoom(db: D1Database, bucket: R2Bucket, id: string) 
   if (!["finished", "cancelled"].includes(room.status))
     throw new HaojieError("ROOM_NOT_FINISHED", 409, "对局尚未结束。");
   if (room.archiveKey) return room.archiveKey;
+  const incremental = room.engineVersion === HAOJIE_ENGINE_VERSION;
+  const checkpoint = incremental
+    ? await db
+        .prepare("SELECT state_json AS stateJson FROM haojie_rooms WHERE id = ?")
+        .bind(id)
+        .first<{ stateJson: string | null }>()
+    : null;
   const metadata = {
     id,
     mode: room.mode,
@@ -120,7 +127,9 @@ export async function archiveRoom(db: D1Database, bucket: R2Bucket, id: string) 
   };
   const encoder = new TextEncoder();
   const prefix = encoder.encode(
-    JSON.stringify({ formatVersion: 1, room: metadata }).slice(0, -1) + ',"records":[',
+    JSON.stringify({ formatVersion: incremental ? 2 : 1, room: metadata }).slice(0, -1) +
+      (incremental ? ',"present":' + (checkpoint?.stateJson ?? "null") : "") +
+      ',"records":[',
   );
   const suffix = encoder.encode("]}");
   const size = await db

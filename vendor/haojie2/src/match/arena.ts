@@ -27,7 +27,7 @@ export class Arena {
     this.session = parseSession(JSON.stringify(session));
   }
   static create(seed: number, match: MatchSettings) {
-    return new Arena({ ...createSession(createGame(seed)), match });
+    return new Arena(createSession(createGame(seed, match.rules), match));
   }
   get computerTurn() {
     return ownsComputerDecision(this.session);

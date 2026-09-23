@@ -1,7 +1,7 @@
 import type { Session } from '../../engine';
-import { createSession, parseSession } from '../../engine';
+import { createSession, parseSession, serializeSession } from '../../engine';
 
-/** 存储键跟随存档格式，不跟随发布版本或构建 SHA。 */
+/** 保留历史存储键，由解析器识别快照或增量格式，不因升级丢失旧局。 */
 export const DEFAULT_STORAGE_KEY = 'haojie.session.v2';
 export type StoragePort = Pick<Storage, 'getItem' | 'setItem'>;
 export type SaveStatus = 'saved' | 'snapshot' | 'disabled' | 'blocked' | 'unavailable';
@@ -17,7 +17,15 @@ export function readStoredSession(storage: StoragePort, key: string, fallback: (
     const raw = storage.getItem(key);
     if (raw) {
       try {
-        return { session: parseSession(raw), notice: '已恢复浩劫对局。', writable: true };
+        const session = parseSession(raw);
+        return {
+          session,
+          notice:
+            session.record?.origin === 'opening'
+              ? '已恢复浩劫对局及开局以来的完整记录。'
+              : '已恢复浩劫对局；记录从已知局面开始，不含此前过程。',
+          writable: true,
+        };
       } catch {
         return {
           session: fallback(),
@@ -47,11 +55,11 @@ export function writeStoredSession(
   session: Session,
 ): SaveStatus {
   try {
-    storage.setItem(key, JSON.stringify(session));
+    storage.setItem(key, serializeSession(session));
     return 'saved';
   } catch {
     try {
-      storage.setItem(key, JSON.stringify(createSession(session.present, session.match)));
+      storage.setItem(key, serializeSession(createSession(session.present, session.match)));
       return 'snapshot';
     } catch {
       return 'unavailable';

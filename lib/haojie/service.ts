@@ -444,7 +444,8 @@ export async function mutateRoom(
           (room_id, actor_id, request_id, kind, request_hash, revision, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
           )
           .bind(id, actor, input.requestId, input.kind, hash, row.revision + 1, now),
-        // Append-only audit history is independent of the bounded undo stack.
+        // Keep the opening state and each command, including commands later undone.
+        // The room row remains a single current-state checkpoint for cheap polls.
         db
           .prepare(`INSERT INTO haojie_records (room_id, revision, record_json) VALUES (?, ?, ?)`)
           .bind(
@@ -456,9 +457,9 @@ export async function mutateRoom(
               actorId: actor,
               player: input.kind === "join" ? 2 : viewer,
               createdAt: now,
-              request: input,
+              ...(input.kind === "command" ? { command: input.command } : {}),
               undoneCommandRevision: restoredRevision,
-              state: nextState,
+              ...(input.kind === "join" ? { initial: nextState } : {}),
               undo,
               status: nextStatus,
               winner,

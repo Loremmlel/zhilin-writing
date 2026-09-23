@@ -12,13 +12,13 @@ import { COMBAT_RULES } from '../../engine/catalog';
 import { definition, isStored } from '../../engine/catalog';
 import {
   basePoint,
-  canPlace,
+  createPlacementQuery,
   cells,
   distance,
   neighbors,
   other,
   targets,
-  movementPath,
+  deploymentRows,
 } from '../../engine/core/geometry';
 import { allegiance, asTarget, getStats, has, passive, template } from '../../engine/core/state';
 import type { Card, GameState, Player, Point, Unit } from '../../engine/types';
@@ -139,10 +139,14 @@ export function materialValue(s: GameState, u: Unit): number {
   }
   return Math.max(1, value);
 }
-export function unitValue(s: GameState, u: Unit): number {
-  let value = materialValue(s, u);
-  value += payloadOpportunity(s, u, 'execute', (v) => materialValue(s, v));
-  value += payloadOpportunity(s, u, 'convert', (v) => materialValue(s, v));
+export function unitValue(
+  s: GameState,
+  u: Unit,
+  valueOf: (v: Unit) => number = (v) => materialValue(s, v),
+): number {
+  let value = valueOf(u);
+  value += payloadOpportunity(s, u, 'execute', valueOf);
+  value += payloadOpportunity(s, u, 'convert', valueOf);
   for (const e of u.effects)
     if (e.type === 'mark') value -= 5 * 0.9 * markFollowUp(s, asTarget(u), e.owner, e.until);
   return value;
@@ -181,7 +185,13 @@ export function headValue(heads: number): number {
   );
 }
 /** 估算最早有效接敌、掩护和回应窗口中的暴露风险；未蓄力定炮不能直接计为100点威胁。 */
-export function placementValue(s: GameState, u: Unit, p: Point, nextFullTurn = false): number {
+export function placementValue(
+  s: GameState,
+  u: Unit,
+  p: Point,
+  nextFullTurn = false,
+  valueOf?: (v: Unit) => number,
+): number {
   const moved = u.x === p.x && u.y === p.y ? u : { ...u, x: p.x, y: p.y },
     st = statsFor(s, moved),
     enemyBase = basePoint(other(u.owner));
@@ -236,7 +246,7 @@ export function placementValue(s: GameState, u: Unit, p: Point, nextFullTurn = f
   score -= Math.min(moved.hp, danger) * exposureSlope;
   if (danger >= moved.hp)
     score -= nextFullTurn
-      ? Math.min(materialValue(s, moved) * 0.45, 55)
+      ? Math.min((valueOf ? valueOf(moved) : materialValue(s, moved)) * 0.45, 55)
       : Math.min(45, 14 + st.attack * 0.35);
   const stacked = occupantsAt(s, p).filter((v) => v.id !== u.id && v.owner === u.owner).length;
   if (!nextFullTurn && u.kind === 'u25' && stacked) score -= Math.pow(stacked, 1.35) * 2;
@@ -253,11 +263,12 @@ function formation(s: GameState, side: Player): number {
   const view = actionWindow(s, side, true),
     home = basePoint(side),
     foe = basePoint(other(side));
+  const query = createPlacementQuery(view);
   const lanes = new Set<number>(),
     stacks = new Map<string, number>();
   let value = 0;
   const enemy = targets(view).filter((t) => t.owner !== side);
-  for (const u of view.units.filter((v) => v.owner === side)) {
+  for (const u of view.units.filter((v) => allegiance(view, v) === side)) {
     const st = statsFor(view, u);
     const contacts = readyAttack(view, u)
       ? enemy.filter((t) => Number.isFinite(hitDistance(view, u, t)))
@@ -278,8 +289,8 @@ function formation(s: GameState, side: Player): number {
             { x: u.x - 3, y: u.y },
             { x: u.x, y: u.y + 3 },
             { x: u.x, y: u.y - 3 },
-          ].filter((p) => !!movementPath(view, u, p, 3, true))
-        : neighbors(u).filter((p) => canPlace(view, u, p));
+          ].filter((p) => !!query.movementPath(u, p, 3, true))
+        : neighbors(u).filter((p) => query.canPlace(u, p));
     if (!points.length && !contacts.length) value -= 12;
     else if (!contacts.length) {
       const forward = points.filter((p) => distance(p, foe) < distance(u, foe)).length;
@@ -316,10 +327,11 @@ export function explainEvaluation(s: GameState, side: Player): EvaluationBreakdo
     result.total = result.bases;
     return result;
   }
+  const dangers = { 1: 0, 2: 0 };
   for (const p of [1, 2] as Player[]) {
     const sign = p === side ? 1 : -1,
       hp = s.bases[p],
-      danger = baseThreat(s, p);
+      danger = (dangers[p] = baseThreat(s, p));
     result.bases +=
       sign *
       (hp * 3.1 -
@@ -331,7 +343,12 @@ export function explainEvaluation(s: GameState, side: Player): EvaluationBreakdo
         s.bonus[p] * 28 +
         (s.phase === 'play' && s.active === p ? Math.max(0, s.summonSlots) * 28 : 0) +
         s.hands[p].reduce((n, c) => n + cardValue(s, c, p), 0));
-    result.position += sign * s.deployRows[p].filter((y) => (p === 1 ? y > 8 : y < 6)).length * 8;
+    // 行权只能提供落子机会；有待部署手牌时更有价值，不能盖过棋子损失和基地危险。
+    const reinforcements = Math.min(2, s.hands[p].filter((c) => canDeployKind(c.kind)).length);
+    result.position +=
+      sign *
+      deploymentRows(s, p).filter((y) => (p === 1 ? y > 8 : y < 6)).length *
+      (2 + reinforcements * 8);
     result.formation += sign * formation(s, p);
     for (const e of s.baseEffects[p])
       if (e.type === 'mark')
@@ -351,12 +368,23 @@ export function explainEvaluation(s: GameState, side: Player): EvaluationBreakdo
         .filter((l) => l.owner === p && l.dormantSince !== undefined)
         .reduce((n, l) => n + shrinePrior(l.kind) * 0.12, 0);
   }
-  const assets: Record<Player, number> = { 1: 0, 2: 0 };
-  for (const u of allPieces(s)) assets[u.owner] += materialValue(s, u);
+  // 只在一次同步评估内按对象身份复用；同 ID 的位移/效果预览不会命中原棋子的结果。
+  const materials = new Map<Unit, number>();
+  const valueOf = (u: Unit): number => {
+    let value = materials.get(u);
+    if (value === undefined) {
+      value = materialValue(s, u);
+      materials.set(u, value);
+    }
+    return value;
+  };
+  const assets = { 1: 0, 2: 0 };
+  for (const u of allPieces(s)) if (allegiance(s, u)) assets[u.owner] += valueOf(u);
   for (const u of allPieces(s)) {
+    if (!allegiance(s, u)) continue;
     const sign = u.owner === side ? 1 : -1;
-    result.force += sign * unitValue(s, u);
-    result.position += sign * placementValue(s, u, u, true);
+    result.force += sign * unitValue(s, u, valueOf);
+    result.position += sign * placementValue(s, u, u, true, valueOf);
     // 将明确的场面优势转化为对基地的接触压力，避免无休止地在附近换子。
     // 这是有界、对称的策略效用，并不保证每次推进都安全。
     const st = statsFor(s, u);
@@ -365,7 +393,7 @@ export function explainEvaluation(s: GameState, side: Player): EvaluationBreakdo
       (assets[u.owner] - assets[other(u.owner)]) /
         Math.max(100, assets[u.owner] + assets[other(u.owner)]),
     );
-    if (st.move > 0 && st.attack > 0 && !st.frozen && s.bases[u.owner] > baseThreat(s, u.owner))
+    if (st.move > 0 && st.attack > 0 && !st.frozen && s.bases[u.owner] > dangers[u.owner])
       result.position +=
         (sign * advantage * 24) /
         (1 + Math.max(0, distance(u, basePoint(other(u.owner))) - st.range) * 0.25);

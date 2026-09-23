@@ -77,7 +77,11 @@ export function useGameController(props: HaojieGameProps) {
     replace(next, true);
     interaction.setSelectedId(null);
     computer.resume();
-    setNotice('浩劫存档已载入，包含完整悔棋历史。');
+    setNotice(
+      next.record?.origin === 'opening'
+        ? '存档已载入，包含开局以来的完整记录；可悔棋最近60步。'
+        : '存档已载入；增量记录从已知局面开始，不含此前过程。',
+    );
   }
   function newGame(seedText: string, demo: boolean, match: MatchSettings = LOCAL_MATCH) {
     try {

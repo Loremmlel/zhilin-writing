@@ -1,5 +1,5 @@
 import type { Definition, Kind, Point } from './types';
-export const RULESET_ID = '3.0-feedback4-counter-freeze-2026-09-21';
+export const RULESET_ID = '3.0-feedback5-live-deployment-2026-09-23';
 /** 结算与 AI 只读估算共用的战斗数值。 */
 export const COMBAT_RULES = {
   sacrificeMaxHpCost: 20,
@@ -206,7 +206,7 @@ export const CATALOG: Definition[] = [
     actions: 2,
     move: 2,
     description:
-      '与敌方随从四向相邻时，攻击次数与移动距离各−1。攻击模式不可改为移动模式。死亡后在原地留下0/70/0/0/0的己方墓地。',
+      '与敌方随从四向相邻时，攻击次数与移动距离各−1。攻击模式不可改为移动模式。死亡后在原地留下0/70/0/0/0的中立墓地。',
   },
   {
     id: 13,
@@ -338,7 +338,7 @@ export const CATALOG: Definition[] = [
     actions: 2,
     move: 2,
     description:
-      '20/20/2/2/2。死亡判定：1/2概率敌方不能获得这颗人头；否则对伤害来源造成30伤害。无随从伤害来源时不会虚构反击目标。',
+      '20/20/2/2/2。死亡判定：1/2概率敌方不能获得这颗人头；否则对伤害来源造成20伤害。伤害法术以施法方基地为来源；来源已离场时不反击，反伤不再反伤。',
   },
   {
     id: 21,
@@ -427,7 +427,7 @@ export const CATALOG: Definition[] = [
     actions: 1,
     move: 1,
     description:
-      '每击杀一个敌方随从依次升级：①生命上限+10并治疗10；②攻击+5；③射程+1；然后循环。包括敌方墓地与路障。',
+      '每击杀一个敌方随从依次升级：①生命上限+10并治疗10；②攻击+5；③射程+1；然后循环。包括敌方路障，不包括中立墓地。',
   },
   {
     id: 'grave',
@@ -440,7 +440,8 @@ export const CATALOG: Definition[] = [
     range: 0,
     actions: 0,
     move: 0,
-    description: '跑得快的死亡遗留物。可被攻击、治疗、献祭、策反，也参与行控制权与残影人数计算。',
+    description:
+      '跑得快的中立死亡遗留物。双方均可攻击；不属于友方，不可用重铸献祭，不计双方部署行人数，死亡不提供人头。',
   },
   {
     id: 'wall',
@@ -793,7 +794,7 @@ export const CATALOG: Definition[] = [
     actions: 1,
     move: 0.5,
     description:
-      '范围内友方死亡时，可在范围内合法空地召唤一只超级跑得快，并扣自身10生命上限。每次死亡分别处理；无处放置或被沉默则不触发；冰冻不关闭光环。',
+      '范围内除普通超级跑得快以外的友方死亡时，可在范围内合法空地召唤一只普通超级跑得快，并扣自身10生命上限。超级跑得快无论来自抽卡或小屋，其死亡均不触发。无处放置或上限不足10则不召唤、不扣费；沉默关闭光环，冰冻不关闭。',
     skill: '死亡召唤',
   },
   {

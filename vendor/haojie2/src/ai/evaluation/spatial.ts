@@ -1,10 +1,19 @@
 import { allPieces } from '../../engine/core/traits';
 import { attackRoutes, frontal } from '../../engine/core/geometry';
 /** 只读空间估算；最终命令始终使用引擎的精确路径及合法性校验。 */
-import { cells, basePoint, inside, distance, neighbors } from '../../engine/core/geometry';
+import {
+  ALL_CELLS,
+  cells,
+  basePoint,
+  inside,
+  distance,
+  neighbors,
+} from '../../engine/core/geometry';
 import { allegiance, getStats, resetUnit, piercing, hasWeapon } from '../../engine/core/state';
 import type { GameState, Player, Point, Stats, Target, Unit } from '../../engine/types';
 const index = (p: Point) => (p.y - 1) * 9 + p.x - 1;
+// 固定棋盘的邻接顺序来自引擎；只保存格号，不缓存会随局面变化的阻挡或阵营。
+const adjacentCells = ALL_CELLS.map((p) => neighbors(p).map(index));
 interface Spatial {
   occupants: Unit[][];
   stats: Map<string, Stats>;
@@ -76,32 +85,33 @@ export function actionWindow(s: GameState, side: Player, next = false): GameStat
 /** 敌方占格是路径终点：可命中但不能穿过。对当前占位的可达性等价于 attackPath，但不分配路径数组。评估候选落点时，ignoreId 排除防守者的旧占位。 */
 export function attackField(s: GameState, u: Unit, range: number, ignoreId = ''): Int16Array {
   const data = spatial(s),
-    k = `${u.id}:${u.x},${u.y}:${u.size}:${range}:${ignoreId}:${hasWeapon(u, 'u28')}`;
+    pierce = hasWeapon(u, 'u28'),
+    k = `${u.id}:${u.x},${u.y}:${u.size}:${range}:${ignoreId}:${pierce}`;
   const old = data.reaches.get(k);
   if (old) return old;
   const distances = new Int16Array(117).fill(-1);
-  const queue: Point[] = [];
+  const queue: number[] = [];
   for (const p of cells(u))
     if (inside(p)) {
-      distances[index(p)] = 0;
-      queue.push(p);
+      const at = index(p);
+      distances[at] = 0;
+      queue.push(at);
     }
-  const enemyBase = basePoint(u.owner === 1 ? 2 : 1);
+  const enemyBase = index(basePoint(u.owner === 1 ? 2 : 1));
   for (let i = 0; i < queue.length; i++) {
     const from = queue[i],
-      depth = distances[index(from)];
+      depth = distances[from];
     if (depth >= range) continue;
-    for (const p of neighbors(from)) {
-      const at = index(p);
+    for (const at of adjacentCells[from]) {
       if (distances[at] >= 0) continue;
       distances[at] = depth + 1;
       const blocked =
-        (p.x === enemyBase.x && p.y === enemyBase.y) ||
-        (!hasWeapon(u, 'u28') &&
+        at === enemyBase ||
+        (!pierce &&
           data.occupants[at].some(
             (v) => v.id !== u.id && v.id !== ignoreId && allegiance(s, v) !== u.owner,
           ));
-      if (!blocked) queue.push(p);
+      if (!blocked) queue.push(at);
     }
   }
   data.reaches.set(k, distances);
@@ -119,9 +129,13 @@ export function hitDistance(s: GameState, u: Unit, t: Target, ignoreId = ''): nu
     return shortest <= st.range ? shortest : Infinity;
   }
   const field = attackField(s, u, st.range, ignoreId);
-  return Math.min(
-    ...ends.filter(inside).map((p) => (field[index(p)] < 0 ? Infinity : field[index(p)])),
-  );
+  let shortest = Infinity;
+  for (const p of ends) {
+    if (!inside(p)) continue;
+    const d = field[index(p)];
+    if (d >= 0 && d < shortest) shortest = d;
+  }
+  return shortest;
 }
 export function isFrontHit(s: GameState, u: Unit, t: Target, ignoreId = ''): boolean {
   if (!piercing(u) || hasWeapon(u, 'u28')) {

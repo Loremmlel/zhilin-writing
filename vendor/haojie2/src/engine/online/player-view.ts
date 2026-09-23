@@ -15,9 +15,10 @@ import type {
 } from '../types';
 import { definition } from '../catalog';
 import { ensure } from '../core/state';
+import { deploymentRows } from '../core/geometry';
 
 /** 规则变化时更新版本；宿主还必须让两端构建固定在同一源码提交。 */
-export const HAOJIE_RULESET = '3.0-feedback4-counter-freeze' as const;
+export const HAOJIE_RULESET = '3.0-feedback5-live-deployment' as const;
 export const PLAYER_VIEW_VERSION = 1 as const;
 export interface PlayerView {
   viewVersion: typeof PLAYER_VIEW_VERSION;
@@ -194,7 +195,7 @@ export function getPlayerView(s: GameState, viewer: Player): PlayerView {
     heads: pair(s.heads, (v) => v),
     hands: pair(s.hands, (v) => v.map(card)),
     bonus: pair(s.bonus, (v) => v),
-    deployRows: pair(s.deployRows, (v) => [...v]),
+    deployRows: { 1: deploymentRows(s, 1), 2: deploymentRows(s, 2) },
     units: s.units.map(unit),
     pending: s.pending.map((r) => ({
       ...pick(r, ['kind', 'targetId', 'owner', 'amount']),

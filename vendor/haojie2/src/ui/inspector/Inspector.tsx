@@ -1,6 +1,6 @@
 import type { Dispatch, SetStateAction } from 'react';
 import type { ActionSpec, GamePosition } from '../../engine';
-import { definition, faction, getStats, occupants, landmarkAt } from '../../engine';
+import { definition, faction, getStats, occupants, landmarkAt, allegiance } from '../../engine';
 import type { Intent } from '../game/interaction/selection';
 import { DefinitionStats } from '../shared/DefinitionStats';
 import { Icon, Rune } from '../shared/visuals';
@@ -39,7 +39,12 @@ export function Inspector({
   const selectedBase = selectedId === 'base-1' ? 1 : selectedId === 'base-2' ? 2 : null;
   const deaths = inspected
     ? s.deaths.filter(
-        (r) => r.owner === inspected.owner && !r.revived && r.ply < s.ply && r.ply >= s.ply - 4,
+        (r) =>
+          r.kind !== 'grave' &&
+          r.owner === inspected.owner &&
+          !r.revived &&
+          r.ply < s.ply &&
+          r.ply >= s.ply - 4,
       )
     : [];
 
@@ -55,12 +60,12 @@ export function Inspector({
         {d ? (
           <>
             <div className="inspector-profile">
-              <Rune kind={d.id} owner={card ? s.active : inspected!.owner} large />
+              <Rune kind={d.id} owner={card ? s.active : allegiance(s, inspected!)} large />
               <span className="role-chip">
                 {d.role}
                 {card
                   ? ' · 手牌'
-                  : ` · ${faction(inspected!.owner)}${stats?.frozen ? ' · 冰冻' : ''}`}
+                  : ` · ${allegiance(s, inspected!) ? faction(inspected!.owner) : '中立'}${stats?.frozen ? ' · 冰冻' : ''}`}
               </span>
               <h3>{d.name}</h3>
             </div>

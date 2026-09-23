@@ -20,6 +20,7 @@ export function normalizeLegacyGuards(s: GamePosition) {
 }
 /** 伤害、AI 和状态面板共用；入场时间相同时按数组顺序决定先后。 */
 export function guardProtections(s: GamePosition, u: Unit) {
+  if (!allegiance(s, u)) return [];
   const used = spentGuardSources(s, u);
   return s.units
     .filter(

@@ -23,7 +23,7 @@ const initial: RoomSnapshot = {
     kind: "snapshot",
     view: {
       viewVersion: 1,
-      ruleset: "3.0-feedback4-counter-freeze",
+      ruleset: "3.0-feedback5-live-deployment",
       viewer: 1,
       state: {
         version: 2,

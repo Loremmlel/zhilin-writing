@@ -1,4 +1,5 @@
 import { redo, undo } from '../engine/session/history';
+import { restoreRecord } from '../engine/session/recording';
 import type { Session } from '../engine/session/history';
 import type { Command, GameState } from '../engine/types';
 import { LOCAL_MATCH } from './settings';
@@ -13,11 +14,16 @@ const humanNode = (s: GameState, human: number) =>
 export function rewindMatch(s: Session, forward = false): Session {
   if (matchSettings(s).mode === 'local') return forward ? redo(s) : undo(s);
   const human = matchSettings(s).human;
+  if (!forward && s.record && s.humanAnchorCursor !== undefined)
+    return restoreRecord({ ...s.record, cursor: s.humanAnchorCursor }, s.match);
   if (!forward && s.humanAnchor && !s.past.some((state) => humanNode(state, human))) {
     return {
       ...s,
       present: s.humanAnchor,
       humanAnchor: undefined,
+      humanAnchorCursor: undefined,
+      // 旧档的人类锚点可能早于命令起点，不能把原记录附到另一个局面上。
+      record: undefined,
       past: [],
       future: [...s.past, s.present].slice(-60),
     };
@@ -29,6 +35,7 @@ export function rewindMatch(s: Session, forward = false): Session {
     next = after;
   }
   if (next === s) return s;
+  if (next.record) return next;
   return {
     ...next,
     humanAnchor:

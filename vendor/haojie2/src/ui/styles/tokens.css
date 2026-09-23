@@ -40,6 +40,10 @@
 .hj-game p {
   margin: 0;
 }
+.hj-game .p0 {
+  --side: var(--muted);
+  --side-soft: var(--paper);
+}
 .hj-game .p1 {
   --side: var(--teal);
   --side-soft: var(--teal-soft);

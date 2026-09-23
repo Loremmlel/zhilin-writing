@@ -13,6 +13,7 @@ import {
   signedAttack,
   hasAura,
   canAttackFriend,
+  canDeployKind,
 } from '../../engine/core/traits';
 import { regularSummonCommands, summonChoices } from './shrines';
 import { availableSyntheses, synthesisDestinations } from '../../engine/setup/synthesis';
@@ -33,10 +34,11 @@ import {
   attackPath,
   selectableAttackRoutes,
   canPlace,
+  createPlacementQuery,
+  deploymentRows,
   cells,
   distance,
   equal,
-  movementPath,
   neighbors,
   occupants,
   targets,
@@ -213,6 +215,26 @@ function pointRank(s: GameState, a: ActionSpec, c: Command, p: Point, u?: Unit):
       placementValue(s, ghost, p) +
       baseCoverValue(s, { ...ghost, ...p }) +
       payloadCoverValue(s, { ...ghost, ...p }, (v) => materialValue(s, v));
+    if (c.type === 'move' && u) {
+      const cards = s.hands[u.owner].filter((c) => canDeployKind(c.kind));
+      if (cards.length) {
+        const before = deploymentRows(s, u.owner);
+        const view = { ...s, units: s.units.map((v) => (v.id === u.id ? { ...v, ...p } : v)) };
+        const gained = deploymentRows(view, u.owner).filter((y) => !before.includes(y));
+        // 仅为可实际落子的增援保留推进候选；最终搜索继续比较暴露、反击和不推进。
+        if (
+          gained.length &&
+          cards.some((card) =>
+            ALL_CELLS.some(
+              (at) =>
+                gained.includes(at.y) &&
+                canPlace(view, template(card.kind, u.owner, 0, at), at, true),
+            ),
+          )
+        )
+          value += Math.min(2, cards.length) * 8;
+      }
+    }
     if (isRunner(ghost))
       value += occupants(s, p)
         .filter((v) => v.id !== ghost.id && v.owner !== ghost.owner)
@@ -260,7 +282,18 @@ function pointRank(s: GameState, a: ActionSpec, c: Command, p: Point, u?: Unit):
   }
   return u ? -distance(p, u) : 0;
 }
-function points(s: GameState, a: ActionSpec, c: Command): Point[] {
+interface FinalFilter {
+  rows?: number[];
+  targetId?: string;
+}
+// 过滤器仅在最后的参数选择步骤下推，不能改变中间步骤的 partial 截断结果。
+function points(
+  s: GameState,
+  a: ActionSpec,
+  c: Command,
+  filter?: FinalFilter,
+  rank = true,
+): Point[] {
   const u =
     allPieces(s).find((v) => v.id === c.unitId) ??
     (c.type === 'react' ? s.pending[0]?.source : undefined);
@@ -270,48 +303,57 @@ function points(s: GameState, a: ActionSpec, c: Command): Point[] {
     const v = allPieces(s).find((v) => v.id === c.targetId);
     return v ? expansionAnchors(s, v) : [];
   }
-  if (a.id === 'hut-spawn')
-    return hutSpawnPoints(s, s.pending[0]).sort(
-      (aPoint, bPoint) => pointRank(s, a, c, bPoint, u) - pointRank(s, a, c, aPoint, u),
-    );
+  if (a.id === 'hut-spawn') {
+    const raw = hutSpawnPoints(s, s.pending[0]);
+    return rank
+      ? raw.sort((aPoint, bPoint) => pointRank(s, a, c, bPoint, u) - pointRank(s, a, c, aPoint, u))
+      : raw;
+  }
+  const query = createPlacementQuery(s);
+  const card = c.type === 'deploy' ? s.hands[s.active].find((v) => v.id === c.cardId) : undefined;
+  const ghost = card ? template(card.kind, s.active, s.turns[s.active], ALL_CELLS[0]) : undefined;
+  const st = u ? getStats(s, u) : undefined;
+  const moveLimit = st ? (st.move % 1 ? st.move * 2 : st.move) : 0;
+  const straight = !!u && hasTrait(u, 13) && !u.silenced;
+  const hooked = a.id === 'hook' ? allPieces(s).find((v) => v.id === c.targetId) : undefined;
   const all = ALL_CELLS.filter((p) => {
+    if (filter?.rows && !filter.rows.includes(p.y)) return false;
     if (c.type === 'deploy') {
-      const card = s.hands[s.active].find((v) => v.id === c.cardId);
-      return !!card && canPlace(s, template(card.kind, s.active, s.turns[s.active], p), p, true);
+      return !!ghost && query.canPlace(ghost, p, true);
     }
     if (c.type === 'move' && u) {
-      const st = getStats(s, u);
-      const limit = st.move % 1 ? st.move * 2 : st.move;
-      return (
-        distance(u, p) <= limit && !!movementPath(s, u, p, limit, hasTrait(u, 13) && !u.silenced)
-      );
+      const limit = moveLimit;
+      return distance(u, p) <= limit && !!query.movementPath(u, p, limit, straight);
     }
-    if (a.id === 'dash' && u) return distance(u, p) <= 6 && !!movementPath(s, u, p, 6);
+    if (a.id === 'dash' && u) return distance(u, p) <= 6 && !!query.movementPath(u, p, 6);
     if (a.id === 'blast') return p.x < 9 && p.y < 13;
     if ((a.id === 'cross' || a.id === 'ice-mark') && u)
       return Math.abs(p.x - u.x) <= 5 && Math.abs(p.y - u.y) <= 5;
     if (a.id === 'hook' && u) {
-      const v = allPieces(s).find((v) => v.id === c.targetId);
+      const v = hooked;
       return (
         !!v &&
         !equal(v, p) &&
-        canPlace(s, v, p) &&
-        !!attackPath(s, u, asTarget({ ...v, ...p }), getStats(s, u).range)
+        query.canPlace(v, p) &&
+        !!attackPath(s, u, asTarget({ ...v, ...p }), st!.range)
       );
     }
     if (a.id === 'wall' && u)
-      return (
-        canPlace(s, template('wall', u.owner, 0, p), p) &&
-        !!attackPath(s, u, p, getStats(s, u).range)
-      );
-    if (a.id === 'revive' || a.id === 'hut-spawn')
-      return !!u && distance(p, u) <= getStats(s, u).range + 1;
+      return query.canPlace(template('wall', u.owner, 0, p), p) && !!attackPath(s, u, p, st!.range);
+    if (a.id === 'revive' || a.id === 'hut-spawn') return !!u && distance(p, u) <= st!.range + 1;
     return true;
   });
+  if (!rank) return all;
   const ranked = all.map((p) => ({ p, score: pointRank(s, a, c, p, u) }));
   return ranked.sort((a, b) => b.score - a.score).map((v) => v.p);
 }
-function choices(s: GameState, a: ActionSpec, c: Command, step: SelectionStep): Command[] {
+function choices(
+  s: GameState,
+  a: ActionSpec,
+  c: Command,
+  step: SelectionStep,
+  filter?: FinalFilter,
+): Command[] {
   if (step.kind === 'path') return []; // AI 使用引擎生成的有界方向路径，不枚举任意手绘路径。
   if (step.kind === 'target') {
     const u =
@@ -320,6 +362,7 @@ function choices(s: GameState, a: ActionSpec, c: Command, step: SelectionStep): 
     const view = u && a.id === 'dash' && c.x !== undefined ? { ...u, x: c.x, y: c.y! } : u;
     return targets(s)
       .filter((t) => {
+        if (filter?.targetId !== undefined && t.id !== filter.targetId) return false;
         if (step.unitOnly && !t.unit) return false;
         const side = t.unit ? allegiance(s, t.unit) : t.owner,
           owner = decisionOwner(s);
@@ -428,10 +471,17 @@ function choices(s: GameState, a: ActionSpec, c: Command, step: SelectionStep): 
           : { ...c, [step.field ?? 'targetId']: t.id },
       );
   }
-  if (step.kind === 'point') return points(s, a, c).map((p) => ({ ...c, ...p }));
+  if (step.kind === 'point') return points(s, a, c, filter).map((p) => ({ ...c, ...p }));
   if (step.kind === 'death')
     return s.deaths
-      .filter((d) => d.owner === s.active && !d.revived && s.ply - d.ply <= 4 && s.ply > d.ply)
+      .filter(
+        (d) =>
+          d.kind !== 'grave' &&
+          d.owner === s.active &&
+          !d.revived &&
+          s.ply - d.ply <= 4 &&
+          s.ply > d.ply,
+      )
       .sort((a, b) => definition(b.kind).attack - definition(a.kind).attack)
       .map((d) => ({ ...c, deathId: d.id }));
   const lines = Array.from({ length: step.kind === 'row' ? 13 : 9 }, (_, i) => ({
@@ -454,12 +504,12 @@ function choices(s: GameState, a: ActionSpec, c: Command, step: SelectionStep): 
     }, 0);
   return lines.sort((a, b) => lineValue(b) - lineValue(a));
 }
-function expand(s: GameState, a: ActionSpec, partial: number): Command[] {
+function expand(s: GameState, a: ActionSpec, partial: number, filter?: FinalFilter): Command[] {
   let drafts = [a.command];
   for (let i = 0; i < a.steps.length; i++) {
     const last = i === a.steps.length - 1;
     drafts = drafts.flatMap((c) => {
-      const next = choices(s, a, c, a.steps[i]);
+      const next = choices(s, a, c, a.steps[i], last ? filter : undefined);
       return last ? next : next.slice(0, partial);
     });
   }
@@ -476,6 +526,7 @@ function expand(s: GameState, a: ActionSpec, partial: number): Command[] {
 export function* iterateCandidateGroups(
   s: GameState,
   difficulty: Difficulty,
+  deferPointRanking = false,
 ): Generator<CandidateGroup> {
   if (s.winner) return;
   const settings = DIFFICULTIES[difficulty];
@@ -483,6 +534,26 @@ export function* iterateCandidateGroups(
     const identity = a.id;
     a = { ...a, id: a.id.split(':')[0] };
     if (actionError(s, a)) return null;
+    // 仅延迟优先级与落点无关的一步动作；先用原枚举确认非空，保留原组序、分数及所有备选。
+    // getter 只供搜索内部的不可变快照使用，不把近似估分用于组筛选。
+    if (
+      deferPointRanking &&
+      a.steps.length === 1 &&
+      a.steps[0].kind === 'point' &&
+      ['deploy', 'skill', 'cast'].includes(a.command.type) &&
+      !commandSummonPool(s, a.command)
+    ) {
+      if (!points(s, a, a.command, undefined, false).length) return null;
+      let commands: Command[] | undefined;
+      return {
+        family: `${a.command.unitId ?? a.command.cardId ?? 'system'}:${identity}`,
+        get commands() {
+          return (commands ??= expand(s, a, settings.partial));
+        },
+        priority: commandPriority(s, a.command),
+        keep: settings.perAction,
+      };
+    }
     const commands = expand(s, a, settings.partial).flatMap((c) => {
       const pool = commandSummonPool(s, c);
       return pool ? summonChoices(s, c, pool === 'ultimate') : [c];
@@ -650,10 +721,32 @@ export function candidateGroups(s: GameState, difficulty: Difficulty): Candidate
   return [...iterateCandidateGroups(s, difficulty)];
 }
 
+/** 推进行权后的短续招，只枚举新开放行的合法部署，仍复用手牌模式与落点评分。 */
+export function deploymentCandidates(s: GameState, rows: number[]): Command[] {
+  return s.hands[s.active].flatMap((card) =>
+    cardActions(s, card)
+      .filter((a) => a.command.type === 'deploy')
+      .flatMap((a) =>
+        expand(s, a, 1, a.steps.length === 1 && a.steps[0].kind === 'point' ? { rows } : undefined)
+          .filter((c) => c.y !== undefined && rows.includes(c.y))
+          .slice(0, 2),
+      ),
+  );
+}
+
 /** 低成本战术续招：复用目标规则，不枚举全部移动。 */
-export function attackCandidates(s: GameState, id: string): Command[] {
+export function attackCandidates(s: GameState, id: string, targetId?: string): Command[] {
   const unit = allPieces(s).find((u) => u.id === id);
   if (!unit || s.pending.length) return [];
   const action = unitActions(s, unit).find((a) => a.command.type === 'attack');
-  return action && !actionError(s, action) ? expand(s, action, 1) : [];
+  if (!action || actionError(s, action)) return [];
+  const filter =
+    targetId !== undefined &&
+    action.steps.length === 1 &&
+    action.steps[0].kind === 'target' &&
+    (action.steps[0].field ?? 'targetId') === 'targetId'
+      ? { targetId }
+      : undefined;
+  const commands = expand(s, action, 1, filter);
+  return targetId === undefined ? commands : commands.filter((c) => c.targetId === targetId);
 }

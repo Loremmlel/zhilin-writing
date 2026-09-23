@@ -56,7 +56,7 @@ export function Rune({
   large = false,
 }: {
   kind: Kind;
-  owner?: Player;
+  owner?: Player | 0;
   large?: boolean;
 }) {
   const d = definition(kind);

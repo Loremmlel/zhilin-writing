@@ -97,7 +97,7 @@ export function protectedEffect(
   source: Source,
   ctx: Resolution,
 ): boolean {
-  if (!t.unit || source.owner === undefined || source.owner === t.owner) return false;
+  if (!t.unit || source.owner === undefined || source.owner === allegiance(s, t.unit)) return false;
   if (has(s, t.unit, 'immune')) {
     emit(s, {
       type: 'shield',
@@ -115,7 +115,7 @@ export function protectedEffect(
   const tower = s.units.find(
     (u) =>
       hasTrait(u, 'u15') &&
-      u.owner === t.owner &&
+      allegiance(s, t.unit!) === u.owner &&
       passive(s, u) &&
       attackPath(s, u, t, getStats(s, u).range),
   );
@@ -187,7 +187,7 @@ export function kill(
     source.owner !== undefined &&
     source.kind !== 'expire'
   ) {
-    if (source.owner !== u.owner && inheritor.equipment.includes('s15'))
+    if (allegiance(s, snap) === other(source.owner) && inheritor.equipment.includes('s15'))
       inheritor.bladeQualified = true;
     stealOnKill(s, inheritor, u);
   }
@@ -234,10 +234,12 @@ export function kill(
   const denyHead = enabled && hasTrait(u, 20) && random(s, [0, 0.5, 1]) < 0.5;
   const enemyKill =
     source.owner !== undefined &&
+    allegiance(s, snap) !== 0 &&
     source.owner !== u.owner &&
     source.kind !== 'expire' &&
     !source.ignoreHead;
   if (
+    allegiance(s, snap) !== 0 &&
     (enemyKill || (source.creditFriendly && source.owner === u.owner && !source.ignoreHead)) &&
     !denyHead
   ) {
@@ -286,23 +288,19 @@ export function kill(
     if (hasTrait(u, 'u21'))
       for (const friend of [...s.units])
         if (
-          friend.owner === u.owner &&
+          allegiance(s, friend) === u.owner &&
           attackPath(s, snap, asTarget(friend), getStats(s, snap).range)
         )
           heal(s, friend, 25, ctx);
-    if (
-      hasTrait(u, 20) &&
-      !denyHead &&
-      source.unit &&
-      source.unit.id !== u.id &&
-      !['sacrifice', 'expire'].includes(source.kind)
-    ) {
-      const target = s.units.find((v) => v.id === source.unit!.id);
+    if (hasTrait(u, 20) && !denyHead && !['sacrifice', 'expire', 'reflect'].includes(source.kind)) {
+      const target = targets(s).find((t) =>
+        source.base ? t.id === `base-${source.base}` : t.id === source.unit?.id && t.id !== u.id,
+      );
       if (target)
         damage(
           s,
-          asTarget(target),
-          30,
+          target,
+          20,
           { owner: u.owner, unit: snap, kind: 'reflect', retaliated: true },
           ctx,
         );
@@ -311,7 +309,8 @@ export function kill(
   for (const hut of [...s.units])
     if (
       hasTrait(hut, 'u22') &&
-      hut.owner === u.owner &&
+      u.kind !== 20 &&
+      allegiance(s, snap) === hut.owner &&
       passive(s, hut) &&
       attackPath(s, hut, asTarget(snap), getStats(s, hut).range)
     ) {
@@ -939,7 +938,7 @@ function resolveAttack(
   const victim = t.unit;
   if (victim && alive(s, victim) && !ally) {
     const conversion = u.effects.find((e) => e.type === 'convert' && activeEffect(s, e, u));
-    if (conversion && !refusesConversion(u) && attackLoss > 0) {
+    if (conversion && allegiance(s, victim) !== 0 && !refusesConversion(u) && attackLoss > 0) {
       u.effects = u.effects.filter((e) => e !== conversion);
       if (!protectedEffect(s, t, skillSource, ctx)) {
         victim.owner = u.owner;
@@ -987,7 +986,7 @@ function resolveAttack(
         targetId: victim.id,
         amount: 0,
       });
-  } else if (victim && !ally && attackLoss > 0)
+  } else if (victim && allegiance(s, victim) !== 0 && !ally && attackLoss > 0)
     u.effects = u.effects.filter((e) => !(e.type === 'convert' && activeEffect(s, e, u)));
 }
 export function pruneSiphons(s: GamePosition) {

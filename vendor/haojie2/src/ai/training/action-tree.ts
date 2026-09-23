@@ -10,7 +10,7 @@ import {
   validAttackRoute,
   WIDTH,
 } from '../../engine/core/geometry';
-import { ensure, getStats, piercing } from '../../engine/core/state';
+import { allegiance, ensure, getStats, piercing } from '../../engine/core/state';
 import { allPieces } from '../../engine/core/traits';
 import { parseCommand } from '../../engine/online/authority';
 import { SYNTHESIS_RECIPES, synthesisDestinations } from '../../engine/setup/synthesis';
@@ -54,7 +54,7 @@ const matches = (prefix: Command, command: Command) =>
       : value === target;
   });
 
-/** 仅统一规则已有默认值与旧合成别名，不把不同方向或不同路径合并。 */
+/** 统一规则默认值、旧合成别名和非玉碎的无效奇偶参数，不合并不同方向或路径。 */
 export function canonicalTrainingCommand(
   observation: Observation,
   actor: Player,
@@ -68,7 +68,11 @@ export function canonicalTrainingCommand(
     delete c.cardIds;
   }
   if (c.type === 'deploy') c.charge ??= false;
-  if (c.type === 'choose-shrine') c.player = actor;
+  if (c.type === 'choose-shrine') {
+    c.player = actor;
+    // 网页选择器始终带奇偶值，规则只在玉碎上读取该参数。
+    if (c.shrineKind !== 's9') delete c.parity;
+  }
   if (c.type === 'summon' || c.type === 'extra-summon') c.ultimate ??= false;
   if (c.type === 'attack' && c.path) c.mode ??= 'damage';
   if (c.type === 'cast' && observation.hands[actor].find((v) => v.id === c.cardId)?.kind === 25)
@@ -160,8 +164,10 @@ export class TrainingActionTree {
       case 'target':
         for (const t of targets(this.position)) {
           if (step.unitOnly && !t.unit) continue;
-          if (step.relation === 'friend' && t.owner !== this.actor) continue;
-          if (step.relation === 'enemy' && t.owner === this.actor) continue;
+          // 墓地保留来源 owner，但目标关系必须使用引擎派生的当前阵营。
+          const owner = t.unit ? allegiance(this.position, t.unit) : t.owner;
+          if (step.relation === 'friend' && owner !== this.actor) continue;
+          if (step.relation === 'enemy' && owner === this.actor) continue;
           if (step.field === 'sacrificeIds' && c.sacrificeIds?.includes(t.id)) continue;
           add(
             t.id,

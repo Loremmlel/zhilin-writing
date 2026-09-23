@@ -50,7 +50,9 @@ export const activeEffect = (s: GamePosition, e: Effect, u?: Unit) =>
   e.from <= effectClock(s, e, u) && e.until > effectClock(s, e, u);
 export const has = (s: GamePosition, u: Unit, type: Effect['type']) =>
   u.effects.some((e) => e.type === type && activeEffect(s, e, u));
-export const allegiance = (_s: GamePosition, u: Unit): Player | 0 => u.owner;
+// 墓地保留来源 owner 兼容旧档与因果记录，实际阵营始终为中立。
+export const allegiance = (_s: GamePosition, u: Unit): Player | 0 =>
+  u.kind === 'grave' ? 0 : u.owner;
 export const passive = (_s: GamePosition, u: Unit) => !u.silenced;
 export const hasWeapon = (u: Unit, k: Kind) => u.equipment.includes(k);
 export const age = (s: GamePosition, u: Unit) => s.turns[u.owner] + u.offset / 2 - u.born;
@@ -338,7 +340,7 @@ export function actor(s: GamePosition, id?: string) {
   const u = findUnit(s, id),
     stats = getStats(s, u);
   ensure(s.phase === 'play', '请先完成回合开始阶段。');
-  ensure(u.owner === s.active, '不是该随从的回合。');
+  ensure(allegiance(s, u) === s.active, '不是该随从的回合。');
   ensure(
     !stats.sleeping && !stats.frozen && !stats.stunned,
     '该随从正在疲劳、休整、冰冻或眩晕中。',

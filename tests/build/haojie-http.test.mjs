@@ -317,7 +317,7 @@ test("built Worker serves authenticated two-player HTTP rooms and existing pages
     assert.equal(joined.room.viewer, 2);
     assert.equal(joined.room.player2.name, "乙");
     assert.equal(joined.room.revision, 1);
-    assert.equal(joined.update.view.ruleset, "3.0-feedback4-counter-freeze");
+    assert.equal(joined.update.view.ruleset, "3.0-feedback5-live-deployment");
     assert.equal("seed" in joined.update.view.state, false);
     assert.equal("rng" in joined.update.view.state, false);
     await json(await request(path, "c"), 404);
@@ -419,15 +419,20 @@ test("built Worker serves authenticated two-player HTTP rooms and existing pages
     const downloaded = await request(download, "a");
     assert.match(downloaded.headers.get("content-disposition"), /attachment/);
     const archive = await json(downloaded);
-    assert.equal(archive.formatVersion, 1);
+    assert.equal(archive.formatVersion, 2);
     assert.equal(archive.room.historyComplete, true);
     assert.equal(archive.room.endReason, "resign");
     assert.deepEqual(
       archive.records.map((r) => r.kind),
       ["join", "command", "undo-request", "undo-accept", "resign"],
     );
-    assert.equal(typeof archive.records[0].state.rng, "number");
-    assert.deepEqual(archive.records[3].state, archive.records[0].state);
+    assert.equal(typeof archive.records[0].initial.rng, "number");
+    assert.deepEqual(archive.present, archive.records[0].initial);
+    assert.equal(
+      archive.records.slice(1).some((record) => "state" in record),
+      false,
+    );
+    assert.equal(archive.records[1].command.type, "summon");
     assert.equal(archive.records[3].undoneCommandRevision, 2);
     const page = await request("/admin/games", "a");
     assert.equal(page.status, 200);
@@ -493,6 +498,7 @@ test("built Worker serves authenticated two-player HTTP rooms and existing pages
       /"success":true/,
     );
     const legacy = await json(await request(`/api/admin/games/${legacyId}/download`, "a"));
+    assert.equal(legacy.formatVersion, 1);
     assert.equal(legacy.room.historyComplete, false);
     assert.deepEqual(
       legacy.records.map((r) => r.kind),

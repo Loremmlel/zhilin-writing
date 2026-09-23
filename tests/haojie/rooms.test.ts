@@ -9,7 +9,7 @@ import type { MutationInput } from "../../lib/haojie/contracts.ts";
 // Bundle the unmodified upstream extensionless imports, using the installed build tool.
 const bundled = await build({
   stdin: {
-    contents: `export { isLegal } from './vendor/haojie2/src/engine/index.ts'; export * from './lib/haojie/service.ts'; export * from './lib/haojie/archives.ts'; export * from './lib/haojie/input.ts'; export * from './lib/haojie/contracts.ts';`,
+    contents: `export { isLegal, parseSession } from './vendor/haojie2/src/engine/index.ts'; export { RULESET_ID } from './vendor/haojie2/src/engine/catalog.ts'; export * from './lib/haojie/service.ts'; export * from './lib/haojie/archives.ts'; export * from './lib/haojie/input.ts'; export * from './lib/haojie/contracts.ts';`,
     resolveDir: fileURLToPath(new URL("../../", import.meta.url)),
   },
   bundle: true,
@@ -20,7 +20,8 @@ const bundled = await build({
 });
 const api = (await import(
   `data:text/javascript;base64,${Buffer.from(bundled.outputFiles[0].contents).toString("base64")}`
-)) as Pick<typeof import("../../vendor/haojie2/src/engine/index.ts"), "isLegal"> &
+)) as Pick<typeof import("../../vendor/haojie2/src/engine/index.ts"), "isLegal" | "parseSession"> &
+  Pick<typeof import("../../vendor/haojie2/src/engine/catalog.ts"), "RULESET_ID"> &
   typeof import("../../lib/haojie/archives.ts") &
   typeof import("../../lib/haojie/service.ts") &
   typeof import("../../lib/haojie/input.ts") &
@@ -166,7 +167,7 @@ for (const [oldVersion, oldRuleset] of [
       assert.equal(result.room.engineVersion, oldVersion);
       assert.equal(result.room.winner, 2);
       assert.equal(result.update?.kind, "snapshot");
-      assert.equal(result.update?.view.ruleset, "3.0-feedback4-counter-freeze");
+      assert.equal(result.update?.view.ruleset, "3.0-feedback5-live-deployment");
       assert.equal(result.update?.view.viewer, actor === "a" ? 1 : 2);
       assert.equal(Boolean(result.update?.view.state.shrineDraft?.choices[1]), actor === "a");
       noPrivate(result);
@@ -647,7 +648,31 @@ test("archive journal outlives the undo window and keeps undone commands; admin 
   assert.equal(records.length, 73);
   assert.deepEqual(records[70], last);
   assert.equal(records.at(-1).undoneCommandRevision, 71);
-  assert.deepEqual(records.at(-1).state, records[69].state);
+  assert.equal(records[0].initial.seed > 0, true);
+  assert.equal(
+    records.slice(1).some((record) => "state" in record || "initial" in record),
+    false,
+  );
+  assert.equal(records[1].command !== undefined, true);
+  const route = records
+    .filter((record) => record.kind === "command")
+    .map((record) => record.command);
+  route.pop();
+  const checkpoint = await db
+    .prepare("SELECT state_json AS stateJson FROM haojie_rooms WHERE id = ?")
+    .bind(created.id)
+    .first<{ stateJson: string }>();
+  const restored = api.parseSession(
+    JSON.stringify({
+      format: "haojie-record-v1",
+      ruleset: api.RULESET_ID,
+      origin: "opening",
+      initial: records[0].initial,
+      commands: route,
+      present: JSON.parse(checkpoint!.stateJson),
+    }),
+  );
+  assert.deepEqual(restored.present, JSON.parse(checkpoint!.stateJson));
   await assert.rejects(
     api.abortRoom(db, created.id, "c", current.room.revision - 1),
     rejection("REVISION_CONFLICT"),

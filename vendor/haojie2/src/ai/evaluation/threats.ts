@@ -30,6 +30,7 @@ import {
   effectClock,
   has,
   passive,
+  allegiance,
 } from '../../engine/core/state';
 import { availableGuardians } from '../../engine/core/protection';
 import type { AttackDirection, GameState, Player, Target, Unit } from '../../engine/types';
@@ -263,7 +264,12 @@ export function analyzePayload(
   if (!carrier || !activeEffect(view, effect, carrier) || !readyAttack(view, carrier))
     return result;
   for (const victim of view.units) {
-    if (victim.owner === u.owner || !topTarget(view, asTarget(victim))) continue;
+    if (
+      allegiance(view, victim) === u.owner ||
+      (type === 'convert' && !allegiance(view, victim)) ||
+      !topTarget(view, asTarget(victim))
+    )
+      continue;
     let reason = '可兑现';
     if (has(view, victim, 'immune')) reason = '金身保护';
     else if (!Number.isFinite(hitDistance(view, carrier, asTarget(victim))))
@@ -272,7 +278,7 @@ export function analyzePayload(
       view.units.some(
         (v) =>
           hasTrait(v, 'u15') &&
-          v.owner === victim.owner &&
+          v.owner === allegiance(view, victim) &&
           passive(view, v) &&
           attackPath(view, v, asTarget(victim), statsFor(view, v).range),
       )

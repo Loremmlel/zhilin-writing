@@ -13,6 +13,8 @@ export {
 export { createGame, createDemoGame, applyCommand, commandError, isLegal } from './commands/game';
 export { createSession, dispatch, undo, redo, parseSession, validState } from './session/history';
 export type { Session } from './session/history';
+export { serializeSession, sessionSave } from './session/recording';
+export type { RecordedSave } from './session/recording';
 export {
   getStats,
   faction,
@@ -39,6 +41,7 @@ export {
   targets,
   distance,
   canPlace,
+  deploymentRows,
   movementPath,
   attackPath,
   attackRoutes,

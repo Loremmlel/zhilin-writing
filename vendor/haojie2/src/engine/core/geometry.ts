@@ -18,14 +18,31 @@ export const distance = (a: Point, b: Point) => Math.abs(a.x - b.x) + Math.abs(a
 export const key = (p: Point) => `${p.x},${p.y}`;
 export function cells(u: { kind: Unit['kind']; x: number; y: number; size?: number }): Point[] {
   const size = u.size ?? definition(u.kind).size ?? 1;
+  // 常见占位直接构造新坐标，保留逐行顺序与调用方可独立修改返回值的约定。
+  if (size === 1) return [{ x: u.x, y: u.y }];
+  if (size === 2)
+    return [
+      { x: u.x, y: u.y },
+      { x: u.x + 1, y: u.y },
+      { x: u.x, y: u.y + 1 },
+      { x: u.x + 1, y: u.y + 1 },
+    ];
   return Array.from({ length: size * size }, (_, i) => ({
     x: u.x + (i % size),
     y: u.y + Math.floor(i / size),
   }));
 }
-export const occupants = (s: GamePosition, p: Point) =>
-  s.units.filter((u) => cells(u).some((c) => equal(c, p)));
-export const occupant = (s: GamePosition, p: Point) => occupants(s, p)[0];
+/** 只读占位查询，不分配坐标数组；整数偏移保留逐格匹配，不能把格间位置当作占位。 */
+function covers(u: Unit, p: Point): boolean {
+  const size = u.size ?? definition(u.kind).size ?? 1;
+  const dx = p.x - u.x,
+    dy = p.y - u.y;
+  return (
+    Number.isInteger(dx) && Number.isInteger(dy) && dx >= 0 && dy >= 0 && dx < size && dy < size
+  );
+}
+export const occupants = (s: GamePosition, p: Point) => s.units.filter((u) => covers(u, p));
+export const occupant = (s: GamePosition, p: Point) => s.units.find((u) => covers(u, p));
 export function targets(s: GamePosition): Target[] {
   return [
     ...allPieces(s).map((u) => ({ id: u.id, owner: u.owner, x: u.x, y: u.y, unit: u })),
@@ -33,7 +50,7 @@ export function targets(s: GamePosition): Target[] {
   ];
 }
 export function targetAt(s: GamePosition, p: Point): Target | undefined {
-  return targets(s).find((t) => (t.unit ? cells(t.unit).some((c) => equal(c, p)) : equal(t, p)));
+  return targets(s).find((t) => (t.unit ? covers(t.unit, p) : equal(t, p)));
 }
 export function topTarget(s: GamePosition, t: Target) {
   if (!t.unit) return true;
@@ -54,6 +71,39 @@ export function ring(a: Unit, b: Point | Unit) {
     ) && !cells(a).some((c) => bc.some((d) => equal(c, d)))
   );
 }
+interface PlacementContext {
+  occupants: Unit[][];
+  friends: Record<Player, Unit[]>;
+  loners: Record<Player, Unit[]>;
+  rows: Partial<Record<Player, number[]>>;
+}
+/**
+ * 为同步只读查询批次创建索引。调用期间不得修改 s 或其棋子；新局面必须重新创建。
+ * 不挂载全局缓存、不改变权威 canPlace 的默认入口，不保存到局面或消耗随机数。
+ */
+export function createPlacementQuery(s: GamePosition) {
+  const context: PlacementContext = {
+    occupants: Array.from({ length: 117 }, () => []),
+    friends: { 1: [], 2: [] },
+    loners: { 1: [], 2: [] },
+    rows: {},
+  };
+  for (const v of s.units) {
+    for (const p of cells(v)) if (inside(p)) context.occupants[(p.y - 1) * 9 + p.x - 1].push(v);
+    const owner = allegiance(s, v);
+    if (owner) {
+      context.friends[owner].push(v);
+      if (hasTrait(v, 23) && passive(s, v)) context.loners[owner].push(v);
+    }
+  }
+  const place = (u: Unit, at: Point, deployment = false, ignore: string[] = []) =>
+    placement(s, u, at, deployment, ignore, context);
+  return {
+    canPlace: place,
+    movementPath: (u: Unit, to: Point, limit: number, straight = false) =>
+      movement(s, u, to, limit, straight, place),
+  };
+}
 export function canPlace(
   s: GamePosition,
   u: Unit,
@@ -61,6 +111,18 @@ export function canPlace(
   deployment = false,
   ignore: string[] = [],
 ): boolean {
+  return placement(s, u, at, deployment, ignore);
+}
+function placement(
+  s: GamePosition,
+  u: Unit,
+  at: Point,
+  deployment: boolean,
+  ignore: string[],
+  context?: PlacementContext,
+): boolean {
+  const occupied = (p: Point) =>
+    context ? context.occupants[(p.y - 1) * 9 + p.x - 1] : occupants(s, p);
   const moved = { ...u, ...at },
     footprint = cells(moved);
   if (footprint.some((p) => !inside(p) || equal(p, basePoint(1)) || equal(p, basePoint(2))))
@@ -68,18 +130,20 @@ export function canPlace(
   if (isLandmark(u)) {
     if (!deployment) return equal(u, at);
     if (!landmarkSquare(u.kind, at) || landmarkAt(s, at)) return false;
-    const over = occupants(s, at).filter((v) => !ignore.includes(v.id));
+    const over = occupied(at).filter((v) => !ignore.includes(v.id));
     return over.length <= 1 && over.every((v) => allegiance(s, v) === u.owner);
   }
+  const rows = deployment
+    ? context
+      ? (context.rows[u.owner] ??= deploymentRows(s, u.owner))
+      : deploymentRows(s, u.owner)
+    : [];
   if (
     deployment &&
     !hasTrait(u, 'u27') &&
     footprint.some((p) => {
       const land = landmarkAt(s, p);
-      return (
-        !s.deployRows[u.owner].includes(p.y) &&
-        !(liveLandmark(land) && allegiance(s, land) === u.owner)
-      );
+      return !rows.includes(p.y) && !(liveLandmark(land) && allegiance(s, land) === u.owner);
     })
   )
     return false;
@@ -89,13 +153,16 @@ export function canPlace(
     if (u.size > 1) return false;
     if (deployment && liveLandmark(land) && allegiance(s, land) !== u.owner) return false;
     // 地标即使休眠也只能承载一个随从，不能承载克隆叠放。
-    if (occupants(s, p).some((v) => v.id !== u.id && !ignore.includes(v.id))) return false;
+    if (occupied(p).some((v) => v.id !== u.id && !ignore.includes(v.id))) return false;
   }
-  const others = s.units.filter((v) => v.id !== u.id && !ignore.includes(v.id));
+  // 候选落点的重叠查询只读对应格；默认权威路径仍扫描原始单位数组。
+  const others = context
+    ? footprint.flatMap(occupied).filter((v) => v.id !== u.id && !ignore.includes(v.id))
+    : s.units.filter((v) => v.id !== u.id && !ignore.includes(v.id));
   if (
     others.some(
       (v) =>
-        cells(v).some((c) => footprint.some((p) => equal(c, p))) &&
+        footprint.some((p) => covers(v, p)) &&
         !(
           u.kind === 'u25' &&
           v.kind === 'u25' &&
@@ -106,8 +173,14 @@ export function canPlace(
     )
   )
     return false;
+  const isolation = context
+    ? (hasTrait(u, 23) && passive(s, u)
+        ? context.friends[u.owner]
+        : context.loners[u.owner]
+      ).filter((v) => v.id !== u.id && !ignore.includes(v.id))
+    : others;
   if (
-    others.some(
+    isolation.some(
       (v) =>
         allegiance(s, v) === u.owner &&
         ((hasTrait(v, 23) && passive(s, v)) || (hasTrait(u, 23) && passive(s, u))) &&
@@ -133,14 +206,24 @@ export function movementPath(
   limit: number,
   straight = false,
 ): Point[] | null {
-  if (!inside(to) || equal(u, to) || !canPlace(s, u, to)) return null;
+  return movement(s, u, to, limit, straight, (unit, p) => canPlace(s, unit, p));
+}
+function movement(
+  s: GamePosition,
+  u: Unit,
+  to: Point,
+  limit: number,
+  straight: boolean,
+  place: (unit: Unit, p: Point) => boolean,
+): Point[] | null {
+  if (!inside(to) || equal(u, to) || !place(u, to)) return null;
   if (straight) {
     if (distance(u, to) !== 3 || (u.x !== to.x && u.y !== to.y)) return null;
     const path = Array.from({ length: 4 }, (_, i) => ({
       x: u.x + Math.sign(to.x - u.x) * i,
       y: u.y + Math.sign(to.y - u.y) * i,
     }));
-    return path.slice(1).every((p) => canPlace(s, u, p)) ? path : null;
+    return path.slice(1).every((p) => place(u, p)) ? path : null;
   }
   const queue: Point[][] = [[{ x: u.x, y: u.y }]],
     seen = new Set([key(u)]);
@@ -148,7 +231,7 @@ export function movementPath(
     const path = queue[i];
     if (path.length - 1 >= limit) continue;
     for (const p of neighbors(path.at(-1)!)) {
-      if (seen.has(key(p)) || !canPlace(s, u, p)) continue;
+      if (seen.has(key(p)) || !place(u, p)) continue;
       const next = [...path, p];
       if (equal(p, to)) return next;
       seen.add(key(p));
@@ -209,14 +292,23 @@ export function frontal(path: Point[], owner: Player) {
     b = path.at(-1)!;
   return owner === 1 ? b.y < a.y : b.y > a.y;
 }
-export function refreshDeployment(s: GamePosition, owner: Player) {
-  s.deployRows[owner] = [];
-  for (let y = 1; y <= 13; y++) {
-    const count = (p: Player) =>
-      s.units.filter((u) => allegiance(s, u) === p && cells(u).some((c) => c.y === y)).length;
-    if ((owner === 1 ? y <= 8 : y >= 6) || count(owner) - count(other(owner)) >= 2)
-      s.deployRows[owner].push(y);
+/** 从当前占位派生部署行；每枚棋子在接触行计一次，中立与独立地标不计数。 */
+export function deploymentRows(s: GamePosition, owner: Player): number[] {
+  const counts = Array<number>(14).fill(0);
+  for (const u of s.units) {
+    const side = allegiance(s, u);
+    if (!side) continue;
+    // 正方形每个覆盖行只计一枚；无需先展开所有格子再去重。
+    const size = u.size ?? definition(u.kind).size ?? 1;
+    for (let offset = 0; offset < size; offset++) counts[u.y + offset] += side === owner ? 1 : -1;
   }
+  return Array.from({ length: 13 }, (_, i) => i + 1).filter(
+    (y) => (owner === 1 ? y <= 8 : y >= 6) || counts[y] >= 2,
+  );
+}
+/** 保留 v2 序列化字段，但它只镜像当前局面，不能作为权限来源。 */
+export function refreshDeployment(s: GamePosition, owner: Player) {
+  s.deployRows[owner] = deploymentRows(s, owner);
 }
 export function inSquare(u: Unit, p: Point, radius = 5) {
   return inside(p) && Math.abs(p.x - u.x) <= radius && Math.abs(p.y - u.y) <= radius;
@@ -299,11 +391,9 @@ export function expansionAnchors(s: GamePosition, u: Unit): Point[] {
 export function validAttackRoute(s: GamePosition, u: Unit, path: Point[], limit: number): boolean {
   if (!Array.isArray(path) || !path.length || path.length > Math.min(117, limit + 1)) return false;
   if (path.some((p) => !p || !inside(p))) return false;
-  if (!cells(u).some((p) => equal(p, path[0])) || new Set(path.map(key)).size !== path.length)
-    return false;
+  if (!covers(u, path[0]) || new Set(path.map(key)).size !== path.length) return false;
   for (let i = 1; i < path.length; i++) {
-    if (distance(path[i - 1], path[i]) !== 1 || cells(u).some((p) => equal(p, path[i])))
-      return false;
+    if (distance(path[i - 1], path[i]) !== 1 || covers(u, path[i])) return false;
     if (i < path.length - 1 && equal(path[i], basePoint(other(u.owner)))) return false;
   }
   return true;

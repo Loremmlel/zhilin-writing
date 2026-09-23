@@ -13,6 +13,7 @@ import {
   definition,
   distance,
   faction,
+  allegiance,
   getStats,
   targetAt,
 } from '../../engine';
@@ -150,7 +151,7 @@ export function Board({
                 const routeLabel = route
                   ? `，${directionLabel[route.direction]}，路径${route.path.length - 1}格`
                   : '';
-                const label = `${p.x}列${p.y}行${t ? `，${faction(t.owner) + (t.unit && getStats(s, t.unit).frozen ? '，冰冻' : '')}${t.unit ? definition(t.unit.kind).name + '，' + format(t.unit.hp) + '生命' : '基地，' + s.bases[t.owner] + '生命'}` : '，空格'}${stack.length > 1 ? `，叠放${stack.length}枚` : ''}${valid ? '，可选择' : ''}`;
+                const label = `${p.x}列${p.y}行${t ? `，${(t.unit && !allegiance(s, t.unit) ? '中立' : faction(t.owner)) + (t.unit && getStats(s, t.unit).frozen ? '，冰冻' : '')}${t.unit ? definition(t.unit.kind).name + '，' + format(t.unit.hp) + '生命' : '基地，' + s.bases[t.owner] + '生命'}` : '，空格'}${stack.length > 1 ? `，叠放${stack.length}枚` : ''}${valid ? '，可选择' : ''}`;
                 return (
                   <button
                     role="gridcell"
@@ -320,7 +321,7 @@ export function Board({
                   batches={effects}
                   reduced={reduced}
                   key={u.id}
-                  className={`piece-wrap p${u.owner} ${size === 2 ? 'large-piece' : ''} ${selected ? 'piece-selected' : ''} ${d.tier !== 'normal' && typeof u.kind !== 'number' && !['3p', 'grave', 'wall'].includes(String(u.kind)) ? 'ultimate-piece' : ''} ${stats.frozen ? 'frozen-piece' : ''}`}
+                  className={`piece-wrap p${allegiance(s, u)} ${size === 2 ? 'large-piece' : ''} ${selected ? 'piece-selected' : ''} ${d.tier !== 'normal' && typeof u.kind !== 'number' && !['3p', 'grave', 'wall'].includes(String(u.kind)) ? 'ultimate-piece' : ''} ${stats.frozen ? 'frozen-piece' : ''}`}
                   style={{
                     left: `${((u.x - 1) / 9) * 100}%`,
                     top: `${((u.y - 1) / 13) * 100}%`,

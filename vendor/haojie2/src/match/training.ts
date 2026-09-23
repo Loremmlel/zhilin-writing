@@ -67,6 +67,11 @@ export class TrainingEnvironment {
     return env;
   }
 
+  /** 记录实际截断边界，重放不能依赖生成脚本的默认参数。 */
+  limits() {
+    return { maxCommands: this.#maxCommands, maxPlies: this.#maxPlies };
+  }
+
   status(): TrainingStatus {
     const s = this.#state;
     const terminated = s.winner !== undefined;

@@ -4,8 +4,16 @@ import { normalizeHornStorage } from './migrations';
 import { definition, SHRINE_POOL } from '../catalog';
 import { canDeployKind, hasTrait, isLandmark } from '../core/traits';
 import { landmarkSquare } from '../setup/shrines';
-import { cells, inside, key, basePoint, equal } from '../core/geometry';
+import { cells, inside, key, basePoint, equal, deploymentRows } from '../core/geometry';
 import type { Command, GameState, Player, Unit, Landmark } from '../types';
+import {
+  startRecord,
+  restoreRecord,
+  parseRecordedSave,
+  parseRuntimeRecord,
+  type CommandRecord,
+} from './recording';
+/** 运行时会话含悔棋缓存；持久化请使用 serializeSession，不能直接序列化缓存。 */
 export interface Session {
   format: 'haojie-session-v2';
   match?: MatchSettings;
@@ -13,44 +21,78 @@ export interface Session {
   present: GameState;
   past: GameState[];
   future: GameState[];
+  record?: CommandRecord;
+  humanAnchorCursor?: number;
 }
 const LIMIT = 60;
 export const createSession = (present: GameState, match?: MatchSettings): Session => ({
   ...(match ? { match: { ...match } } : {}),
   format: 'haojie-session-v2',
-  present,
+  present: {
+    ...present,
+    deployRows: { 1: deploymentRows(present, 1), 2: deploymentRows(present, 2) },
+  },
   past: [],
   future: [],
 });
 /** 先成功执行规则，再记录旧局面并清空重做；异常不会留下半份历史。 */
 export function dispatch(s: Session, c: Command): Session {
+  const present = applyCommand(s.present, c);
+  const record = s.record ?? startRecord(s.present);
   return {
     ...s,
-    present: applyCommand(s.present, c),
+    present,
     ...(s.match?.mode === 'ai' &&
     (s.present.pending[0]?.owner ?? s.present.active) === s.match.human
-      ? { humanAnchor: s.present }
+      ? { humanAnchor: s.present, humanAnchorCursor: record.cursor }
       : {}),
     past: [...s.past, s.present].slice(-LIMIT),
     future: [],
+    record: {
+      ...record,
+      commands: [...record.commands.slice(0, record.cursor), structuredClone(c)],
+      cursor: record.cursor + 1,
+    },
   };
 }
 export function undo(s: Session): Session {
   if (!s.past.length) return s;
+  if (s.record && s.record.cursor > 0 && s.match?.mode === 'ai')
+    return restoreRecord({ ...s.record, cursor: s.record.cursor - 1 }, s.match);
   return {
     ...s,
     present: s.past.at(-1)!,
     past: s.past.slice(0, -1),
     future: [s.present, ...s.future].slice(0, LIMIT),
+    ...(s.record
+      ? {
+          record: s.record.cursor > 0 ? { ...s.record, cursor: s.record.cursor - 1 } : undefined,
+        }
+      : {}),
   };
 }
 export function redo(s: Session): Session {
   if (!s.future.length) return s;
+  if (s.record && s.record.cursor < s.record.commands.length) {
+    const next = dispatch(s, s.record.commands[s.record.cursor]);
+    const record = { ...s.record, cursor: s.record.cursor + 1 };
+    return {
+      ...next,
+      record,
+      future:
+        s.future.length > 1
+          ? s.future.slice(1)
+          : record.cursor < record.commands.length
+            ? [applyCommand(next.present, record.commands[record.cursor])]
+            : [],
+    };
+  }
   return {
     ...s,
     present: s.future[0],
     past: [...s.past, s.present].slice(-LIMIT),
     future: s.future.slice(1),
+    ...(s.record ? { record: undefined, humanAnchorCursor: undefined } : {}),
   };
 }
 const object = (v: unknown): v is Record<string, any> =>
@@ -563,6 +605,11 @@ export function parseSession(text: string): Session {
     throw new Error(
       '这是旧版“豪杰棋局”存档。浩劫2.0的操作规则不同，不自动迁移；原文件没有被修改。',
     );
+  if (object(value) && value.format === 'haojie-record-v1') {
+    if (value.match !== undefined && !validMatch(value.match))
+      throw new Error('存档对局设置损坏。');
+    return parseRecordedSave(value as unknown as import('./recording').RecordedSave);
+  }
   if (
     !object(value) ||
     value.format !== 'haojie-session-v2' ||
@@ -575,5 +622,6 @@ export function parseSession(text: string): Session {
     !value.future.every(validState)
   )
     throw new Error('存档结构不兼容或数据损坏，当前棋局未被替换。');
+  if (value.record !== undefined) return parseRuntimeRecord(value as Session);
   return normalizeHornStorage(value as Session);
 }

@@ -261,6 +261,8 @@ function transition<S extends GamePosition>(
     }
     syncBanners(s);
     pruneSiphons(s);
+    refreshDeployment(s, 1);
+    refreshDeployment(s, 2);
     if (s.bases[1] <= 0 || s.bases[2] <= 0) {
       s.winner = s.bases[1] <= 0 && s.bases[2] <= 0 ? 'draw' : s.bases[1] <= 0 ? 2 : 1;
       s.pending = [];

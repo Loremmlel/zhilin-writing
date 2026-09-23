@@ -1,4 +1,5 @@
 import { visibleShrineDraft } from '../engine/online/player-view';
+import { deploymentRows } from '../engine/core/geometry';
 import type { GameState, Player } from '../engine/types';
 import type { Observation } from './types';
 export const decisionOwner = (s: Pick<GameState, 'pending' | 'active'>): Player =>
@@ -18,7 +19,7 @@ function fields(s: GameState, viewer: Player = decisionOwner(s)): Observation {
     heads: s.heads,
     hands: s.hands,
     bonus: s.bonus,
-    deployRows: s.deployRows,
+    deployRows: { 1: deploymentRows(s, 1), 2: deploymentRows(s, 2) },
     units: s.units,
     pending: s.pending,
     deaths: s.deaths,

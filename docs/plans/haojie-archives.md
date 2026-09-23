@@ -7,6 +7,7 @@
 - 迁移保留旧局剩余悔棋快照与当前局面，标记 `recording_complete=0`；旧等待房间从升级后 join 开局可获得完整记录。新房间完整标记不代表已开局，取消的空房间仍可归档。
 - 终局触发 waitUntil 上传；D1 中终局且 archive_key 为空即持久待归档状态。读终局、重复终局请求及后台“归档”可以补传，不依赖后台常驻进程、定时器或玩家保持页面。未上传成功不标记已归档。上传成功后数据库写入失败时用同一房间/终局修订对象键重试；完整原始记录继续保留。
 - JSON formatVersion=1：room 保存双方ID/归档时昵称、游戏版本、模式、创建/结束时间、胜负、历史完整性、记录数；records 按修订号包含完整状态序列。认输/管理员结束的结果以房间/记录 endReason 和 winner 为准，不篡改引擎终局字段。
+- 2026-09-23 起新对局使用 formatVersion=2：join 记录一次 `initial`，每次成功命令仅记 `command`，悔棋确认记录 `undoneCommandRevision`，其它生命周期操作保留操作者、时间和结果；档案根节点 `present` 是终局完整局面。两份局面加当前路线命令可按上游 `haojie-record-v1` 重放校验，原始记录仍保留被悔掉的操作。房间表只保留一份当前局面，以免每次轮询重放整局。已归档旧 JSON 不改写。
 - 终局不可变；每20条分页读取，按数据库 UTF-8 字节计数用 FixedLengthStream 上传，避免整局组装到内存。`haojie-archives/<room>/<revision>.json` 与附件 UUID 路径分离，不进入临时附件与孤儿附件回收。
 - 管理员异常结束采用已见修订号 CAS，过期弹窗拒绝；并发落子与结束只能一方成功。等待房间取消、进行中房间结束，均不判胜负并写入管理员身份。已异常结束的同一房间重试不再次写记录。断线/关闭页面/临时请求失败不结束对局。
 - UI 复用 AdminShell、AdminContentTable 的非选择变体、Pagination、ModalDialog、PendingSubmitButton、useRecoverableActionState。页面 /admin/games，下载接口独立服务端管理员鉴权和 no-store；游戏组和普通组不能获取档案。列表按更新时间倒序分页，空/加载/错误使用既有状态。无需批量选择或新筛选体系。

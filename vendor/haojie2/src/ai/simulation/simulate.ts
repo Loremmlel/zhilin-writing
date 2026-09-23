@@ -24,6 +24,7 @@ export function distribution(
   samples = 3,
   salt = 0,
   sampleKey?: string,
+  keyOf: typeof positionKey = positionKey,
 ): Distribution {
   let attempts = 0;
   const run = (tape: readonly number[], fallback?: (cuts: readonly number[]) => number) => {
@@ -69,9 +70,7 @@ export function distribution(
     }
     if (sampled) {
       outcomes.length = 0;
-      const seed = hash(
-        sampleKey === undefined ? positionKey(s) + JSON.stringify(c) + salt : sampleKey,
-      );
+      const seed = hash(sampleKey === undefined ? keyOf(s) + JSON.stringify(c) + salt : sampleKey);
       for (let lane = 0; lane < samples; lane++) {
         let index = 0;
         outcomes.push({
@@ -86,7 +85,7 @@ export function distribution(
     }
     const grouped = new Map<string, Outcome>();
     for (const out of outcomes) {
-      const k = positionKey(out.state),
+      const k = keyOf(out.state),
         old = grouped.get(k);
       if (old) old.weight += out.weight;
       else grouped.set(k, out);

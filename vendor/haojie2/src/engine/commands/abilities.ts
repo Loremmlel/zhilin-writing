@@ -261,7 +261,7 @@ function resolveSkill(s: GamePosition, c: Command, ctx: Resolution) {
       );
       const candidates = targets(s).filter(
         (t) =>
-          t.owner !== u.owner &&
+          (t.unit ? allegiance(s, t.unit) : t.owner) !== u.owner &&
           (t.unit ? cells(t.unit) : [t]).some(
             (p) => p.x === c.column && (u.owner === 1 ? p.y >= u.y : p.y <= u.y),
           ) &&
@@ -301,7 +301,8 @@ function resolveSkill(s: GamePosition, c: Command, ctx: Resolution) {
       const route = movementPath(s, u, to, 6);
       ensure(route, '落点必须在6格可达范围内。');
       ensure(
-        t.owner !== u.owner && attackPath(s, { ...u, ...to }, t, range),
+        (t.unit ? allegiance(s, t.unit) : t.owner) !== u.owner &&
+          attackPath(s, { ...u, ...to }, t, range),
         '落点无法攻击所选敌方。',
       );
       u.hp -= 10;
@@ -399,6 +400,7 @@ function resolveSkill(s: GamePosition, c: Command, ctx: Resolution) {
       const record = s.deaths.find((r) => r.id === c.deathId);
       ensure(
         record &&
+          record.kind !== 'grave' &&
           record.owner === u.owner &&
           !record.revived &&
           record.ply < s.ply &&
@@ -539,7 +541,7 @@ function resolveCast(s: GamePosition, c: Command, ctx: Resolution) {
     ensure(
       c.sacrificeIds
         .map((id) => findUnit(s, id))
-        .every((v) => v.owner === owner && v.hp * 2 >= v.maxHp && v.kind !== 'u25'),
+        .every((v) => allegiance(s, v) === owner && v.hp * 2 >= v.maxHp && v.kind !== 'u25'),
       '不可献祭克隆军团，且友方需至少半血。',
     );
   }

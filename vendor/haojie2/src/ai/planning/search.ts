@@ -1,16 +1,19 @@
 import { draftDecision } from './shrines';
+import { deploymentRows } from '../../engine/core/geometry';
 import type { Command, GameState, Player } from '../../engine/types';
 import {
   iterateCandidateGroups,
   attackCandidates,
+  deploymentCandidates,
   commandPriority,
   type CandidateGroup,
 } from './candidates';
 import { DIFFICULTIES } from '../difficulty';
 import { analyzePayload } from '../evaluation/threats';
 import { evaluate, explainEvaluation, materialValue } from '../evaluation/evaluate';
-import { decisionOwner, fingerprint, hash, imagined, positionKey } from '../observation';
-import { distribution } from '../simulation/simulate';
+import { decisionOwner, hash, imagined } from '../observation';
+import { createStateKeys } from '../simulation/state-key';
+import { distribution as rawDistribution } from '../simulation/simulate';
 import type { Outcome } from '../simulation/simulate';
 import type { Decision, Difficulty, Observation, PlanStep, SearchLimits } from '../types';
 interface Node {
@@ -24,6 +27,7 @@ interface Node {
   endTested?: boolean;
 }
 interface Context {
+  keys: ReturnType<typeof createStateKeys>;
   count: number;
   candidates: number;
   sampled: number;
@@ -65,7 +69,7 @@ function stopped(ctx: Context): boolean {
   return ctx.count >= ctx.stopAt || time() >= ctx.deadline;
 }
 function value(ctx: Context, s: GameState): number {
-  const key = positionKey(s);
+  const key = ctx.keys.positionKey(s);
   let v = ctx.cache.get(key);
   if (v === undefined) {
     v = evaluate(s, ctx.side);
@@ -75,12 +79,11 @@ function value(ctx: Context, s: GameState): number {
   return v;
 }
 function expectation(ctx: Context, out: Outcome[]): number {
-  const mean = out.reduce((v, o) => v + o.weight * value(ctx, o.state), 0);
+  const scores = out.map((o) => value(ctx, o.state));
+  const mean = out.reduce((v, o, i) => v + o.weight * scores[i], 0);
   // 小幅惩罚下行风险，但不替代随机结果的期望值。
   const risk = ctx.difficulty === 'hard' ? 0.06 : 0;
-  return (
-    mean - risk * out.reduce((v, o) => v + o.weight * Math.max(0, mean - value(ctx, o.state)), 0)
-  );
+  return mean - risk * out.reduce((v, o, i) => v + o.weight * Math.max(0, mean - scores[i]), 0);
 }
 /** 每次 yield 都是取消与协作调度边界；Worker 和主线程回退运行相同代码。 */
 function* expand(
@@ -95,9 +98,13 @@ function* expand(
     result: Node[] = [],
     seen = new Set<string>();
   const work: (CandidateGroup & { index: number; accepted: number })[] = [];
-  for (const group of iterateCandidateGroups(s, level)) {
+  for (const group of iterateCandidateGroups(s, level, lean)) {
     work.push({
-      ...group,
+      family: group.family,
+      priority: group.priority,
+      get commands() {
+        return group.commands;
+      },
       keep: lean || path.length ? 1 : group.keep,
       index: 0,
       accepted: 0,
@@ -133,6 +140,7 @@ function* expand(
       if (seen.has(key)) continue;
       seen.add(key);
       const d = distribution(
+        ctx,
         s,
         command,
         lean ? 2 : command.type === 'summon' ? 64 : settings.chanceLimit,
@@ -146,7 +154,7 @@ function* expand(
         ctx.candidates++;
         group.accepted++;
         if (!lean) ctx.depth = Math.max(ctx.depth, path.length + 1);
-        const nextPath = [...path, { before: fingerprint(s), command }];
+        const nextPath = [...path, { before: ctx.keys.fingerprint(s), command }];
         const only = d.outcomes.length === 1 ? d.outcomes[0].state : null;
         result.push({
           outcomes: d.outcomes,
@@ -166,10 +174,58 @@ function* expand(
       }
       yield;
     }
-    if (!lean && !path.length && !stopped(ctx))
+    if (!lean && !path.length && !stopped(ctx)) {
       result.push(...(yield* attackContinuations(ctx, result.slice(passStart), level)));
+      result.push(...(yield* deploymentContinuations(ctx, s, result.slice(passStart))));
+    }
   }
   return result;
+}
+/** 避免即时部署的物质收益挤掉“先移动开行、再落子”。只接续确定且无反应的移动，共用原预算；完整结果仍接受危险与对手回应评估。 */
+function* deploymentContinuations(
+  ctx: Context,
+  before: GameState,
+  roots: Node[],
+): Generator<void, Node[]> {
+  const added: Node[] = [];
+  const rows = deploymentRows(before, before.active);
+  for (const root of roots) {
+    if (stopped(ctx)) break;
+    if (
+      root.path.at(-1)?.command.type !== 'move' ||
+      !root.expandable ||
+      root.sampled ||
+      root.outcomes.length !== 1
+    )
+      continue;
+    const state = root.outcomes[0].state;
+    if (state.pending.length) continue;
+    const gained = deploymentRows(state, state.active).filter((y) => !rows.includes(y));
+    if (!gained.length) continue;
+    for (const command of deploymentCandidates(state, gained).slice(0, 4)) {
+      if (stopped(ctx)) break;
+      const d = distribution(ctx, state, command, 1, 1);
+      ctx.count += d.attempts;
+      if (d.sampled) ctx.sampled++;
+      if (d.outcomes.length) {
+        ctx.candidates++;
+        const next = d.outcomes.length === 1 ? d.outcomes[0].state : null;
+        const path = [...root.path, { before: ctx.keys.fingerprint(state), command }];
+        added.push({
+          outcomes: d.outcomes,
+          sampled: d.sampled,
+          score: expectation(ctx, d.outcomes) - 0.2,
+          root: root.root,
+          path,
+          expandable:
+            !!next && !next.winner && !next.pending.length && next.active === state.active,
+        });
+        ctx.depth = Math.max(ctx.depth, path.length);
+      }
+      yield;
+    }
+  }
+  return added;
 }
 /** 同时评估短小但完整的连射操作，避免因束深度到不了第六发而输给无收益移动。保留单发节点以允许穿插标记或治疗；遇未知随机或反应必须停止。 */
 function* attackContinuations(
@@ -193,13 +249,13 @@ function* attackContinuations(
       if (state.units.some((u) => u.id === first.targetId) || first.targetId?.startsWith('base-'))
         for (const ally of state.units)
           if (ally.owner === state.active && ally.id !== first.unitId)
-            followups.push(
-              ...attackCandidates(state, ally.id).filter((c) => c.targetId === first.targetId),
-            );
-      followups.sort((a, b) => commandPriority(state, b) - commandPriority(state, a));
+            followups.push(...attackCandidates(state, ally.id, first.targetId));
+      const priorities = new Map(followups.map((c) => [c, commandPriority(state, c)]));
+      followups.sort((a, b) => priorities.get(b)! - priorities.get(a)!);
       for (const command of followups.slice(0, level === 'hard' ? 6 : 3)) {
         if (stopped(ctx)) break;
         const d = distribution(
+          ctx,
           state,
           command,
           DIFFICULTIES[level].chanceLimit,
@@ -215,7 +271,7 @@ function* attackContinuations(
             sampled: current.sampled || d.sampled,
             score: expectation(ctx, d.outcomes),
             root: root.root,
-            path: [...current.path, { before: fingerprint(state), command }],
+            path: [...current.path, { before: ctx.keys.fingerprint(state), command }],
             expandable:
               !!single &&
               !single.winner &&
@@ -238,13 +294,13 @@ function* attackContinuations(
   }
   return added;
 }
-function bestDiverse(nodes: Node[], width: number, seen: Set<string>): Node[] {
+function bestDiverse(ctx: Context, nodes: Node[], width: number, seen: Set<string>): Node[] {
   const chosen: Node[] = [],
     roots = new Map<string, number>();
   for (const node of [...nodes].sort((a, b) => b.score - a.score)) {
     if (!node.expandable) continue;
     const state = node.outcomes[0].state,
-      key = positionKey(state);
+      key = ctx.keys.positionKey(state);
     if (seen.has(key) || (roots.get(node.root) ?? 0) >= Math.max(2, Math.ceil(width / 3))) continue;
     roots.set(node.root, (roots.get(node.root) ?? 0) + 1);
     seen.add(key);
@@ -301,7 +357,12 @@ function* atTurnEnd(ctx: Context, s: GameState, node: Node): Generator<void, Nod
       continue;
     }
     if (out.state.ply !== s.ply || out.state.active !== s.active || stopped(ctx)) return null;
-    const d = distribution(out.state, { type: 'end' }, DIFFICULTIES[ctx.difficulty].chanceLimit);
+    const d = distribution(
+      ctx,
+      out.state,
+      { type: 'end' },
+      DIFFICULTIES[ctx.difficulty].chanceLimit,
+    );
     ctx.count += d.attempts;
     if (d.sampled) ctx.sampled++;
     if (d.outcomes.length) ctx.candidates++;
@@ -380,7 +441,9 @@ export function* search(
     max = Math.max(40, limits.simulations ?? cfg.nodes);
   const reserve = s.phase === 'play' && !s.pending.length ? Math.min(160, Math.floor(max / 5)) : 0;
   const searchMax = max - reserve;
+  const keys = createStateKeys();
   const ctx: Context = {
+    keys,
     count: 0,
     candidates: 0,
     sampled: 0,
@@ -395,7 +458,7 @@ export function* search(
     side,
     difficulty,
     cache: new Map(),
-    scenarioSeed: hash(positionKey(s)),
+    scenarioSeed: hash(keys.positionKey(s)),
   };
   if (s.winner || decisionOwner(s) !== side)
     return {
@@ -422,7 +485,7 @@ export function* search(
       ? Math.min(searchMax, Math.max(ctx.count, Math.floor(max * 0.4)))
       : searchMax;
   const seen = new Set<string>();
-  let beam = bestDiverse(roots, cfg.width, seen);
+  let beam = bestDiverse(ctx, roots, cfg.width, seen);
   for (
     let depth = 2;
     depth <= cfg.depth && !synthesisOnly && beam.length && !stopped(ctx);
@@ -439,7 +502,7 @@ export function* search(
       children.push(...next);
     }
 
-    beam = bestDiverse(children, cfg.width, seen);
+    beam = bestDiverse(ctx, children, cfg.width, seen);
   }
   let choices = [...bestByRoot.values()].sort((a, b) => b.score - a.score);
   // 结束回合不能进入最终候选时，收回其安全预算。
@@ -467,7 +530,7 @@ export function* search(
       for (let index = 0; index < shortlist.length; index++) {
         if (stopped(ctx)) break;
         const node = shortlist[index];
-        let draw = (hash(fingerprint(s) + ':reply:' + sample) + 0.5) / 4294967296;
+        let draw = (hash(ctx.keys.fingerprint(s) + ':reply:' + sample) + 0.5) / 4294967296;
         let state = node.outcomes.at(-1)!.state;
         for (const out of node.outcomes) {
           draw -= out.weight;
@@ -513,7 +576,7 @@ export function* search(
     Math.abs(selected.score) < 90000
   ) {
     const near = choices.filter((n) => selected!.score - n.score <= cfg.noise).slice(0, 3);
-    selected = near[hash(fingerprint(s)) % near.length];
+    selected = near[hash(ctx.keys.fingerprint(s)) % near.length];
   }
   // 缓存不能盲目执行后续结束回合；新决策再次提出结束时，
   // 即使束搜索和回应预算已用完，也要检查未兑现的战术收益。
@@ -601,4 +664,17 @@ export function decide(
   let step = iterator.next();
   while (!step.done) step = iterator.next();
   return step.value;
+}
+
+/** 搜索内部的已结算快照复用原字符串键，外部模拟仍默认使用原始查询。 */
+function distribution(
+  ctx: Context,
+  s: GameState,
+  c: Command,
+  limit = 12,
+  samples = 3,
+  salt = 0,
+  sampleKey?: string,
+) {
+  return rawDistribution(s, c, limit, samples, salt, sampleKey, ctx.keys.positionKey);
 }
