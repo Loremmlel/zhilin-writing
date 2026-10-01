@@ -5,6 +5,7 @@ import { join } from "node:path";
 import test from "node:test";
 import { encodeReply } from "react-server-dom-webpack/client.edge";
 import { Miniflare } from "miniflare";
+import { Window } from "happy-dom";
 
 test("built Worker serves authenticated two-player HTTP rooms and existing pages on isolated D1", async () => {
   const root = fileURLToPath(new URL("../../dist/server/", import.meta.url));
@@ -642,6 +643,85 @@ test("built Worker serves authenticated two-player HTTP rooms and existing pages
     assert.match(historicalHtml, /class="hj-game/);
     assert.match(historicalHtml, /已结束/);
     assert.doesNotMatch(historicalHtml, /版本不兼容|这个区域暂时无法显示/);
+
+    // Exercise separate profile and content destinations in the real built Worker.
+    await db.batch([
+      db.prepare(
+        "INSERT INTO posts(id,author_id,title,markdown,search_text,published_at,last_activity_at) VALUES('profile-post','c','用户入口测试','正文','正文',1,1)",
+      ),
+      db.prepare(
+        "INSERT INTO replies(id,post_id,author_id,markdown,published_at) VALUES('profile-reply','profile-post','c','普通回复',1)",
+      ),
+      db.prepare(
+        "INSERT INTO replies(id,post_id,author_id,root_reply_id,reply_to_reply_id,reply_to_user_id,markdown,published_at) VALUES('profile-child','profile-post','a','profile-reply','profile-reply','c','子回复',2)",
+      ),
+      db.prepare(
+        "INSERT INTO activity_events(id,actor_user_id,event_type,post_id,reply_id,created_at) VALUES('profile-event','c','POST_REPLY_CREATED','profile-post','profile-reply',1)",
+      ),
+      db.prepare(
+        "INSERT INTO notifications(id,recipient_user_id,actor_user_id,event_id,notification_type,post_id,reply_id,created_at) VALUES('profile-notice','a','c','profile-event','POST_REPLY_RECEIVED','profile-post','profile-reply',1)",
+      ),
+    ]);
+    const window = new Window({
+      url: "https://site.test",
+      settings: {
+        disableCSSFileLoading: true,
+        disableJavaScriptFileLoading: true,
+        disableJavaScriptEvaluation: true,
+      },
+    });
+    try {
+      const page = async (route) => {
+        const response = await request(route, "a");
+        assert.equal(response.status, 200, route);
+        const document = window.document;
+        document.body.innerHTML = await response.text();
+        assert.equal(document.querySelectorAll("a a").length, 0, "no nested navigation links");
+        return document;
+      };
+      const home = await page("/");
+      assert.equal(home.querySelectorAll('.post-card .profile-link[href="/users/c"]').length, 2);
+      const post = await page("/posts/profile-post");
+      assert.equal(
+        post.querySelectorAll('#reply-profile-reply .profile-link[href="/users/c"]').length,
+        2,
+      );
+      assert.equal(
+        post.querySelectorAll('#reply-profile-child .profile-link[href="/users/a"]').length,
+        2,
+      );
+      assert.equal(
+        post.querySelector('#reply-profile-child .profile-link[href="/users/c"]').textContent,
+        "丙",
+      );
+      const notices = await page("/notifications");
+      const notice = notices.querySelector(".notification-item");
+      assert.equal(notice.tagName, "ARTICLE");
+      assert.equal(notice.querySelectorAll('.profile-link[href="/users/c"]').length, 2);
+      assert.equal(
+        notice.querySelector(".notification-detail-link").getAttribute("href"),
+        "/notifications/profile-notice",
+      );
+      const activity = await page("/users/c?tab=activity");
+      assert.equal(
+        activity.querySelector(".activity-content .profile-link").getAttribute("href"),
+        "/users/c",
+      );
+      assert.equal(
+        (await db.prepare("SELECT read_at FROM notifications WHERE id='profile-notice'").first())
+          .read_at,
+        null,
+        "profile visits do not read the notification",
+      );
+      await (await request("/notifications/profile-notice", "a")).text();
+      assert.ok(
+        (await db.prepare("SELECT read_at FROM notifications WHERE id='profile-notice'").first())
+          .read_at,
+        "notification destination still marks it read",
+      );
+    } finally {
+      await window.happyDOM.close();
+    }
   } finally {
     await mf.dispose();
   }

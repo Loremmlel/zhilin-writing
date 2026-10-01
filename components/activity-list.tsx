@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ProfileLink } from "@/components/profile-link";
 
 import type { listUserActivityPage } from "@/db/queries";
 import { formatDateTime, formatListDateTime } from "@/lib/format";
@@ -21,19 +22,32 @@ function ActivityCopy({ item }: { item: ActivityItem }) {
   if (!item.post || !item.postReachable) {
     return (
       <p>
-        <strong>{item.actor.displayName}</strong> 的一条公开内容现已不可用
+        <strong>
+          <ProfileLink userId={item.actor.id} name={item.actor.displayName}>
+            {item.actor.displayName}
+          </ProfileLink>
+        </strong>{" "}
+        的一条公开内容现已不可用
       </p>
     );
   }
   if (item.event.eventType === "POST_CREATED") {
     return item.postAvailable ? (
       <p>
-        <strong>{item.actor.displayName}</strong> 发布了{" "}
-        <Link href={`/posts/${item.post.id}`}>《{item.post.title}》</Link>
+        <strong>
+          <ProfileLink userId={item.actor.id} name={item.actor.displayName}>
+            {item.actor.displayName}
+          </ProfileLink>
+        </strong>{" "}
+        发布了 <Link href={`/posts/${item.post.id}`}>《{item.post.title}》</Link>
       </p>
     ) : (
       <p>
-        <strong>{item.actor.displayName}</strong>{" "}
+        <strong>
+          <ProfileLink userId={item.actor.id} name={item.actor.displayName}>
+            {item.actor.displayName}
+          </ProfileLink>
+        </strong>{" "}
         <Link href={`/posts/${item.post.id}`}>发布了一条现已不可用的内容</Link>
       </p>
     );
@@ -60,16 +74,24 @@ function ActivityCopy({ item }: { item: ActivityItem }) {
           : notificationTargetNotice(resolution.state, resolution.kind);
       return (
         <p>
-          <strong>{item.actor.displayName}</strong> <Link href={href}>批注了一段文字</Link>；
-          {notice}
+          <strong>
+            <ProfileLink userId={item.actor.id} name={item.actor.displayName}>
+              {item.actor.displayName}
+            </ProfileLink>
+          </strong>{" "}
+          <Link href={href}>批注了一段文字</Link>；{notice}
         </p>
       );
     }
     return (
       <>
         <p>
-          <strong>{item.actor.displayName}</strong> 批注了{" "}
-          <Link href={href}>《{item.post.title}》中的一段文字</Link>
+          <strong>
+            <ProfileLink userId={item.actor.id} name={item.actor.displayName}>
+              {item.actor.displayName}
+            </ProfileLink>
+          </strong>{" "}
+          批注了 <Link href={href}>《{item.post.title}》中的一段文字</Link>
         </p>
         <blockquote>{truncateActivityPreview(item.annotation.originalSelectedText, 48)}</blockquote>
       </>
@@ -100,19 +122,32 @@ function ActivityCopy({ item }: { item: ActivityItem }) {
           : notificationTargetNotice(resolution.state, resolution.kind);
       return (
         <p>
-          <strong>{item.actor.displayName}</strong> <Link href={href}>回复了一条批注讨论</Link>；
-          {notice}
+          <strong>
+            <ProfileLink userId={item.actor.id} name={item.actor.displayName}>
+              {item.actor.displayName}
+            </ProfileLink>
+          </strong>{" "}
+          <Link href={href}>回复了一条批注讨论</Link>；{notice}
         </p>
       );
     }
     return (
       <>
         <p>
-          <strong>{item.actor.displayName}</strong>{" "}
+          <strong>
+            <ProfileLink userId={item.actor.id} name={item.actor.displayName}>
+              {item.actor.displayName}
+            </ProfileLink>
+          </strong>{" "}
           {item.replyTo ? (
             <>
-              回复了 <strong>{item.replyTo.displayName}</strong> 在{" "}
-              <Link href={href}>《{item.post.title}》中的批注</Link>
+              回复了{" "}
+              <strong>
+                <ProfileLink userId={item.replyTo.id} name={item.replyTo.displayName}>
+                  {item.replyTo.displayName}
+                </ProfileLink>
+              </strong>{" "}
+              在 <Link href={href}>《{item.post.title}》中的批注</Link>
             </>
           ) : (
             <>
@@ -146,7 +181,12 @@ function ActivityCopy({ item }: { item: ActivityItem }) {
         : notificationTargetNotice(resolution.state, resolution.kind);
     return (
       <p>
-        <strong>{item.actor.displayName}</strong> <Link href={href}>发布了一条回复</Link>；{notice}
+        <strong>
+          <ProfileLink userId={item.actor.id} name={item.actor.displayName}>
+            {item.actor.displayName}
+          </ProfileLink>
+        </strong>{" "}
+        <Link href={href}>发布了一条回复</Link>；{notice}
       </p>
     );
   }
@@ -158,10 +198,20 @@ function ActivityCopy({ item }: { item: ActivityItem }) {
   return (
     <>
       <p>
-        <strong>{item.actor.displayName}</strong>{" "}
+        <strong>
+          <ProfileLink userId={item.actor.id} name={item.actor.displayName}>
+            {item.actor.displayName}
+          </ProfileLink>
+        </strong>{" "}
         {item.replyTo ? (
           <>
-            回复了 <strong>{item.replyTo.displayName}</strong> 在 {target} 中的回复
+            回复了{" "}
+            <strong>
+              <ProfileLink userId={item.replyTo.id} name={item.replyTo.displayName}>
+                {item.replyTo.displayName}
+              </ProfileLink>
+            </strong>{" "}
+            在 {target} 中的回复
           </>
         ) : (
           <>回复了 {target}</>

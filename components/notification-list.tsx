@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { Avatar } from "@/components/avatar";
+import { ProfileLink } from "@/components/profile-link";
 import type { listNotificationsPage } from "@/db/queries";
 import { truncateActivityPreview } from "@/lib/activity/policy";
 import { formatDateTime, formatListDateTime } from "@/lib/format";
@@ -44,25 +45,41 @@ export function NotificationList({
             ? notificationTargetNotice(targetResolution.state, targetResolution.kind)
             : null;
         return (
-          <Link
+          <article
             className={`notification-item${isUnread ? " notification-item--unread" : ""}`}
-            href={`/notifications/${item.notification.id}`}
             key={item.notification.id}
           >
-            <Avatar name={item.actor.displayName} assetId={item.actor.avatarAssetId} />
+            <ProfileLink userId={item.actor.id} name={item.actor.displayName} avatar>
+              <Avatar name={item.actor.displayName} assetId={item.actor.avatarAssetId} />
+            </ProfileLink>
             <div className="notification-content">
               <p>
                 {isDocxAttribution ? (
                   item.docxAttribution ? (
-                    formatDocxAttributionNotice(item.docxAttribution, {
-                      includePostTitle: item.postAvailable,
-                    })
+                    <>
+                      <strong>
+                        <ProfileLink
+                          userId={item.actor.id}
+                          name={item.docxAttribution.importerDisplayName}
+                        >
+                          {item.docxAttribution.importerDisplayName}
+                        </ProfileLink>
+                      </strong>
+                      {formatDocxAttributionNotice(item.docxAttribution, {
+                        includePostTitle: item.postAvailable,
+                        includeImporterName: false,
+                      })}
+                    </>
                   ) : (
                     "收到了一条 DOCX 批注关联通知，但通知详情已不可用。"
                   )
                 ) : (
                   <>
-                    <strong>{item.actor.displayName}</strong>{" "}
+                    <strong>
+                      <ProfileLink userId={item.actor.id} name={item.actor.displayName}>
+                        {item.actor.displayName}
+                      </ProfileLink>
+                    </strong>{" "}
                     {targetUnavailableCopy ? (
                       `${item.notification.notificationType === "POST_ANNOTATION_RECEIVED" ? "批注了你的帖子" : "回复了你"}；${targetUnavailableCopy}`
                     ) : !item.post || !item.postReachable ? (
@@ -111,18 +128,24 @@ export function NotificationList({
                   </blockquote>
                 )}
               <div className="notification-meta">
-                <time
-                  dateTime={item.notification.createdAt.toISOString()}
-                  title={formatDateTime(item.notification.createdAt)}
-                  aria-label={formatDateTime(item.notification.createdAt)}
+                <Link
+                  className="notification-detail-link"
+                  href={`/notifications/${item.notification.id}`}
+                  aria-label={`查看${item.actor.displayName}的这条通知`}
                 >
-                  {formatListDateTime(item.notification.createdAt)}
-                </time>
+                  <time
+                    dateTime={item.notification.createdAt.toISOString()}
+                    title={formatDateTime(item.notification.createdAt)}
+                    aria-label={formatDateTime(item.notification.createdAt)}
+                  >
+                    {formatListDateTime(item.notification.createdAt)}
+                  </time>
+                </Link>
                 <span>{isUnread ? "未读" : "已读"}</span>
               </div>
             </div>
             {isUnread && <span className="unread-dot" aria-label="未读" />}
-          </Link>
+          </article>
         );
       })}
     </section>

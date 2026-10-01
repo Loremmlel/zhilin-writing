@@ -907,6 +907,7 @@ const notificationSelection = {
     metadataJson: activityEvents.metadataJson,
   },
   actor: {
+    id: users.id,
     displayName: users.displayName,
     avatarAssetId: users.avatarAssetId,
   },

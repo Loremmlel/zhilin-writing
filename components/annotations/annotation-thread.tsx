@@ -5,6 +5,7 @@ import { useState, type ReactNode } from "react";
 import type { AnnotationReplyActionState } from "@/app/(site)/posts/[id]/actions";
 import { AnnotationReplyForm } from "@/components/annotations/annotation-reply-form";
 import { Avatar } from "@/components/avatar";
+import { ProfileLink } from "@/components/profile-link";
 import {
   DeleteContentControl,
   type LifecycleActionState,
@@ -68,6 +69,24 @@ export type AnnotationReplyDeleteAction = (
 export type AnnotationRemoveImportedAction = AnnotationDeleteAction;
 type AnnotationReplyView = AnnotationCardView["replies"][number];
 
+function AnnotationSource({ author }: { author: AnnotationAuthorView }) {
+  const sourceMetadata = annotationSourceMetadata({ ...author, attributedUser: null });
+  return (
+    <>
+      {sourceMetadata}
+      {author.attributedUser && (
+        <>
+          {" "}
+          · 关联{" "}
+          <ProfileLink userId={author.attributedUser.id} name={author.attributedUser.displayName}>
+            {author.attributedUser.displayName}
+          </ProfileLink>
+        </>
+      )}
+    </>
+  );
+}
+
 function AnnotationIdentity({
   author,
   createdAtLabel,
@@ -75,12 +94,19 @@ function AnnotationIdentity({
   author: AnnotationAuthorView;
   createdAtLabel: string;
 }) {
-  const sourceMetadata = annotationSourceMetadata(author);
   return (
     <div>
-      <strong>{author.displayName}</strong>
+      <strong>
+        <ProfileLink userId={author.id} name={author.displayName}>
+          {author.displayName}
+        </ProfileLink>
+      </strong>
       <span className="annotation-author-meta">
-        {sourceMetadata && <>{sourceMetadata} · </>}
+        {author.sourceType === "DOCX_IMPORT" && (
+          <>
+            <AnnotationSource author={author} /> ·{" "}
+          </>
+        )}
         <time>{createdAtLabel}</time>
       </span>
     </div>
@@ -94,15 +120,32 @@ function AnnotationReplyIdentity({
 }: {
   author: AnnotationAuthorView;
   createdAtLabel: string;
-  replyTo: { displayName: string } | null;
+  replyTo: { id: string | null; displayName: string } | null;
 }) {
-  const sourceMetadata = annotationSourceMetadata(author);
   return (
     <div>
-      <strong>{author.displayName}</strong>
+      <strong>
+        <ProfileLink userId={author.id} name={author.displayName}>
+          {author.displayName}
+        </ProfileLink>
+      </strong>
       <span>
-        {sourceMetadata ? `${sourceMetadata} · ` : ""}
-        {replyTo ? `回复 ${replyTo.displayName}` : "回复批注"} · {createdAtLabel}
+        {author.sourceType === "DOCX_IMPORT" && (
+          <>
+            <AnnotationSource author={author} /> ·{" "}
+          </>
+        )}
+        {replyTo ? (
+          <>
+            回复{" "}
+            <ProfileLink userId={replyTo.id} name={replyTo.displayName}>
+              {replyTo.displayName}
+            </ProfileLink>
+          </>
+        ) : (
+          "回复批注"
+        )}{" "}
+        · {createdAtLabel}
       </span>
     </div>
   );
@@ -141,11 +184,13 @@ function AnnotationRoot({
   return (
     <>
       <header className="annotation-card-header">
-        <Avatar
-          name={annotation.author.displayName}
-          assetId={annotation.author.avatarAssetId}
-          size="small"
-        />
+        <ProfileLink userId={annotation.author.id} name={annotation.author.displayName} avatar>
+          <Avatar
+            name={annotation.author.displayName}
+            assetId={annotation.author.avatarAssetId}
+            size="small"
+          />
+        </ProfileLink>
         <AnnotationIdentity author={annotation.author} createdAtLabel={annotation.createdAtLabel} />
         {onLocate && (
           <button type="button" className="annotation-card-locate" onClick={onLocate}>
@@ -181,7 +226,13 @@ function AnnotationReplyContent({
       tabIndex={-1}
     >
       <header>
-        <Avatar name={reply.author.displayName} assetId={reply.author.avatarAssetId} size="small" />
+        <ProfileLink userId={reply.author.id} name={reply.author.displayName} avatar>
+          <Avatar
+            name={reply.author.displayName}
+            assetId={reply.author.avatarAssetId}
+            size="small"
+          />
+        </ProfileLink>
         <AnnotationReplyIdentity
           author={reply.author}
           createdAtLabel={reply.createdAtLabel}

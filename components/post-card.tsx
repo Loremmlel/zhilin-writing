@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { PostRecord, SiteUser } from "@/db/schema";
 import { excerpt, formatDateTime, formatListDateTime } from "@/lib/format";
 import { Avatar } from "./avatar";
+import { ProfileLink } from "./profile-link";
 
 type PostCardProps = {
   post: Pick<
@@ -32,10 +33,14 @@ export function PostCard({
         </Link>
         <p className="post-excerpt">{excerpt(post.searchText || post.markdown)}</p>
         <div className="post-meta">
-          <Link href={`/users/${author.id}`} className="author-link">
-            <Avatar name={author.displayName} assetId={author.avatarAssetId} size="small" />
-            <span>{author.displayName}</span>
-          </Link>
+          <span className="author-link">
+            <ProfileLink userId={author.id} name={author.displayName} avatar>
+              <Avatar name={author.displayName} assetId={author.avatarAssetId} size="small" />
+            </ProfileLink>
+            <ProfileLink userId={author.id} name={author.displayName}>
+              {author.displayName}
+            </ProfileLink>
+          </span>
           <time
             dateTime={(active ? post.lastActivityAt : post.publishedAt).toISOString()}
             title={`发表于 ${formatDateTime(post.publishedAt)}${active ? `；活跃于 ${formatDateTime(post.lastActivityAt)}` : ""}`}

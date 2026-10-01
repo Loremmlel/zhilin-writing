@@ -160,7 +160,7 @@ test("home cards, admin tabs, and the compact header keep their interaction cont
   assert.match(card, /className="post-title-link"/);
   assert.match(card, /条批注/);
   assert.match(styles, /\.post-title-link::after[^}]*position: absolute[^}]*inset: 0/);
-  assert.match(styles, /\.post-card :is\(\.author-link, \.post-count, \.tag\)[^}]*z-index: 1/);
+  assert.match(styles, /\.post-card :is\(\.profile-link, \.post-count, \.tag\)[^}]*z-index: 1/);
   assert.match(styles, /\.admin-page \.list-tabs[^}]*overflow-x: auto[^}]*overflow-y: hidden/);
   assert.doesNotMatch(styles, /\.admin-page \.list-tabs[^}]*scrollbar-gutter: stable/);
   assert.match(styles, /@media \(max-width: 1400px\)[\s\S]*\.admin-aside\s*\{[^}]*display:\s*none/);

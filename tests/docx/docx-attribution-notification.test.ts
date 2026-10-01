@@ -53,5 +53,9 @@ test("DOCX attribution copy explains the batch without implying ownership", () =
     "柚子导入一篇帖子时，将 3 条 Word 批注关联到了你。此关联仅用于显示来源身份，不授予编辑或删除权限。",
   );
   assert.equal(parseDocxAttributionNoticeMetadata("{}"), null);
+  assert.equal(
+    `柚子${formatDocxAttributionNotice(metadata, { includeImporterName: false })}`,
+    formatDocxAttributionNotice(metadata),
+  );
   assert.equal(parseDocxAttributionNoticeMetadata("not-json"), null);
 });

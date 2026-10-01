@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
+import { ProfileLink } from "@/components/profile-link";
 import { Avatar } from "@/components/avatar";
 import {
   AnnotationReadingLayout,
@@ -199,10 +200,14 @@ async function PostBodyRegion({
       </div>
       <h1>{item.title}</h1>
       <div className="post-byline">
-        <Link href={`/users/${item.author.id}`} className="author-link">
-          <Avatar name={item.author.displayName} assetId={item.author.avatarAssetId} />
-          <span>{item.author.displayName}</span>
-        </Link>
+        <span className="author-link">
+          <ProfileLink userId={item.author.id} name={item.author.displayName} avatar>
+            <Avatar name={item.author.displayName} assetId={item.author.avatarAssetId} />
+          </ProfileLink>
+          <ProfileLink userId={item.author.id} name={item.author.displayName}>
+            {item.author.displayName}
+          </ProfileLink>
+        </span>
         <span>发布于 {formatDateTime(item.post.publishedAt)}</span>
         {item.post.editedAt && <span>编辑于 {formatDateTime(item.post.editedAt)}</span>}
         {item.post.authorId === memberId && (

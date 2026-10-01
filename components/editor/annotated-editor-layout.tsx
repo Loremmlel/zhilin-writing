@@ -269,12 +269,18 @@ export function AnnotatedEditorLayout({
               className={`annotation-card${resolvedActiveId === annotation.id ? " is-active" : ""}`}
               style={{ top: cardTops[annotation.id] ?? 0 }}
               tabIndex={-1}
-              onFocusCapture={() => setFocusedId(annotation.id)}
+              onFocusCapture={(event) => {
+                const target = event.target instanceof Element ? event.target : null;
+                setFocusedId(target?.closest(".profile-link") ? null : annotation.id);
+              }}
               onBlurCapture={(event) => {
                 if (!event.currentTarget.contains(event.relatedTarget as Node | null))
                   setFocusedId(null);
               }}
-              onClick={() => setActiveId(annotation.id)}
+              onClick={(event) => {
+                const target = event.target instanceof Element ? event.target : null;
+                if (!target?.closest(".profile-link")) setActiveId(annotation.id);
+              }}
             >
               <AnnotationReadonlyThread
                 annotation={annotation}

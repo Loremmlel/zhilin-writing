@@ -1,4 +1,5 @@
 import { Avatar } from "@/components/avatar";
+import { ProfileLink } from "@/components/profile-link";
 import {
   DeleteContentControl,
   type LifecycleFormAction,
@@ -51,16 +52,29 @@ function ReplyItem({
       tabIndex={-1}
     >
       <div className="reply-author">
-        <Avatar name={item.author.displayName} assetId={item.author.avatarAssetId} size="small" />
+        <ProfileLink userId={item.author.id} name={item.author.displayName} avatar>
+          <Avatar name={item.author.displayName} assetId={item.author.avatarAssetId} size="small" />
+        </ProfileLink>
       </div>
       <div className="reply-body">
         <div className="reply-meta">
-          <strong>{item.author.displayName}</strong>
+          <strong>
+            <ProfileLink userId={item.author.id} name={item.author.displayName}>
+              {item.author.displayName}
+            </ProfileLink>
+          </strong>
           {item.replyTo && (
             <span>
-              {item.replyToUnavailable
-                ? "回复了一条已删除或隐藏的回复"
-                : `回复 ${item.replyTo.displayName}`}
+              {item.replyToUnavailable ? (
+                "回复了一条已删除或隐藏的回复"
+              ) : (
+                <>
+                  回复{" "}
+                  <ProfileLink userId={item.replyTo.id} name={item.replyTo.displayName}>
+                    {item.replyTo.displayName}
+                  </ProfileLink>
+                </>
+              )}
             </span>
           )}
           <time>{formatDateTime(item.reply.publishedAt)}</time>

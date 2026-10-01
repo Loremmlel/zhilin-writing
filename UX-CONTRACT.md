@@ -72,6 +72,7 @@
 | Capability                 | Canonical owner                              | Source of truth                                                                                                   | Allowed variants                                         | Verification                                |
 | -------------------------- | -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- | ------------------------------------------- |
 | Page heading / post list   | `PageHeader` / `PostCard`                    | `components/page-header.tsx`, `components/post-card.tsx`                                                          | title/count/actions；published/active                    | sibling visual comparison + semantic links  |
+| User profile navigation    | `ProfileLink`                                | `components/profile-link.tsx`                                                                                     | name / avatar; unlinked external Word identity           | built Worker semantic links + browser       |
 | Community search           | `SearchForm` / `HeaderSearch`                | `components/search-form.tsx`                                                                                      | compact/page                                             | clear + IME + URL restoration               |
 | Community pagination       | `Pagination` + query helpers                 | `components/pagination.tsx`, `lib/pagination.ts`, `lib/page-navigation.ts`, `db/queries.ts`                       | six community list types                                 | real query pagination tests + navigation    |
 | Submit feedback            | `PendingSubmitButton`                        | `components/pending/pending-submit-button.tsx`                                                                    | pending/upload/conflict labels                           | duplicate prevention + stable dimensions    |
@@ -156,6 +157,8 @@
 | Read DOCX attribution notice | 通知列表或详情                                        | 标记已读                           | imported post                        | 汇总显示关联批注数量与导入者                                    | 帖子不可访问时保留历史通知占位                       | 通知详情标题                | V5.5 spec    |
 
 ## Navigation and responsive behavior
+
+- 社区帖子列表／详情、普通回复、批注根与回复、通知及用户动态中的站内头像和名称复用 `ProfileLink`，分别为原生个人主页链接。点击不激活批注线程；通知卡片正文和空白继续进入通知详情，用户入口不标记通知已读，禁止嵌套链接。普通回复与批注回复的目标用户名也按其站内 ID 跳转。Word 来源作者没有站内 ID 时保留不可点击来源名称，已关联成员名称提供个人主页入口；关联不改变身份或权限。账户菜单、头像编辑与本人主页展示保留各自既有职责。来源：2026-10-01用户要求；视觉状态见 DESIGN.md，适用 U1/U6/U10。
 
 - 管理总览、内容类型、成员、日志和历史版本都提供诚实的页面标题；普通页面也使用本地化任务标题；受保护详情使用不暴露正文的通用标题。
 - Forbidden administrator navigation is enforced server-side and returns to the community root under the current auth contract.

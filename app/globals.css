@@ -1166,7 +1166,7 @@ input[type="file"] {
   border-bottom: 1px solid var(--line);
   transition: background 150ms;
 }
-.post-card:hover {
+.post-card:hover:not(:has(.profile-link:is(:hover, :focus-visible))) {
   background: var(--green-pale);
 }
 .post-card-content {
@@ -1186,7 +1186,7 @@ input[type="file"] {
   outline: 3px solid rgba(53, 97, 69, 0.34);
   outline-offset: 2px;
 }
-.post-card :is(.author-link, .post-count, .tag) {
+.post-card :is(.profile-link, .post-count, .tag) {
   position: relative;
   z-index: 1;
 }
@@ -1228,6 +1228,59 @@ input[type="file"] {
   gap: 7px;
   color: var(--ink);
   font-weight: 600;
+}
+.profile-link {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+  border-radius: 4px;
+  color: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 3px;
+  overflow-wrap: anywhere;
+  transition:
+    color 150ms,
+    background 150ms,
+    text-decoration-color 150ms,
+    transform 150ms;
+}
+.profile-link:hover,
+.profile-link:focus-visible {
+  color: var(--green-dark);
+  background: var(--green-soft);
+  text-decoration-color: currentColor;
+}
+.profile-link:focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: 3px;
+}
+.profile-link:active {
+  background: var(--green-pale);
+}
+.profile-link--avatar {
+  display: inline-flex;
+  align-self: start;
+  flex-shrink: 0;
+  border-radius: 50%;
+}
+.profile-link--avatar:hover,
+.profile-link--avatar:focus-visible {
+  transform: scale(1.06);
+  outline: 2px solid var(--green);
+  outline-offset: 2px;
+}
+.profile-link--avatar:active {
+  transform: scale(0.98);
+}
+@media (prefers-reduced-motion: reduce) {
+  .profile-link {
+    transition: none;
+  }
+  .profile-link--avatar:is(:hover, :focus-visible, :active) {
+    transform: none;
+  }
 }
 .post-counts {
   margin-left: auto;
@@ -2045,9 +2098,9 @@ input[type="file"] {
     box-shadow 0.18s,
     transform 0.18s;
 }
-.annotation-card:hover,
-.annotation-card:focus-visible,
-.annotation-card.is-active {
+.annotation-card:is(:hover, :focus-visible, .is-active):not(
+    :has(.profile-link:is(:hover, :focus-visible))
+  ) {
   border-color: #d7aaa5;
   background: var(--annotation-active);
   box-shadow: none;
@@ -2141,6 +2194,9 @@ input[type="file"] {
   background: var(--annotation);
   box-shadow: inset 3px 0 0 var(--annotation-ink);
 }
+.annotation-reply:hover:not(:has(.profile-link:is(:hover, :focus-visible))) {
+  background: var(--annotation);
+}
 .annotation-reply header {
   display: flex;
   align-items: center;
@@ -2154,7 +2210,7 @@ input[type="file"] {
 .annotation-reply header strong {
   font-size: 12px;
 }
-.annotation-reply header span {
+.annotation-reply header > div > span {
   color: var(--muted);
   font-size: 12px;
 }
@@ -2475,6 +2531,9 @@ input[type="file"] {
   border-top: 1px solid var(--line);
   background: #f9faf6;
 }
+.reply:hover:not(:has(.profile-link:is(:hover, :focus-visible))) {
+  background: var(--green-pale);
+}
 .reply-meta {
   display: flex;
   gap: 8px 12px;
@@ -2685,7 +2744,7 @@ input[type="file"] {
 .notification-item:last-child {
   border-bottom: 0;
 }
-.notification-item:hover {
+.notification-item:hover:not(:has(.profile-link:is(:hover, :focus-visible))) {
   background: var(--green-pale);
 }
 .notification-item--unread {
@@ -2693,6 +2752,21 @@ input[type="file"] {
 }
 .notification-content {
   min-width: 0;
+}
+.notification-detail-link::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+.notification-detail-link:focus-visible {
+  outline: none;
+}
+.notification-detail-link:focus-visible::after {
+  outline: 2px solid var(--green);
+  outline-offset: -3px;
+}
+.notification-item .profile-link {
+  z-index: 1;
 }
 .notification-content p {
   margin: 1px 0 0;

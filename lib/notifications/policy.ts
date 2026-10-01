@@ -87,8 +87,8 @@ export function parseDocxAttributionNoticeMetadata(
 
 export function formatDocxAttributionNotice(
   metadata: DocxAttributionNoticeMetadata,
-  options: { includePostTitle?: boolean } = {},
+  options: { includePostTitle?: boolean; includeImporterName?: boolean } = {},
 ): string {
   const target = options.includePostTitle === false ? "一篇帖子" : `《${metadata.postTitle}》`;
-  return `${metadata.importerDisplayName}导入${target}时，将 ${metadata.commentCount} 条 Word 批注关联到了你。此关联仅用于显示来源身份，不授予编辑或删除权限。`;
+  return `${options.includeImporterName === false ? "" : metadata.importerDisplayName}导入${target}时，将 ${metadata.commentCount} 条 Word 批注关联到了你。此关联仅用于显示来源身份，不授予编辑或删除权限。`;
 }
