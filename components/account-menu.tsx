@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
-import { chatGPTSignOutPath } from "@/app/chatgpt-auth";
 import type { SiteUser } from "@/db/schema";
 import { isAccountMenuDismissKey, isOutsideAccountMenu } from "@/lib/ui/account-menu";
 import { Avatar } from "./avatar";
@@ -93,7 +92,11 @@ export function AccountMenu({
               管理后台
             </Link>
           )}
-          <a href={chatGPTSignOutPath("/")}>退出登录</a>
+          <form action="/api/auth/logout" method="post" target="_top" noValidate>
+            <button type="submit" className="account-signout">
+              退出登录
+            </button>
+          </form>
         </div>
       )}
     </div>

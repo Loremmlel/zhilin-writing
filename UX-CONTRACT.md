@@ -285,3 +285,13 @@
 来源：[对局归档](docs/plans/haojie-archives.md)。`/admin/games` 复用 AdminShell、AdminContentTable 非选择变体和 Pagination，按更新时间倒序；仅管理员可访问页面、执行归档/异常结束以及下载完整 JSON。异常结束使用 ModalDialog 明示无法续玩、不判胜负、保留过程，默认聚焦取消，提交期间保持尺寸并防重复，失败保留弹窗及事件编号。过期局面拒绝并提示刷新确认；已结束但上传失败明确提示终局已生效，可重试补传。useRecoverableActionState 兜住未收到提交结果，重试保持幂等。归档成功刷新列表显示下载；下载不离开当前后台列表。临时断线不结束房间，旧局明确标注“历史不完整”，不承诺恢复缺失历史。适用 U1/U2/U4/U9/U10。
 
 - 2026-09-23 同步：上游 `UnitReferenceProvider` 拥有棋子／关键词介绍，复用游戏原生 Modal；宿主锁定时一并关闭，避免遮挡网站悔棋确认。网站继续拥有原生游戏弹窗的居中 CSS。
+
+## 双方式登录与成员密码（2026-10-01）
+
+领域依据：[邮箱密码登录](docs/password-login.md)，即本次用户要求、现行白名单与唯一管理员约束；适用 U1/U2/U4/U6/U9/U10。
+
+- `/login` 由 `LoginForm` 拥有密码提交；`PasswordField` 统一登录／新密码／确认密码的遮罩、显示／隐藏、标签关联和密码管理器语义。表单原地校验并聚焦错误字段，IME Enter 不提交，pending 不重复提交，失败保留输入并就近显示安全错误和事件编号。密码不持久化本地草稿。
+- ChatGPT 入口和退出由原生同源 POST 表单顶层导航，清理本站会话后进入既有平台登录／退出入口。成功进入原本的安全站内目标；已移除成员无访问权限，首次用户继续完善资料；游戏组仍只进入游戏和资料。
+- `SetMemberPasswordForm` 复用 ModalDialog、PendingSubmitButton、ActionErrorMessage 和 useRecoverableActionState。弹窗明确标识邮箱、密码长度与重置对已有密码登录的影响；取消不写入，成功关闭并刷新成员状态，失败保留输入，不回显已有密码。管理员自身仍使用 ChatGPT 登录。
+- 权限仍由 `lib/auth/access.ts` 在服务端统一检查；密码会话失效不静默回退到另一个 ChatGPT 身份。重置密码、移除白名单后的下一次请求读取最新状态。
+- 工程验证：`tests/access/password-login.test.ts`（真实 workerd/D1）与已有 `tests/access/auth-access.test.ts`；静态审计、构建与本地 HTTP 验证分别记录，不称为真实浏览器验收。

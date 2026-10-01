@@ -7,6 +7,7 @@ import {
   desc,
   eq,
   gte,
+  getTableColumns,
   inArray,
   isNotNull,
   isNull,
@@ -250,7 +251,10 @@ export async function removeAllowedUser(id: string) {
 
 export async function listAllowedUsers() {
   return getDb()
-    .select()
+    .select({
+      ...getTableColumns(allowedUsers),
+      hasPassword: sql<number>`exists(select 1 from member_passwords where allowed_user_id = ${allowedUsers.id})`,
+    })
     .from(allowedUsers)
     .orderBy(desc(allowedUsers.isAdmin), asc(allowedUsers.email));
 }

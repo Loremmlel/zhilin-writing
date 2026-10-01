@@ -17,6 +17,7 @@ import {
   DEFAULT_IMAGE_SIZES,
 } from "vinext/server/image-optimization";
 import handler from "vinext/server/app-router-entry";
+import { isSameOriginMutation, SESSION_COOKIE } from "../lib/auth/password-policy";
 
 interface Env {
   ASSETS: Fetcher;
@@ -45,6 +46,15 @@ interface ExecutionContext {
 const worker = {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
+    if (
+      !["GET", "HEAD", "OPTIONS"].includes(request.method) &&
+      request.headers
+        .get("cookie")
+        ?.split(";")
+        .some((cookie) => cookie.trim().startsWith(`${SESSION_COOKIE}=`)) &&
+      !isSameOriginMutation(request)
+    )
+      return new Response("请从本站重试。", { status: 403 });
 
     if (url.pathname === "/_vinext/image") {
       const allowedWidths = [...DEFAULT_DEVICE_SIZES, ...DEFAULT_IMAGE_SIZES];
@@ -63,7 +73,9 @@ const worker = {
       );
     }
 
-    return handler.fetch(request, env, ctx);
+    const requestHeaders = new Headers(request.headers);
+    requestHeaders.set("x-zhilin-request-path", `${url.pathname}${url.search}`);
+    return handler.fetch(new Request(request, { headers: requestHeaders }), env, ctx);
   },
 };
 

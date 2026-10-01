@@ -13,6 +13,10 @@ import type { LifecycleActionState } from "@/components/lifecycle/delete-content
 import { getActionAdministratorAccess } from "@/lib/auth/access";
 import { actionAccessFailure, type ActionAccessErrorCode } from "@/lib/actions/result";
 import { normalizeEmail } from "@/lib/domain/rules";
+import { env } from "cloudflare:workers";
+import { setMemberPassword } from "@/lib/auth/password-service";
+import { passwordError } from "@/lib/auth/password-policy";
+import { measuredDatabase } from "@/lib/performance/server";
 import {
   hidePostByAdmin,
   hideReplyByAdmin,
@@ -143,6 +147,34 @@ export async function removeAllowlistAction(
       errorCode: "ALLOWLIST_REMOVE_FAILED",
     });
     return { error: "白名单更新失败，请稍后重试", incidentId };
+  }
+  revalidatePath("/admin");
+  return { success: true };
+}
+
+export async function setMemberPasswordAction(
+  _state: AllowlistActionState,
+  formData: FormData,
+): Promise<AllowlistActionState> {
+  const access = await getActionAdministratorAccess();
+  if (!access.ok) return actionAccessFailure(access.code);
+  const id = String(formData.get("id") ?? "");
+  const password = String(formData.get("password") ?? "");
+  const validation = passwordError(password);
+  if (validation) return { error: validation };
+  if (password !== formData.get("confirmPassword")) return { error: "两次输入的密码不一致" };
+  try {
+    if (!(await setMemberPassword(measuredDatabase(env.DB), id, password)))
+      return { error: "该邀请已失效，或不能为管理员设置密码" };
+  } catch (error) {
+    const incidentId = logServerError({
+      operation: "allowlist.password",
+      entityId: id,
+      userId: access.member.id,
+      error,
+      errorCode: "MEMBER_PASSWORD_FAILED",
+    });
+    return { error: "密码设置失败，请稍后重试", incidentId };
   }
   revalidatePath("/admin");
   return { success: true };

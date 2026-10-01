@@ -3765,6 +3765,65 @@ input[type="file"] {
   letter-spacing: 0.08em;
 }
 
+.login-form {
+  display: grid;
+  gap: 18px;
+}
+.login-form .text-input,
+.password-field .text-input {
+  width: 100%;
+  min-width: 0;
+}
+.password-field .field-label {
+  display: block;
+}
+.password-input-row {
+  position: relative;
+}
+.password-input-row .text-input {
+  padding-right: 64px;
+}
+.password-visibility {
+  position: absolute;
+  inset: 0 10px 0 auto;
+  min-width: 40px;
+  font-size: 14px;
+}
+.login-submit,
+.login-provider-button {
+  width: 100%;
+  min-height: 44px;
+}
+.login-divider {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  color: var(--muted);
+  font-size: 14px;
+}
+.login-divider::before,
+.login-divider::after {
+  content: "";
+  flex: 1;
+  border-top: 1px solid var(--line);
+}
+.account-signout {
+  width: 100%;
+  padding: 9px 11px;
+  border: 0;
+  background: transparent;
+  border-radius: 8px;
+  color: inherit;
+  text-align: left;
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+.account-signout:hover {
+  background: var(--green-soft);
+  color: var(--green-dark);
+}
+
 .docx-import-page {
   container-type: inline-size;
 }

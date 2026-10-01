@@ -2,12 +2,16 @@ import { redirect } from "next/navigation";
 import { cacheForRequest } from "vinext/cache";
 import { env } from "cloudflare:workers";
 
-import { getChatGPTUser, chatGPTSignInPath } from "@/app/chatgpt-auth";
+import { getChatGPTUser } from "@/app/chatgpt-auth";
 import { findAllowedMember } from "@/db/queries";
 import { normalizeEmail } from "@/lib/domain/rules";
 import { canAccessWriting } from "./permissions";
+import { loginPath } from "./password-policy";
+import { passwordSessionToken, readPasswordAccess } from "./password-session";
 
 async function readAccess() {
+  const token = await passwordSessionToken();
+  if (token !== undefined) return readPasswordAccess(token);
   const identity = await getChatGPTUser();
   if (!identity) return null;
   const emailKey = normalizeEmail(identity.email);
@@ -49,7 +53,7 @@ export async function getApiWritingAccess() {
 
 export async function requireSiteAccess(returnTo: string) {
   const access = await getRequestAccess();
-  if (!access) redirect(chatGPTSignInPath(returnTo));
+  if (!access) redirect(loginPath(returnTo));
   if (!access.allowed) redirect("/access-denied");
   return { ...access, allowed: access.allowed };
 }

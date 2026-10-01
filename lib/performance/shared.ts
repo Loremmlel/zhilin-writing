@@ -37,7 +37,7 @@ export function performanceRoute(path: string): string {
   if (/^\/(?:posts|users|api\/assets)\/[^/]+(?:\/(?:edit|history))?$/.test(clean))
     return clean.replace(/^(\/(?:posts|users|api\/assets))\/[^/]+/, "$1/:id");
   if (
-    /^\/(?:admin(?:\/(?:posts|replies|annotations|annotation-replies|users|settings))?|notifications|search|settings|onboarding|access-denied|write|api\/(?:assets|docx-import|performance))$/.test(
+    /^\/(?:admin(?:\/(?:posts|replies|annotations|annotation-replies|users|settings))?|notifications|search|settings|onboarding|access-denied|login|write|api\/(?:assets|docx-import|performance|auth\/(?:login|logout|chatgpt)))$/.test(
       clean,
     ) ||
     clean === "/"

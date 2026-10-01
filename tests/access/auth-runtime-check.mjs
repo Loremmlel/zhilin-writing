@@ -83,9 +83,26 @@ export default async function checkAuthRuntime() {
   const { AsyncLocalStorage } = require("node:async_hooks");
   const identity = new AsyncLocalStorage();
   let reads = 0;
+  const { hashSessionToken } = await import(path + "lib/auth/password-service.ts");
+  const passwordSessions = load("lib/auth/password-session.ts", {
+    "next/headers": {
+      cookies: async () => ({
+        get: () =>
+          identity.getStore()?.sessionToken === undefined
+            ? undefined
+            : { value: identity.getStore().sessionToken },
+      }),
+    },
+    "@/db": { getDb: () => db },
+    "@/db/schema": schema,
+    "./password-service": { hashSessionToken },
+    "./password-policy": await import(path + "lib/auth/password-policy.ts"),
+  });
   const auth = load("lib/auth/access.ts", {
     "vinext/cache": { cacheForRequest },
     "./permissions": await import(path + "lib/auth/permissions.ts"),
+    "./password-policy": await import(path + "lib/auth/password-policy.ts"),
+    "./password-session": passwordSessions,
     "cloudflare:workers": { env: {} },
     "next/navigation": {
       redirect: (url) => {
@@ -145,6 +162,41 @@ export default async function checkAuthRuntime() {
       });
       assert.equal((await auth.getApiMemberAccess()).ok, true);
     }),
+  );
+
+  const passwordToken = "a".repeat(64);
+  sqlite.exec(
+    "INSERT INTO allowed_users(id,email,is_admin,permission_group,added_at,added_by_user_id) VALUES('password-game','password-game@example.test',0,'game',0,'owner'); INSERT INTO users(id,email_key,display_name,joined_at,updated_at) VALUES('password-game','password-game@example.test','Password game',0,0); INSERT INTO member_passwords VALUES('password-game','private-hash')",
+  );
+  sqlite
+    .prepare("INSERT INTO member_sessions VALUES(?,'password-game',?)")
+    .run(hashSessionToken(passwordToken), Date.now() + 60000);
+  await identity.run({ email: "different-chatgpt@example.test", sessionToken: passwordToken }, () =>
+    runWithRequestContext(createRequestContext(), async () => {
+      const start = statements.length;
+      const [first, second] = await Promise.all([
+        auth.requireMember("/"),
+        auth.requireMember("/games/haojie"),
+      ]);
+      assert.equal(first.member.id, "password-game");
+      assert.equal(second.identity.email, "password-game@example.test");
+      assert.equal(statements.length - start, 1);
+      assert.equal(JSON.stringify(first).includes("private-hash"), false);
+      assert.equal((await auth.getApiWritingAccess()).code, "WRITING_REQUIRED");
+      sqlite.exec("UPDATE allowed_users SET permission_group='normal' WHERE id='password-game'");
+      assert.equal((await auth.getApiWritingAccess()).ok, true);
+      sqlite.exec("UPDATE member_sessions SET expires_at=0 WHERE allowed_user_id='password-game'");
+      assert.equal((await auth.getApiMemberAccess()).code, "AUTH_EXPIRED");
+    }),
+  );
+  sqlite.exec(
+    "UPDATE member_sessions SET expires_at=9999999999999; DELETE FROM allowed_users WHERE id='password-game'",
+  );
+  await identity.run(
+    { email: "different-chatgpt@example.test", sessionToken: passwordToken },
+    async () => {
+      assert.equal((await auth.getApiMemberAccess()).code, "AUTH_EXPIRED");
+    },
   );
 
   sqlite.exec(

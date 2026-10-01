@@ -298,6 +298,84 @@ test("built Worker serves authenticated two-player HTTP rooms and existing pages
     assert.equal(adminPage.status, 200);
     assert.match(adminHtml, /修改权限组/);
     assert.match(adminHtml, /游戏组/);
+    // Password login uses the same profile/permissions and survives the complete built HTTP boundary.
+    const loginHtml = await (await request("/login")).text();
+    assert.match(loginHtml, /使用 ChatGPT 登录/);
+    const password = "built-worker test password";
+    const resetPassword = "built-worker replacement password";
+    const setPassword = (value, actor = "a") =>
+      action("setMemberPasswordAction", actor, [
+        {},
+        form({ id: "b", password: value, confirmPassword: value }),
+      ]);
+    assert.match(await (await setPassword(password, "b")).text(), /ADMIN_REQUIRED/);
+    assert.equal(
+      await db
+        .prepare("SELECT password_hash FROM member_passwords WHERE allowed_user_id='b'")
+        .first(),
+      null,
+    );
+    assert.match(await (await setPassword(password)).text(), /"success":true/);
+    const passwordResponse = await request("/api/auth/login", undefined, {
+      email: " B@EXAMPLE.TEST ",
+      password,
+      returnTo: "/games/haojie",
+    });
+    const cookie = passwordResponse.headers.get("set-cookie");
+    assert.match(cookie, /HttpOnly; Secure; SameSite=Lax/);
+    assert.deepEqual(await json(passwordResponse), { returnTo: "/games/haojie" });
+    const passwordRequest = (path, body, origin = "https://site.test") =>
+      mf.dispatchFetch(`https://site.test${path}`, {
+        method: body ? "POST" : "GET",
+        redirect: "manual",
+        headers: {
+          Cookie: cookie.split(";")[0],
+          "oai-authenticated-user-email": "a@example.test",
+          ...(body ? { Origin: origin, "Content-Type": "application/json" } : {}),
+        },
+        ...(body ? { body: JSON.stringify(body) } : {}),
+      });
+    const passwordLobby = await passwordRequest("/games/haojie");
+    assert.equal(passwordLobby.status, 200);
+    assert.match(await passwordLobby.text(), /创建房间/);
+    assert.equal(
+      (await json(await passwordRequest("/api/docx-import", {}), 403)).error.code,
+      "WRITING_REQUIRED",
+    );
+    assert.equal((await passwordRequest("/api/haojie/rooms", {}, "https://evil.test")).status, 403);
+    const logout = await passwordRequest("/api/auth/logout", {});
+    assert.equal(logout.status, 303, (await logout.text()).slice(0, 2000));
+    assert.match(logout.headers.get("set-cookie"), /Max-Age=0/);
+    assert.match(logout.headers.get("location"), /\/signout-with-chatgpt/);
+    assert.equal(
+      (await json(await passwordRequest("/api/haojie/rooms"), 401)).error.code,
+      "AUTH_EXPIRED",
+    );
+    const secondLogin = await request("/api/auth/login", undefined, {
+      email: "b@example.test",
+      password,
+    });
+    const secondCookie = secondLogin.headers.get("set-cookie").split(";")[0];
+    await json(secondLogin);
+    assert.match(await (await setPassword(resetPassword)).text(), /"success":true/);
+    assert.equal(
+      (
+        await mf.dispatchFetch("https://site.test/api/haojie/rooms", {
+          headers: { Cookie: secondCookie },
+        })
+      ).status,
+      401,
+    );
+    await json(
+      await request("/api/auth/login", undefined, { email: "b@example.test", password }),
+      401,
+    );
+    await json(
+      await request("/api/auth/login", undefined, {
+        email: "b@example.test",
+        password: resetPassword,
+      }),
+    );
     // A fresh request observes a group change immediately, even with an existing post allowlist.
     await db.prepare("UPDATE allowed_users SET permission_group='normal' WHERE id='b'").run();
     assert.match(await (await request("/", "b")).text(), /私密随笔标题/);

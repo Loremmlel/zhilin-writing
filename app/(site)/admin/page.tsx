@@ -11,6 +11,7 @@ import {
   AddAllowlistForm,
   RemoveAllowlistForm,
   UpdatePermissionGroupForm,
+  SetMemberPasswordForm,
 } from "@/components/admin/allowlist-forms";
 import { permissionGroupLabels } from "@/lib/auth/permissions";
 import { ContentLifecycleControl } from "@/components/admin/content-lifecycle-control";
@@ -42,6 +43,7 @@ import { requireAdministrator } from "@/lib/auth/access";
 import { formatDateTime } from "@/lib/format";
 import {
   addAllowlistAction,
+  setMemberPasswordAction,
   bulkManageContentAction,
   moderateAnnotationAction,
   moderateAnnotationReplyAction,
@@ -785,6 +787,7 @@ async function AdminMembers() {
               <th scope="col">邮箱</th>
               <th scope="col">社区资料</th>
               <th scope="col">权限组</th>
+              <th scope="col">邮箱密码</th>
               <th scope="col">加入时间</th>
               <th scope="col">操作</th>
             </tr>
@@ -808,6 +811,11 @@ async function AdminMembers() {
                     )}
                   </td>
                   <td>
+                    <span className="admin-muted">
+                      {entry.isAdmin ? "ChatGPT 登录" : entry.hasPassword ? "已设置" : "未设置"}
+                    </span>
+                  </td>
+                  <td>
                     {user
                       ? formatDateTime(user.joinedAt)
                       : `邀请于 ${formatDateTime(entry.addedAt)}`}
@@ -817,6 +825,12 @@ async function AdminMembers() {
                       <small>唯一管理员不可移除</small>
                     ) : (
                       <div className="permission-group-actions">
+                        <SetMemberPasswordForm
+                          action={setMemberPasswordAction}
+                          id={entry.id}
+                          email={entry.email}
+                          hasPassword={Boolean(entry.hasPassword)}
+                        />
                         <UpdatePermissionGroupForm
                           action={updatePermissionGroupAction}
                           id={entry.id}
@@ -844,6 +858,9 @@ async function AdminMembers() {
                 </td>
                 <td>
                   <span className="status-pill status-pill--deleted">已移出白名单</span>
+                </td>
+                <td>
+                  <span className="admin-muted">不可登录</span>
                 </td>
                 <td>{formatDateTime(user.joinedAt)}</td>
                 <td>

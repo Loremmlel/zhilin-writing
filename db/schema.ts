@@ -41,6 +41,38 @@ export const users = sqliteTable(
   ],
 );
 
+export const memberPasswords = sqliteTable("member_passwords", {
+  allowedUserId: text("allowed_user_id")
+    .primaryKey()
+    .references(() => allowedUsers.id, { onDelete: "cascade" }),
+  passwordHash: text("password_hash").notNull(),
+});
+
+export const memberSessions = sqliteTable(
+  "member_sessions",
+  {
+    tokenHash: text("token_hash").primaryKey(),
+    allowedUserId: text("allowed_user_id")
+      .notNull()
+      .references(() => memberPasswords.allowedUserId, { onDelete: "cascade" }),
+    expiresAt: integer("expires_at").notNull(),
+  },
+  (table) => [
+    index("member_sessions_member_idx").on(table.allowedUserId),
+    index("member_sessions_expiry_idx").on(table.expiresAt),
+  ],
+);
+
+export const loginAttempts = sqliteTable(
+  "login_attempts",
+  {
+    key: text("key").primaryKey(),
+    attempts: integer("attempts").notNull(),
+    expiresAt: integer("expires_at").notNull(),
+  },
+  (table) => [index("login_attempts_expiry_idx").on(table.expiresAt)],
+);
+
 export const haojieRooms = sqliteTable(
   "haojie_rooms",
   {

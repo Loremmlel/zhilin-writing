@@ -36,7 +36,7 @@ async function builtDocxWorkerUrl() {
 test("production artifact contains private-community metadata and denial copy", async () => {
   const source = await builtServerSource();
   assert.match(source, /知临中学/);
-  assert.match(source, /只对管理员邀请的少数成员开放/);
+  assert.match(source, /只对管理员邀请的成员开放/);
   assert.doesNotMatch(source, /codex-preview/);
 });
 
