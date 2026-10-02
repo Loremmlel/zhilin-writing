@@ -226,7 +226,7 @@ export async function handleMcpRequest(request: Request, dependencies: Dependenc
           tools: mcpTools.map(({ name, description, schema }) => ({
             name,
             description,
-            inputSchema: z.toJSONSchema(schema),
+            inputSchema: z.toJSONSchema(schema, { io: "input" }),
             annotations: {
               readOnlyHint: true,
               destructiveHint: false,
