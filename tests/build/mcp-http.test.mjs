@@ -52,13 +52,13 @@ test("built MCP route serves discovery, OAuth identity, scoped reads and R2 imag
       ),
     ]);
     await (await mf.getR2Bucket("BUCKET")).put("object-key", new Uint8Array([1, 2, 3]));
-    const rpc = async (method, params, authenticated = true) => {
+    const rpc = async (method, params, authenticated = true, version = "2025-06-18") => {
       const response = await mf.dispatchFetch("https://site.test/mcp", {
         method: "POST",
         headers: {
           "content-type": "application/json",
           accept: "application/json, text/event-stream",
-          "mcp-protocol-version": "2025-06-18",
+          "mcp-protocol-version": version,
           ...(authenticated
             ? {
                 "oai-authenticated-user-email": "reader@example.test",
@@ -74,6 +74,42 @@ test("built MCP route serves discovery, OAuth identity, scoped reads and R2 imag
     assert.equal(discovery.response.status, 200);
     assert.equal(discovery.body.result.tools.length, 9);
     assert.equal(discovery.response.headers.get("cache-control"), "private, no-store");
+    const negotiation = await rpc(
+      "initialize",
+      {
+        protocolVersion: "2026-07-28",
+        capabilities: {},
+        clientInfo: { name: "ChatGPT", version: "1" },
+      },
+      false,
+      "2026-07-28",
+    );
+    assert.equal(negotiation.response.status, 200);
+    assert.equal(negotiation.body.result.protocolVersion, "2025-11-25");
+    const modern = (method, params = {}, authenticated = true) =>
+      rpc(
+        method,
+        {
+          ...params,
+          _meta: {
+            "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+            "io.modelcontextprotocol/clientCapabilities": {},
+          },
+        },
+        authenticated,
+        "2026-07-28",
+      );
+    const modernDiscovery = await modern("server/discover", {}, false);
+    assert.equal(modernDiscovery.response.status, 200);
+    assert.equal(modernDiscovery.body.result.resultType, "complete");
+    assert.equal(modernDiscovery.body.result.supportedVersions[0], "2026-07-28");
+    const modernTools = await modern("tools/list", {}, false);
+    assert.equal(modernTools.body.result.tools.length, 9);
+    assert.equal(modernTools.body.result.ttlMs, 0);
+    const modernPosts = await modern("tools/call", { name: "list_posts" });
+    assert.equal(modernPosts.body.result.resultType, "complete");
+    assert.equal(modernPosts.body.result.structuredContent.items[0].id, "post");
+    assert.equal((await modern("tools/call", { name: "list_posts" }, false)).response.status, 401);
     const call = (name, args = {}, authenticated = true) =>
       rpc("tools/call", { name, arguments: args }, authenticated);
     assert.equal((await call("list_posts", {}, false)).response.status, 401);

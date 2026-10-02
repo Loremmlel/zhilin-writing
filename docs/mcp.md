@@ -32,7 +32,9 @@
 
 ## 协议和维护
 
-采用无状态 Streamable HTTP JSON响应，支持初始化、工具发现、工具调用、ping、初始化完成和取消通知；不建立会话或SSE订阅，GET/DELETE返回405。支持2025-11-25、2025-06-18和2025-03-26协议版本。保留HTTP Origin校验、64 KiB实际请求体上限、严格参数验证、安全错误编号和HTTP 401/403。
+采用无状态 Streamable HTTP JSON响应，不建立会话或SSE订阅，GET/DELETE返回405。兼容2026-07-28的 `server/discover`、请求 `_meta`、`resultType` 及工具发现缓存声明；同时支持2025-11-25、2025-06-18和2025-03-26的初始化、工具发现、工具调用、ping和通知。
+
+`initialize` 选择旧版握手语义，即使客户端通过HTTP头声明2026-07-28，也协商支持的2025版本；直接使用新版请求则要求请求元数据并校验与版本头的一致性。未知版本返回 `-32022` 和支持版本列表，路由镜像头若存在必须与请求体一致。参考 [MCP版本协商](https://modelcontextprotocol.io/specification/2026-07-28/basic/versioning)。保留HTTP Origin校验、64 KiB实际请求体上限、严格参数验证、安全错误编号和HTTP 401/403。
 
 `lib/mcp/protocol.ts` 负责静态工具定义、参数和协议，`lib/mcp/service.ts` 负责调用现有业务读取，`app/mcp/route.ts` 负责接入路由和错误日志。
 

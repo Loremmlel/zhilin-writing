@@ -184,6 +184,87 @@ test("MCP read tools enforce fresh identity, content scope and lifecycle using p
       ).body.result.protocolVersion,
       "2025-06-18",
     );
+    const modernHeaders = { "mcp-protocol-version": "2026-07-28" };
+    const modernMeta = {
+      "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+      "io.modelcontextprotocol/clientCapabilities": {},
+    };
+    const negotiated = await request(
+      "initialize",
+      {
+        protocolVersion: "2026-07-28",
+        capabilities: {},
+        clientInfo: { name: "ChatGPT", version: "1" },
+      },
+      undefined,
+      { headers: modernHeaders },
+    );
+    assert.equal(negotiated.response.status, 200);
+    assert.equal(negotiated.body.result.protocolVersion, "2025-11-25");
+    assert.equal(negotiated.body.result.resultType, undefined);
+    const modernRequest = (method: string, params: Record<string, unknown> = {}, email?: string) =>
+      request(method, { ...params, _meta: modernMeta }, email, { headers: modernHeaders });
+    const serverDiscovery = await modernRequest("server/discover");
+    assert.equal(serverDiscovery.response.status, 200);
+    assert.equal(serverDiscovery.body.result.resultType, "complete");
+    assert.equal(serverDiscovery.body.result.supportedVersions[0], "2026-07-28");
+    assert.equal(serverDiscovery.body.result.ttlMs, 0);
+    assert.equal(serverDiscovery.body.result.cacheScope, "public");
+    const modernTools = await modernRequest("tools/list");
+    assert.equal(modernTools.body.result.tools.length, 9);
+    assert.equal(modernTools.body.result.resultType, "complete");
+    assert.equal(modernTools.body.result.ttlMs, 0);
+    const modernPosts = await modernRequest(
+      "tools/call",
+      { name: "list_posts" },
+      "reader@example.com",
+    );
+    assert.equal(modernPosts.body.result.resultType, "complete");
+    assert.deepEqual(
+      modernPosts.body.result.structuredContent.items.map((post: { id: string }) => post.id),
+      ["public"],
+    );
+    assert.equal((await modernRequest("tools/call", { name: "list_posts" })).response.status, 401);
+    assert.equal(
+      (await modernRequest("tools/call", { name: "list_posts" }, "game@example.com")).response
+        .status,
+      403,
+    );
+    assert.equal(
+      (await request("tools/list", {}, undefined, { headers: modernHeaders })).body.error.code,
+      -32602,
+    );
+    assert.equal(
+      (
+        await request("tools/list", { _meta: modernMeta }, undefined, {
+          headers: { "mcp-protocol-version": "2025-06-18" },
+        })
+      ).body.error.code,
+      -32020,
+    );
+    for (const headers of [{ "mcp-method": "ping" }, { "mcp-name": "wrong_tool" }] as Record<
+      string,
+      string
+    >[]) {
+      assert.equal(
+        (
+          await request(
+            "tools/call",
+            { name: "list_posts", _meta: modernMeta },
+            "reader@example.com",
+            { headers: { ...modernHeaders, ...headers } },
+          )
+        ).body.error.code,
+        -32020,
+      );
+    }
+    assert.equal((await modernRequest("unknown/method")).response.status, 404);
+    const unsupported = await request("tools/list", {}, undefined, {
+      headers: { "mcp-protocol-version": "2099-01-01" },
+    });
+    assert.equal(unsupported.response.status, 400);
+    assert.equal(unsupported.body.error.code, -32022);
+    assert.equal(unsupported.body.error.data.requested, "2099-01-01");
     assert.equal(
       (await request("notifications/initialized", {}, undefined, { id: null })).response.status,
       202,
