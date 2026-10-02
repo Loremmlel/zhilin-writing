@@ -11,6 +11,7 @@
 - 内容 Soft Delete、管理员隐藏/恢复与审计记录。
 - 正文 Annotation、批注回复、revision snapshot/restore、桌面 Sidebar 与移动端 Sheet。
 - DOCX → Markdown + Annotation 导入。
+- Sites OAuth鉴权的只读MCP：随笔列表/搜索/正文/图片/批注及回复/评论；见 [MCP说明](docs/mcp.md)。
 - V6 AnnotationGuard、选区预览、统一 Loading/Skeleton/Error 与 mutation pending 状态。
 
 ## V6 AnnotationGuard
