@@ -201,6 +201,7 @@
 - Offline behavior: drafts may continue locally; server writes require connection.
 - Version conflict: exact base revision check; no automatic merge。普通正文冲突提供 online/manual/explicit overwrite；若基础版本到当前版本之间发生任何 Annotation membership、anchor text 或 lifecycle 变化，服务端与界面都禁用 force overwrite，IndexedDB 本地草稿继续保留。
 - Stale-request handling: component effects use live flags/cleanup; file upload errors remain local and block post submission until retried or removed.
+- 普通图片、附件和 DOCX 预览图片共用 `lib/assets/browser-upload.ts` 的校验、取消和失败反馈；HTTP 413 即使返回纯文本也明确显示“上传请求超过服务器大小限制”，其他非 JSON 失败使用安全兜底，服务端 JSON 错误保留事件编号。框架表单上限为 21 MiB（包含封装开销），业务图片 10 MiB、附件 20 MiB 上限仍由 `lib/assets/upload-policy.ts` 在前后端共同约束。依据：2026-10-02 用户批准的上传修复；适用 U2/U4。
 - Mutation failure: editor state and draft remain intact.
 - 批注创建、批注回复与普通回复的请求异常由共享 `useRecoverableActionState` 留在当前表单，显示安全提示及错误编号；pending 结束后允许手动重试。正文与输入组件保持挂载，失败不刷新、不关闭弹窗、不触发成功清空；重试保留原 submissionKey。仅保留页面内输入，不增加批注草稿持久化。适用 U2/U4/U9/U10；React DOM 模拟环境验证失败、保留与重试，不冒充真实浏览器验收。
 - 全局运行时异常、未处理 Promise 和共享 React 错误边界统一向现有诊断通道报告。报告不接管浏览器默认行为，不决定导航、不自动重试业务；去重、限流、脱敏和送达边界由 `lib/client-errors.ts` / `docs/performance-probes.md` 统一维护。

@@ -32,6 +32,7 @@ import {
 import type { DocxPreviewAsset, DocxPreviewRecord } from "@/lib/docx-import/types";
 import type { DocxWorkerProgressStage } from "@/lib/docx-import/worker-protocol";
 import { formatDateTime } from "@/lib/format";
+import { uploadAsset } from "@/lib/assets/browser-upload";
 
 type Phase = "selecting" | "parsing" | "uploading" | "previewing" | "committing" | "complete";
 type SiteUser = { id: string; displayName: string };
@@ -646,27 +647,15 @@ async function uploadImageAsset(
   asset: DocxPreviewRecord["ir"]["assets"][number],
   signal: AbortSignal,
 ): Promise<DocxPreviewAsset> {
-  const formData = new FormData();
-  formData.set(
-    "file",
+  const { asset: uploaded } = await uploadAsset(
     new File([asset.bytes as Uint8Array<ArrayBuffer>], asset.filename, { type: asset.mimeType }),
+    () => {},
+    signal,
   );
-  const response = await fetch("/api/assets", { method: "POST", body: formData, signal });
-  const data = (await response.json()) as {
-    error?: string;
-    incidentId?: string;
-    asset?: { id: string; filename: string; mimeType: string; url: string };
-  };
-  if (!response.ok || !data.asset)
-    throw new Error(
-      data.incidentId
-        ? `${data.error ?? "图片上传失败"}（错误编号：${data.incidentId}）`
-        : (data.error ?? `图片 ${asset.filename} 上传失败`),
-    );
   return {
-    assetId: data.asset.id,
-    temporaryUrl: data.asset.url,
-    filename: data.asset.filename,
+    assetId: uploaded.id,
+    temporaryUrl: uploaded.url,
+    filename: uploaded.filename,
     mimeType: asset.mimeType,
   };
 }

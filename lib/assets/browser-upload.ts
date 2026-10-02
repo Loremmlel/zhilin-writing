@@ -59,6 +59,10 @@ export function uploadAsset(
     });
     request.addEventListener("load", () => {
       stopListening();
+      if (request.status === 413) {
+        reject(new BrowserAssetUploadError("SIZE_LIMIT", "上传请求超过服务器大小限制"));
+        return;
+      }
       const data = (request.response ?? {}) as BrowserAssetUploadResult;
       if (request.status < 200 || request.status >= 300 || !data.asset) {
         reject(

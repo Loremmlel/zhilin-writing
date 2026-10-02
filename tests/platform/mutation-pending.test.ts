@@ -350,6 +350,88 @@ test("asset upload progress is calculated from the browser request body bytes", 
   }
 });
 
+test("asset uploads handle server size limits and preserve business limits and incident IDs", async () => {
+  const originalRequest = globalThis.XMLHttpRequest;
+  let status = 201;
+  let response: unknown = { asset: { id: "uploaded" } };
+  let sent = 0;
+  class UploadRequest extends EventTarget {
+    upload = new EventTarget();
+    responseType = "";
+    get status() {
+      return status;
+    }
+    get response() {
+      assert.notEqual(status, 413, "413 must be handled before reading the JSON response");
+      return response;
+    }
+    open() {}
+    send() {
+      sent++;
+      this.dispatchEvent(new Event("load"));
+    }
+  }
+  Object.defineProperty(globalThis, "XMLHttpRequest", {
+    configurable: true,
+    writable: true,
+    value: UploadRequest,
+  });
+  try {
+    const { uploadAsset } = await import("../../lib/assets/browser-upload.ts");
+    const file = (size: number, type = "image/png") =>
+      new File([new Uint8Array(size)], "upload", { type });
+    for (const input of [
+      file(2_319_000),
+      file(10 * 1024 * 1024),
+      file(20 * 1024 * 1024, "application/pdf"),
+    ]) {
+      assert.equal((await uploadAsset(input, () => {})).asset.id, "uploaded");
+    }
+    const beforeValidation = sent;
+    for (const input of [
+      file(10 * 1024 * 1024 + 1),
+      file(20 * 1024 * 1024 + 1, "application/pdf"),
+    ]) {
+      await assert.rejects(
+        uploadAsset(input, () => {}),
+        { code: "SIZE_LIMIT" },
+      );
+    }
+    assert.equal(sent, beforeValidation, "over-limit files must not be sent");
+    status = 413;
+    await assert.rejects(
+      uploadAsset(file(100), () => {}),
+      {
+        code: "SIZE_LIMIT",
+        message: "上传请求超过服务器大小限制",
+      },
+    );
+    status = 503;
+    response = null; // Browser responseType=json yields null for plain text / HTML.
+    await assert.rejects(
+      uploadAsset(file(100), () => {}),
+      {
+        code: "SERVER_FAILURE",
+        message: "文件上传失败，请稍后重试",
+      },
+    );
+    response = { code: "SERVER_FAILURE", error: "文件存储暂时不可用", incidentId: "incident-123" };
+    await assert.rejects(
+      uploadAsset(file(100), () => {}),
+      {
+        code: "SERVER_FAILURE",
+        message: "文件存储暂时不可用（错误编号：incident-123）",
+      },
+    );
+  } finally {
+    Object.defineProperty(globalThis, "XMLHttpRequest", {
+      configurable: true,
+      writable: true,
+      value: originalRequest,
+    });
+  }
+});
+
 test("asset uploads abort when their editor session is discarded", async () => {
   const originalRequest = globalThis.XMLHttpRequest;
 

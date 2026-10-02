@@ -192,6 +192,49 @@ test("built Worker serves authenticated two-player HTTP rooms and existing pages
       body: await uploadRequest.arrayBuffer(),
     });
     assert.equal((await json(uploadResponse, 403)).code, "WRITING_REQUIRED");
+    // Exercise the production multipart path and real D1/R2, including the
+    // largest allowed attachment plus form overhead (not just client checks).
+    const sendAsset = async (size, type, actor = "a") => {
+      const body = new FormData();
+      body.set("file", new Blob([new Uint8Array(size)], { type }), "upload.bin");
+      const encoded = new Request("https://site.test/api/assets", {
+        method: "POST",
+        headers: {
+          Origin: (await mf.ready).origin,
+          "oai-authenticated-user-email": `${actor}@example.test`,
+        },
+        body,
+      });
+      return mf.dispatchFetch(encoded.url, {
+        method: "POST",
+        headers: Object.fromEntries(encoded.headers),
+        body: await encoded.arrayBuffer(),
+      });
+    };
+    for (const [size, type] of [
+      [2_319_000, "image/png"],
+      [10 * 1024 * 1024, "image/png"],
+      [20 * 1024 * 1024, "application/pdf"],
+    ]) {
+      const { asset } = await json(await sendAsset(size, type), 201);
+      assert.equal(asset.byteSize, size);
+      assert.equal((await bucket.head(asset.r2Key)).size, size);
+      assert.equal(
+        (await db.prepare("SELECT byte_size FROM assets WHERE id=?").bind(asset.id).first())
+          .byte_size,
+        size,
+      );
+    }
+    for (const [size, type] of [
+      [10 * 1024 * 1024 + 1, "image/png"],
+      [20 * 1024 * 1024 + 1, "application/pdf"],
+    ])
+      assert.equal((await json(await sendAsset(size, type), 400)).code, "SIZE_LIMIT");
+    assert.equal((await sendAsset(21 * 1024 * 1024, "application/pdf")).status, 413);
+    assert.equal(
+      (await json(await sendAsset(2_319_000, "image/png", "b"), 403)).code,
+      "WRITING_REQUIRED",
+    );
     const source = await readFile(join(root, "index.js"), "utf8");
     const action = async (name, actor, args) => {
       const match = source.match(
