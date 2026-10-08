@@ -724,7 +724,14 @@ export async function findPostByCreationSubmissionKey(authorId: string, submissi
   return (
     (
       await getDb()
-        .select({ id: posts.id })
+        .select({
+          id: posts.id,
+          title: posts.title,
+          markdown: posts.markdown,
+          visibilityUserIds: posts.visibilityUserIds,
+          deletedAt: posts.deletedAt,
+          hiddenAt: posts.hiddenAt,
+        })
         .from(posts)
         .where(and(eq(posts.authorId, authorId), eq(posts.creationSubmissionKey, submissionKey)))
         .limit(1)

@@ -8,6 +8,16 @@ export type PostInput = {
   tags: string[];
 };
 
+export class PostInputError extends Error {
+  readonly field: keyof PostInput;
+
+  constructor(message: string, field: keyof PostInput) {
+    super(message);
+    this.name = "PostInputError";
+    this.field = field;
+  }
+}
+
 export type ReplyTarget = {
   id: string;
   rootReplyId: string | null;
@@ -30,20 +40,20 @@ export function validatePostInput(input: PostInput): PostInput {
   const markdown = input.markdown.trim();
   const tags = input.tags.map((tag) => tag.trim()).filter(Boolean);
 
-  if (!title) throw new Error("标题不能为空");
-  if (Array.from(title).length > 120) throw new Error("标题不能超过 120 个字符");
-  if (!markdown) throw new Error("正文不能为空");
+  if (!title) throw new PostInputError("标题不能为空", "title");
+  if (Array.from(title).length > 120) throw new PostInputError("标题不能超过 120 个字符", "title");
+  if (!markdown) throw new PostInputError("正文不能为空", "markdown");
   if (!formattingIsValid(parseAnnotationMarkdown(markdown)))
-    throw new Error("正文格式无效，请恢复默认格式后重试");
-  if (tags.length > 5) throw new Error("最多选择 5 个标签");
+    throw new PostInputError("正文格式无效，请恢复默认格式后重试", "markdown");
+  if (tags.length > 5) throw new PostInputError("最多选择 5 个标签", "tags");
 
   const normalized = tags.map((tag) => tag.toLocaleLowerCase("zh-CN"));
   if (new Set(normalized).size !== normalized.length) {
-    throw new Error("标签不能重复");
+    throw new PostInputError("标签不能重复", "tags");
   }
 
   if (tags.some((tag) => Array.from(tag).length > 24)) {
-    throw new Error("标签不能超过 24 个字符");
+    throw new PostInputError("标签不能超过 24 个字符", "tags");
   }
 
   return { title, markdown, tags };

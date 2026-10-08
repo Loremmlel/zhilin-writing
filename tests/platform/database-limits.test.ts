@@ -228,13 +228,36 @@ test("large annotation and asset flows stay within D1 limits and preserve scope"
     assert.equal((await annotations.listCurrentAnnotationThreads("p", "author")).length, 101);
     db.exec("UPDATE posts SET visibility_user_ids=NULL WHERE id='p'");
 
-    const created = await posts.createPost("author", {
+    const creationInput = {
       title: "附件",
       markdown: "正文",
-      tags: [],
+      tags: ["标签"],
       attachmentIds,
       submissionKey: crypto.randomUUID(),
-    });
+    };
+    const created = await posts.createPost("author", creationInput);
+    assert.equal(
+      await posts.createPost("author", {
+        ...creationInput,
+        title: " 附件 ",
+        attachmentIds: [...attachmentIds].reverse(),
+      }),
+      created,
+      "only the same content is an idempotent creation retry",
+    );
+    for (const changed of [
+      { title: "另一篇帖子" },
+      { markdown: "全新正文" },
+      { tags: ["新标签"] },
+      { attachmentIds: attachmentIds.slice(1) },
+      { visibilityUserIds: [] },
+    ]) {
+      await assert.rejects(
+        posts.createPost("author", { ...creationInput, ...changed }),
+        (error: unknown) => error instanceof posts.PostCreationConflictError,
+      );
+    }
+    assert.equal((await queries.getPost(created, "author"))?.post.markdown, "正文");
     const base = (await queries.getPost(created, "author"))!.post.currentRevisionId!;
     await posts.updatePost(created, "author", {
       title: "附件改",

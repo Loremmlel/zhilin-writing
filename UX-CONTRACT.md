@@ -203,6 +203,7 @@
 - Stale-request handling: component effects use live flags/cleanup; file upload errors remain local and block post submission until retried or removed.
 - 普通图片、附件和 DOCX 预览图片共用 `lib/assets/browser-upload.ts` 的校验、取消和失败反馈；HTTP 413 即使返回纯文本也明确显示“上传请求超过服务器大小限制”，其他非 JSON 失败使用安全兜底，服务端 JSON 错误保留事件编号。框架表单上限为 21 MiB（包含封装开销），业务图片 10 MiB、附件 20 MiB 上限仍由 `lib/assets/upload-policy.ts` 在前后端共同约束。依据：2026-10-02 用户批准的上传修复；适用 U2/U4。
 - Mutation failure: editor state and draft remain intact.
+- 普通新帖的发布编号只绑定同一份内容；标题、正文、标签、附件或可见范围变化后换用新编号。服务端核对重复请求的实际内容，不一致时返回安全冲突提示，保留草稿并允许再次发布新帖，禁止把旧帖当作新内容发布成功。提交前保存最新本地快照，pending 暂停自动保存；同一草稿写入与成功删除按调用顺序完成，成功清理不能被较早的自动保存覆盖。依据：2026-10-08 用户报告与 `lib/posts/service.ts`；适用 U2/U4/U10。
 - 批注创建、批注回复与普通回复的请求异常由共享 `useRecoverableActionState` 留在当前表单，显示安全提示及错误编号；pending 结束后允许手动重试。正文与输入组件保持挂载，失败不刷新、不关闭弹窗、不触发成功清空；重试保留原 submissionKey。仅保留页面内输入，不增加批注草稿持久化。适用 U2/U4/U9/U10；React DOM 模拟环境验证失败、保留与重试，不冒充真实浏览器验收。
 - 全局运行时异常、未处理 Promise 和共享 React 错误边界统一向现有诊断通道报告。报告不接管浏览器默认行为，不决定导航、不自动重试业务；去重、限流、脱敏和送达边界由 `lib/client-errors.ts` / `docs/performance-probes.md` 统一维护。
 - DOCX parsing runs in a browser Worker with a 20-second hard timeout. User cancellation returns to file selection without a failure banner; unknown parser errors use actionable Chinese fallback copy and never expose raw worker messages. Import Preview persists in IndexedDB for 24 hours without the original binary; successful commit deletes the Preview record.
@@ -219,6 +220,7 @@
 - Server errors: inline text; `EDIT_CONFLICT` maps to the comparison dialog.
 - Sensitive values: opaque IDs remain hidden except in internal form values/URLs.
 - Forms prevent duplicate submit; editor fields retain input after errors.
+- 普通发布与编辑复用 `validatePostInput` 在提交前校验标题、正文和标签，就近显示 `ActionErrorMessage`，关联无效字段并聚焦首个错误；服务端仍执行同一校验，将预期输入错误返回为表单提示，不记为服务器异常。
 - Ordinary post create/update rejects annotation directives. Annotation creation re-parses current canonical Markdown, verifies exact base revision, one or more consecutive eligible text blocks, exact selected text and zero overlap before inserting a server-controlled ID into every selected block.
 - A logical cross-block annotation uses one stable ID, one database thread/anchor and consecutive inline Markdown segments. The first segment reaches the first block's final visible character, intermediate segments cover their full visible text, and the last begins at its block's first visible character. Code, tables, images, attachments, hard breaks and unsupported blocks are barriers.
 - DOCX Commit treats browser IR as untrusted: it revalidates schema, Markdown AST, logical cross-block annotation topology and aggregate selected text, imported `author_id=NULL`, attribution membership, temporary asset ownership, safe links, counts, sizes and batch idempotency without re-uploading or re-parsing the source DOCX.

@@ -7,7 +7,8 @@ import type { PostActionState } from "@/components/editor/post-editor-form";
 import { getApiWritingAccess } from "@/lib/auth/access";
 import { actionAccessFailure } from "@/lib/actions/result";
 import { logServerError } from "@/lib/logging";
-import { createPost } from "@/lib/posts/service";
+import { createPost, PostCreationConflictError } from "@/lib/posts/service";
+import { PostInputError } from "@/lib/domain/rules";
 
 function parseTags(value: FormDataEntryValue | null): string[] {
   return String(value ?? "")
@@ -46,6 +47,9 @@ export async function createPostAction(
     revalidatePath("/");
     return { postId };
   } catch (error) {
+    if (error instanceof PostInputError) return { error: error.message, field: error.field };
+    if (error instanceof PostCreationConflictError)
+      return { error: error.message, code: error.code };
     if (error instanceof PostVisibilityError) return { error: error.message };
     const incidentId = logServerError({
       operation: "post.create",

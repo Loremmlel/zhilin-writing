@@ -3,7 +3,7 @@ import test, { afterEach, beforeEach } from "node:test";
 import "fake-indexeddb/auto";
 
 import { draftKey } from "../../lib/domain/rules.ts";
-import { loadDraft, saveDraft, type LocalDraft } from "../../lib/drafts/indexed-db.ts";
+import { loadDraft, removeDraft, saveDraft, type LocalDraft } from "../../lib/drafts/indexed-db.ts";
 import {
   IMPORT_PREVIEW_STORE_NAME,
   LOCAL_DB_NAME,
@@ -81,6 +81,30 @@ test("persists the creation submission key with a recoverable new-post draft", a
     (await loadDraft("user-1", "new"))?.creationSubmissionKey,
     draft.creationSubmissionKey,
   );
+});
+
+test("publication cleanup waits for earlier autosaves and leaves the next post empty", async () => {
+  const draft: LocalDraft = {
+    title: "讨论意识归属",
+    markdown: "旧正文",
+    tags: "",
+    attachmentIds: [],
+    baseRevisionId: null,
+    creationSubmissionKey: crypto.randomUUID(),
+    updatedAt: 4,
+  };
+  await Promise.all([
+    saveDraft("user-1", "new", draft),
+    saveDraft("user-1", "new", { ...draft, markdown: "最后一次输入", updatedAt: 5 }),
+    removeDraft("user-1", "new"),
+  ]);
+  assert.equal(await loadDraft("user-1", "new"), null);
+  await saveDraft("user-1", "new", {
+    ...draft,
+    title: "下一篇",
+    creationSubmissionKey: crypto.randomUUID(),
+  });
+  assert.equal((await loadDraft("user-1", "new"))?.title, "下一篇");
 });
 
 function openVersionOneDatabase(): Promise<IDBDatabase> {

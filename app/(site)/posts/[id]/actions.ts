@@ -11,6 +11,7 @@ import type { ReplyActionState } from "@/components/reply-form";
 import type { LifecycleActionState } from "@/components/lifecycle/delete-content-control";
 import { getApiWritingAccess } from "@/lib/auth/access";
 import { actionAccessFailure, type ActionAccessErrorCode } from "@/lib/actions/result";
+import { PostInputError } from "@/lib/domain/rules";
 import {
   createAnnotation,
   createAnnotationReply,
@@ -114,6 +115,7 @@ export async function updatePostAction(
     revalidatePath("/", "layout");
     return { postId, currentRevisionId: result.currentRevisionId };
   } catch (error) {
+    if (error instanceof PostInputError) return { error: error.message, field: error.field };
     if (error instanceof PostVisibilityError) return { error: error.message };
     if (error instanceof EditConflictError) {
       return { error: error.message, conflict: error.current };

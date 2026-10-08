@@ -34,6 +34,21 @@ function normalizeDraft(draft: LocalDraft): LocalDraft {
   };
 }
 
+const draftWrites = new Map<string, Promise<unknown>>();
+
+function writeDraft<T>(key: string, write: () => Promise<T>): Promise<T> {
+  // Opening IndexedDB is asynchronous; preserve invocation order so a late autosave
+  // cannot recreate a draft after successful publication has removed it.
+  const result = (draftWrites.get(key) ?? Promise.resolve()).catch(() => {}).then(write);
+  draftWrites.set(key, result);
+  void result
+    .finally(() => {
+      if (draftWrites.get(key) === result) draftWrites.delete(key);
+    })
+    .catch(() => {});
+  return result;
+}
+
 export async function loadDraft(userId: string, postId: string): Promise<LocalDraft | null> {
   const value = await withLocalStore<LocalDraft | undefined>(
     DRAFT_STORE_NAME,
@@ -44,13 +59,17 @@ export async function loadDraft(userId: string, postId: string): Promise<LocalDr
 }
 
 export async function saveDraft(userId: string, postId: string, draft: LocalDraft): Promise<void> {
-  await withLocalStore<IDBValidKey>(DRAFT_STORE_NAME, "readwrite", (store) =>
-    store.put(normalizeDraft(draft), draftKey(userId, postId)),
+  const key = draftKey(userId, postId);
+  await writeDraft(key, () =>
+    withLocalStore<IDBValidKey>(DRAFT_STORE_NAME, "readwrite", (store) =>
+      store.put(normalizeDraft(draft), key),
+    ),
   );
 }
 
 export async function removeDraft(userId: string, postId: string): Promise<void> {
-  await withLocalStore<undefined>(DRAFT_STORE_NAME, "readwrite", (store) =>
-    store.delete(draftKey(userId, postId)),
+  const key = draftKey(userId, postId);
+  await writeDraft(key, () =>
+    withLocalStore<undefined>(DRAFT_STORE_NAME, "readwrite", (store) => store.delete(key)),
   );
 }

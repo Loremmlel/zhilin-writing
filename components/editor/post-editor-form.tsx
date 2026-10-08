@@ -11,6 +11,8 @@ import { ModalDialog } from "@/components/modal-dialog";
 import { uploadAsset } from "@/lib/assets/browser-upload";
 import { isValidSubmissionKey } from "@/lib/activity/policy";
 import { loadDraft, removeDraft, saveDraft, type LocalDraft } from "@/lib/drafts/indexed-db";
+import { PostInputError, validatePostInput, type PostInput } from "@/lib/domain/rules";
+import { reportClientError } from "@/lib/client-errors";
 import {
   availableConflictChoices,
   chooseConflictResolution,
@@ -27,7 +29,8 @@ import {
 
 export type PostActionState = {
   error?: string;
-  code?: "ANNOTATION_INTEGRITY_ERROR" | ActionAccessErrorCode;
+  code?: "ANNOTATION_INTEGRITY_ERROR" | "POST_CREATION_CONFLICT" | ActionAccessErrorCode;
+  field?: keyof PostInput;
   incidentId?: string;
   postId?: string;
   currentRevisionId?: string;
@@ -127,10 +130,28 @@ export function PostEditorForm({
     [],
   );
   const [creationSubmissionKey, setCreationSubmissionKey] = useState(() => crypto.randomUUID());
+  const creationContentRef = useRef<string | null>(null);
+  const [validationError, setValidationError] = useState<PostActionState | null>(null);
   const [editorRoot, setEditorRoot] = useState<HTMLElement | null>(null);
   const [state, formAction, pending] = useActionState(
     async (previous: PostActionState, formData: FormData) => {
-      const result = await action(previous, formData);
+      // Flush the latest keystrokes before a request can fail or return an uncertain result.
+      try {
+        await saveDraft(userId, draftId, currentDraft());
+        setDraftStatus("saved");
+      } catch {
+        setDraftStatus("failed");
+      }
+      let result: PostActionState;
+      try {
+        result = await action(previous, formData);
+      } catch (error) {
+        result = {
+          error: "暂未收到提交结果，帖子内容仍保留，请重试。",
+          incidentId: reportClientError(error, "action"),
+        };
+      }
+      if (result.code === "POST_CREATION_CONFLICT") setCreationSubmissionKey(crypto.randomUUID());
       if (result.conflict) {
         setConflict(result.conflict);
         setConflictOpen(true);
@@ -148,6 +169,38 @@ export function PostEditorForm({
     attachmentUploadTasks.some((task) => task.status === "failed") || imageUploadState === "failed";
   const uploadBlocked = uploadPending || uploadFailed;
   const accessBlocked = isBlockingAccessError(state.code);
+  const failure = validationError ?? state;
+
+  function currentDraft(): LocalDraft {
+    return {
+      visibilityUserIds,
+      title,
+      markdown,
+      tags,
+      attachmentIds,
+      attachments,
+      baseRevisionId,
+      confirmedAnnotationDeletionIds,
+      creationSubmissionKey,
+      updatedAt: Date.now(),
+    };
+  }
+
+  useEffect(() => {
+    if (!hydrated || draftId !== "new") return;
+    const content = JSON.stringify([title, markdown, tags, attachmentIds, visibilityUserIds]);
+    if (creationContentRef.current !== null && creationContentRef.current !== content)
+      setCreationSubmissionKey(crypto.randomUUID());
+    creationContentRef.current = content;
+  }, [hydrated, draftId, title, markdown, tags, attachmentIds, visibilityUserIds]);
+
+  useEffect(() => {
+    const textbox = editorRoot?.querySelector<HTMLElement>('[contenteditable="true"]');
+    if (!textbox) return;
+    textbox.setAttribute("aria-invalid", String(failure.field === "markdown"));
+    if (failure.field === "markdown") textbox.setAttribute("aria-describedby", "post-form-error");
+    else textbox.removeAttribute("aria-describedby");
+  }, [editorRoot, failure.field]);
 
   useEffect(() => {
     let live = true;
@@ -188,7 +241,7 @@ export function PostEditorForm({
   }, [draftId, userId]);
 
   useEffect(() => {
-    if (!hydrated || !dirty || state.postId) return;
+    if (!hydrated || !dirty || pending || state.postId) return;
     const statusTimer = window.setTimeout(() => setDraftStatus("saving"), 0);
     const timer = window.setTimeout(() => {
       const draft: LocalDraft = {
@@ -222,6 +275,7 @@ export function PostEditorForm({
     draftId,
     hydrated,
     markdown,
+    pending,
     state.postId,
     tags,
     title,
@@ -376,7 +430,7 @@ export function PostEditorForm({
             }
           : undefined
       }
-      onEditorRootChange={annotationThreads.length > 0 ? setEditorRoot : undefined}
+      onEditorRootChange={setEditorRoot}
       onUploadStateChange={setImageUploadState}
       disabled={pending || accessBlocked}
       onMarkdownChange={(value) => {
@@ -398,8 +452,34 @@ export function PostEditorForm({
         className="editor-form"
         noValidate
         aria-busy={pending || uploadPending}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" && event.nativeEvent.isComposing) event.preventDefault();
+        }}
         onSubmit={(event) => {
-          if (uploadBlocked) event.preventDefault();
+          if (
+            pending ||
+            exitPending ||
+            !hydrated ||
+            uploadBlocked ||
+            accessBlocked ||
+            saveBlocked
+          ) {
+            event.preventDefault();
+            return;
+          }
+          try {
+            validatePostInput({ title, markdown, tags: tags.split(/[，,]/) });
+            setValidationError(null);
+          } catch (error) {
+            if (!(error instanceof PostInputError)) throw error;
+            event.preventDefault();
+            setValidationError({ error: error.message, field: error.field });
+            const field =
+              error.field === "markdown"
+                ? editorRoot?.querySelector<HTMLElement>('[contenteditable="true"]')
+                : (event.currentTarget.elements.namedItem(error.field) as HTMLInputElement | null);
+            field?.focus();
+          }
         }}
       >
         <input type="hidden" name="markdown" value={markdown} />
@@ -454,10 +534,11 @@ export function PostEditorForm({
                     : submitLabel}
             </PendingSubmitButton>
           </div>
-          {state.error && !state.conflict && (
+          {failure.error && !failure.conflict && (
             <ActionErrorMessage
-              error={state.error}
-              incidentId={state.incidentId}
+              id="post-form-error"
+              error={failure.error}
+              incidentId={failure.incidentId}
               className="form-error editor-action-error"
             />
           )}
@@ -517,6 +598,9 @@ export function PostEditorForm({
               id="post-title"
               className="title-input"
               name="title"
+              required
+              aria-invalid={failure.field === "title"}
+              aria-describedby={failure.field === "title" ? "post-form-error" : undefined}
               value={title}
               onChange={(event) => {
                 setTitle(event.target.value);
@@ -531,6 +615,8 @@ export function PostEditorForm({
               <input
                 className="text-input"
                 name="tags"
+                aria-invalid={failure.field === "tags"}
+                aria-describedby={failure.field === "tags" ? "post-form-error" : undefined}
                 value={tags}
                 onChange={(event) => {
                   setTags(event.target.value);

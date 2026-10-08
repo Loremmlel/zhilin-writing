@@ -11,11 +11,25 @@ import {
   validateUpload,
   validateDisplayName,
   validatePostInput,
+  PostInputError,
   validateReplyMarkdown,
 } from "../../lib/domain/rules.ts";
 
 test("normalizeEmail trims and lowercases identity keys", () => {
   assert.equal(normalizeEmail("  Owner@Example.COM "), "owner@example.com");
+});
+
+test("post validation identifies empty fields without treating them as server failures", () => {
+  for (const [input, field] of [
+    [{ title: "　 ", markdown: "", tags: [] }, "title"],
+    [{ title: "标题", markdown: "\n　 ", tags: [] }, "markdown"],
+    [{ title: "标题", markdown: "正文", tags: ["A", "a"] }, "tags"],
+  ] as const) {
+    assert.throws(
+      () => validatePostInput({ ...input, tags: [...input.tags] }),
+      (error: unknown) => error instanceof PostInputError && error.field === field,
+    );
+  }
 });
 
 test("validateDisplayName rejects empty and overlong names", () => {

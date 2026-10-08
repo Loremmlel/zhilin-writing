@@ -271,13 +271,36 @@ test("production lists traverse beyond old caps, keep stable ties, and clamp aft
     assert.ok(await queries.findOwnedNotification("np065", "reader"));
     db.exec("UPDATE posts SET visibility_user_ids=NULL");
     assert.equal((await queries.listPostsPage("reader")).total, 65);
-    const postId = await postService.createPost("author", {
+    const creationKey = crypto.randomUUID();
+    const creationInput = {
       title: "指定读者",
       markdown: "正文",
       tags: [],
       visibilityUserIds: ["reader"],
+      submissionKey: creationKey,
+    };
+    const postId = await postService.createPost("author", creationInput);
+    assert.equal(await postService.createPost("author", creationInput), postId);
+    for (const changed of [
+      { title: "另一篇帖子" },
+      { markdown: "全新的正文" },
+      { tags: ["新标签"] },
+      { attachmentIds: ["other-asset"] },
+      { visibilityUserIds: null },
+    ]) {
+      await assert.rejects(
+        postService.createPost("author", { ...creationInput, ...changed }),
+        (error: unknown) => error instanceof postService.PostCreationConflictError,
+      );
+    }
+    assert.equal((await queries.getPost(postId, "author"))?.post.markdown, "正文");
+    const nextPostId = await postService.createPost("author", {
+      ...creationInput,
+      title: "另一篇帖子",
+      markdown: "全新的正文",
       submissionKey: crypto.randomUUID(),
     });
+    assert.notEqual(nextPostId, postId);
     const created = await queries.getPost(postId, "reader");
     assert.deepEqual(created?.post.visibilityUserIds, ["author", "reader"]);
     const originalRevision = created!.post.currentRevisionId!;

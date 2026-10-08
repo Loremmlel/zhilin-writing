@@ -38,7 +38,12 @@ import {
   validateReplyMarkdown,
 } from "@/lib/domain/rules";
 import { markdownToPlainText } from "@/lib/markdown/render";
-import { buildAssetSnapshot, resolveSaveBase, type AssetSnapshotRef } from "@/lib/revisions/policy";
+import {
+  buildAssetSnapshot,
+  classifyPostChange,
+  resolveSaveBase,
+  type AssetSnapshotRef,
+} from "@/lib/revisions/policy";
 import { planContentSave } from "@/lib/revisions/save-plan";
 import {
   EditConflictError,
@@ -61,6 +66,42 @@ type SavePostInput = {
   overwriteBaseRevisionId?: string;
   confirmedAnnotationDeletionIds?: string[];
 };
+
+export class PostCreationConflictError extends Error {
+  readonly code = "POST_CREATION_CONFLICT";
+
+  constructor() {
+    super("这份草稿曾用于发布另一篇帖子，当前内容已保留。请再次点击发布，创建新帖子。");
+    this.name = "PostCreationConflictError";
+  }
+}
+
+async function recoverCreatedPost(
+  existing: NonNullable<Awaited<ReturnType<typeof findPostByCreationSubmissionKey>>>,
+  input: SavePostInput,
+  visibilityUserIds: string[] | null,
+  assetRefs: AssetSnapshotRef[],
+) {
+  const [existingTags, existingAssetRefs] = await getDb().batch([
+    getDb()
+      .select({ name: tags.normalizedName })
+      .from(postTags)
+      .innerJoin(tags, eq(postTags.tagId, tags.id))
+      .where(eq(postTags.postId, existing.id)),
+    getCurrentAssetRefs(existing.id),
+  ]);
+  if (
+    existing.deletedAt ||
+    existing.hiddenAt ||
+    classifyPostChange({ ...existing, assetRefs: existingAssetRefs }, { ...input, assetRefs })
+      .contentChanged ||
+    JSON.stringify(existingTags.map((tag) => tag.name).sort()) !==
+      JSON.stringify(input.tags.map((tag) => tag.toLocaleLowerCase("zh-CN")).sort()) ||
+    JSON.stringify(existing.visibilityUserIds) !== JSON.stringify(visibilityUserIds)
+  )
+    throw new PostCreationConflictError();
+  return existing.id;
+}
 
 async function buildPostTagOperations(
   postId: string,
@@ -108,16 +149,16 @@ export async function createPost(
   const clean = validatePostInput(input);
   assertOrdinaryPostMarkdown(clean.markdown);
   const submissionKey = validateSubmissionKey(input.submissionKey);
-  const duplicate = await findPostByCreationSubmissionKey(authorId, submissionKey);
-  if (duplicate) return duplicate.id;
   const visibilityUserIds = await normalizePostVisibility(
     input.visibilityUserIds ?? null,
     authorId,
   );
+  const assetRefs = buildAssetSnapshot(clean.markdown, input.attachmentIds ?? []);
+  const duplicate = await findPostByCreationSubmissionKey(authorId, submissionKey);
+  if (duplicate) return recoverCreatedPost(duplicate, clean, visibilityUserIds, assetRefs);
   const now = new Date();
   const id = crypto.randomUUID();
   const revisionId = crypto.randomUUID();
-  const assetRefs = buildAssetSnapshot(clean.markdown, input.attachmentIds ?? []);
   await validateSnapshotAssets(authorId, assetRefs);
   const db = getDb();
   const tagOperations = await buildPostTagOperations(id, clean.tags, now);
@@ -187,7 +228,7 @@ export async function createPost(
     });
   } catch (error) {
     const repeated = await findPostByCreationSubmissionKey(authorId, submissionKey);
-    if (repeated) return repeated.id;
+    if (repeated) return recoverCreatedPost(repeated, clean, visibilityUserIds, assetRefs);
     throw error;
   }
   return id;
