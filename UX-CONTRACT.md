@@ -301,3 +301,11 @@
 - `SetMemberPasswordForm` 复用 ModalDialog、PendingSubmitButton、ActionErrorMessage 和 useRecoverableActionState。弹窗明确标识邮箱、密码长度与重置对已有密码登录的影响；取消不写入，成功关闭并刷新成员状态，失败保留输入，不回显已有密码。管理员自身仍使用 ChatGPT 登录。
 - 权限仍由 `lib/auth/access.ts` 在服务端统一检查；密码会话失效不静默回退到另一个 ChatGPT 身份。重置密码、移除白名单后的下一次请求读取最新状态。
 - 工程验证：`tests/access/password-login.test.ts`（真实 workerd/D1）与已有 `tests/access/auth-access.test.ts`；静态审计、构建与本地 HTTP 验证分别记录，不称为真实浏览器验收。
+
+## 管理员数据备份（2026-10-29）
+
+- `/admin/backup` 复用 AdminShell、admin-section 与 ModalDialog；备份前确认隐私范围和暂停编辑要求。用原生同源 POST 新窗口下载，避免浏览器 JavaScript 缓冲整包；页面只提示请求已发起，不假称下载或校验完成。取消确认不发请求。
+- 复用 `getActionAdministratorAccess(request)`，与原页面/Action 使用同一 Cookie 优先、平台身份、最新白名单及管理员判断。精确 Worker 路径直返 FixedLengthStream 以避免 Vinext/观测器包装吞掉下载中断；不扩展可见范围，不持久化导出链接或备份。
+- ZIP 含全部 27 张应用表结构、非认证秘密记录、业务附件/历史/软删除/游戏档案文件、SHA-256 清单与 Python 标准库恢复脚本；密码/会话/限流表仅空结构。明确排除物理已删、孤立临时文件、本地草稿与环境身份配置。
+- 分页流读取不是全库原子快照。性能日志沿用既有5,000条上限，先取一次有界快照，避免页面自身探针写入干扰。结束前再次核对业务表数据哈希，R2 使用 ETag 条件读，完整长度让中途失败成为失败下载；用户须在安静窗口导出并运行 restore.py 核验文件、SQLite完整性、外键与行数。不会自动恢复或覆盖线上数据。
+- 验证：`tests/admin/backup.test.ts`（真实D1/R2/SQLite恢复）、`tests/build/backup-http.test.mjs`（原鉴权/撤销/原生HTTP/105MiB及中途失败）；浏览器验证单独记录。

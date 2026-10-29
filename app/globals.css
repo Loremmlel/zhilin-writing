@@ -5482,3 +5482,20 @@ input[type="file"] {
 .header-inner.header-inner--game {
   grid-template-columns: minmax(0, 1fr) auto;
 }
+
+/* Backup reuses the admin surface; only prose/disclosure spacing is feature-specific. */
+.admin-backup-copy {
+  display: grid;
+  gap: 16px;
+}
+.admin-backup-copy .section-heading {
+  margin-bottom: 0;
+}
+.admin-backup-details > summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.admin-backup-details[open] > p,
+.admin-backup-copy [role="status"] {
+  margin-top: 12px;
+}

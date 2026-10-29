@@ -52,3 +52,7 @@
 - `npm run db:generate`：schema 变化后生成 D1 迁移。
 
 V6 的实现与验收证据见 `docs/v6-annotation-guard-report.md`。V7 的可行性裁决、设计与实施顺序见 `docs/superpowers/specs/2026-09-03-release-hardening-v7-design.md` 和 `docs/superpowers/plans/2026-09-03-release-hardening-v7.md`。
+
+## 管理员备份
+
+管理后台「数据备份」可下载 SQL、业务附件和恢复脚本的 ZIP。请暂停编辑/上传/删除后导出；分页读取不等于全库原子快照。解压后运行 `python3 restore.py`（Windows：`py restore.py`）生成真实 `zhilin.db` 并校验附件 SHA-256、SQLite 完整性、外键和行数。密码、会话和登录限流记录不导出，恢复后须重设成员本地密码。部署密钥/身份配置须另行保管；备份不得推送到 GitHub。完整范围和恢复注意事项见 ZIP 内 `README.txt`。此功能不自动覆盖线上数据。

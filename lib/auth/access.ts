@@ -9,10 +9,10 @@ import { canAccessWriting } from "./permissions";
 import { loginPath } from "./password-policy";
 import { passwordSessionToken, readPasswordAccess } from "./password-session";
 
-async function readAccess() {
-  const token = await passwordSessionToken();
+async function readAccess(request?: Request) {
+  const token = await passwordSessionToken(request);
   if (token !== undefined) return readPasswordAccess(token);
-  const identity = await getChatGPTUser();
+  const identity = await getChatGPTUser(request);
   if (!identity) return null;
   const emailKey = normalizeEmail(identity.email);
   const owner =
@@ -25,8 +25,8 @@ async function readAccess() {
 // Actions resolve fresh access; never seed page rerenders with pre-mutation profiles.
 const getRequestAccess = cacheForRequest(readAccess);
 
-export async function getApiMemberAccess() {
-  const access = await readAccess();
+export async function getApiMemberAccess(request?: Request) {
+  const access = await readAccess(request);
   if (!access) return { ok: false as const, code: "AUTH_EXPIRED" as const, status: 401 as const };
   if (!access.allowed)
     return { ok: false as const, code: "ACCESS_REVOKED" as const, status: 403 as const };
@@ -35,8 +35,8 @@ export async function getApiMemberAccess() {
   return { ok: true as const, member: access.member, allowed: access.allowed };
 }
 
-export async function getActionAdministratorAccess() {
-  const access = await getApiMemberAccess();
+export async function getActionAdministratorAccess(request?: Request) {
+  const access = await getApiMemberAccess(request);
   if (!access.ok) return access;
   if (!access.allowed.isAdmin)
     return { ok: false as const, code: "ADMIN_REQUIRED" as const, status: 403 as const };

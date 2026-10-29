@@ -24,6 +24,13 @@ export async function readPasswordAccess(token: string) {
   return { ...row, emailKey, identity: { email: emailKey, displayName: emailKey, fullName: null } };
 }
 
-export async function passwordSessionToken() {
+export async function passwordSessionToken(request?: Request) {
+  if (request)
+    return request.headers
+      .get("cookie")
+      ?.split(";")
+      .map((part) => part.trim())
+      .find((part) => part.startsWith(`${SESSION_COOKIE}=`))
+      ?.slice(SESSION_COOKIE.length + 1);
   return (await cookies()).get(SESSION_COOKIE)?.value;
 }

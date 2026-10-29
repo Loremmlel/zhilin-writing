@@ -1,3 +1,4 @@
+import { POST as exportBackup, GET as rejectBackupGet } from "../app/api/admin/backup/route";
 import { requestEnvironment } from "../lib/performance/environment";
 import {
   requestPerformance,
@@ -83,6 +84,10 @@ const observedWorker = {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
     if (url.pathname === PERFORMANCE_ENDPOINT) return worker.fetch(request, env, ctx);
+    // Keep FixedLengthStream intact: Vinext/body telemetry wrapping masks truncated downloads.
+    // The handler performs the same server-side administrator and same-origin checks.
+    if (url.pathname === "/api/admin/backup")
+      return request.method === "POST" ? exportBackup(request) : rejectBackupGet();
     const environment = requestEnvironment(request);
     const context: NonNullable<ReturnType<typeof requestPerformance.getStore>> = {
       requestId: crypto.randomUUID(),
