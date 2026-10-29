@@ -59,6 +59,15 @@ const call = (role: string | null = "admin", origin = "https://backup.test", met
 before(async () => {
   db = (await mf.getD1Database("DB")) as unknown as D1Database;
   bucket = (await mf.getR2Bucket("BUCKET")) as unknown as R2Bucket;
+  // Real Drizzle deployments create this ledger before applying migration SQL.
+  await db
+    .prepare(
+      "CREATE TABLE __drizzle_migrations (id SERIAL PRIMARY KEY, hash TEXT NOT NULL, created_at NUMERIC)",
+    )
+    .run();
+  await db
+    .prepare("INSERT INTO __drizzle_migrations VALUES (1, 'synthetic-migration-hash', 1)")
+    .run();
   for (const name of (await readdir(join(root, "drizzle")))
     .filter((name) => /^\d{4}_.+\.sql$/.test(name))
     .sort()) {
@@ -271,7 +280,13 @@ test("missing active files, removed objects, and unknown schema fail closed", as
     /变化|丢失/,
   );
   await db.prepare("CREATE TABLE newly_added_secret (token TEXT)").run();
-  await assert.rejects(() => databaseSnapshot(db), /结构已变化/);
+  await assert.rejects(() => databaseSnapshot(db), /结构已变化.*newly_added_secret/);
+  const denied = await call("member");
+  assert.equal(denied.status, 403);
+  assert.doesNotMatch(await denied.text(), /newly_added_secret/);
+  const mismatch = await call();
+  assert.equal(mismatch.status, 409);
+  assert.match(await mismatch.text(), /newly_added_secret/);
   await db.prepare("DROP TABLE newly_added_secret").run();
 });
 

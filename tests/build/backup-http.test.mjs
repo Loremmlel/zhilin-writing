@@ -32,6 +32,14 @@ test("built Worker enforces original admin auth, serves native fixed-length ZIP,
   const folder = await mkdtemp(join(tmpdir(), "backup-http-"));
   try {
     const db = await mf.getD1Database("DB");
+    await db
+      .prepare(
+        "CREATE TABLE __drizzle_migrations (id SERIAL PRIMARY KEY, hash TEXT NOT NULL, created_at NUMERIC)",
+      )
+      .run();
+    await db
+      .prepare("INSERT INTO __drizzle_migrations VALUES (1, 'synthetic-migration-hash', 1)")
+      .run();
     for (const file of (await readdir(new URL("../../drizzle/", import.meta.url)))
       .filter((name) => /^\d{4}_.+\.sql$/.test(name))
       .sort()) {

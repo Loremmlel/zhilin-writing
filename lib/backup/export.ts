@@ -48,7 +48,7 @@ type TablePlan = {
   captured?: string[];
 };
 const schemaQuery =
-  "SELECT type, name, tbl_name, sql FROM sqlite_master WHERE sql IS NOT NULL AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_cf_%' AND name <> 'd1_migrations' ORDER BY type, name";
+  "SELECT type, name, tbl_name, sql FROM sqlite_master WHERE sql IS NOT NULL AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '_cf_%' AND name NOT IN ('d1_migrations', '__drizzle_migrations') AND tbl_name NOT IN ('d1_migrations', '__drizzle_migrations') ORDER BY type, name";
 const referencesQuery = `SELECT DISTINCT a.r2_key AS key, a.deleted_at AS deleted FROM assets a WHERE a.status='permanent' OR EXISTS (SELECT 1 FROM post_asset_refs r WHERE r.asset_id=a.id) OR EXISTS (SELECT 1 FROM revision_asset_refs r WHERE r.asset_id=a.id) OR EXISTS (SELECT 1 FROM users u WHERE u.avatar_asset_id=a.id) UNION SELECT archive_key AS key, NULL AS deleted FROM haojie_rooms WHERE archive_key IS NOT NULL`;
 
 export async function databaseSnapshot(db: D1Database) {
@@ -57,8 +57,18 @@ export async function databaseSnapshot(db: D1Database) {
     .filter((row) => row.type === "table")
     .map((row) => row.name)
     .sort();
-  if (JSON.stringify(tables) !== JSON.stringify([...BACKUP_TABLES].sort()))
-    throw new BackupError("数据库结构已变化，请更新备份功能后再导出。");
+  if (JSON.stringify(tables) !== JSON.stringify([...BACKUP_TABLES].sort())) {
+    // This response is reachable only after administrator authorization. No row values.
+    const unexpected = tables.filter(
+      (name) => !(BACKUP_TABLES as readonly string[]).includes(name),
+    );
+    const missing = BACKUP_TABLES.filter((name) => !tables.includes(name));
+    const diagnostic = (names: readonly string[]) =>
+      JSON.stringify(names.slice(0, 20).map((name) => name.slice(0, 100)));
+    throw new BackupError(
+      `数据库结构已变化，请更新备份功能后再导出。未知表：${diagnostic(unexpected)}；缺少表：${diagnostic(missing)}`,
+    );
+  }
   const plans: TablePlan[] = [];
   for (const table of tables.filter((table) => !OMITTED_RECORDS.includes(table))) {
     const columns = (
