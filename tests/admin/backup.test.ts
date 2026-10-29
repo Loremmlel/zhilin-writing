@@ -68,6 +68,12 @@ before(async () => {
   await db
     .prepare("INSERT INTO __drizzle_migrations VALUES (1, 'synthetic-migration-hash', 1)")
     .run();
+  await db
+    .prepare("CREATE TABLE __appgarden_migrations (id TEXT PRIMARY KEY, applied_at INTEGER)")
+    .run();
+  await db
+    .prepare("CREATE INDEX appgarden_migration_time ON __appgarden_migrations(applied_at)")
+    .run();
   for (const name of (await readdir(join(root, "drizzle")))
     .filter((name) => /^\d{4}_.+\.sql$/.test(name))
     .sort()) {
